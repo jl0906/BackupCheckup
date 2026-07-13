@@ -2,8 +2,6 @@
 
 BackupCheckup is a local Home Assistant custom integration that reads the **actual backup inventory** from Home Assistant's backup manager. It does not depend on a separate automation or helper and it detects when a backup file has subsequently been deleted.
 
-Version: **1.0.0**
-
 ## Features
 
 - Counts all currently stored backups across configured backup agents.
@@ -15,6 +13,7 @@ Version: **1.0.0**
 - No cloud connection and no external Python dependency.
 
 ## Installation with HACS
+[![Open your Home Assistant instance and add BackupCheckup to HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jl0906&repository=BackupCheckup&category=integration)
 
 1. Add this repository to HACS as a custom repository of type **Integration**.
 2. Install **BackupCheckup**.
