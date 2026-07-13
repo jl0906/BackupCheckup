@@ -1,0 +1,18 @@
+{
+  "domain": "backup_checkup",
+  "name": "BackupCheckup",
+  "codeowners": [
+    "@jl0906"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "backup"
+  ],
+  "documentation": "https://github.com/jl0906/BackupCheckup",
+  "integration_type": "service",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/jl0906/BackupCheckup/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "1.0.0"
+}
