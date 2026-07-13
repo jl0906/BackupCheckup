@@ -76,10 +76,6 @@ actions:
         BackupCheckup reports: {{ states('sensor.backup_checkup_status') }}
 ```
 
-## Before publishing
-
-Replace `YOUR_GITHUB_USERNAME` in `custom_components/backup_checkup/manifest.json` with the repository owner's GitHub username. The repository should be named `BackupCheckup` unless the manifest links are adjusted.
-
 ## License
 
 MIT
