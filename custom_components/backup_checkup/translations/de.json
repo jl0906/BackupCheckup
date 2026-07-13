@@ -1,0 +1,115 @@
+{
+  "title": "BackupCheckup",
+  "config": {
+    "step": {
+      "user": {
+        "title": "BackupCheckup einrichten",
+        "description": "Überwacht die tatsächlich in Home Assistant gespeicherten Backups.",
+        "data": {
+          "max_age_days": "Maximales Backupalter in Tagen",
+          "update_interval_minutes": "Aktualisierungsintervall in Minuten"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Es kann nur eine BackupCheckup-Instanz eingerichtet werden."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "BackupCheckup-Optionen",
+        "data": {
+          "max_age_days": "Maximales Backupalter in Tagen",
+          "update_interval_minutes": "Aktualisierungsintervall in Minuten"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "ok": "OK",
+          "no_backups": "Keine Backups",
+          "automatic_backup_overdue": "Automatisches Backup überfällig",
+          "backup_stale": "Backup zu alt",
+          "automatic_backup_failed": "Automatisches Backup fehlgeschlagen",
+          "schedule_missing": "Automatischer Zeitplan fehlt",
+          "schedule_overdue": "Automatischer Zeitplan überfällig",
+          "manager_unavailable": "Backup-Manager nicht verfügbar",
+          "storage_error": "Fehler beim Backup-Speicher"
+        }
+      },
+      "stored_backups": {
+        "name": "Gespeicherte Backups"
+      },
+      "automatic_backups": {
+        "name": "Automatische Backups"
+      },
+      "manual_backups": {
+        "name": "Manuelle oder sonstige Backups"
+      },
+      "latest_backup": {
+        "name": "Neuestes Backup"
+      },
+      "latest_automatic_backup": {
+        "name": "Neuestes automatisches Backup"
+      },
+      "latest_manual_backup": {
+        "name": "Neuestes manuelles oder sonstiges Backup"
+      },
+      "latest_backup_age": {
+        "name": "Alter des neuesten Backups"
+      },
+      "automatic_backup_age": {
+        "name": "Alter des automatischen Backups"
+      },
+      "manual_backup_age": {
+        "name": "Alter des manuellen oder sonstigen Backups"
+      },
+      "last_automatic_attempt": {
+        "name": "Letzter automatischer Backupversuch"
+      },
+      "next_automatic_backup": {
+        "name": "Nächstes automatisches Backup"
+      },
+      "backup_manager_state": {
+        "name": "Zustand des Backup-Managers"
+      },
+      "last_successful_automatic_event": {
+        "name": "Letztes erfolgreiches automatisches Backupereignis"
+      }
+    },
+    "binary_sensor": {
+      "problem": {
+        "name": "Problem"
+      },
+      "no_backup": {
+        "name": "Kein Backup gespeichert"
+      },
+      "backup_stale": {
+        "name": "Neuestes Backup zu alt"
+      },
+      "automatic_backup_overdue": {
+        "name": "Automatisches Backup überfällig"
+      },
+      "automatic_backup_failed": {
+        "name": "Automatisches Backup fehlgeschlagen"
+      },
+      "automatic_schedule_missing": {
+        "name": "Automatischer Zeitplan fehlt"
+      },
+      "automatic_schedule_overdue": {
+        "name": "Automatischer Zeitplan überfällig"
+      },
+      "backup_manager_unavailable": {
+        "name": "Backup-Manager nicht verfügbar"
+      },
+      "storage_error": {
+        "name": "Fehler beim Backup-Speicher"
+      }
+    }
+  }
+}
