@@ -2,13 +2,14 @@
 
 BackupCheckup is a local Home Assistant custom integration that reads the **actual backup inventory** from Home Assistant's backup manager. It does not depend on a separate automation or helper and it detects when a backup file has subsequently been deleted.
 
-Version: **1.1.0**
+Version: **1.1.1**
 
 ## Features
 
 - Counts all currently stored backups across configured backup agents.
 - Separates automatic backups from manual or other backups.
 - Exposes the latest backup timestamps and their age.
+- Reports the automatic backup age in fully completed days while retaining the precise age internally for status calculations.
 - Detects an empty backup inventory, stale backups, failed automatic attempts, a missing or overdue automatic schedule, unavailable backup manager data, and storage-agent errors.
 - Configurable maximum backup age and polling interval.
 - English, German, Dutch, Polish, Swedish, Italian, French, Danish, and Spanish translations.

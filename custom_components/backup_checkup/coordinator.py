@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 import logging
+from math import floor
 from typing import Any
 
 from homeassistant.components.backup import async_get_manager
@@ -101,10 +102,17 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
 
     @staticmethod
     def _age_days(now: datetime, value: datetime | None) -> float | None:
-        """Return the age in days."""
+        """Return the precise age in days."""
         if value is None:
             return None
         return max(0.0, (now - value).total_seconds() / 86400)
+
+    @staticmethod
+    def _completed_days(value: float | None) -> int | None:
+        """Return only fully completed days from a precise age value."""
+        if value is None:
+            return None
+        return floor(value)
 
     async def _async_update_data(self) -> BackupCheckupData:
         """Read and evaluate the backup inventory."""
@@ -164,7 +172,8 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         latest_manual = manual_records[0].date if manual_records else None
 
         latest_age = self._age_days(now, latest_backup)
-        automatic_age = self._age_days(now, latest_automatic)
+        automatic_age_precise = self._age_days(now, latest_automatic)
+        automatic_age = self._completed_days(automatic_age_precise)
         manual_age = self._age_days(now, latest_manual)
 
         last_automatic_attempt = self._entity_datetime(CORE_LAST_AUTOMATIC_ATTEMPT)
@@ -189,8 +198,8 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             )
         else:
             automatic_backup_overdue = (
-                automatic_age is not None
-                and automatic_age > self.max_age_days
+                automatic_age_precise is not None
+                and automatic_age_precise > self.max_age_days
                 and not manual_covers_automatic
             )
 
@@ -262,6 +271,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             latest_manual_backup=latest_manual,
             latest_backup_age_days=latest_age,
             automatic_backup_age_days=automatic_age,
+            automatic_backup_age_days_precise=automatic_age_precise,
             manual_backup_age_days=manual_age,
             last_automatic_attempt=last_automatic_attempt,
             last_successful_automatic_event=last_successful_automatic_event,

@@ -45,7 +45,8 @@ class BackupCheckupData:
     latest_automatic_backup: datetime | None
     latest_manual_backup: datetime | None
     latest_backup_age_days: float | None
-    automatic_backup_age_days: float | None
+    automatic_backup_age_days: int | None
+    automatic_backup_age_days_precise: float | None
     manual_backup_age_days: float | None
     last_automatic_attempt: datetime | None
     last_successful_automatic_event: datetime | None
