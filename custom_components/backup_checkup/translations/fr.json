@@ -23,7 +23,9 @@
           "maximum_size_drop_percent": "Baisse maximale autorisée de la taille en pourcentage",
           "minimum_redundant_locations": "Emplacements de sauvegarde requis",
           "repair_issues_enabled": "Afficher les alertes de réparation",
-          "analytics_window_days": "Période d’analyse en jours"
+          "analytics_window_days": "Période d’analyse en jours",
+          "auto_verify_new_backups": "Vérifier automatiquement chaque nouvelle sauvegarde",
+          "database_integrity_check": "Vérifier l’intégrité de la base de données (expert)"
         },
         "data_description": {
           "max_age_days": "Un avertissement est affiché après ce nombre de jours complets.",
@@ -33,7 +35,9 @@
           "maximum_size_drop_percent": "Utilisé pour la comparaison automatique avec les sauvegardes précédentes.",
           "minimum_redundant_locations": "Utilisez 1 pour un emplacement ou 2 pour le stockage local plus un NAS/cloud.",
           "repair_issues_enabled": "Crée des alertes Réparations Home Assistant pour les problèmes de sauvegarde actifs. Elles disparaissent automatiquement une fois le problème résolu.",
-          "analytics_window_days": "Les statistiques de sauvegarde et le taux de réussite observé des sauvegardes automatiques utilisent cette période. Le suivi historique commence avec la version 1.5.0."
+          "analytics_window_days": "Les statistiques de sauvegarde et le taux de réussite observé des sauvegardes automatiques utilisent cette période. Le suivi historique commence avec la version 1.5.0.",
+          "auto_verify_new_backups": "Lorsqu’une nouvelle sauvegarde la plus récente est détectée, elle est téléchargée et entièrement vérifiée une fois. Cela peut utiliser beaucoup de réseau, de processeur et d’espace temporaire.",
+          "database_integrity_check": "Extrait temporairement la base SQLite et exécute PRAGMA integrity_check. La vérification est plus longue et nécessite davantage d’espace temporaire."
         }
       }
     },
@@ -64,7 +68,9 @@
           "maximum_size_drop_percent": "Baisse maximale autorisée de la taille en pourcentage",
           "minimum_redundant_locations": "Emplacements de sauvegarde requis",
           "repair_issues_enabled": "Afficher les alertes de réparation",
-          "analytics_window_days": "Période d’analyse en jours"
+          "analytics_window_days": "Période d’analyse en jours",
+          "auto_verify_new_backups": "Vérifier automatiquement chaque nouvelle sauvegarde",
+          "database_integrity_check": "Vérifier l’intégrité de la base de données (expert)"
         },
         "data_description": {
           "max_age_days": "Un avertissement est affiché après ce nombre de jours complets.",
@@ -74,7 +80,9 @@
           "maximum_size_drop_percent": "Utilisé pour la comparaison automatique avec les sauvegardes précédentes.",
           "minimum_redundant_locations": "Utilisez 1 pour un emplacement ou 2 pour le stockage local plus un NAS/cloud.",
           "repair_issues_enabled": "Crée des alertes Réparations Home Assistant pour les problèmes de sauvegarde actifs. Elles disparaissent automatiquement une fois le problème résolu.",
-          "analytics_window_days": "Les statistiques de sauvegarde et le taux de réussite observé des sauvegardes automatiques utilisent cette période. Le suivi historique commence avec la version 1.5.0."
+          "analytics_window_days": "Les statistiques de sauvegarde et le taux de réussite observé des sauvegardes automatiques utilisent cette période. Le suivi historique commence avec la version 1.5.0.",
+          "auto_verify_new_backups": "Lorsqu’une nouvelle sauvegarde la plus récente est détectée, elle est téléchargée et entièrement vérifiée une fois. Cela peut utiliser beaucoup de réseau, de processeur et d’espace temporaire.",
+          "database_integrity_check": "Extrait temporairement la base SQLite et exécute PRAGMA integrity_check. La vérification est plus longue et nécessite davantage d’espace temporaire."
         }
       }
     },
@@ -98,7 +106,8 @@
           "storage_error": "Erreur de stockage des sauvegardes",
           "backup_size_suspicious": "Taille de sauvegarde suspecte",
           "backup_incomplete": "Sauvegarde incomplète",
-          "backup_not_redundant": "Sauvegarde non redondante"
+          "backup_not_redundant": "Sauvegarde non redondante",
+          "backup_integrity_failed": "Échec de la vérification d’intégrité"
         }
       },
       "stored_backups": {
@@ -170,7 +179,8 @@
           "check_backup_contents": "Vérifier le contenu de la sauvegarde incomplète",
           "check_backup_size": "Vérifier la taille de la sauvegarde et l’espace libre",
           "add_storage_location": "Ajouter ou restaurer un emplacement de sauvegarde",
-          "check_backup_system": "Vérifier le système de sauvegarde de Home Assistant"
+          "check_backup_system": "Vérifier le système de sauvegarde de Home Assistant",
+          "replace_backup": "Remplacer ou recréer la sauvegarde concernée"
         }
       },
       "problem_count": {
@@ -223,6 +233,39 @@
       },
       "consecutive_automatic_failures": {
         "name": "Échecs consécutifs des sauvegardes automatiques"
+      },
+      "integrity_status": {
+        "name": "État d’intégrité de la sauvegarde",
+        "state": {
+          "not_checked": "Non vérifiée",
+          "checking": "Vérification en cours",
+          "valid": "Valide",
+          "valid_with_warnings": "Valide avec avertissements",
+          "corrupt": "Corrompue",
+          "unreadable": "Illisible",
+          "password_required": "Mot de passe requis"
+        }
+      },
+      "last_integrity_check": {
+        "name": "Dernière vérification d’intégrité"
+      },
+      "integrity_checksum": {
+        "name": "Somme SHA-256 de la sauvegarde"
+      },
+      "verified_backup_size": {
+        "name": "Taille vérifiée de la sauvegarde"
+      },
+      "integrity_check_duration": {
+        "name": "Durée de la vérification"
+      },
+      "database_integrity_status": {
+        "name": "État d’intégrité de la base",
+        "state": {
+          "not_checked": "Non vérifiée",
+          "passed": "Réussie",
+          "failed": "Échec",
+          "not_found": "Introuvable"
+        }
       }
     },
     "binary_sensor": {
@@ -267,11 +310,17 @@
       },
       "agent_problem": {
         "name": "Problème"
+      },
+      "backup_integrity_problem": {
+        "name": "Sauvegarde corrompue ou illisible"
       }
     },
     "button": {
       "refresh": {
         "name": "Actualiser les données de sauvegarde"
+      },
+      "verify_latest_backup": {
+        "name": "Vérifier entièrement la dernière sauvegarde"
       }
     }
   },
@@ -335,6 +384,10 @@
     "backup_not_redundant": {
       "title": "La sauvegarde n’est pas redondante",
       "description": "La dernière sauvegarde est présente sur {current} emplacement(s), alors que {required} sont requis. Ajoutez ou restaurez un emplacement."
+    },
+    "backup_integrity_failed": {
+      "title": "La sauvegarde est corrompue ou illisible",
+      "description": "La vérification complète de l’intégrité de la copie de sauvegarde sur {location} a échoué à {checked}. Créez et vérifiez une nouvelle sauvegarde avant de compter sur la copie concernée."
     }
   }
 }

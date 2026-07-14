@@ -23,7 +23,9 @@
           "maximum_size_drop_percent": "Maksymalny dozwolony spadek rozmiaru w procentach",
           "minimum_redundant_locations": "Wymagane lokalizacje kopii zapasowej",
           "repair_issues_enabled": "Pokazuj komunikaty naprawcze",
-          "analytics_window_days": "Okres analizy w dniach"
+          "analytics_window_days": "Okres analizy w dniach",
+          "auto_verify_new_backups": "Automatycznie sprawdzaj każdą nową kopię",
+          "database_integrity_check": "Sprawdź integralność bazy danych (tryb ekspercki)"
         },
         "data_description": {
           "max_age_days": "Ostrzeżenie pojawi się po tej liczbie pełnych dni.",
@@ -33,7 +35,9 @@
           "maximum_size_drop_percent": "Używane do automatycznego porównania z wcześniejszymi kopiami zapasowymi.",
           "minimum_redundant_locations": "Ustaw 1 dla jednej lokalizacji lub 2 dla pamięci lokalnej oraz NAS/chmury.",
           "repair_issues_enabled": "Tworzy komunikaty Napraw Home Assistant dla aktywnych problemów z kopiami. Komunikaty znikają automatycznie po usunięciu problemu.",
-          "analytics_window_days": "Statystyki kopii zapasowych i obserwowany wskaźnik powodzenia kopii automatycznych używają tego okresu. Rejestrowanie historii powodzenia rozpoczyna się od wersji 1.5.0."
+          "analytics_window_days": "Statystyki kopii zapasowych i obserwowany wskaźnik powodzenia kopii automatycznych używają tego okresu. Rejestrowanie historii powodzenia rozpoczyna się od wersji 1.5.0.",
+          "auto_verify_new_backups": "Po wykryciu nowej najnowszej kopii zostanie ona raz w całości pobrana i sprawdzona. Może to znacznie obciążyć sieć, procesor i pamięć tymczasową.",
+          "database_integrity_check": "Tymczasowo wyodrębnia bazę SQLite i uruchamia PRAGMA integrity_check. Kontrola trwa dłużej i wymaga dodatkowego miejsca tymczasowego."
         }
       }
     },
@@ -64,7 +68,9 @@
           "maximum_size_drop_percent": "Maksymalny dozwolony spadek rozmiaru w procentach",
           "minimum_redundant_locations": "Wymagane lokalizacje kopii zapasowej",
           "repair_issues_enabled": "Pokazuj komunikaty naprawcze",
-          "analytics_window_days": "Okres analizy w dniach"
+          "analytics_window_days": "Okres analizy w dniach",
+          "auto_verify_new_backups": "Automatycznie sprawdzaj każdą nową kopię",
+          "database_integrity_check": "Sprawdź integralność bazy danych (tryb ekspercki)"
         },
         "data_description": {
           "max_age_days": "Ostrzeżenie pojawi się po tej liczbie pełnych dni.",
@@ -74,7 +80,9 @@
           "maximum_size_drop_percent": "Używane do automatycznego porównania z wcześniejszymi kopiami zapasowymi.",
           "minimum_redundant_locations": "Ustaw 1 dla jednej lokalizacji lub 2 dla pamięci lokalnej oraz NAS/chmury.",
           "repair_issues_enabled": "Tworzy komunikaty Napraw Home Assistant dla aktywnych problemów z kopiami. Komunikaty znikają automatycznie po usunięciu problemu.",
-          "analytics_window_days": "Statystyki kopii zapasowych i obserwowany wskaźnik powodzenia kopii automatycznych używają tego okresu. Rejestrowanie historii powodzenia rozpoczyna się od wersji 1.5.0."
+          "analytics_window_days": "Statystyki kopii zapasowych i obserwowany wskaźnik powodzenia kopii automatycznych używają tego okresu. Rejestrowanie historii powodzenia rozpoczyna się od wersji 1.5.0.",
+          "auto_verify_new_backups": "Po wykryciu nowej najnowszej kopii zostanie ona raz w całości pobrana i sprawdzona. Może to znacznie obciążyć sieć, procesor i pamięć tymczasową.",
+          "database_integrity_check": "Tymczasowo wyodrębnia bazę SQLite i uruchamia PRAGMA integrity_check. Kontrola trwa dłużej i wymaga dodatkowego miejsca tymczasowego."
         }
       }
     },
@@ -98,7 +106,8 @@
           "storage_error": "Błąd magazynu kopii zapasowych",
           "backup_size_suspicious": "Podejrzany rozmiar kopii",
           "backup_incomplete": "Niekompletna kopia",
-          "backup_not_redundant": "Kopia bez redundancji"
+          "backup_not_redundant": "Kopia bez redundancji",
+          "backup_integrity_failed": "Kontrola integralności kopii nie powiodła się"
         }
       },
       "stored_backups": {
@@ -170,7 +179,8 @@
           "check_backup_contents": "Sprawdź zawartość niekompletnej kopii",
           "check_backup_size": "Sprawdź rozmiar kopii i wolne miejsce",
           "add_storage_location": "Dodaj lub przywróć lokalizację kopii zapasowej",
-          "check_backup_system": "Sprawdź system kopii zapasowych Home Assistant"
+          "check_backup_system": "Sprawdź system kopii zapasowych Home Assistant",
+          "replace_backup": "Zastąp lub utwórz ponownie kopię"
         }
       },
       "problem_count": {
@@ -223,6 +233,39 @@
       },
       "consecutive_automatic_failures": {
         "name": "Kolejne nieudane automatyczne kopie zapasowe"
+      },
+      "integrity_status": {
+        "name": "Stan integralności kopii",
+        "state": {
+          "not_checked": "Nie sprawdzono",
+          "checking": "Sprawdzanie",
+          "valid": "Prawidłowa",
+          "valid_with_warnings": "Prawidłowa z ostrzeżeniami",
+          "corrupt": "Uszkodzona",
+          "unreadable": "Nieczytelna",
+          "password_required": "Wymagane hasło"
+        }
+      },
+      "last_integrity_check": {
+        "name": "Ostatnia kontrola integralności"
+      },
+      "integrity_checksum": {
+        "name": "Suma SHA-256 kopii"
+      },
+      "verified_backup_size": {
+        "name": "Zweryfikowany rozmiar kopii"
+      },
+      "integrity_check_duration": {
+        "name": "Czas kontroli integralności"
+      },
+      "database_integrity_status": {
+        "name": "Stan integralności bazy danych",
+        "state": {
+          "not_checked": "Nie sprawdzono",
+          "passed": "Zaliczone",
+          "failed": "Niepowodzenie",
+          "not_found": "Nie znaleziono"
+        }
       }
     },
     "binary_sensor": {
@@ -267,11 +310,17 @@
       },
       "agent_problem": {
         "name": "Problem"
+      },
+      "backup_integrity_problem": {
+        "name": "Kopia uszkodzona lub nieczytelna"
       }
     },
     "button": {
       "refresh": {
         "name": "Odśwież dane kopii zapasowych"
+      },
+      "verify_latest_backup": {
+        "name": "Sprawdź w całości najnowszą kopię"
       }
     }
   },
@@ -335,6 +384,10 @@
     "backup_not_redundant": {
       "title": "Kopia nie jest przechowywana nadmiarowo",
       "description": "Najnowsza kopia znajduje się w {current} lokalizacji, a wymagane jest {required}. Dodaj lub przywróć kolejną lokalizację."
+    },
+    "backup_integrity_failed": {
+      "title": "Kopia zapasowa jest uszkodzona lub nieczytelna",
+      "description": "Pełna kontrola integralności kopii zapasowej w lokalizacji {location} nie powiodła się o {checked}. Utwórz nową kopię i sprawdź ją, zanim polegasz na uszkodzonej kopii."
     }
   }
 }

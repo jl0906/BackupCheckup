@@ -29,6 +29,10 @@ from .const import (
     BACKUP_RESULT_OPTIONS,
     DOMAIN,
     HEALTH_RATING_OPTIONS,
+    INTEGRITY_DATABASE_OPTIONS,
+    INTEGRITY_STATUS_CHECKING,
+    INTEGRITY_STATUS_NOT_CHECKED,
+    INTEGRITY_STATUS_OPTIONS,
     RECOMMENDATION_OPTIONS,
     SIZE_TREND_OPTIONS,
     STATUS_OPTIONS,
@@ -48,6 +52,104 @@ class BackupCheckupSensorDescription(SensorEntityDescription):
 
 SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
+        key="integrity_status",
+        translation_key="integrity_status",
+        icon="mdi:shield-search",
+        device_class=SensorDeviceClass.ENUM,
+        options=INTEGRITY_STATUS_OPTIONS,
+        value_fn=lambda data: (
+            INTEGRITY_STATUS_CHECKING
+            if data.integrity_check_running
+            else (
+                data.integrity.status
+                if data.backups
+                and data.integrity.backup_id == data.backups[0].backup_id
+                else INTEGRITY_STATUS_NOT_CHECKED
+            )
+        ),
+        attributes_fn=lambda data: {
+            "applies_to_latest_backup": bool(
+                data.backups and data.integrity.backup_id == data.backups[0].backup_id
+            ),
+            "checked_at": (
+                data.integrity.checked_at.isoformat()
+                if data.integrity.checked_at
+                else None
+            ),
+            "backup_date": (
+                data.integrity.backup_date.isoformat()
+                if data.integrity.backup_date
+                else None
+            ),
+            "storage_location": data.integrity.agent_id,
+            "archive_count": data.integrity.archive_count,
+            "file_count": data.integrity.file_count,
+            "protected": data.integrity.protected,
+            "database_status": data.integrity.database_status,
+            "warnings": list(data.integrity.warnings),
+            "error_code": data.integrity.error_code,
+        },
+    ),
+    BackupCheckupSensorDescription(
+        key="last_integrity_check",
+        translation_key="last_integrity_check",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:shield-check-outline",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=lambda data: data.integrity.checked_at,
+    ),
+    BackupCheckupSensorDescription(
+        key="integrity_checksum",
+        translation_key="integrity_checksum",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:fingerprint",
+        value_fn=lambda data: data.integrity.sha256,
+        attributes_fn=lambda data: {
+            "algorithm": "SHA-256",
+            "checksum_changed": data.integrity.checksum_changed,
+            "applies_to_latest_backup": bool(
+                data.backups and data.integrity.backup_id == data.backups[0].backup_id
+            ),
+        },
+    ),
+    BackupCheckupSensorDescription(
+        key="verified_backup_size",
+        translation_key="verified_backup_size",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:database-check-outline",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        native_unit_of_measurement=UnitOfInformation.MEGABYTES,
+        suggested_display_precision=2,
+        value_fn=lambda data: (
+            round(data.integrity.verified_size / 1_000_000, 2)
+            if data.integrity.verified_size is not None
+            else None
+        ),
+    ),
+    BackupCheckupSensorDescription(
+        key="integrity_check_duration",
+        translation_key="integrity_check_duration",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:timer-check-outline",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.SECONDS,
+        value_fn=lambda data: data.integrity.duration_seconds,
+    ),
+    BackupCheckupSensorDescription(
+        key="database_integrity_status",
+        translation_key="database_integrity_status",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        icon="mdi:database-search-outline",
+        device_class=SensorDeviceClass.ENUM,
+        options=INTEGRITY_DATABASE_OPTIONS,
+        value_fn=lambda data: data.integrity.database_status,
+    ),
+    BackupCheckupSensorDescription(
         key="health_score",
         translation_key="health_score",
         icon="mdi:shield-check-outline",
@@ -65,6 +167,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="health_rating",
         translation_key="health_rating",
+        entity_registry_enabled_default=False,
         icon="mdi:shield-star-outline",
         device_class=SensorDeviceClass.ENUM,
         options=HEALTH_RATING_OPTIONS,
@@ -77,6 +180,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="size_trend",
         translation_key="size_trend",
+        entity_registry_enabled_default=False,
         icon="mdi:chart-line",
         device_class=SensorDeviceClass.ENUM,
         options=SIZE_TREND_OPTIONS,
@@ -90,6 +194,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="average_backup_size",
         translation_key="average_backup_size",
+        entity_registry_enabled_default=False,
         icon="mdi:database-arrow-left-outline",
         device_class=SensorDeviceClass.DATA_SIZE,
         native_unit_of_measurement=UnitOfInformation.MEGABYTES,
@@ -109,6 +214,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="longest_backup_gap",
         translation_key="longest_backup_gap",
+        entity_registry_enabled_default=False,
         icon="mdi:timeline-clock-outline",
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.DAYS,
@@ -122,6 +228,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="automatic_success_rate",
         translation_key="automatic_success_rate",
+        entity_registry_enabled_default=False,
         icon="mdi:check-decagram-outline",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -141,6 +248,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="consecutive_automatic_failures",
         translation_key="consecutive_automatic_failures",
+        entity_registry_enabled_default=False,
         icon="mdi:alert-circle-check-outline",
         value_fn=lambda data: data.consecutive_automatic_failures,
         attributes_fn=lambda data: {
@@ -186,6 +294,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="problem_count",
         translation_key="problem_count",
+        entity_registry_enabled_default=False,
         icon="mdi:counter",
         value_fn=lambda data: data.problem_count,
         attributes_fn=lambda data: {
@@ -231,6 +340,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="latest_automatic_backup",
         translation_key="latest_automatic_backup",
+        entity_registry_enabled_default=False,
         icon="mdi:calendar-check",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=lambda data: data.latest_automatic_backup,
@@ -256,6 +366,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="automatic_backup_age",
         translation_key="automatic_backup_age",
+        entity_registry_enabled_default=False,
         icon="mdi:timer-alert-outline",
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.DAYS,
@@ -294,6 +405,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="latest_automatic_backup_size",
         translation_key="latest_automatic_backup_size",
+        entity_registry_enabled_default=False,
         icon="mdi:database-clock",
         device_class=SensorDeviceClass.DATA_SIZE,
         native_unit_of_measurement=UnitOfInformation.BYTES,
@@ -313,6 +425,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="latest_backup_result",
         translation_key="latest_backup_result",
+        entity_registry_enabled_default=False,
         icon="mdi:clipboard-check-outline",
         device_class=SensorDeviceClass.ENUM,
         options=BACKUP_RESULT_OPTIONS,
@@ -322,6 +435,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="latest_backup_locations",
         translation_key="latest_backup_locations",
+        entity_registry_enabled_default=False,
         icon="mdi:server-network",
         value_fn=lambda data: data.latest_backup_locations,
         attributes_fn=lambda data: {
@@ -486,12 +600,7 @@ class BackupCheckupAgentSensor(BackupCheckupAgentEntity, SensorEntity):
         self._attr_translation_key = f"agent_{metric}"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
-        if metric in {"latest_backup", "latest_backup_age"}:
-            self._attr_entity_registry_enabled_default = True
-        elif metric == "latest_backup_size":
-            self._attr_entity_registry_enabled_default = True
-        else:
-            self._attr_entity_registry_enabled_default = False
+        self._attr_entity_registry_enabled_default = False
 
         if metric == "latest_backup":
             self._attr_device_class = SensorDeviceClass.TIMESTAMP

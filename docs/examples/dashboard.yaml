@@ -4,8 +4,6 @@ show_header_toggle: false
 entities:
   - entity: sensor.backup_checkup_health_score
     name: Health score
-  - entity: sensor.backup_checkup_health_rating
-    name: Health rating
   - entity: sensor.backup_checkup_status
     name: Overall status
   - entity: sensor.backup_checkup_recommendation
@@ -16,17 +14,11 @@ entities:
     name: Backup age
   - entity: sensor.backup_checkup_latest_backup_size
     name: Backup size
-  - entity: sensor.backup_checkup_latest_backup_locations
-    name: Storage locations
-  - entity: sensor.backup_checkup_size_trend
-    name: Size trend
-  - entity: sensor.backup_checkup_automatic_success_rate
-    name: Automatic success rate
-  - entity: sensor.backup_checkup_consecutive_automatic_failures
-    name: Consecutive automatic failures
-  - entity: sensor.backup_checkup_problem_count
-    name: Active problems
+  - entity: sensor.backup_checkup_integrity_status
+    name: Integrity status
   - entity: binary_sensor.backup_checkup_problem
     name: Problem detected
+  - entity: button.backup_checkup_verify_latest_backup
+    name: Verify latest backup
   - entity: button.backup_checkup_refresh
     name: Refresh backup data

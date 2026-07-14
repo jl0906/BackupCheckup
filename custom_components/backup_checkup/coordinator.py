@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import Mapping
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from math import floor
 from statistics import median
@@ -23,6 +25,8 @@ from .const import (
     BACKUP_RESULT_PARTIAL,
     BACKUP_RESULT_UNKNOWN,
     CONF_ANALYTICS_WINDOW_DAYS,
+    CONF_AUTO_VERIFY_NEW_BACKUPS,
+    CONF_DATABASE_INTEGRITY_CHECK,
     CONF_MAX_AGE_DAYS,
     CONF_MAXIMUM_SIZE_DROP_PERCENT,
     CONF_MINIMUM_BACKUP_SIZE_MB,
@@ -35,6 +39,8 @@ from .const import (
     CORE_LAST_SUCCESSFUL_AUTOMATIC_BACKUP,
     CORE_NEXT_AUTOMATIC_BACKUP,
     DEFAULT_ANALYTICS_WINDOW_DAYS,
+    DEFAULT_AUTO_VERIFY_NEW_BACKUPS,
+    DEFAULT_DATABASE_INTEGRITY_CHECK,
     DEFAULT_MAX_AGE_DAYS,
     DEFAULT_MAXIMUM_SIZE_DROP_PERCENT,
     DEFAULT_MINIMUM_BACKUP_SIZE_MB,
@@ -51,12 +57,14 @@ from .const import (
     RECOMMENDATION_CHECK_STORAGE,
     RECOMMENDATION_CREATE_BACKUP,
     RECOMMENDATION_NONE,
+    RECOMMENDATION_REPLACE_BACKUP,
     SIZE_CHECK_AUTO,
     SIZE_CHECK_FIXED,
     SIZE_CHECK_OFF,
     STATUS_AUTOMATIC_BACKUP_FAILED,
     STATUS_AUTOMATIC_BACKUP_OVERDUE,
     STATUS_BACKUP_INCOMPLETE,
+    STATUS_BACKUP_INTEGRITY_FAILED,
     STATUS_BACKUP_NOT_REDUNDANT,
     STATUS_BACKUP_SIZE_SUSPICIOUS,
     STATUS_BACKUP_STALE,
@@ -68,10 +76,12 @@ from .const import (
     STATUS_STORAGE_ERROR,
 )
 from .history import BackupCheckupHistory
+from .integrity import BackupIntegrityVerifier
 from .models import (
     BackupAgentRecord,
     BackupAgentSummary,
     BackupCheckupData,
+    BackupIntegrityResult,
     BackupRecord,
 )
 
@@ -126,7 +136,24 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 DEFAULT_ANALYTICS_WINDOW_DAYS,
             )
         )
+        self.auto_verify_new_backups = bool(
+            options.get(
+                CONF_AUTO_VERIFY_NEW_BACKUPS,
+                DEFAULT_AUTO_VERIFY_NEW_BACKUPS,
+            )
+        )
+        self.database_integrity_check = bool(
+            options.get(
+                CONF_DATABASE_INTEGRITY_CHECK,
+                DEFAULT_DATABASE_INTEGRITY_CHECK,
+            )
+        )
         self.history = BackupCheckupHistory(hass, entry.entry_id)
+        self.integrity_verifier = BackupIntegrityVerifier(hass, entry.entry_id)
+        self.integrity_result = BackupIntegrityResult.not_checked()
+        self.integrity_check_running = False
+        self._integrity_loaded = False
+        self._integrity_task: asyncio.Task[None] | None = None
         update_minutes = int(
             options.get(
                 CONF_UPDATE_INTERVAL_MINUTES,
@@ -141,6 +168,13 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             name=DOMAIN,
             update_interval=timedelta(minutes=update_minutes),
         )
+
+    async def async_shutdown(self) -> None:
+        """Cancel a running integrity check and shut down the coordinator."""
+        if self._integrity_task is not None and not self._integrity_task.done():
+            self._integrity_task.cancel()
+            await asyncio.gather(self._integrity_task, return_exceptions=True)
+        await super().async_shutdown()
 
     @staticmethod
     def _as_datetime(value: Any) -> datetime | None:
@@ -238,6 +272,9 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             raise UpdateFailed(f"Unable to read Home Assistant backups: {err}") from err
 
         now = dt_util.utcnow()
+        if not self._integrity_loaded:
+            self.integrity_result = await self.integrity_verifier.store.async_load()
+            self._integrity_loaded = True
         records = self._normalize_backups(backups)
         automatic_records = [item for item in records if item.automatic]
         manual_records = [item for item in records if not item.automatic]
@@ -349,9 +386,15 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 if summary.agent_id in latest_location_ids
             )
         )
+        backup_integrity_failed = bool(
+            latest_record
+            and self.integrity_result.backup_id == latest_record.backup_id
+            and self.integrity_result.status in {"corrupt", "unreadable"}
+        )
 
         status = self._status(
             no_backup=no_backup,
+            backup_integrity_failed=backup_integrity_failed,
             manager_unavailable=manager_unavailable,
             automatic_schedule_missing=automatic_schedule_missing,
             storage_error=storage_error,
@@ -368,6 +411,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             key
             for key, active in (
                 ("no_backup", no_backup),
+                ("backup_integrity_failed", backup_integrity_failed),
                 ("backup_stale", backup_stale),
                 ("automatic_backup_overdue", automatic_backup_overdue),
                 ("automatic_backup_failed", automatic_backup_failed),
@@ -385,6 +429,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
 
         score_flags = {
             "no_backup": no_backup,
+            "backup_integrity_failed": backup_integrity_failed,
             "backup_stale": backup_stale,
             "automatic_backup_overdue": automatic_backup_overdue,
             "automatic_backup_failed": automatic_backup_failed,
@@ -407,6 +452,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         recommendation = {
             STATUS_OK: RECOMMENDATION_NONE,
             STATUS_NO_BACKUPS: RECOMMENDATION_CREATE_BACKUP,
+            STATUS_BACKUP_INTEGRITY_FAILED: RECOMMENDATION_REPLACE_BACKUP,
             STATUS_BACKUP_STALE: RECOMMENDATION_CREATE_BACKUP,
             STATUS_AUTOMATIC_BACKUP_OVERDUE: RECOMMENDATION_CHECK_SCHEDULE,
             STATUS_AUTOMATIC_BACKUP_FAILED: RECOMMENDATION_CHECK_SCHEDULE,
@@ -419,7 +465,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             STATUS_BACKUP_NOT_REDUNDANT: RECOMMENDATION_ADD_STORAGE_LOCATION,
         }.get(status, RECOMMENDATION_CHECK_BACKUP_SYSTEM)
 
-        return BackupCheckupData(
+        data = BackupCheckupData(
             checked_at=now,
             max_age_days=self.max_age_days,
             minimum_backup_size_bytes=self.minimum_backup_size_bytes,
@@ -483,7 +529,56 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             automatic_failures_observed=history_metrics.failed_attempts,
             consecutive_automatic_failures=history_metrics.consecutive_failures,
             history_tracking_started_at=history_metrics.tracking_started_at,
+            integrity=self.integrity_result,
+            integrity_check_running=self.integrity_check_running,
         )
+
+        if (
+            self.auto_verify_new_backups
+            and latest_record is not None
+            and self.integrity_result.backup_id != latest_record.backup_id
+            and not self.integrity_check_running
+            and (self._integrity_task is None or self._integrity_task.done())
+        ):
+            self._integrity_task = self.hass.async_create_task(
+                self._async_run_integrity_check(latest_record),
+                name=f"{DOMAIN}_automatic_integrity_check",
+            )
+        return data
+
+    async def async_start_integrity_check(self) -> bool:
+        """Start a manual integrity check of the latest backup."""
+        if self.integrity_check_running or not self.data.backups:
+            return False
+        self._integrity_task = self.hass.async_create_task(
+            self._async_run_integrity_check(self.data.backups[0]),
+            name=f"{DOMAIN}_manual_integrity_check",
+        )
+        return True
+
+    async def _async_run_integrity_check(self, record: BackupRecord) -> None:
+        """Run and persist one full integrity check."""
+        if self.integrity_check_running:
+            return
+        cancelled = False
+        self.integrity_check_running = True
+        if self.data is not None:
+            self.async_set_updated_data(
+                replace(self.data, integrity_check_running=True)
+            )
+        try:
+            result = await self.integrity_verifier.async_verify(
+                record, database_check=self.database_integrity_check
+            )
+            self.integrity_result = result
+            await self.integrity_verifier.store.async_save(result)
+        except asyncio.CancelledError:
+            cancelled = True
+            raise
+        finally:
+            self.integrity_check_running = False
+            if not cancelled:
+                await self.async_request_refresh()
 
     def _normalize_backups(
         self, backups: Mapping[str, Any]
@@ -685,6 +780,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         """Return the highest-priority status from the active flags."""
         priority = (
             ("no_backup", STATUS_NO_BACKUPS),
+            ("backup_integrity_failed", STATUS_BACKUP_INTEGRITY_FAILED),
             ("manager_unavailable", STATUS_MANAGER_UNAVAILABLE),
             ("automatic_schedule_missing", STATUS_SCHEDULE_MISSING),
             ("storage_error", STATUS_STORAGE_ERROR),

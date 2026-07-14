@@ -23,7 +23,9 @@
           "maximum_size_drop_percent": "Största tillåtna storleksminskning i procent",
           "minimum_redundant_locations": "Krävda lagringsplatser för säkerhetskopior",
           "repair_issues_enabled": "Visa reparationsmeddelanden",
-          "analytics_window_days": "Analysperiod i dagar"
+          "analytics_window_days": "Analysperiod i dagar",
+          "auto_verify_new_backups": "Verifiera varje ny säkerhetskopia automatiskt",
+          "database_integrity_check": "Kör integritetskontroll av databas (expert)"
         },
         "data_description": {
           "max_age_days": "En varning visas efter så här många hela dagar.",
@@ -33,7 +35,9 @@
           "maximum_size_drop_percent": "Används för automatisk jämförelse med tidigare säkerhetskopior.",
           "minimum_redundant_locations": "Använd 1 för en lagringsplats eller 2 för lokal lagring plus NAS/moln.",
           "repair_issues_enabled": "Skapar Home Assistant-reparationsärenden för aktiva säkerhetskopieringsproblem. De försvinner automatiskt när problemet är löst.",
-          "analytics_window_days": "Säkerhetskopieringsstatistik och observerad lyckandefrekvens för automatiska säkerhetskopior använder denna period. Historisk registrering börjar med version 1.5.0."
+          "analytics_window_days": "Säkerhetskopieringsstatistik och observerad lyckandefrekvens för automatiska säkerhetskopior använder denna period. Historisk registrering börjar med version 1.5.0.",
+          "auto_verify_new_backups": "När en ny senaste säkerhetskopia upptäcks hämtas och kontrolleras den fullständigt en gång. Detta kan använda mycket nätverk, processor och tillfälligt diskutrymme.",
+          "database_integrity_check": "Extraherar tillfälligt SQLite-databasen och kör PRAGMA integrity_check. Kontrollen tar längre tid och kräver extra tillfälligt utrymme."
         }
       }
     },
@@ -64,7 +68,9 @@
           "maximum_size_drop_percent": "Största tillåtna storleksminskning i procent",
           "minimum_redundant_locations": "Krävda lagringsplatser för säkerhetskopior",
           "repair_issues_enabled": "Visa reparationsmeddelanden",
-          "analytics_window_days": "Analysperiod i dagar"
+          "analytics_window_days": "Analysperiod i dagar",
+          "auto_verify_new_backups": "Verifiera varje ny säkerhetskopia automatiskt",
+          "database_integrity_check": "Kör integritetskontroll av databas (expert)"
         },
         "data_description": {
           "max_age_days": "En varning visas efter så här många hela dagar.",
@@ -74,7 +80,9 @@
           "maximum_size_drop_percent": "Används för automatisk jämförelse med tidigare säkerhetskopior.",
           "minimum_redundant_locations": "Använd 1 för en lagringsplats eller 2 för lokal lagring plus NAS/moln.",
           "repair_issues_enabled": "Skapar Home Assistant-reparationsärenden för aktiva säkerhetskopieringsproblem. De försvinner automatiskt när problemet är löst.",
-          "analytics_window_days": "Säkerhetskopieringsstatistik och observerad lyckandefrekvens för automatiska säkerhetskopior använder denna period. Historisk registrering börjar med version 1.5.0."
+          "analytics_window_days": "Säkerhetskopieringsstatistik och observerad lyckandefrekvens för automatiska säkerhetskopior använder denna period. Historisk registrering börjar med version 1.5.0.",
+          "auto_verify_new_backups": "När en ny senaste säkerhetskopia upptäcks hämtas och kontrolleras den fullständigt en gång. Detta kan använda mycket nätverk, processor och tillfälligt diskutrymme.",
+          "database_integrity_check": "Extraherar tillfälligt SQLite-databasen och kör PRAGMA integrity_check. Kontrollen tar längre tid och kräver extra tillfälligt utrymme."
         }
       }
     },
@@ -98,7 +106,8 @@
           "storage_error": "Fel i lagringen av säkerhetskopior",
           "backup_size_suspicious": "Misstänkt säkerhetskopieringsstorlek",
           "backup_incomplete": "Ofullständig säkerhetskopia",
-          "backup_not_redundant": "Säkerhetskopian saknar redundans"
+          "backup_not_redundant": "Säkerhetskopian saknar redundans",
+          "backup_integrity_failed": "Integritetskontrollen misslyckades"
         }
       },
       "stored_backups": {
@@ -170,7 +179,8 @@
           "check_backup_contents": "Kontrollera innehållet i den ofullständiga säkerhetskopian",
           "check_backup_size": "Kontrollera säkerhetskopians storlek och ledigt utrymme",
           "add_storage_location": "Lägg till eller återställ en lagringsplats",
-          "check_backup_system": "Kontrollera Home Assistants säkerhetskopieringssystem"
+          "check_backup_system": "Kontrollera Home Assistants säkerhetskopieringssystem",
+          "replace_backup": "Ersätt eller skapa om den berörda säkerhetskopian"
         }
       },
       "problem_count": {
@@ -223,6 +233,39 @@
       },
       "consecutive_automatic_failures": {
         "name": "Misslyckade automatiska säkerhetskopior i följd"
+      },
+      "integrity_status": {
+        "name": "Integritetsstatus för säkerhetskopia",
+        "state": {
+          "not_checked": "Inte kontrollerad",
+          "checking": "Kontrollerar",
+          "valid": "Giltig",
+          "valid_with_warnings": "Giltig med varningar",
+          "corrupt": "Skadad",
+          "unreadable": "Oläsbar",
+          "password_required": "Lösenord krävs"
+        }
+      },
+      "last_integrity_check": {
+        "name": "Senaste integritetskontroll"
+      },
+      "integrity_checksum": {
+        "name": "SHA-256-kontrollsumma"
+      },
+      "verified_backup_size": {
+        "name": "Verifierad storlek"
+      },
+      "integrity_check_duration": {
+        "name": "Kontrollens varaktighet"
+      },
+      "database_integrity_status": {
+        "name": "Databasens integritetsstatus",
+        "state": {
+          "not_checked": "Inte kontrollerad",
+          "passed": "Godkänd",
+          "failed": "Misslyckad",
+          "not_found": "Hittades inte"
+        }
       }
     },
     "binary_sensor": {
@@ -267,11 +310,17 @@
       },
       "agent_problem": {
         "name": "Problem"
+      },
+      "backup_integrity_problem": {
+        "name": "Säkerhetskopian är skadad eller oläsbar"
       }
     },
     "button": {
       "refresh": {
         "name": "Uppdatera säkerhetskopieringsdata"
+      },
+      "verify_latest_backup": {
+        "name": "Verifiera senaste säkerhetskopian fullständigt"
       }
     }
   },
@@ -335,6 +384,10 @@
     "backup_not_redundant": {
       "title": "Säkerhetskopian lagras inte redundant",
       "description": "Den senaste kopian finns på {current} lagringsplats(er), men {required} krävs. Lägg till eller återställ en plats."
+    },
+    "backup_integrity_failed": {
+      "title": "Säkerhetskopian är skadad eller oläsbar",
+      "description": "Den fullständiga integritetskontrollen av säkerhetskopian på {location} misslyckades {checked}. Skapa och verifiera en ny säkerhetskopia innan du förlitar dig på den berörda kopian."
     }
   }
 }

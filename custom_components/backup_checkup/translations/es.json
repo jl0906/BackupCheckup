@@ -23,7 +23,9 @@
           "maximum_size_drop_percent": "Reducción máxima permitida del tamaño en porcentaje",
           "minimum_redundant_locations": "Ubicaciones de copia requeridas",
           "repair_issues_enabled": "Mostrar avisos de reparación",
-          "analytics_window_days": "Periodo de análisis en días"
+          "analytics_window_days": "Periodo de análisis en días",
+          "auto_verify_new_backups": "Verificar automáticamente cada copia nueva",
+          "database_integrity_check": "Ejecutar comprobación de integridad de la base de datos (experto)"
         },
         "data_description": {
           "max_age_days": "Se muestra una advertencia después de este número de días completos.",
@@ -33,7 +35,9 @@
           "maximum_size_drop_percent": "Se utiliza para la comparación automática con copias anteriores.",
           "minimum_redundant_locations": "Usa 1 para una ubicación o 2 para almacenamiento local más NAS/nube.",
           "repair_issues_enabled": "Crea avisos de Reparaciones de Home Assistant para problemas de copia activos. Desaparecen automáticamente cuando se resuelve el problema.",
-          "analytics_window_days": "Las estadísticas de copias y la tasa de éxito observada de las copias automáticas usan este periodo. El registro histórico comienza con la versión 1.5.0."
+          "analytics_window_days": "Las estadísticas de copias y la tasa de éxito observada de las copias automáticas usan este periodo. El registro histórico comienza con la versión 1.5.0.",
+          "auto_verify_new_backups": "Cuando se detecta una nueva copia más reciente, se descarga y verifica por completo una vez. Puede usar bastante red, CPU y espacio temporal.",
+          "database_integrity_check": "Extrae temporalmente la base SQLite y ejecuta PRAGMA integrity_check. La comprobación tarda más y requiere espacio temporal adicional."
         }
       }
     },
@@ -64,7 +68,9 @@
           "maximum_size_drop_percent": "Reducción máxima permitida del tamaño en porcentaje",
           "minimum_redundant_locations": "Ubicaciones de copia requeridas",
           "repair_issues_enabled": "Mostrar avisos de reparación",
-          "analytics_window_days": "Periodo de análisis en días"
+          "analytics_window_days": "Periodo de análisis en días",
+          "auto_verify_new_backups": "Verificar automáticamente cada copia nueva",
+          "database_integrity_check": "Ejecutar comprobación de integridad de la base de datos (experto)"
         },
         "data_description": {
           "max_age_days": "Se muestra una advertencia después de este número de días completos.",
@@ -74,7 +80,9 @@
           "maximum_size_drop_percent": "Se utiliza para la comparación automática con copias anteriores.",
           "minimum_redundant_locations": "Usa 1 para una ubicación o 2 para almacenamiento local más NAS/nube.",
           "repair_issues_enabled": "Crea avisos de Reparaciones de Home Assistant para problemas de copia activos. Desaparecen automáticamente cuando se resuelve el problema.",
-          "analytics_window_days": "Las estadísticas de copias y la tasa de éxito observada de las copias automáticas usan este periodo. El registro histórico comienza con la versión 1.5.0."
+          "analytics_window_days": "Las estadísticas de copias y la tasa de éxito observada de las copias automáticas usan este periodo. El registro histórico comienza con la versión 1.5.0.",
+          "auto_verify_new_backups": "Cuando se detecta una nueva copia más reciente, se descarga y verifica por completo una vez. Puede usar bastante red, CPU y espacio temporal.",
+          "database_integrity_check": "Extrae temporalmente la base SQLite y ejecuta PRAGMA integrity_check. La comprobación tarda más y requiere espacio temporal adicional."
         }
       }
     },
@@ -98,7 +106,8 @@
           "storage_error": "Error de almacenamiento de copias de seguridad",
           "backup_size_suspicious": "Tamaño de copia sospechoso",
           "backup_incomplete": "Copia incompleta",
-          "backup_not_redundant": "Copia sin redundancia"
+          "backup_not_redundant": "Copia sin redundancia",
+          "backup_integrity_failed": "Falló la comprobación de integridad"
         }
       },
       "stored_backups": {
@@ -170,7 +179,8 @@
           "check_backup_contents": "Comprobar el contenido de la copia incompleta",
           "check_backup_size": "Comprobar el tamaño de la copia y el espacio libre",
           "add_storage_location": "Añadir o restaurar una ubicación de copia",
-          "check_backup_system": "Comprobar el sistema de copias de Home Assistant"
+          "check_backup_system": "Comprobar el sistema de copias de Home Assistant",
+          "replace_backup": "Sustituir o volver a crear la copia afectada"
         }
       },
       "problem_count": {
@@ -223,6 +233,39 @@
       },
       "consecutive_automatic_failures": {
         "name": "Fallos consecutivos de las copias automáticas"
+      },
+      "integrity_status": {
+        "name": "Estado de integridad de la copia",
+        "state": {
+          "not_checked": "Sin comprobar",
+          "checking": "Comprobando",
+          "valid": "Válida",
+          "valid_with_warnings": "Válida con advertencias",
+          "corrupt": "Dañada",
+          "unreadable": "Ilegible",
+          "password_required": "Se requiere contraseña"
+        }
+      },
+      "last_integrity_check": {
+        "name": "Última comprobación de integridad"
+      },
+      "integrity_checksum": {
+        "name": "Suma SHA-256 de la copia"
+      },
+      "verified_backup_size": {
+        "name": "Tamaño verificado de la copia"
+      },
+      "integrity_check_duration": {
+        "name": "Duración de la comprobación"
+      },
+      "database_integrity_status": {
+        "name": "Estado de integridad de la base de datos",
+        "state": {
+          "not_checked": "Sin comprobar",
+          "passed": "Correcta",
+          "failed": "Fallida",
+          "not_found": "No encontrada"
+        }
       }
     },
     "binary_sensor": {
@@ -267,11 +310,17 @@
       },
       "agent_problem": {
         "name": "Problema"
+      },
+      "backup_integrity_problem": {
+        "name": "Copia dañada o ilegible"
       }
     },
     "button": {
       "refresh": {
         "name": "Actualizar datos de copias"
+      },
+      "verify_latest_backup": {
+        "name": "Verificar por completo la copia más reciente"
       }
     }
   },
@@ -335,6 +384,10 @@
     "backup_not_redundant": {
       "title": "La copia no está almacenada de forma redundante",
       "description": "La copia más reciente está en {current} ubicación(es), pero se requieren {required}. Añade o recupera otra ubicación."
+    },
+    "backup_integrity_failed": {
+      "title": "La copia de seguridad está dañada o no se puede leer",
+      "description": "La comprobación completa de integridad de la copia de seguridad en {location} falló a las {checked}. Crea y verifica una copia nueva antes de confiar en la copia afectada."
     }
   }
 }

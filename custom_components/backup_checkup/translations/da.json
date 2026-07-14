@@ -23,7 +23,9 @@
           "maximum_size_drop_percent": "Maksimalt tilladt størrelsesfald i procent",
           "minimum_redundant_locations": "Påkrævede placeringer til sikkerhedskopier",
           "repair_issues_enabled": "Vis reparationsmeddelelser",
-          "analytics_window_days": "Analyseperiode i dage"
+          "analytics_window_days": "Analyseperiode i dage",
+          "auto_verify_new_backups": "Kontrollér automatisk hver ny sikkerhedskopi",
+          "database_integrity_check": "Kør databaseintegritetskontrol (ekspert)"
         },
         "data_description": {
           "max_age_days": "Der vises en advarsel efter dette antal hele dage.",
@@ -33,7 +35,9 @@
           "maximum_size_drop_percent": "Bruges til automatisk sammenligning med tidligere sikkerhedskopier.",
           "minimum_redundant_locations": "Brug 1 for én lagerplacering eller 2 for lokal lagring plus NAS/cloud.",
           "repair_issues_enabled": "Opretter Home Assistant-reparationsmeddelelser for aktive backup-problemer. De forsvinder automatisk, når problemet er løst.",
-          "analytics_window_days": "Sikkerhedskopieringsstatistik og den observerede succesrate for automatiske sikkerhedskopier bruger denne periode. Historisk registrering starter med version 1.5.0."
+          "analytics_window_days": "Sikkerhedskopieringsstatistik og den observerede succesrate for automatiske sikkerhedskopier bruger denne periode. Historisk registrering starter med version 1.5.0.",
+          "auto_verify_new_backups": "Når en nyeste sikkerhedskopi registreres, downloades og kontrolleres den fuldstændigt én gang. Det kan bruge meget netværk, CPU og midlertidig lagerplads.",
+          "database_integrity_check": "Uddrager midlertidigt SQLite-databasen og kører PRAGMA integrity_check. Kontrollen tager længere tid og kræver ekstra midlertidig plads."
         }
       }
     },
@@ -64,7 +68,9 @@
           "maximum_size_drop_percent": "Maksimalt tilladt størrelsesfald i procent",
           "minimum_redundant_locations": "Påkrævede placeringer til sikkerhedskopier",
           "repair_issues_enabled": "Vis reparationsmeddelelser",
-          "analytics_window_days": "Analyseperiode i dage"
+          "analytics_window_days": "Analyseperiode i dage",
+          "auto_verify_new_backups": "Kontrollér automatisk hver ny sikkerhedskopi",
+          "database_integrity_check": "Kør databaseintegritetskontrol (ekspert)"
         },
         "data_description": {
           "max_age_days": "Der vises en advarsel efter dette antal hele dage.",
@@ -74,7 +80,9 @@
           "maximum_size_drop_percent": "Bruges til automatisk sammenligning med tidligere sikkerhedskopier.",
           "minimum_redundant_locations": "Brug 1 for én lagerplacering eller 2 for lokal lagring plus NAS/cloud.",
           "repair_issues_enabled": "Opretter Home Assistant-reparationsmeddelelser for aktive backup-problemer. De forsvinder automatisk, når problemet er løst.",
-          "analytics_window_days": "Sikkerhedskopieringsstatistik og den observerede succesrate for automatiske sikkerhedskopier bruger denne periode. Historisk registrering starter med version 1.5.0."
+          "analytics_window_days": "Sikkerhedskopieringsstatistik og den observerede succesrate for automatiske sikkerhedskopier bruger denne periode. Historisk registrering starter med version 1.5.0.",
+          "auto_verify_new_backups": "Når en nyeste sikkerhedskopi registreres, downloades og kontrolleres den fuldstændigt én gang. Det kan bruge meget netværk, CPU og midlertidig lagerplads.",
+          "database_integrity_check": "Uddrager midlertidigt SQLite-databasen og kører PRAGMA integrity_check. Kontrollen tager længere tid og kræver ekstra midlertidig plads."
         }
       }
     },
@@ -98,7 +106,8 @@
           "storage_error": "Fejl i lageret til sikkerhedskopier",
           "backup_size_suspicious": "Mistænkelig backupstørrelse",
           "backup_incomplete": "Ufuldstændig backup",
-          "backup_not_redundant": "Backup er ikke redundant"
+          "backup_not_redundant": "Backup er ikke redundant",
+          "backup_integrity_failed": "Integritetskontrollen mislykkedes"
         }
       },
       "stored_backups": {
@@ -170,7 +179,8 @@
           "check_backup_contents": "Kontrollér indholdet af den ufuldstændige sikkerhedskopi",
           "check_backup_size": "Kontrollér sikkerhedskopistørrelsen og den ledige plads",
           "add_storage_location": "Tilføj eller gendan en placering til sikkerhedskopier",
-          "check_backup_system": "Kontrollér Home Assistants sikkerhedskopisystem"
+          "check_backup_system": "Kontrollér Home Assistants sikkerhedskopisystem",
+          "replace_backup": "Erstat eller opret sikkerhedskopien igen"
         }
       },
       "problem_count": {
@@ -223,6 +233,39 @@
       },
       "consecutive_automatic_failures": {
         "name": "Sammenhængende mislykkede automatiske sikkerhedskopier"
+      },
+      "integrity_status": {
+        "name": "Integritetsstatus for sikkerhedskopi",
+        "state": {
+          "not_checked": "Ikke kontrolleret",
+          "checking": "Kontrollerer",
+          "valid": "Gyldig",
+          "valid_with_warnings": "Gyldig med advarsler",
+          "corrupt": "Beskadiget",
+          "unreadable": "Ulæselig",
+          "password_required": "Adgangskode kræves"
+        }
+      },
+      "last_integrity_check": {
+        "name": "Seneste integritetskontrol"
+      },
+      "integrity_checksum": {
+        "name": "SHA-256-kontrolsum"
+      },
+      "verified_backup_size": {
+        "name": "Kontrolleret størrelse"
+      },
+      "integrity_check_duration": {
+        "name": "Kontrollens varighed"
+      },
+      "database_integrity_status": {
+        "name": "Databaseintegritetsstatus",
+        "state": {
+          "not_checked": "Ikke kontrolleret",
+          "passed": "Bestået",
+          "failed": "Mislykket",
+          "not_found": "Ikke fundet"
+        }
       }
     },
     "binary_sensor": {
@@ -267,11 +310,17 @@
       },
       "agent_problem": {
         "name": "Problem"
+      },
+      "backup_integrity_problem": {
+        "name": "Sikkerhedskopi beskadiget eller ulæselig"
       }
     },
     "button": {
       "refresh": {
         "name": "Opdater backupdata"
+      },
+      "verify_latest_backup": {
+        "name": "Kontrollér den nyeste sikkerhedskopi fuldstændigt"
       }
     }
   },
@@ -335,6 +384,10 @@
     "backup_not_redundant": {
       "title": "Backup er ikke gemt redundant",
       "description": "Den seneste backup findes på {current} placering(er), men {required} er påkrævet. Tilføj eller gendan en placering."
+    },
+    "backup_integrity_failed": {
+      "title": "Sikkerhedskopien er beskadiget eller ulæselig",
+      "description": "Den fulde integritetskontrol af sikkerhedskopien på {location} mislykkedes {checked}. Opret og kontrollér en ny sikkerhedskopi, før du stoler på den berørte kopi."
     }
   }
 }

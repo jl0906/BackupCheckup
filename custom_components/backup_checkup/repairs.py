@@ -24,6 +24,18 @@ def async_update_issues(hass: HomeAssistant, data: BackupCheckupData) -> None:
             ir.IssueSeverity.ERROR,
             {},
         ),
+        "backup_integrity_failed": (
+            bool(
+                latest
+                and data.integrity.backup_id == latest.backup_id
+                and data.integrity.status in {"corrupt", "unreadable"}
+            ),
+            ir.IssueSeverity.ERROR,
+            {
+                "checked": _format_datetime(data.integrity.checked_at),
+                "location": data.integrity.agent_id or "unknown",
+            },
+        ),
         "backup_stale": (
             data.backup_stale,
             ir.IssueSeverity.WARNING,

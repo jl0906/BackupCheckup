@@ -100,6 +100,31 @@ async def async_get_config_entry_diagnostics(
             ),
             "manager_state": data.manager_state,
         },
+        "integrity": {
+            "status": data.integrity.status,
+            "check_running": data.integrity_check_running,
+            "checked_at": (
+                data.integrity.checked_at.isoformat()
+                if data.integrity.checked_at
+                else None
+            ),
+            "backup_date": (
+                data.integrity.backup_date.isoformat()
+                if data.integrity.backup_date
+                else None
+            ),
+            "storage_location": data.integrity.agent_id,
+            "sha256": data.integrity.sha256,
+            "verified_size": data.integrity.verified_size,
+            "duration_seconds": data.integrity.duration_seconds,
+            "archive_count": data.integrity.archive_count,
+            "file_count": data.integrity.file_count,
+            "protected": data.integrity.protected,
+            "database_status": data.integrity.database_status,
+            "warnings": list(data.integrity.warnings),
+            "error_code": data.integrity.error_code,
+            "checksum_changed": data.integrity.checksum_changed,
+        },
         "analytics": {
             "window_days": data.analytics_window_days,
             "analyzed_backup_count": data.analyzed_backup_count,

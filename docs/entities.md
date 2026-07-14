@@ -1,107 +1,120 @@
 # BackupCheckup entity reference
 
-Entity IDs shown below are the default IDs for the main BackupCheckup device.
-Home Assistant may preserve a previously customized entity ID after an update.
+Version 2.0 keeps a compact default entity set for new installations. Detailed
+entities are still created in the entity registry but are disabled by default.
+Enable any of them from **Settings → Devices & services → Entities**.
 
-## Main sensors
+Existing installations keep their current entity-registry choices during the update.
 
-| Entity | Purpose | Default |
-| --- | --- | --- |
-| `sensor.backup_checkup_health_score` | Transparent overall health score from 0 to 100; deductions are available as attributes | Enabled |
-| `sensor.backup_checkup_health_rating` | Excellent, Good, Warning, or Critical | Enabled |
-| `sensor.backup_checkup_size_trend` | Increasing, stable, decreasing, or insufficient data | Enabled |
-| `sensor.backup_checkup_average_backup_size` | Average size of retained backups in MB for the analysis period | Enabled |
-| `sensor.backup_checkup_longest_backup_gap` | Longest interval between retained backups in the analysis period | Enabled |
-| `sensor.backup_checkup_automatic_success_rate` | Success rate of automatic attempts observed since 1.5.0 | Enabled |
-| `sensor.backup_checkup_consecutive_automatic_failures` | Number of observed automatic failures in a row | Enabled |
-| `sensor.backup_checkup_status` | Highest-priority overall backup health state | Enabled |
-| `sensor.backup_checkup_recommendation` | Suggested next action | Enabled |
-| `sensor.backup_checkup_problem_count` | Number of active problems; problem keys are available as an attribute | Enabled |
-| `sensor.backup_checkup_stored_backups` | Total number of stored backups | Enabled |
-| `sensor.backup_checkup_latest_backup` | Timestamp of the newest backup | Enabled |
-| `sensor.backup_checkup_latest_automatic_backup` | Timestamp of the newest automatic backup | Enabled |
-| `sensor.backup_checkup_latest_backup_age` | Precise age of the newest backup in days | Enabled |
-| `sensor.backup_checkup_automatic_backup_age` | Age of the newest automatic backup in fully completed days | Enabled |
-| `sensor.backup_checkup_latest_backup_size` | Size of the newest backup | Enabled |
-| `sensor.backup_checkup_latest_automatic_backup_size` | Size of the newest automatic backup | Enabled |
-| `sensor.backup_checkup_latest_backup_result` | `complete`, `partial`, or `unknown` | Enabled |
-| `sensor.backup_checkup_latest_backup_locations` | Number of locations containing the newest backup | Enabled |
-
-## Diagnostic sensors
-
-These entities are useful for detailed dashboards or troubleshooting. Some are
-disabled by default and can be enabled from the entity registry.
+## Default-enabled main entities
 
 | Entity | Purpose |
 | --- | --- |
-| `sensor.backup_checkup_automatic_backups` | Number of automatic backups |
-| `sensor.backup_checkup_manual_backups` | Number of manual or other backups |
-| `sensor.backup_checkup_latest_manual_backup` | Timestamp of the newest manual or other backup |
-| `sensor.backup_checkup_manual_backup_age` | Age of the newest manual or other backup |
-| `sensor.backup_checkup_latest_backup_size_change` | Percentage change from the previous comparable backup |
-| `sensor.backup_checkup_last_automatic_attempt` | Last native automatic backup attempt |
-| `sensor.backup_checkup_last_successful_automatic_event` | Last successful native automatic backup event |
-| `sensor.backup_checkup_next_automatic_backup` | Next native automatic backup schedule |
-| `sensor.backup_checkup_backup_manager_state` | Native Home Assistant backup manager state |
+| `sensor.backup_checkup_health_score` | Deterministic backup health score from 0 to 100 |
+| `sensor.backup_checkup_status` | Highest-priority current backup status |
+| `sensor.backup_checkup_recommendation` | Recommended next action |
+| `sensor.backup_checkup_stored_backups` | Number of currently retained backups |
+| `sensor.backup_checkup_latest_backup` | Timestamp of the newest backup |
+| `sensor.backup_checkup_latest_backup_age` | Age of the newest backup in days |
+| `sensor.backup_checkup_latest_backup_size` | Reported size of the newest backup |
+| `sensor.backup_checkup_integrity_status` | Result of the full integrity verification |
+| `binary_sensor.backup_checkup_problem` | On when at least one monitored problem is active |
+| `button.backup_checkup_verify_latest_backup` | Starts a full read-only check of the newest backup |
+| `button.backup_checkup_refresh` | Immediately refreshes the lightweight backup inventory |
 
-## Main binary sensors
+## Integrity entities
 
-| Entity | Turns on when |
-| --- | --- |
-| `binary_sensor.backup_checkup_problem` | At least one monitored problem is active |
-| `binary_sensor.backup_checkup_no_backup` | No backup exists |
-| `binary_sensor.backup_checkup_backup_stale` | The newest backup exceeds the configured age |
-| `binary_sensor.backup_checkup_automatic_backup_overdue` | No sufficiently recent automatic backup exists |
-| `binary_sensor.backup_checkup_automatic_backup_failed` | The latest automatic attempt is newer than the latest success |
-| `binary_sensor.backup_checkup_automatic_schedule_missing` | Home Assistant reports no next automatic backup |
-| `binary_sensor.backup_checkup_automatic_schedule_overdue` | The reported next automatic backup is more than six hours in the past |
-| `binary_sensor.backup_checkup_backup_manager_unavailable` | The native backup manager state is unavailable or unknown |
-| `binary_sensor.backup_checkup_storage_error` | Home Assistant reports an error from a backup agent |
-| `binary_sensor.backup_checkup_backup_size_suspicious` | The configured size rule is violated |
-| `binary_sensor.backup_checkup_latest_backup_incomplete` | Add-ons, folders, or storage agents failed in the newest backup |
-| `binary_sensor.backup_checkup_backup_not_redundant` | The newest backup exists on fewer locations than required |
-| `binary_sensor.backup_checkup_required_location_missing` | A location holding the newest backup currently reports a problem |
+| Entity | Default | Purpose |
+| --- | --- | --- |
+| `sensor.backup_checkup_integrity_status` | Enabled | `not_checked`, `checking`, `valid`, `valid_with_warnings`, `corrupt`, `unreadable`, or `password_required` |
+| `sensor.backup_checkup_last_integrity_check` | Disabled | Timestamp of the last completed check |
+| `sensor.backup_checkup_integrity_checksum` | Disabled | Stored SHA-256 checksum of the downloaded backup |
+| `sensor.backup_checkup_verified_backup_size` | Disabled | Number of downloaded and verified megabytes |
+| `sensor.backup_checkup_integrity_check_duration` | Disabled | Duration of the last complete check |
+| `sensor.backup_checkup_database_integrity_status` | Disabled | SQLite expert-check result |
+| `binary_sensor.backup_checkup_backup_integrity_problem` | Disabled | On when the newest backup is corrupt or unreadable |
+
+The integrity-status attributes include the check time, selected storage location,
+archive count, file count, encryption state, database result, warnings, and a
+privacy-safe error code.
+
+## Additional backup sensors
+
+| Entity | Default | Purpose |
+| --- | --- | --- |
+| `sensor.backup_checkup_health_rating` | Disabled | Excellent, Good, Warning, or Critical rating |
+| `sensor.backup_checkup_problem_count` | Disabled | Number of simultaneously active problems |
+| `sensor.backup_checkup_automatic_backups` | Disabled | Number of automatic backups |
+| `sensor.backup_checkup_manual_backups` | Disabled | Number of manual or other backups |
+| `sensor.backup_checkup_latest_automatic_backup` | Disabled | Timestamp of the newest automatic backup |
+| `sensor.backup_checkup_latest_manual_backup` | Disabled | Timestamp of the newest manual or other backup |
+| `sensor.backup_checkup_automatic_backup_age` | Disabled | Automatic-backup age in fully completed days |
+| `sensor.backup_checkup_manual_backup_age` | Disabled | Manual-backup age in days |
+| `sensor.backup_checkup_latest_automatic_backup_size` | Disabled | Size of the newest automatic backup |
+| `sensor.backup_checkup_latest_backup_size_change` | Disabled | Change from the previous comparable backup |
+| `sensor.backup_checkup_latest_backup_result` | Disabled | `complete`, `partial`, or `unknown` |
+| `sensor.backup_checkup_latest_backup_locations` | Disabled | Number of locations holding the newest backup |
+| `sensor.backup_checkup_last_automatic_attempt` | Disabled | Latest native automatic attempt |
+| `sensor.backup_checkup_last_successful_automatic_event` | Disabled | Latest successful native automatic event |
+| `sensor.backup_checkup_next_automatic_backup` | Disabled | Next native automatic backup schedule |
+| `sensor.backup_checkup_backup_manager_state` | Disabled | Native backup manager state |
+
+## Analytics entities
+
+| Entity | Default | Purpose |
+| --- | --- | --- |
+| `sensor.backup_checkup_size_trend` | Disabled | Increasing, stable, or decreasing recent sizes |
+| `sensor.backup_checkup_average_backup_size` | Disabled | Average retained backup size in MB |
+| `sensor.backup_checkup_longest_backup_gap` | Disabled | Longest observed gap between retained backups |
+| `sensor.backup_checkup_automatic_success_rate` | Disabled | Locally observed automatic success rate |
+| `sensor.backup_checkup_consecutive_automatic_failures` | Disabled | Consecutive locally resolved failures |
+
+## Detailed problem binary sensors
+
+All detailed problem sensors are disabled by default because the aggregate
+`binary_sensor.backup_checkup_problem` and the status/recommendation sensors already
+cover normal dashboards.
+
+- `binary_sensor.backup_checkup_no_backup`
+- `binary_sensor.backup_checkup_backup_stale`
+- `binary_sensor.backup_checkup_automatic_backup_overdue`
+- `binary_sensor.backup_checkup_automatic_backup_failed`
+- `binary_sensor.backup_checkup_automatic_schedule_missing`
+- `binary_sensor.backup_checkup_automatic_schedule_overdue`
+- `binary_sensor.backup_checkup_backup_manager_unavailable`
+- `binary_sensor.backup_checkup_storage_error`
+- `binary_sensor.backup_checkup_backup_size_suspicious`
+- `binary_sensor.backup_checkup_latest_backup_incomplete`
+- `binary_sensor.backup_checkup_backup_not_redundant`
+- `binary_sensor.backup_checkup_required_location_missing`
+- `binary_sensor.backup_checkup_backup_integrity_problem`
 
 ## Storage location devices
 
-BackupCheckup creates a separate device for every detected Home Assistant backup
-storage agent. The agent ID is included in the device name.
-
-Each device can provide:
+BackupCheckup creates a separate device for each detected native backup storage
+agent. Its detailed entities are disabled by default in version 2.0:
 
 - Backup count
 - Latest backup timestamp
 - Latest backup age
 - Latest backup size
 - Total stored backup size
-- Problem binary sensor
+- Storage-location problem binary sensor
 
-Entity IDs use the normalized storage agent ID, for example:
+This keeps the main device compact while retaining per-location troubleshooting.
+Entity IDs use a normalized agent ID, for example:
 
 ```text
 sensor.backup_checkup_local_latest_backup
 binary_sensor.backup_checkup_local_problem
 ```
 
-## Button
-
-| Entity | Action |
-| --- | --- |
-| `button.backup_checkup_refresh` | Immediately reads and evaluates the native backup inventory |
-
-## Intelligent analytics notes
-
-- The health score is deterministic. Its `deductions` attribute lists every applied deduction.
-- Size trend prefers automatic backups when at least four comparable automatic backups are available.
-- Average size and longest gap use the configured analysis period and fall back to the retained inventory when the period contains no backups.
-- Automatic success tracking begins with version 1.5.0. Home Assistant does not expose a complete historical attempt log, so BackupCheckup does not estimate older failures.
-- A pending automatic attempt is considered failed after six hours or when a newer attempt appears without a matching success.
-
-### Health-score deductions
+## Health-score deductions
 
 | Condition | Deduction |
 | --- | ---: |
 | No backup available | 100 |
+| Newest backup corrupt or unreadable | 50 |
 | Backup manager unavailable | 50 |
 | Backup too old | 25 |
 | Latest backup incomplete | 25 |
@@ -112,10 +125,8 @@ binary_sensor.backup_checkup_local_problem
 | Automatic backup overdue | 15 |
 | Automatic schedule missing | 10 |
 | Automatic schedule overdue | 10 |
-| Required location currently unhealthy | 10 |
+| Required location unhealthy | 10 |
 | Observed success rate below 95% / 80% / 60% | 5 / 12 / 20 |
 | Consecutive automatic failures | 5 each, maximum 15 |
 
-Deductions can overlap and the final score is limited to a minimum of `0`.
-Historical success-rate deductions are applied only after at least three automatic
-attempts have been resolved inside the configured analysis period.
+Deductions can overlap. The final score cannot fall below `0`.

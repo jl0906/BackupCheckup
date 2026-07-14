@@ -93,6 +93,122 @@ class BackupAgentSummary:
 
 
 @dataclass(frozen=True, slots=True)
+class BackupIntegrityResult:
+    """Persisted result of a full backup integrity check."""
+
+    status: str
+    checked_at: datetime | None
+    backup_id: str | None
+    backup_date: datetime | None
+    agent_id: str | None
+    sha256: str | None
+    verified_size: int | None
+    duration_seconds: float | None
+    archive_count: int
+    file_count: int
+    protected: bool | None
+    database_status: str
+    warnings: tuple[str, ...]
+    error_code: str | None
+    checksum_changed: bool
+
+    @classmethod
+    def not_checked(cls) -> BackupIntegrityResult:
+        """Return the initial state."""
+        from .const import (
+            INTEGRITY_DATABASE_NOT_CHECKED,
+            INTEGRITY_STATUS_NOT_CHECKED,
+        )
+
+        return cls(
+            status=INTEGRITY_STATUS_NOT_CHECKED,
+            checked_at=None,
+            backup_id=None,
+            backup_date=None,
+            agent_id=None,
+            sha256=None,
+            verified_size=None,
+            duration_seconds=None,
+            archive_count=0,
+            file_count=0,
+            protected=None,
+            database_status=INTEGRITY_DATABASE_NOT_CHECKED,
+            warnings=(),
+            error_code=None,
+            checksum_changed=False,
+        )
+
+    def as_dict(self) -> dict[str, Any]:
+        """Serialize the integrity result."""
+        return {
+            "status": self.status,
+            "checked_at": self.checked_at.isoformat() if self.checked_at else None,
+            "backup_id": self.backup_id,
+            "backup_date": self.backup_date.isoformat() if self.backup_date else None,
+            "agent_id": self.agent_id,
+            "sha256": self.sha256,
+            "verified_size": self.verified_size,
+            "duration_seconds": self.duration_seconds,
+            "archive_count": self.archive_count,
+            "file_count": self.file_count,
+            "protected": self.protected,
+            "database_status": self.database_status,
+            "warnings": list(self.warnings),
+            "error_code": self.error_code,
+            "checksum_changed": self.checksum_changed,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> BackupIntegrityResult:
+        """Deserialize a stored integrity result."""
+        from homeassistant.util import dt as dt_util
+
+        from .const import (
+            INTEGRITY_DATABASE_NOT_CHECKED,
+            INTEGRITY_STATUS_NOT_CHECKED,
+        )
+
+        def parse(value: Any) -> datetime | None:
+            if not isinstance(value, str):
+                return None
+            return dt_util.parse_datetime(value)
+
+        backup_id = data.get("backup_id")
+        agent_id = data.get("agent_id")
+        sha256 = data.get("sha256")
+        verified_size = data.get("verified_size")
+        duration_seconds = data.get("duration_seconds")
+        protected = data.get("protected")
+        error_code = data.get("error_code")
+        warnings = data.get("warnings", [])
+        return cls(
+            status=str(data.get("status", INTEGRITY_STATUS_NOT_CHECKED)),
+            checked_at=parse(data.get("checked_at")),
+            backup_id=backup_id if isinstance(backup_id, str) else None,
+            backup_date=parse(data.get("backup_date")),
+            agent_id=agent_id if isinstance(agent_id, str) else None,
+            sha256=sha256 if isinstance(sha256, str) else None,
+            verified_size=(
+                int(verified_size) if isinstance(verified_size, (int, float)) else None
+            ),
+            duration_seconds=(
+                float(duration_seconds)
+                if isinstance(duration_seconds, (int, float))
+                else None
+            ),
+            archive_count=int(data.get("archive_count", 0)),
+            file_count=int(data.get("file_count", 0)),
+            protected=protected if isinstance(protected, bool) else None,
+            database_status=str(
+                data.get("database_status", INTEGRITY_DATABASE_NOT_CHECKED)
+            ),
+            warnings=tuple(str(item) for item in warnings if isinstance(item, str)),
+            error_code=error_code if isinstance(error_code, str) else None,
+            checksum_changed=bool(data.get("checksum_changed", False)),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class BackupCheckupData:
     """Current BackupCheckup snapshot."""
 
@@ -157,3 +273,5 @@ class BackupCheckupData:
     automatic_failures_observed: int
     consecutive_automatic_failures: int
     history_tracking_started_at: datetime | None
+    integrity: BackupIntegrityResult
+    integrity_check_running: bool

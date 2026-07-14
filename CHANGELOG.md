@@ -1,5 +1,35 @@
 # Changelog
 
+## 2.0.0
+
+### Added
+- Manual full integrity verification of the newest backup through the native Home Assistant backup-agent download API.
+- Optional automatic verification when a newly detected newest backup appears.
+- Complete reading of the outer archive and every contained inner TAR/TAR.GZ archive.
+- Validation of `backup.json`, expected archive components, member paths, and downloaded byte size.
+- Decryption and complete reading of protected backups using Home Assistant's configured backup password.
+- Optional expert SQLite `PRAGMA integrity_check` for the included Home Assistant database.
+- Persistent SHA-256 checksum and last verification result.
+- Integrity status, last-check, checksum, verified-size, duration, and database-result sensors.
+- Manual **Verify latest backup** button.
+- Aggregate integrity problem binary sensor and native Repair issue for a corrupt or unreadable newest backup.
+- Dedicated integrity documentation and troubleshooting guidance.
+
+### Changed
+- Streamlined new installations to a smaller default entity set. Detailed analytics, schedule, per-storage, checksum, database, and troubleshooting entities remain available but are disabled by default.
+- Existing entity registry choices are preserved during upgrades so current dashboards and automations are not forcibly changed.
+- Added integrity failures to the central status, recommendation, active-problem list, diagnostics, and health-score deductions.
+- Updated configuration-entry schema to version 3 with migration from all previous releases.
+- Updated integration, manifest, device, README, and documentation metadata to 2.0.0.
+
+### Security and privacy
+- Verification is read-only and never modifies, restores, uploads, or retains backup contents.
+- Backup passwords are used only in memory and are never logged or persisted by BackupCheckup.
+- Temporary backup and database files are removed after every check.
+
+### Notes
+- A successful integrity check confirms structural readability and optional SQLite integrity; it is not a complete restore test.
+
 ## 1.5.1
 
 ### Fixed

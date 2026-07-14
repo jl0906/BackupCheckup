@@ -23,7 +23,9 @@
           "maximum_size_drop_percent": "Maximaal toegestane grootteafname in procenten",
           "minimum_redundant_locations": "Vereiste back-uplocaties",
           "repair_issues_enabled": "Reparatiemeldingen tonen",
-          "analytics_window_days": "Analyseperiode in dagen"
+          "analytics_window_days": "Analyseperiode in dagen",
+          "auto_verify_new_backups": "Elk nieuw back-upbestand automatisch verifiëren",
+          "database_integrity_check": "Database-integriteitscontrole uitvoeren (expert)"
         },
         "data_description": {
           "max_age_days": "Na dit aantal volledig verstreken dagen wordt een waarschuwing getoond.",
@@ -33,7 +35,9 @@
           "maximum_size_drop_percent": "Wordt gebruikt voor automatische vergelijking met eerdere back-ups.",
           "minimum_redundant_locations": "Gebruik 1 voor één opslaglocatie of 2 voor lokale opslag plus NAS/cloud.",
           "repair_issues_enabled": "Maakt Home Assistant-reparatiemeldingen voor actieve back-upproblemen. Meldingen verdwijnen automatisch wanneer het probleem is opgelost.",
-          "analytics_window_days": "Back-upstatistieken en het waargenomen succespercentage van automatische back-ups gebruiken deze periode. Historische succesregistratie begint met versie 1.5.0."
+          "analytics_window_days": "Back-upstatistieken en het waargenomen succespercentage van automatische back-ups gebruiken deze periode. Historische succesregistratie begint met versie 1.5.0.",
+          "auto_verify_new_backups": "Wanneer een nieuwe nieuwste back-up wordt gevonden, wordt deze eenmaal volledig gedownload en gecontroleerd. Dit kan veel netwerk-, CPU- en tijdelijke schijfruimte gebruiken.",
+          "database_integrity_check": "Extraheert tijdelijk de SQLite-database en voert PRAGMA integrity_check uit. Dit duurt langer en gebruikt extra tijdelijke opslag."
         }
       }
     },
@@ -64,7 +68,9 @@
           "maximum_size_drop_percent": "Maximaal toegestane grootteafname in procenten",
           "minimum_redundant_locations": "Vereiste back-uplocaties",
           "repair_issues_enabled": "Reparatiemeldingen tonen",
-          "analytics_window_days": "Analyseperiode in dagen"
+          "analytics_window_days": "Analyseperiode in dagen",
+          "auto_verify_new_backups": "Elk nieuw back-upbestand automatisch verifiëren",
+          "database_integrity_check": "Database-integriteitscontrole uitvoeren (expert)"
         },
         "data_description": {
           "max_age_days": "Na dit aantal volledig verstreken dagen wordt een waarschuwing getoond.",
@@ -74,7 +80,9 @@
           "maximum_size_drop_percent": "Wordt gebruikt voor automatische vergelijking met eerdere back-ups.",
           "minimum_redundant_locations": "Gebruik 1 voor één opslaglocatie of 2 voor lokale opslag plus NAS/cloud.",
           "repair_issues_enabled": "Maakt Home Assistant-reparatiemeldingen voor actieve back-upproblemen. Meldingen verdwijnen automatisch wanneer het probleem is opgelost.",
-          "analytics_window_days": "Back-upstatistieken en het waargenomen succespercentage van automatische back-ups gebruiken deze periode. Historische succesregistratie begint met versie 1.5.0."
+          "analytics_window_days": "Back-upstatistieken en het waargenomen succespercentage van automatische back-ups gebruiken deze periode. Historische succesregistratie begint met versie 1.5.0.",
+          "auto_verify_new_backups": "Wanneer een nieuwe nieuwste back-up wordt gevonden, wordt deze eenmaal volledig gedownload en gecontroleerd. Dit kan veel netwerk-, CPU- en tijdelijke schijfruimte gebruiken.",
+          "database_integrity_check": "Extraheert tijdelijk de SQLite-database en voert PRAGMA integrity_check uit. Dit duurt langer en gebruikt extra tijdelijke opslag."
         }
       }
     },
@@ -98,7 +106,8 @@
           "storage_error": "Fout in back-upopslag",
           "backup_size_suspicious": "Verdachte back-upgrootte",
           "backup_incomplete": "Onvolledige back-up",
-          "backup_not_redundant": "Back-up niet redundant"
+          "backup_not_redundant": "Back-up niet redundant",
+          "backup_integrity_failed": "Integriteitscontrole back-up mislukt"
         }
       },
       "stored_backups": {
@@ -170,7 +179,8 @@
           "check_backup_contents": "Controleer de inhoud van de onvolledige back-up",
           "check_backup_size": "Controleer de back-upgrootte en vrije ruimte",
           "add_storage_location": "Voeg een back-uplocatie toe of herstel deze",
-          "check_backup_system": "Controleer het back-upsysteem van Home Assistant"
+          "check_backup_system": "Controleer het back-upsysteem van Home Assistant",
+          "replace_backup": "Betrokken back-up vervangen of opnieuw maken"
         }
       },
       "problem_count": {
@@ -223,6 +233,39 @@
       },
       "consecutive_automatic_failures": {
         "name": "Opeenvolgende mislukte automatische back-ups"
+      },
+      "integrity_status": {
+        "name": "Integriteitsstatus back-up",
+        "state": {
+          "not_checked": "Niet gecontroleerd",
+          "checking": "Wordt gecontroleerd",
+          "valid": "Geldig",
+          "valid_with_warnings": "Geldig met waarschuwingen",
+          "corrupt": "Beschadigd",
+          "unreadable": "Onleesbaar",
+          "password_required": "Wachtwoord vereist"
+        }
+      },
+      "last_integrity_check": {
+        "name": "Laatste integriteitscontrole"
+      },
+      "integrity_checksum": {
+        "name": "SHA-256-controlesom back-up"
+      },
+      "verified_backup_size": {
+        "name": "Gecontroleerde back-upgrootte"
+      },
+      "integrity_check_duration": {
+        "name": "Duur integriteitscontrole"
+      },
+      "database_integrity_status": {
+        "name": "Integriteitsstatus database",
+        "state": {
+          "not_checked": "Niet gecontroleerd",
+          "passed": "Geslaagd",
+          "failed": "Mislukt",
+          "not_found": "Niet gevonden"
+        }
       }
     },
     "binary_sensor": {
@@ -267,11 +310,17 @@
       },
       "agent_problem": {
         "name": "Probleem"
+      },
+      "backup_integrity_problem": {
+        "name": "Back-up beschadigd of onleesbaar"
       }
     },
     "button": {
       "refresh": {
         "name": "Back-upgegevens vernieuwen"
+      },
+      "verify_latest_backup": {
+        "name": "Nieuwste back-up volledig controleren"
       }
     }
   },
@@ -335,6 +384,10 @@
     "backup_not_redundant": {
       "title": "Back-up is niet redundant opgeslagen",
       "description": "De nieuwste back-up staat op {current} opslaglocatie(s), maar {required} zijn vereist. Voeg een locatie toe of herstel deze."
+    },
+    "backup_integrity_failed": {
+      "title": "Back-up is beschadigd of onleesbaar",
+      "description": "De volledige integriteitscontrole van de back-upkopie op {location} is mislukt op {checked}. Maak een nieuwe back-up en controleer deze voordat u op de getroffen kopie vertrouwt."
     }
   }
 }

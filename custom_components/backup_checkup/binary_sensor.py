@@ -30,6 +30,18 @@ class BackupCheckupBinarySensorDescription(BinarySensorEntityDescription):
 
 BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
     BackupCheckupBinarySensorDescription(
+        key="backup_integrity_problem",
+        translation_key="backup_integrity_problem",
+        entity_registry_enabled_default=False,
+        icon="mdi:archive-cancel-outline",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda data: bool(
+            data.backups
+            and data.integrity.backup_id == data.backups[0].backup_id
+            and data.integrity.status in {"corrupt", "unreadable"}
+        ),
+    ),
+    BackupCheckupBinarySensorDescription(
         key="problem",
         translation_key="problem",
         icon="mdi:backup-restore",
@@ -39,6 +51,7 @@ BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
     BackupCheckupBinarySensorDescription(
         key="no_backup",
         translation_key="no_backup",
+        entity_registry_enabled_default=False,
         icon="mdi:archive-off-outline",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda data: data.no_backup,
@@ -46,6 +59,7 @@ BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
     BackupCheckupBinarySensorDescription(
         key="backup_stale",
         translation_key="backup_stale",
+        entity_registry_enabled_default=False,
         icon="mdi:clock-alert-outline",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda data: data.backup_stale,
@@ -62,6 +76,7 @@ BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
     BackupCheckupBinarySensorDescription(
         key="automatic_backup_failed",
         translation_key="automatic_backup_failed",
+        entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:backup-restore",
         device_class=BinarySensorDeviceClass.PROBLEM,
@@ -88,6 +103,7 @@ BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
     BackupCheckupBinarySensorDescription(
         key="backup_manager_unavailable",
         translation_key="backup_manager_unavailable",
+        entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:database-off-outline",
         device_class=BinarySensorDeviceClass.PROBLEM,
@@ -96,6 +112,7 @@ BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
     BackupCheckupBinarySensorDescription(
         key="storage_error",
         translation_key="storage_error",
+        entity_registry_enabled_default=False,
         icon="mdi:cloud-alert-outline",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda data: data.storage_error,
@@ -103,6 +120,7 @@ BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
     BackupCheckupBinarySensorDescription(
         key="backup_size_suspicious",
         translation_key="backup_size_suspicious",
+        entity_registry_enabled_default=False,
         icon="mdi:database-alert-outline",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda data: data.backup_size_suspicious,
@@ -110,6 +128,7 @@ BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
     BackupCheckupBinarySensorDescription(
         key="latest_backup_incomplete",
         translation_key="latest_backup_incomplete",
+        entity_registry_enabled_default=False,
         icon="mdi:archive-alert-outline",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda data: data.latest_backup_incomplete,
@@ -117,6 +136,7 @@ BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
     BackupCheckupBinarySensorDescription(
         key="backup_not_redundant",
         translation_key="backup_not_redundant",
+        entity_registry_enabled_default=False,
         icon="mdi:server-network-off",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda data: data.backup_not_redundant,
@@ -201,6 +221,7 @@ class BackupCheckupAgentProblemBinarySensor(
     _attr_icon = "mdi:server-network"
     _attr_translation_key = "agent_problem"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
 
     def __init__(
         self,

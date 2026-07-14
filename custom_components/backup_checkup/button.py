@@ -17,9 +17,43 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up the BackupCheckup refresh button."""
+    """Set up BackupCheckup buttons."""
     coordinator: BackupCheckupCoordinator = entry.runtime_data
-    async_add_entities([BackupCheckupRefreshButton(coordinator, entry)])
+    async_add_entities(
+        [
+            BackupCheckupVerifyButton(coordinator, entry),
+            BackupCheckupRefreshButton(coordinator, entry),
+        ]
+    )
+
+
+class BackupCheckupVerifyButton(BackupCheckupEntity, ButtonEntity):
+    """Start a full verification of the newest backup."""
+
+    _attr_translation_key = "verify_latest_backup"
+    _attr_icon = "mdi:shield-search"
+
+    def __init__(
+        self,
+        coordinator: BackupCheckupCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        """Initialize the verification button."""
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{entry.entry_id}_verify_latest_backup"
+        self.entity_id = "button.backup_checkup_verify_latest_backup"
+
+    @property
+    def available(self) -> bool:
+        """Only allow a check when a backup exists and no check is running."""
+        return (
+            bool(self.coordinator.data.backups)
+            and not self.coordinator.integrity_check_running
+        )
+
+    async def async_press(self) -> None:
+        """Start the integrity check without blocking the UI."""
+        await self.coordinator.async_start_integrity_check()
 
 
 class BackupCheckupRefreshButton(BackupCheckupEntity, ButtonEntity):

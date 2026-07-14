@@ -23,7 +23,9 @@
           "maximum_size_drop_percent": "Maximum allowed size drop in percent",
           "minimum_redundant_locations": "Required backup locations",
           "repair_issues_enabled": "Show repair notifications",
-          "analytics_window_days": "Analysis period in days"
+          "analytics_window_days": "Analysis period in days",
+          "auto_verify_new_backups": "Automatically verify each new backup",
+          "database_integrity_check": "Run database integrity check (expert)"
         },
         "data_description": {
           "max_age_days": "A warning is shown after this many complete days.",
@@ -33,7 +35,9 @@
           "maximum_size_drop_percent": "Used for automatic comparison with previous backups.",
           "minimum_redundant_locations": "Use 1 for one storage location or 2 for local storage plus NAS/cloud.",
           "repair_issues_enabled": "Create Home Assistant Repair issues for active backup problems. Issues disappear automatically after the problem is resolved.",
-          "analytics_window_days": "Backup statistics and the observed automatic-backup success rate use this period. Historical success tracking starts with version 1.5.0."
+          "analytics_window_days": "Backup statistics and the observed automatic-backup success rate use this period. Historical success tracking starts with version 1.5.0.",
+          "auto_verify_new_backups": "After a new newest backup is detected, download and fully verify it once. This can use considerable network, CPU and temporary disk space.",
+          "database_integrity_check": "Temporarily extracts the included SQLite database and runs PRAGMA integrity_check. This makes verification slower and uses additional temporary disk space."
         }
       }
     },
@@ -64,7 +68,9 @@
           "maximum_size_drop_percent": "Maximum allowed size drop in percent",
           "minimum_redundant_locations": "Required backup locations",
           "repair_issues_enabled": "Show repair notifications",
-          "analytics_window_days": "Analysis period in days"
+          "analytics_window_days": "Analysis period in days",
+          "auto_verify_new_backups": "Automatically verify each new backup",
+          "database_integrity_check": "Run database integrity check (expert)"
         },
         "data_description": {
           "max_age_days": "A warning is shown after this many complete days.",
@@ -74,7 +80,9 @@
           "maximum_size_drop_percent": "Used for automatic comparison with previous backups.",
           "minimum_redundant_locations": "Use 1 for one storage location or 2 for local storage plus NAS/cloud.",
           "repair_issues_enabled": "Create Home Assistant Repair issues for active backup problems. Issues disappear automatically after the problem is resolved.",
-          "analytics_window_days": "Backup statistics and the observed automatic-backup success rate use this period. Historical success tracking starts with version 1.5.0."
+          "analytics_window_days": "Backup statistics and the observed automatic-backup success rate use this period. Historical success tracking starts with version 1.5.0.",
+          "auto_verify_new_backups": "After a new newest backup is detected, download and fully verify it once. This can use considerable network, CPU and temporary disk space.",
+          "database_integrity_check": "Temporarily extracts the included SQLite database and runs PRAGMA integrity_check. This makes verification slower and uses additional temporary disk space."
         }
       }
     },
@@ -98,7 +106,8 @@
           "storage_error": "Backup storage error",
           "backup_size_suspicious": "Suspicious backup size",
           "backup_incomplete": "Incomplete backup",
-          "backup_not_redundant": "Backup not redundant"
+          "backup_not_redundant": "Backup not redundant",
+          "backup_integrity_failed": "Backup integrity check failed"
         }
       },
       "stored_backups": {
@@ -170,7 +179,8 @@
           "check_backup_contents": "Check incomplete backup contents",
           "check_backup_size": "Check backup size and free space",
           "add_storage_location": "Add or restore a backup location",
-          "check_backup_system": "Check Home Assistant backup system"
+          "check_backup_system": "Check Home Assistant backup system",
+          "replace_backup": "Replace or recreate the affected backup"
         }
       },
       "problem_count": {
@@ -223,6 +233,39 @@
       },
       "consecutive_automatic_failures": {
         "name": "Consecutive automatic backup failures"
+      },
+      "integrity_status": {
+        "name": "Backup integrity status",
+        "state": {
+          "not_checked": "Not checked",
+          "checking": "Checking",
+          "valid": "Valid",
+          "valid_with_warnings": "Valid with warnings",
+          "corrupt": "Corrupt",
+          "unreadable": "Unreadable",
+          "password_required": "Password required"
+        }
+      },
+      "last_integrity_check": {
+        "name": "Last integrity check"
+      },
+      "integrity_checksum": {
+        "name": "Backup SHA-256 checksum"
+      },
+      "verified_backup_size": {
+        "name": "Verified backup size"
+      },
+      "integrity_check_duration": {
+        "name": "Integrity check duration"
+      },
+      "database_integrity_status": {
+        "name": "Database integrity status",
+        "state": {
+          "not_checked": "Not checked",
+          "passed": "Passed",
+          "failed": "Failed",
+          "not_found": "Not found"
+        }
       }
     },
     "binary_sensor": {
@@ -267,11 +310,17 @@
       },
       "agent_problem": {
         "name": "Problem"
+      },
+      "backup_integrity_problem": {
+        "name": "Backup corrupt or unreadable"
       }
     },
     "button": {
       "refresh": {
         "name": "Refresh backup data"
+      },
+      "verify_latest_backup": {
+        "name": "Verify latest backup"
       }
     }
   },
@@ -335,6 +384,10 @@
     "backup_not_redundant": {
       "title": "Backup is not stored redundantly",
       "description": "The latest backup is available on {current} storage location(s), but {required} are required. Add or restore another backup location."
+    },
+    "backup_integrity_failed": {
+      "title": "Backup is corrupt or unreadable",
+      "description": "The full integrity check of the backup copy on {location} failed at {checked}. Create a new backup and verify it before relying on the affected copy."
     }
   }
 }

@@ -1,70 +1,81 @@
 # BackupCheckup FAQ
 
-## Does BackupCheckup create backups?
+## Does BackupCheckup create, edit, delete, or restore backups?
 
-No. BackupCheckup monitors Home Assistant's native backup system. Backup creation,
-retention, restore, and deletion remain controlled by Home Assistant.
+No. It monitors and verifies Home Assistant's native backups. All verification is
+read-only and temporary files are deleted after the check.
 
-## Does it require an automation or helper?
+## Does a successful integrity check guarantee a successful restore?
 
-No. Monitoring begins after the integration is added through the user interface.
-Automations are optional and can use the provided sensors.
+No. It confirms that the selected file can be downloaded, decrypted when needed,
+and fully read as a structurally valid archive. The optional database check also
+verifies SQLite integrity. Only an isolated test restore can test the complete
+restore process and runtime behavior.
+
+## Which backup is verified?
+
+The newest backup is checked. BackupCheckup prefers an available local copy and
+otherwise chooses another available native backup storage agent.
+
+## Does automatic verification run at every polling interval?
+
+No. When enabled, it runs once when BackupCheckup detects a new newest backup. The
+normal inventory polling remains lightweight.
+
+## Why is automatic verification disabled by default?
+
+A full check downloads and reads the entire backup. Large backups can temporarily
+use substantial network bandwidth, CPU time, and local temporary storage.
+
+## How are encrypted backups checked?
+
+BackupCheckup uses the password configured in Home Assistant's native backup system.
+The password is used only in memory and is never logged or persisted by the
+integration.
+
+## What does Password required mean?
+
+The backup is marked as protected but could not be decrypted with the password
+available from Home Assistant. This does not by itself prove corruption.
+
+## What does Valid with warnings mean?
+
+The archive was fully readable, but a non-fatal inconsistency was detected, such as
+a downloaded size differing from the storage agent's reported size or a changed
+checksum for the same backup ID.
+
+## What does the database expert option do?
+
+It temporarily extracts `home-assistant_v2.db` and runs SQLite
+`PRAGMA integrity_check`. It is disabled by default because it needs additional disk
+space and can considerably lengthen verification.
+
+## Where is the checksum stored?
+
+The last completed result is stored in Home Assistant's private integration storage.
+It is removed when the BackupCheckup config entry is deleted.
+
+## Why are fewer entities enabled on a new installation?
+
+Version 2.0 presents a compact everyday set. Detailed analytics, schedule,
+per-storage, checksum, database, and troubleshooting entities remain available but
+are disabled by default. Existing installations are not forcibly changed.
 
 ## Does it work with NAS and cloud backup locations?
 
-Yes, provided the storage location is exposed to Home Assistant as a native backup
-agent. Every detected agent receives its own monitoring device.
-
-## Why does the Secure profile report a redundancy problem?
-
-The Secure profile requires the newest backup on at least two storage locations.
-Use local storage plus another backup agent, or choose Standard/Custom if one location
-is intentional.
-
-## How does automatic size checking work?
-
-The newest backup is compared with up to five recent backups of the same type
-(automatic or manual). The median is used to reduce false warnings from one unusual
-older backup.
-
-## Why is the automatic backup age an integer?
-
-It intentionally shows fully completed days. It remains `0` until a complete 24
-hours has elapsed, then changes to `1`. BackupCheckup keeps the precise value
-internally for health calculations.
+Yes, when the location is exposed as a native Home Assistant backup agent and allows
+the selected backup to be downloaded.
 
 ## Does BackupCheckup upload any data?
 
-No. The integration has no cloud connection and no external dependency.
-
-## What is included in diagnostics?
-
-Diagnostics include configuration, status, storage summaries, and sanitized recent
-backup metadata. User-defined backup names and backup IDs are excluded.
+No. The integration has no cloud connection. Verification takes place locally.
 
 ## Can Repair notifications be disabled?
 
-Yes. Select the Custom profile and disable **Show repair notifications**. Sensors and
-binary sensors continue working normally.
+Yes. Select the Custom profile and disable **Show repair notifications**. Sensors
+continue to work.
 
-## How is the backup health score calculated?
+## Why is the automatic success rate initially unknown?
 
-The score starts at 100 and applies fixed deductions for active problems. Examples
-include an old, incomplete, suspiciously small, or non-redundant backup. A low
-observed automatic success rate and repeated automatic failures can add further
-deductions. The complete deduction list is available as an attribute of the health
-score sensor. The calculation is local and deterministic.
-
-## Why is the automatic success rate unknown after updating?
-
-Home Assistant exposes the latest automatic attempt and latest successful automatic
-backup, but not a full historical attempt list. BackupCheckup begins recording
-outcomes locally when version 1.5.0 first runs. The success rate becomes available
-after at least one attempt has been resolved as successful or failed.
-
-## What does the backup-size trend compare?
-
-BackupCheckup uses up to six recent backups from the configured analysis period. It
-prefers automatic backups when enough comparable entries exist. The median of the
-newer group is compared with the older group; changes within five percent are shown
-as stable.
+Home Assistant does not expose a complete historical attempt list. BackupCheckup
+records outcomes locally from version 1.5.0 onward and does not invent earlier data.

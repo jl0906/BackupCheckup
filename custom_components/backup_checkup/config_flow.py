@@ -20,6 +20,8 @@ from homeassistant.helpers.selector import (
 
 from .const import (
     CONF_ANALYTICS_WINDOW_DAYS,
+    CONF_AUTO_VERIFY_NEW_BACKUPS,
+    CONF_DATABASE_INTEGRITY_CHECK,
     CONF_MAX_AGE_DAYS,
     CONF_MAXIMUM_SIZE_DROP_PERCENT,
     CONF_MINIMUM_BACKUP_SIZE_MB,
@@ -29,6 +31,8 @@ from .const import (
     CONF_SIZE_CHECK_MODE,
     CONF_UPDATE_INTERVAL_MINUTES,
     DEFAULT_ANALYTICS_WINDOW_DAYS,
+    DEFAULT_AUTO_VERIFY_NEW_BACKUPS,
+    DEFAULT_DATABASE_INTEGRITY_CHECK,
     DEFAULT_MAX_AGE_DAYS,
     DEFAULT_MAXIMUM_SIZE_DROP_PERCENT,
     DEFAULT_MINIMUM_BACKUP_SIZE_MB,
@@ -70,6 +74,8 @@ PROFILE_PRESETS: dict[str, dict[str, Any]] = {
         CONF_SIZE_CHECK_MODE: SIZE_CHECK_AUTO,
         CONF_REPAIR_ISSUES_ENABLED: True,
         CONF_ANALYTICS_WINDOW_DAYS: 30,
+        CONF_AUTO_VERIFY_NEW_BACKUPS: False,
+        CONF_DATABASE_INTEGRITY_CHECK: False,
     },
     PROFILE_SECURE: {
         CONF_MAX_AGE_DAYS: 2,
@@ -80,6 +86,8 @@ PROFILE_PRESETS: dict[str, dict[str, Any]] = {
         CONF_SIZE_CHECK_MODE: SIZE_CHECK_AUTO,
         CONF_REPAIR_ISSUES_ENABLED: True,
         CONF_ANALYTICS_WINDOW_DAYS: 30,
+        CONF_AUTO_VERIFY_NEW_BACKUPS: False,
+        CONF_DATABASE_INTEGRITY_CHECK: False,
     },
 }
 
@@ -171,6 +179,14 @@ def _advanced_schema(values: dict[str, Any]) -> vol.Schema:
                 MIN_ANALYTICS_WINDOW_DAYS,
                 MAX_ANALYTICS_WINDOW_DAYS,
             ),
+            vol.Required(
+                CONF_AUTO_VERIFY_NEW_BACKUPS,
+                default=values[CONF_AUTO_VERIFY_NEW_BACKUPS],
+            ): BooleanSelector(),
+            vol.Required(
+                CONF_DATABASE_INTEGRITY_CHECK,
+                default=values[CONF_DATABASE_INTEGRITY_CHECK],
+            ): BooleanSelector(),
         }
     )
 
@@ -186,6 +202,8 @@ def _defaults() -> dict[str, Any]:
         CONF_SIZE_CHECK_MODE: DEFAULT_SIZE_CHECK_MODE,
         CONF_REPAIR_ISSUES_ENABLED: DEFAULT_REPAIR_ISSUES_ENABLED,
         CONF_ANALYTICS_WINDOW_DAYS: DEFAULT_ANALYTICS_WINDOW_DAYS,
+        CONF_AUTO_VERIFY_NEW_BACKUPS: DEFAULT_AUTO_VERIFY_NEW_BACKUPS,
+        CONF_DATABASE_INTEGRITY_CHECK: DEFAULT_DATABASE_INTEGRITY_CHECK,
     }
 
 
@@ -202,7 +220,7 @@ def _validate_advanced_input(user_input: dict[str, Any]) -> dict[str, str]:
 class BackupCheckupConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle the BackupCheckup configuration flow."""
 
-    VERSION = 2
+    VERSION = 3
 
     def __init__(self) -> None:
         """Initialize the config flow."""

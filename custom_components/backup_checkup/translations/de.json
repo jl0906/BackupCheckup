@@ -23,7 +23,9 @@
           "maximum_size_drop_percent": "Maximal zulässige Größenabnahme in Prozent",
           "minimum_redundant_locations": "Erforderliche Backup-Speicherorte",
           "repair_issues_enabled": "Reparaturhinweise anzeigen",
-          "analytics_window_days": "Analysezeitraum in Tagen"
+          "analytics_window_days": "Analysezeitraum in Tagen",
+          "auto_verify_new_backups": "Jedes neue Backup automatisch prüfen",
+          "database_integrity_check": "Datenbank-Integritätsprüfung ausführen (Expertenmodus)"
         },
         "data_description": {
           "max_age_days": "Nach dieser Anzahl vollständig vergangener Tage wird eine Warnung angezeigt.",
@@ -33,7 +35,9 @@
           "maximum_size_drop_percent": "Wird für den automatischen Vergleich mit früheren Backups verwendet.",
           "minimum_redundant_locations": "Verwende 1 für einen Speicherort oder 2 für lokalen Speicher plus NAS/Cloud.",
           "repair_issues_enabled": "Erstellt Home-Assistant-Reparaturhinweise für aktive Backup-Probleme. Die Hinweise verschwinden automatisch, sobald das Problem behoben ist.",
-          "analytics_window_days": "Backup-Statistiken und die beobachtete Erfolgsquote automatischer Backups verwenden diesen Zeitraum. Die historische Erfolgsaufzeichnung beginnt mit Version 1.5.0."
+          "analytics_window_days": "Backup-Statistiken und die beobachtete Erfolgsquote automatischer Backups verwenden diesen Zeitraum. Die historische Erfolgsaufzeichnung beginnt mit Version 1.5.0.",
+          "auto_verify_new_backups": "Wenn ein neues neuestes Backup erkannt wird, wird es einmal vollständig heruntergeladen und geprüft. Dies kann Netzwerk, CPU und temporären Speicher deutlich belasten.",
+          "database_integrity_check": "Extrahiert vorübergehend die enthaltene SQLite-Datenbank und führt PRAGMA integrity_check aus. Die Prüfung dauert dadurch länger und benötigt zusätzlichen temporären Speicher."
         }
       }
     },
@@ -64,7 +68,9 @@
           "maximum_size_drop_percent": "Maximal zulässige Größenabnahme in Prozent",
           "minimum_redundant_locations": "Erforderliche Backup-Speicherorte",
           "repair_issues_enabled": "Reparaturhinweise anzeigen",
-          "analytics_window_days": "Analysezeitraum in Tagen"
+          "analytics_window_days": "Analysezeitraum in Tagen",
+          "auto_verify_new_backups": "Jedes neue Backup automatisch prüfen",
+          "database_integrity_check": "Datenbank-Integritätsprüfung ausführen (Expertenmodus)"
         },
         "data_description": {
           "max_age_days": "Nach dieser Anzahl vollständig vergangener Tage wird eine Warnung angezeigt.",
@@ -74,7 +80,9 @@
           "maximum_size_drop_percent": "Wird für den automatischen Vergleich mit früheren Backups verwendet.",
           "minimum_redundant_locations": "Verwende 1 für einen Speicherort oder 2 für lokalen Speicher plus NAS/Cloud.",
           "repair_issues_enabled": "Erstellt Home-Assistant-Reparaturhinweise für aktive Backup-Probleme. Die Hinweise verschwinden automatisch, sobald das Problem behoben ist.",
-          "analytics_window_days": "Backup-Statistiken und die beobachtete Erfolgsquote automatischer Backups verwenden diesen Zeitraum. Die historische Erfolgsaufzeichnung beginnt mit Version 1.5.0."
+          "analytics_window_days": "Backup-Statistiken und die beobachtete Erfolgsquote automatischer Backups verwenden diesen Zeitraum. Die historische Erfolgsaufzeichnung beginnt mit Version 1.5.0.",
+          "auto_verify_new_backups": "Wenn ein neues neuestes Backup erkannt wird, wird es einmal vollständig heruntergeladen und geprüft. Dies kann Netzwerk, CPU und temporären Speicher deutlich belasten.",
+          "database_integrity_check": "Extrahiert vorübergehend die enthaltene SQLite-Datenbank und führt PRAGMA integrity_check aus. Die Prüfung dauert dadurch länger und benötigt zusätzlichen temporären Speicher."
         }
       }
     },
@@ -98,7 +106,8 @@
           "storage_error": "Fehler beim Backup-Speicher",
           "backup_size_suspicious": "Verdächtige Backup-Größe",
           "backup_incomplete": "Unvollständiges Backup",
-          "backup_not_redundant": "Backup nicht redundant"
+          "backup_not_redundant": "Backup nicht redundant",
+          "backup_integrity_failed": "Backup-Integritätsprüfung fehlgeschlagen"
         }
       },
       "stored_backups": {
@@ -170,7 +179,8 @@
           "check_backup_contents": "Inhalt des unvollständigen Backups prüfen",
           "check_backup_size": "Backup-Größe und freien Speicher prüfen",
           "add_storage_location": "Backup-Speicherort hinzufügen oder wiederherstellen",
-          "check_backup_system": "Backup-System von Home Assistant prüfen"
+          "check_backup_system": "Backup-System von Home Assistant prüfen",
+          "replace_backup": "Betroffenes Backup ersetzen oder neu erstellen"
         }
       },
       "problem_count": {
@@ -223,6 +233,39 @@
       },
       "consecutive_automatic_failures": {
         "name": "Aufeinanderfolgende Fehler automatischer Backups"
+      },
+      "integrity_status": {
+        "name": "Backup-Integritätsstatus",
+        "state": {
+          "not_checked": "Nicht geprüft",
+          "checking": "Wird geprüft",
+          "valid": "Gültig",
+          "valid_with_warnings": "Gültig mit Warnungen",
+          "corrupt": "Beschädigt",
+          "unreadable": "Nicht lesbar",
+          "password_required": "Passwort erforderlich"
+        }
+      },
+      "last_integrity_check": {
+        "name": "Letzte Integritätsprüfung"
+      },
+      "integrity_checksum": {
+        "name": "SHA-256-Prüfsumme des Backups"
+      },
+      "verified_backup_size": {
+        "name": "Geprüfte Backup-Größe"
+      },
+      "integrity_check_duration": {
+        "name": "Dauer der Integritätsprüfung"
+      },
+      "database_integrity_status": {
+        "name": "Datenbank-Integritätsstatus",
+        "state": {
+          "not_checked": "Nicht geprüft",
+          "passed": "Bestanden",
+          "failed": "Fehlgeschlagen",
+          "not_found": "Nicht gefunden"
+        }
       }
     },
     "binary_sensor": {
@@ -267,11 +310,17 @@
       },
       "agent_problem": {
         "name": "Problem"
+      },
+      "backup_integrity_problem": {
+        "name": "Backup beschädigt oder nicht lesbar"
       }
     },
     "button": {
       "refresh": {
         "name": "Backup-Daten aktualisieren"
+      },
+      "verify_latest_backup": {
+        "name": "Neuestes Backup vollständig prüfen"
       }
     }
   },
@@ -335,6 +384,10 @@
     "backup_not_redundant": {
       "title": "Backup ist nicht redundant gespeichert",
       "description": "Das neueste Backup liegt auf {current} Speicherort(en), erforderlich sind {required}. Füge einen weiteren Speicherort hinzu oder stelle ihn wieder her."
+    },
+    "backup_integrity_failed": {
+      "title": "Backup ist beschädigt oder nicht lesbar",
+      "description": "Die vollständige Integritätsprüfung der Backup-Kopie auf {location} ist am {checked} fehlgeschlagen. Erstelle ein neues Backup und prüfe es, bevor du dich auf die betroffene Kopie verlässt."
     }
   }
 }

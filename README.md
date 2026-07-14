@@ -1,94 +1,98 @@
 # BackupCheckup
 
-> **Backup health monitoring for Home Assistant**
+> **Backup health and integrity monitoring for Home Assistant**
 >
-> BackupCheckup checks whether your Home Assistant backups are available, recent,
-> complete, plausible in size, stored on enough locations, and healthy over time.
+> BackupCheckup checks whether Home Assistant backups are available, recent,
+> complete, plausible in size, redundant, and structurally readable.
 
 ![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)
-![Version](https://img.shields.io/badge/version-1.5.1-blue.svg)
+![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
 ![License](https://img.shields.io/github/license/jl0906/BackupCheckup)
 
-BackupCheckup reads the **actual backup inventory** from Home Assistant's native
-backup manager. It does not depend on a separate automation or helper and notices
-when a previously existing backup has been deleted.
+Version: **2.0.0**
 
-Everything runs locally inside Home Assistant. No cloud service or external Python
-package is required.
+BackupCheckup reads the **actual backup inventory** from Home Assistant's native
+backup manager. Version 2.0 can additionally download the newest backup and verify
+its complete archive structure without changing the backup.
+
+Everything runs locally inside Home Assistant. BackupCheckup never uploads backup
+contents and does not modify, delete, restore, or rebuild backup files.
 
 ## Why BackupCheckup?
 
-Creating backups is only half the job. A backup may be missing, too old, incomplete,
-unusually small, or stored only on the same system it is meant to protect.
+Creating a backup does not automatically mean that its file can still be read.
+A backup may be missing, too old, incomplete, unexpectedly small, available on only
+one location, or damaged after it was created.
 
-BackupCheckup detects problems such as:
+BackupCheckup can detect:
 
 - No backup is available.
 - The newest backup is too old.
 - An automatic backup failed or is overdue.
-- The automatic schedule is missing or overdue.
-- The backup manager or a storage location is unavailable.
-- The newest backup is incomplete.
-- The newest backup is unusually small.
+- A backup is incomplete or unexpectedly small.
+- A storage location is unavailable.
 - The newest backup is not stored on enough locations.
+- A backup cannot be downloaded or fully read.
+- An encrypted backup cannot be decrypted with Home Assistant's configured backup password.
+- An included SQLite database fails its integrity check when expert verification is enabled.
 
 ## Features
 
-### Backup monitoring
+### Full backup integrity verification
 
-- Counts all currently stored backups.
-- Separates automatic backups from manual or other backups.
-- Reports the newest backup, automatic backup, and manual backup.
-- Reports backup ages and sizes.
-- Keeps the automatic backup age as full completed days for a clean sensor value.
-- Checks the native automatic-backup schedule and result sensors.
+Use **Verify latest backup** to start a complete, non-destructive verification.
+BackupCheckup then:
 
-### Backup health checks
+1. Downloads one available copy of the newest backup through Home Assistant's native backup agent.
+2. Calculates and stores a SHA-256 checksum.
+3. Opens and reads the complete outer backup archive.
+4. Validates `backup.json` and the expected contained archives.
+5. Reads every file in every inner archive to the end.
+6. Decrypts and validates protected archives using Home Assistant's configured backup password.
+7. Optionally extracts the included SQLite database to temporary storage and runs `PRAGMA integrity_check`.
+8. Deletes all temporary files when the check finishes.
 
-- Empty inventory and stale-backup detection.
-- Failed and overdue automatic-backup detection.
-- Automatic or fixed backup-size checking.
-- Detection of incomplete backups with failed add-ons, folders, or storage agents.
-- Redundancy checks across multiple backup locations.
-- Central status, recommendation, and active-problem count.
+The result is available through `sensor.backup_checkup_integrity_status`. A native
+Home Assistant Repair issue is created if the newest backup is corrupt or unreadable.
 
-### Intelligent backup analytics
+> [!IMPORTANT]
+> A successful integrity check proves that the downloaded backup is structurally
+> readable and, where applicable, decryptable. It is not a full restore test and
+> cannot guarantee that every integration, add-on, external service, or device will
+> work after restoration.
 
-- Transparent backup health score from `0` to `100`
-- Human-readable health rating: Excellent, Good, Warning, or Critical
-- Average backup size over a configurable analysis period
-- Increasing, stable, or decreasing backup-size trend
-- Longest interval between retained backups
-- Observed automatic-backup success rate
-- Consecutive automatic-backup failure counter
-- Local persistence of automatic-backup outcomes
+### Optional automatic verification
 
-The health score is deterministic and exposes every deduction as a sensor attribute.
-It does not use cloud services or artificial intelligence.
+The Custom profile can automatically verify each newly detected newest backup.
+Automatic verification is disabled by default because a full check can transfer and
+read several gigabytes and may temporarily increase disk, network, and CPU usage.
 
-### Storage monitoring
+### Backup monitoring and analytics
 
-Each detected Home Assistant backup storage agent is represented as its own device
-with entities for:
+- Actual backup inventory, ages, sizes, and storage locations
+- Automatic and manual backup distinction
+- Empty, stale, failed, overdue, and incomplete backup detection
+- Automatic or fixed backup-size plausibility checks
+- Redundancy checks across multiple storage locations
+- Deterministic health score from `0` to `100`
+- Size trend, average size, longest gap, observed success rate, and consecutive failures
+- Native Home Assistant Repairs and privacy-conscious diagnostics
 
-- Backup count
-- Newest backup
-- Newest backup age
-- Newest backup size
-- Total stored backup size
-- Storage problem state
+### Streamlined entities
 
-### Home Assistant integration
+Version 2.0 keeps all existing detail entities for compatibility, but new
+installations start with a smaller default set. The main device exposes the values
+needed for everyday monitoring. Analytics, schedule details, checksum, database
+status, and per-storage metrics remain available as disabled entities and can be
+enabled from the entity registry.
 
-- Guided **Standard**, **Secure**, and **Custom** profiles
-- Native Config Flow and Options Flow
-- Home Assistant Repair issues with automatic cleanup
-- Diagnostics download for troubleshooting
-- Manual **Refresh backup data** button
-- Dashboard and automation ready
-- English, German, Dutch, Polish, Swedish, Italian, French, Danish, and Spanish
+Existing installations are not forcibly changed, so current dashboards and
+automations continue to work.
 
-Belgian users are covered by the Dutch, French, and German translations.
+### Languages
+
+English, German, Dutch, Polish, Swedish, Italian, French, Danish, and Spanish are
+included. Belgian users are covered by Dutch, French, and German.
 
 ## Installation
 
@@ -105,20 +109,19 @@ Belgian users are covered by the Dutch, French, and German translations.
 
 ### Manual installation
 
-1. Copy `custom_components/backup_checkup` to
-   `/config/custom_components/backup_checkup`.
-2. Restart Home Assistant.
-3. Add BackupCheckup under **Settings → Devices & services**.
+Copy `custom_components/backup_checkup` to
+`/config/custom_components/backup_checkup`, restart Home Assistant, and add the
+integration through **Settings → Devices & services**.
 
 ## Configuration
 
-BackupCheckup offers three monitoring profiles.
+BackupCheckup offers three profiles.
 
 | Profile | Intended use |
 | --- | --- |
-| **Standard** | Recommended for most installations. Uses automatic size comparison and requires one storage location. |
-| **Secure** | Uses stricter limits and expects the newest backup on at least two storage locations. |
-| **Custom** | Exposes every threshold and notification setting. |
+| **Standard** | Recommended for most installations. Automatic size comparison and one required storage location. |
+| **Secure** | Stricter age and size limits and at least two required storage locations. |
+| **Custom** | Exposes every threshold, analytics, Repair, and integrity option. |
 
 ### Custom options
 
@@ -127,38 +130,30 @@ BackupCheckup offers three monitoring profiles.
 | Maximum backup age | Creates a problem after the configured number of days. |
 | Update interval | Controls how often the actual backup inventory is read. |
 | Size check mode | Automatic comparison, fixed minimum size, or disabled. |
-| Fixed minimum size | Used only with fixed size checking. |
-| Maximum size drop | Allowed reduction compared with recent comparable backups. |
+| Maximum size drop | Allowed reduction compared with comparable backups. |
 | Required backup locations | Minimum number of locations containing the newest backup. |
-| Repair notifications | Shows active backup problems under Home Assistant Repairs. |
-| Analysis period | Number of days used for size, gap, and observed success-rate statistics. |
+| Repair notifications | Shows active backup problems in Home Assistant Repairs. |
+| Analysis period | Window used for analytics and observed automatic outcomes. |
+| Automatically verify new backups | Starts one full check when a new newest backup is detected. |
+| Database integrity check | Expert option that runs SQLite `PRAGMA integrity_check` on the included database. |
 
-The automatic size mode compares the newest backup with up to five recent backups
-of the same type. This means users do not need to know a suitable backup size in
-advance.
+The database check is disabled by default. It requires additional temporary storage
+roughly equal to the size of the included database and can take considerably longer.
 
-### Health score
+## Integrity states
 
-BackupCheckup starts at `100` points and subtracts documented values for active
-problems such as stale, incomplete, suspiciously small, or non-redundant backups.
-Repeated automatic failures and a reduced observed success rate can also lower the
-score. Open the attributes of `sensor.backup_checkup_health_score` to see every
-deduction.
-
-| Score | Rating |
+| State | Meaning |
 | --- | --- |
-| 90–100 | Excellent |
-| 75–89 | Good |
-| 50–74 | Warning |
-| 0–49 | Critical |
+| Not checked | No full check has completed yet. |
+| Checking | The backup is currently being downloaded and read. |
+| Valid | The complete archive was read without errors. |
+| Valid with warnings | The archive is readable, but a non-fatal issue such as a size or checksum change was detected. |
+| Corrupt | The archive structure or optional database integrity check failed. |
+| Unreadable | The backup could not be downloaded or read. |
+| Password required | The protected archive could not be decrypted with the available backup password. |
 
-### Historical automatic-backup metrics
-
-Home Assistant exposes only the latest automatic attempt and latest successful
-automatic backup. BackupCheckup therefore starts its own small local outcome history
-when version 1.5.0 is first run. The success-rate and consecutive-failure sensors do
-not invent failures that occurred before tracking began. The history contains only
-timestamps and result states and is removed when the integration entry is deleted.
+The last completed result and checksum are stored locally in Home Assistant. Backup
+names, passwords, and backup contents are never stored by BackupCheckup.
 
 ## Recommended dashboard
 
@@ -170,23 +165,21 @@ type: entities
 title: BackupCheckup
 entities:
   - entity: sensor.backup_checkup_health_score
-  - entity: sensor.backup_checkup_health_rating
   - entity: sensor.backup_checkup_status
   - entity: sensor.backup_checkup_recommendation
   - entity: sensor.backup_checkup_latest_backup
   - entity: sensor.backup_checkup_latest_backup_age
   - entity: sensor.backup_checkup_latest_backup_size
-  - entity: sensor.backup_checkup_latest_backup_locations
-  - entity: sensor.backup_checkup_size_trend
-  - entity: sensor.backup_checkup_automatic_success_rate
+  - entity: sensor.backup_checkup_integrity_status
   - entity: binary_sensor.backup_checkup_problem
+  - entity: button.backup_checkup_verify_latest_backup
   - entity: button.backup_checkup_refresh
 ```
 
 ## Automation example
 
-The example below sends a notification when a new problem appears. A complete copy
-is available in [`docs/examples/automation.yaml`](docs/examples/automation.yaml).
+A complete example is available in
+[`docs/examples/automation.yaml`](docs/examples/automation.yaml).
 
 ```yaml
 alias: BackupCheckup problem notification
@@ -198,94 +191,58 @@ actions:
   - action: notify.notify
     data:
       title: BackupCheckup
-      message: >-
-        {{ states('sensor.backup_checkup_recommendation') }}
+      message: "{{ states('sensor.backup_checkup_recommendation') }}"
 mode: single
 ```
 
-## Repairs
+## Repairs and diagnostics
 
 When enabled, BackupCheckup creates native Repair issues under
-**Settings → System → Repairs**. Repair issues include a plain-language explanation
-and suggested next step. They are removed automatically after the underlying problem
-is resolved.
+**Settings → System → Repairs** and removes them automatically after recovery.
+Version 2.0 adds a Repair issue for a corrupt or unreadable newest backup.
 
-Repair issues can be disabled in the Custom profile without disabling any sensors.
+The diagnostics download includes the integrity status, verification time, selected
+storage location, SHA-256 checksum, verified size, archive/file counts, database
+result, warnings, and error code. Backup names and backup IDs are excluded.
 
-## Diagnostics
+## Documentation
 
-Open the BackupCheckup integration page and choose **Download diagnostics** to export:
-
-- Integration and Home Assistant versions
-- Effective configuration
-- Coordinator update state
-- Health score, rating, deductions, active problems, and recommendation
-- Backup inventory and intelligent analytics summary
-- Automatic-backup schedule information
-- Per-storage health information
-- Sanitized details for the twenty newest backups
-
-User-defined backup names and backup IDs are intentionally excluded.
-
-## Entities
-
-The complete entity reference, including default-enabled and diagnostic entities,
-is available in [`docs/entities.md`](docs/entities.md).
+- [Entity reference](docs/entities.md)
+- [Integrity verification details](docs/integrity.md)
+- [Safe 2.0 test plan](docs/testing-2.0.md)
+- [FAQ](docs/faq.md)
+- [Dashboard example](docs/examples/dashboard.yaml)
+- [Automation example](docs/examples/automation.yaml)
+- [Changelog](CHANGELOG.md)
 
 ## Troubleshooting
 
-### Repair issue remains visible
+### Verification remains on Checking
 
-Press **Refresh backup data** after correcting the problem. BackupCheckup also checks
-again automatically at the configured update interval.
+Large backups may take several minutes. Check free temporary storage and the
+connection to the selected backup location. Restarting or reloading the integration
+cancels the current check without changing the backup.
 
-### Automatic schedule is reported as missing
+### Password required
 
-Open **Settings → System → Backups** and confirm that automatic backups are enabled
-and Home Assistant shows a next scheduled backup.
+Open Home Assistant's native backup settings and verify that the configured backup
+password can decrypt the selected backup. BackupCheckup does not save or request a
+separate password.
 
-### A backup is reported as unusually small
+### Corrupt or unreadable result
 
-Check free space on every storage location and inspect the native Home Assistant
-backup log. Automatic mode compares only with recent backups of the same type. Use
-the Custom profile to change the permitted size drop or disable size checking.
-
-### Redundancy warning with only one storage location
-
-Use the Standard profile or set **Required backup locations** to `1`. The Secure
-profile intentionally expects at least two locations, for example local storage plus
-a NAS or cloud backup agent.
-
-### Storage location shown as unavailable
-
-Check the storage connection, credentials, permissions, and free space. Then press
-**Refresh backup data**.
+Keep the affected backup for diagnosis, verify another copy or storage location, and
+create a new backup. Do not rely on the affected file as the only recovery point.
 
 More answers are available in [`docs/faq.md`](docs/faq.md).
 
 ## Updating and removal
 
-### Update
-
-Install the new version through HACS and restart Home Assistant. Existing entity IDs
-and configuration entries are retained.
-
-### Remove
-
-1. Remove BackupCheckup under **Settings → Devices & services**.
-2. Remove the integration through HACS or delete
-   `/config/custom_components/backup_checkup`.
-3. Restart Home Assistant.
-
-## Documentation
-
-- [Entity reference](docs/entities.md)
-- [FAQ](docs/faq.md)
-- [Dashboard example](docs/examples/dashboard.yaml)
-- [Automation example](docs/examples/automation.yaml)
-- [Screenshot contribution guide](docs/screenshots/README.md)
-- [Changelog](CHANGELOG.md)
+Install updates through HACS or replace the integration folder manually, then restart
+Home Assistant. Removing the config entry also removes BackupCheckup's locally stored
+automatic-outcome history and last integrity result. It does not delete any Home
+Assistant backups.
 
 ## License
 
-BackupCheckup is released under the [MIT License](LICENSE).
+MIT License

@@ -23,7 +23,9 @@
           "maximum_size_drop_percent": "Riduzione massima consentita delle dimensioni in percentuale",
           "minimum_redundant_locations": "Posizioni di backup richieste",
           "repair_issues_enabled": "Mostra avvisi di riparazione",
-          "analytics_window_days": "Periodo di analisi in giorni"
+          "analytics_window_days": "Periodo di analisi in giorni",
+          "auto_verify_new_backups": "Verifica automaticamente ogni nuovo backup",
+          "database_integrity_check": "Esegui controllo integrità database (esperto)"
         },
         "data_description": {
           "max_age_days": "Viene mostrato un avviso dopo questo numero di giorni completi.",
@@ -33,7 +35,9 @@
           "maximum_size_drop_percent": "Utilizzata per il confronto automatico con i backup precedenti.",
           "minimum_redundant_locations": "Usa 1 per una posizione oppure 2 per archiviazione locale più NAS/cloud.",
           "repair_issues_enabled": "Crea avvisi Riparazioni di Home Assistant per i problemi di backup attivi. Gli avvisi scompaiono automaticamente quando il problema è risolto.",
-          "analytics_window_days": "Le statistiche dei backup e la percentuale di successo osservata dei backup automatici usano questo periodo. La registrazione storica inizia con la versione 1.5.0."
+          "analytics_window_days": "Le statistiche dei backup e la percentuale di successo osservata dei backup automatici usano questo periodo. La registrazione storica inizia con la versione 1.5.0.",
+          "auto_verify_new_backups": "Quando viene rilevato un nuovo backup più recente, viene scaricato e verificato completamente una volta. Può utilizzare molta rete, CPU e spazio temporaneo.",
+          "database_integrity_check": "Estrae temporaneamente il database SQLite ed esegue PRAGMA integrity_check. La verifica richiede più tempo e spazio temporaneo aggiuntivo."
         }
       }
     },
@@ -64,7 +68,9 @@
           "maximum_size_drop_percent": "Riduzione massima consentita delle dimensioni in percentuale",
           "minimum_redundant_locations": "Posizioni di backup richieste",
           "repair_issues_enabled": "Mostra avvisi di riparazione",
-          "analytics_window_days": "Periodo di analisi in giorni"
+          "analytics_window_days": "Periodo di analisi in giorni",
+          "auto_verify_new_backups": "Verifica automaticamente ogni nuovo backup",
+          "database_integrity_check": "Esegui controllo integrità database (esperto)"
         },
         "data_description": {
           "max_age_days": "Viene mostrato un avviso dopo questo numero di giorni completi.",
@@ -74,7 +80,9 @@
           "maximum_size_drop_percent": "Utilizzata per il confronto automatico con i backup precedenti.",
           "minimum_redundant_locations": "Usa 1 per una posizione oppure 2 per archiviazione locale più NAS/cloud.",
           "repair_issues_enabled": "Crea avvisi Riparazioni di Home Assistant per i problemi di backup attivi. Gli avvisi scompaiono automaticamente quando il problema è risolto.",
-          "analytics_window_days": "Le statistiche dei backup e la percentuale di successo osservata dei backup automatici usano questo periodo. La registrazione storica inizia con la versione 1.5.0."
+          "analytics_window_days": "Le statistiche dei backup e la percentuale di successo osservata dei backup automatici usano questo periodo. La registrazione storica inizia con la versione 1.5.0.",
+          "auto_verify_new_backups": "Quando viene rilevato un nuovo backup più recente, viene scaricato e verificato completamente una volta. Può utilizzare molta rete, CPU e spazio temporaneo.",
+          "database_integrity_check": "Estrae temporaneamente il database SQLite ed esegue PRAGMA integrity_check. La verifica richiede più tempo e spazio temporaneo aggiuntivo."
         }
       }
     },
@@ -98,7 +106,8 @@
           "storage_error": "Errore di archiviazione dei backup",
           "backup_size_suspicious": "Dimensione backup sospetta",
           "backup_incomplete": "Backup incompleto",
-          "backup_not_redundant": "Backup non ridondante"
+          "backup_not_redundant": "Backup non ridondante",
+          "backup_integrity_failed": "Controllo integrità backup non riuscito"
         }
       },
       "stored_backups": {
@@ -170,7 +179,8 @@
           "check_backup_contents": "Controlla il contenuto del backup incompleto",
           "check_backup_size": "Controlla la dimensione del backup e lo spazio libero",
           "add_storage_location": "Aggiungi o ripristina una posizione di backup",
-          "check_backup_system": "Controlla il sistema di backup di Home Assistant"
+          "check_backup_system": "Controlla il sistema di backup di Home Assistant",
+          "replace_backup": "Sostituisci o ricrea il backup interessato"
         }
       },
       "problem_count": {
@@ -223,6 +233,39 @@
       },
       "consecutive_automatic_failures": {
         "name": "Errori consecutivi dei backup automatici"
+      },
+      "integrity_status": {
+        "name": "Stato integrità backup",
+        "state": {
+          "not_checked": "Non verificato",
+          "checking": "Verifica in corso",
+          "valid": "Valido",
+          "valid_with_warnings": "Valido con avvisi",
+          "corrupt": "Danneggiato",
+          "unreadable": "Illeggibile",
+          "password_required": "Password richiesta"
+        }
+      },
+      "last_integrity_check": {
+        "name": "Ultimo controllo integrità"
+      },
+      "integrity_checksum": {
+        "name": "Checksum SHA-256 del backup"
+      },
+      "verified_backup_size": {
+        "name": "Dimensione backup verificata"
+      },
+      "integrity_check_duration": {
+        "name": "Durata controllo integrità"
+      },
+      "database_integrity_status": {
+        "name": "Stato integrità database",
+        "state": {
+          "not_checked": "Non verificato",
+          "passed": "Superato",
+          "failed": "Non riuscito",
+          "not_found": "Non trovato"
+        }
       }
     },
     "binary_sensor": {
@@ -267,11 +310,17 @@
       },
       "agent_problem": {
         "name": "Problema"
+      },
+      "backup_integrity_problem": {
+        "name": "Backup danneggiato o illeggibile"
       }
     },
     "button": {
       "refresh": {
         "name": "Aggiorna dati dei backup"
+      },
+      "verify_latest_backup": {
+        "name": "Verifica completamente il backup più recente"
       }
     }
   },
@@ -335,6 +384,10 @@
     "backup_not_redundant": {
       "title": "Il backup non è archiviato in modo ridondante",
       "description": "Il backup più recente è presente su {current} destinazione/i, ma ne sono richieste {required}. Aggiungi o ripristina un’altra destinazione."
+    },
+    "backup_integrity_failed": {
+      "title": "Il backup è danneggiato o illeggibile",
+      "description": "Il controllo completo di integrità della copia di backup su {location} non è riuscito alle {checked}. Crea e verifica un nuovo backup prima di fare affidamento sulla copia interessata."
     }
   }
 }
