@@ -4,12 +4,20 @@
     "step": {
       "user": {
         "title": "Skonfiguruj BackupCheckup",
-        "description": "Wybierz gotowy profil monitorowania. Możesz go później zmienić w opcjach integracji.",
+        "description": "Wybierz profil monitorowania, niezależny tryb encji oraz opcjonalnie urządzenia Home Assistant Companion App do powiadomień. Wszystko można później zmienić w opcjach integracji.",
         "data": {
-          "monitoring_profile": "Profil monitorowania"
+          "monitoring_profile": "Profil monitorowania",
+          "entity_mode": "Tryb encji",
+          "notifications_enabled": "Włącz powiadomienia mobilne",
+          "notification_targets": "Urządzenia mobilne do powiadamiania",
+          "notify_on_recovery": "Powiadamiaj po rozwiązaniu problemów"
         },
         "data_description": {
-          "monitoring_profile": "Profil Standardowy jest prosty i odpowiedni dla większości instalacji. Bezpieczny wymaga drugiej lokalizacji przechowywania. Niestandardowy pokazuje wszystkie ustawienia."
+          "monitoring_profile": "Profil Standardowy jest prosty i odpowiedni dla większości instalacji. Bezpieczny wymaga drugiej lokalizacji przechowywania. Niestandardowy pokazuje wszystkie ustawienia.",
+          "entity_mode": "Niezależnie od profilu monitorowania wybierz, ile encji BackupCheckup ma zostać włączonych po konfiguracji. Tryb standardowy włącza najważniejsze encje monitorowania i problemów. Tryb ekspercki włącza również wszystkie encje analityczne, diagnostyczne, integralności, harmonogramu i lokalizacji pamięci.",
+          "notifications_enabled": "Wysyła powiadomienie mobilne, gdy zmieni się zestaw aktywnych problemów z kopiami. Kolejne odczyty nie wysyłają duplikatów.",
+          "notification_targets": "Wyświetlane są tylko encje powiadomień utworzone przez aplikację Home Assistant Companion. Możesz wybrać jeden lub więcej telefonów albo tabletów.",
+          "notify_on_recovery": "Wysyła końcowe powiadomienie po rozwiązaniu wszystkich wcześniej zgłoszonych problemów z kopiami."
         }
       },
       "advanced": {
@@ -45,16 +53,27 @@
       "single_instance_allowed": "Dozwolona jest tylko jedna instancja BackupCheckup."
     },
     "error": {
-      "fixed_size_required": "Dla stałego minimalnego rozmiaru podaj wartość większą niż 0 MB."
+      "fixed_size_required": "Dla stałego minimalnego rozmiaru podaj wartość większą niż 0 MB.",
+      "notification_target_required": "Wybierz co najmniej jedno urządzenie mobilne, gdy powiadomienia mobilne są włączone."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Opcje BackupCheckup",
-        "description": "Wybierz profil monitorowania. Wybranie profilu Niestandardowego otwiera wszystkie ustawienia.",
+        "description": "Wybierz profil monitorowania, niezależny tryb encji i opcjonalne cele powiadomień Companion App. Profil niestandardowy otwiera wszystkie ustawienia monitorowania.",
         "data": {
-          "monitoring_profile": "Profil monitorowania"
+          "monitoring_profile": "Profil monitorowania",
+          "entity_mode": "Tryb encji",
+          "notifications_enabled": "Włącz powiadomienia mobilne",
+          "notification_targets": "Urządzenia mobilne do powiadamiania",
+          "notify_on_recovery": "Powiadamiaj po rozwiązaniu problemów"
+        },
+        "data_description": {
+          "entity_mode": "Niezależnie od profilu monitorowania wybierz, ile encji BackupCheckup ma zostać włączonych po konfiguracji. Tryb standardowy włącza najważniejsze encje monitorowania i problemów. Tryb ekspercki włącza również wszystkie encje analityczne, diagnostyczne, integralności, harmonogramu i lokalizacji pamięci.",
+          "notifications_enabled": "Wysyła powiadomienie mobilne, gdy zmieni się zestaw aktywnych problemów z kopiami. Kolejne odczyty nie wysyłają duplikatów.",
+          "notification_targets": "Wyświetlane są tylko encje powiadomień utworzone przez aplikację Home Assistant Companion. Możesz wybrać jeden lub więcej telefonów albo tabletów.",
+          "notify_on_recovery": "Wysyła końcowe powiadomienie po rozwiązaniu wszystkich wcześniej zgłoszonych problemów z kopiami."
         }
       },
       "advanced": {
@@ -87,7 +106,8 @@
       }
     },
     "error": {
-      "fixed_size_required": "Dla stałego minimalnego rozmiaru podaj wartość większą niż 0 MB."
+      "fixed_size_required": "Dla stałego minimalnego rozmiaru podaj wartość większą niż 0 MB.",
+      "notification_target_required": "Wybierz co najmniej jedno urządzenie mobilne, gdy powiadomienia mobilne są włączone."
     }
   },
   "entity": {
@@ -321,6 +341,9 @@
       },
       "verify_latest_backup": {
         "name": "Sprawdź w całości najnowszą kopię"
+      },
+      "test_notification": {
+        "name": "Wyślij powiadomienie testowe"
       }
     }
   },
@@ -337,6 +360,12 @@
         "automatic": "Porównanie automatyczne",
         "fixed": "Stały rozmiar minimalny",
         "disabled": "Wyłączone"
+      }
+    },
+    "entity_mode": {
+      "options": {
+        "standard": "Tryb standardowy",
+        "expert": "Tryb ekspercki"
       }
     }
   },
@@ -388,6 +417,11 @@
     "backup_integrity_failed": {
       "title": "Kopia zapasowa jest uszkodzona lub nieczytelna",
       "description": "Pełna kontrola integralności kopii zapasowej w lokalizacji {location} nie powiodła się o {checked}. Utwórz nową kopię i sprawdź ją, zanim polegasz na uszkodzonej kopii."
+    }
+  },
+  "exceptions": {
+    "notification_failed": {
+      "message": "Nie udało się wysłać powiadomienia testowego. Sprawdź wybrane urządzenie mobilne i dziennik BackupCheckup."
     }
   }
 }

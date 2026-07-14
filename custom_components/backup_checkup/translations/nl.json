@@ -4,12 +4,20 @@
     "step": {
       "user": {
         "title": "BackupCheckup instellen",
-        "description": "Kies een gebruiksklaar bewakingsprofiel. Je kunt dit later wijzigen in de integratieopties.",
+        "description": "Kies een bewakingsprofiel, een onafhankelijke entiteitsmodus en optioneel Home Assistant Companion App-apparaten voor meldingen. Alles kan later in de integratieopties worden gewijzigd.",
         "data": {
-          "monitoring_profile": "Bewakingsprofiel"
+          "monitoring_profile": "Bewakingsprofiel",
+          "entity_mode": "Entiteitsmodus",
+          "notifications_enabled": "Mobiele meldingen inschakelen",
+          "notification_targets": "Mobiele apparaten voor meldingen",
+          "notify_on_recovery": "Melden wanneer problemen zijn opgelost"
         },
         "data_description": {
-          "monitoring_profile": "Standaard is eenvoudig en geschikt voor de meeste installaties. Veilig vereist een tweede opslaglocatie. Aangepast toont alle instellingen."
+          "monitoring_profile": "Standaard is eenvoudig en geschikt voor de meeste installaties. Veilig vereist een tweede opslaglocatie. Aangepast toont alle instellingen.",
+          "entity_mode": "Kies onafhankelijk van het bewakingsprofiel hoeveel BackupCheckup-entiteiten na de installatie worden ingeschakeld. Standaard activeert de belangrijkste bewakings- en probleementiteiten. Expert activeert ook alle analyse-, diagnose-, integriteits-, plannings- en opslaglocatie-entiteiten.",
+          "notifications_enabled": "Stuurt een mobiele melding wanneer de actieve back-upproblemen veranderen. Herhaalde controles sturen geen dubbele meldingen.",
+          "notification_targets": "Alleen meldingsentiteiten van de Home Assistant Companion App worden weergegeven. Je kunt één of meer telefoons of tablets selecteren.",
+          "notify_on_recovery": "Stuurt een laatste melding wanneer alle eerder gemelde back-upproblemen zijn opgelost."
         }
       },
       "advanced": {
@@ -45,16 +53,27 @@
       "single_instance_allowed": "Er is slechts één BackupCheckup-instantie toegestaan."
     },
     "error": {
-      "fixed_size_required": "Voer bij een vaste minimumgrootte een waarde groter dan 0 MB in."
+      "fixed_size_required": "Voer bij een vaste minimumgrootte een waarde groter dan 0 MB in.",
+      "notification_target_required": "Selecteer ten minste één mobiel apparaat wanneer mobiele meldingen zijn ingeschakeld."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "BackupCheckup-opties",
-        "description": "Kies een bewakingsprofiel. Met Aangepast worden alle afzonderlijke instellingen geopend.",
+        "description": "Kies een bewakingsprofiel, een onafhankelijke entiteitsmodus en optionele Companion App-meldingsdoelen. Aangepast opent alle afzonderlijke bewakingsinstellingen.",
         "data": {
-          "monitoring_profile": "Bewakingsprofiel"
+          "monitoring_profile": "Bewakingsprofiel",
+          "entity_mode": "Entiteitsmodus",
+          "notifications_enabled": "Mobiele meldingen inschakelen",
+          "notification_targets": "Mobiele apparaten voor meldingen",
+          "notify_on_recovery": "Melden wanneer problemen zijn opgelost"
+        },
+        "data_description": {
+          "entity_mode": "Kies onafhankelijk van het bewakingsprofiel hoeveel BackupCheckup-entiteiten na de installatie worden ingeschakeld. Standaard activeert de belangrijkste bewakings- en probleementiteiten. Expert activeert ook alle analyse-, diagnose-, integriteits-, plannings- en opslaglocatie-entiteiten.",
+          "notifications_enabled": "Stuurt een mobiele melding wanneer de actieve back-upproblemen veranderen. Herhaalde controles sturen geen dubbele meldingen.",
+          "notification_targets": "Alleen meldingsentiteiten van de Home Assistant Companion App worden weergegeven. Je kunt één of meer telefoons of tablets selecteren.",
+          "notify_on_recovery": "Stuurt een laatste melding wanneer alle eerder gemelde back-upproblemen zijn opgelost."
         }
       },
       "advanced": {
@@ -87,7 +106,8 @@
       }
     },
     "error": {
-      "fixed_size_required": "Voer bij een vaste minimumgrootte een waarde groter dan 0 MB in."
+      "fixed_size_required": "Voer bij een vaste minimumgrootte een waarde groter dan 0 MB in.",
+      "notification_target_required": "Selecteer ten minste één mobiel apparaat wanneer mobiele meldingen zijn ingeschakeld."
     }
   },
   "entity": {
@@ -321,6 +341,9 @@
       },
       "verify_latest_backup": {
         "name": "Nieuwste back-up volledig controleren"
+      },
+      "test_notification": {
+        "name": "Testmelding verzenden"
       }
     }
   },
@@ -337,6 +360,12 @@
         "automatic": "Automatische vergelijking",
         "fixed": "Vaste minimumgrootte",
         "disabled": "Uitgeschakeld"
+      }
+    },
+    "entity_mode": {
+      "options": {
+        "standard": "Standaardmodus",
+        "expert": "Expertmodus"
       }
     }
   },
@@ -388,6 +417,11 @@
     "backup_integrity_failed": {
       "title": "Back-up is beschadigd of onleesbaar",
       "description": "De volledige integriteitscontrole van de back-upkopie op {location} is mislukt op {checked}. Maak een nieuwe back-up en controleer deze voordat u op de getroffen kopie vertrouwt."
+    }
+  },
+  "exceptions": {
+    "notification_failed": {
+      "message": "De testmelding kon niet worden verzonden. Controleer het geselecteerde mobiele apparaat en het BackupCheckup-logboek."
     }
   }
 }

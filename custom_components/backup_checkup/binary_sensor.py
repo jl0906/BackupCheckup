@@ -18,6 +18,7 @@ from homeassistant.util import slugify
 
 from .coordinator import BackupCheckupCoordinator
 from .entity import BackupCheckupAgentEntity, BackupCheckupEntity
+from .entity_mode import entity_enabled_by_default
 from .models import BackupAgentSummary, BackupCheckupData
 
 
@@ -200,8 +201,13 @@ class BackupCheckupBinarySensor(BackupCheckupEntity, BinarySensorEntity):
         description: BackupCheckupBinarySensorDescription,
     ) -> None:
         """Initialize a BackupCheckup binary sensor."""
-        super().__init__(coordinator, entry)
         self.entity_description = description
+        self._attr_entity_registry_enabled_default = entity_enabled_by_default(
+            "binary_sensor",
+            description.key,
+            coordinator.entity_mode,
+        )
+        super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
         self.entity_id = f"binary_sensor.backup_checkup_{description.key}"
 
@@ -221,7 +227,6 @@ class BackupCheckupAgentProblemBinarySensor(
     _attr_icon = "mdi:server-network"
     _attr_translation_key = "agent_problem"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_entity_registry_enabled_default = False
 
     def __init__(
         self,
@@ -230,6 +235,12 @@ class BackupCheckupAgentProblemBinarySensor(
         agent_id: str,
     ) -> None:
         """Initialize a storage location problem sensor."""
+        self._attr_entity_registry_enabled_default = entity_enabled_by_default(
+            "binary_sensor",
+            "problem",
+            coordinator.entity_mode,
+            agent_entity=True,
+        )
         super().__init__(coordinator, entry, agent_id)
         agent_slug = slugify(agent_id)
         self._attr_unique_id = f"{entry.entry_id}_agent_{agent_id}_problem"

@@ -4,12 +4,20 @@
     "step": {
       "user": {
         "title": "Configurar BackupCheckup",
-        "description": "Elige un perfil de supervisión listo para usar. Podrás cambiarlo más adelante en las opciones de la integración.",
+        "description": "Elige un perfil de supervisión, un modo de entidades independiente y, opcionalmente, dispositivos de Home Assistant Companion App para las notificaciones. Todo puede modificarse después en las opciones de la integración.",
         "data": {
-          "monitoring_profile": "Perfil de supervisión"
+          "monitoring_profile": "Perfil de supervisión",
+          "entity_mode": "Modo de entidades",
+          "notifications_enabled": "Activar notificaciones móviles",
+          "notification_targets": "Dispositivos móviles que recibirán avisos",
+          "notify_on_recovery": "Notificar cuando se resuelvan los problemas"
         },
         "data_description": {
-          "monitoring_profile": "Estándar es sencillo y adecuado para la mayoría de las instalaciones. Seguro requiere una segunda ubicación de almacenamiento. Personalizado muestra todos los ajustes."
+          "monitoring_profile": "Estándar es sencillo y adecuado para la mayoría de las instalaciones. Seguro requiere una segunda ubicación de almacenamiento. Personalizado muestra todos los ajustes.",
+          "entity_mode": "Elige de forma independiente al perfil de supervisión cuántas entidades de BackupCheckup se activarán después de la configuración. Estándar activa las entidades de supervisión y problemas más útiles. Experto activa además todas las entidades de análisis, diagnóstico, integridad, programación y ubicaciones de almacenamiento.",
+          "notifications_enabled": "Envía una notificación móvil cuando cambian los problemas de copia activos. Las comprobaciones repetidas no envían duplicados.",
+          "notification_targets": "Solo se muestran entidades de notificación creadas por la aplicación Home Assistant Companion. Puedes seleccionar uno o varios teléfonos o tabletas.",
+          "notify_on_recovery": "Envía una notificación final cuando se hayan resuelto todos los problemas de copia notificados anteriormente."
         }
       },
       "advanced": {
@@ -45,16 +53,27 @@
       "single_instance_allowed": "Solo se permite una instancia de BackupCheckup."
     },
     "error": {
-      "fixed_size_required": "Con el tamaño mínimo fijo, introduce un valor superior a 0 MB."
+      "fixed_size_required": "Con el tamaño mínimo fijo, introduce un valor superior a 0 MB.",
+      "notification_target_required": "Selecciona al menos un dispositivo móvil cuando las notificaciones móviles estén activadas."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Opciones de BackupCheckup",
-        "description": "Elige un perfil de supervisión. Personalizado abre todos los ajustes individuales.",
+        "description": "Elige un perfil de supervisión, un modo de entidades independiente y destinos opcionales de Companion App. Personalizado abre todos los ajustes de supervisión.",
         "data": {
-          "monitoring_profile": "Perfil de supervisión"
+          "monitoring_profile": "Perfil de supervisión",
+          "entity_mode": "Modo de entidades",
+          "notifications_enabled": "Activar notificaciones móviles",
+          "notification_targets": "Dispositivos móviles que recibirán avisos",
+          "notify_on_recovery": "Notificar cuando se resuelvan los problemas"
+        },
+        "data_description": {
+          "entity_mode": "Elige de forma independiente al perfil de supervisión cuántas entidades de BackupCheckup se activarán después de la configuración. Estándar activa las entidades de supervisión y problemas más útiles. Experto activa además todas las entidades de análisis, diagnóstico, integridad, programación y ubicaciones de almacenamiento.",
+          "notifications_enabled": "Envía una notificación móvil cuando cambian los problemas de copia activos. Las comprobaciones repetidas no envían duplicados.",
+          "notification_targets": "Solo se muestran entidades de notificación creadas por la aplicación Home Assistant Companion. Puedes seleccionar uno o varios teléfonos o tabletas.",
+          "notify_on_recovery": "Envía una notificación final cuando se hayan resuelto todos los problemas de copia notificados anteriormente."
         }
       },
       "advanced": {
@@ -87,7 +106,8 @@
       }
     },
     "error": {
-      "fixed_size_required": "Con el tamaño mínimo fijo, introduce un valor superior a 0 MB."
+      "fixed_size_required": "Con el tamaño mínimo fijo, introduce un valor superior a 0 MB.",
+      "notification_target_required": "Selecciona al menos un dispositivo móvil cuando las notificaciones móviles estén activadas."
     }
   },
   "entity": {
@@ -321,6 +341,9 @@
       },
       "verify_latest_backup": {
         "name": "Verificar por completo la copia más reciente"
+      },
+      "test_notification": {
+        "name": "Enviar notificación de prueba"
       }
     }
   },
@@ -337,6 +360,12 @@
         "automatic": "Comparación automática",
         "fixed": "Tamaño mínimo fijo",
         "disabled": "Desactivado"
+      }
+    },
+    "entity_mode": {
+      "options": {
+        "standard": "Modo estándar",
+        "expert": "Modo experto"
       }
     }
   },
@@ -388,6 +417,11 @@
     "backup_integrity_failed": {
       "title": "La copia de seguridad está dañada o no se puede leer",
       "description": "La comprobación completa de integridad de la copia de seguridad en {location} falló a las {checked}. Crea y verifica una copia nueva antes de confiar en la copia afectada."
+    }
+  },
+  "exceptions": {
+    "notification_failed": {
+      "message": "No se pudo enviar la notificación de prueba. Comprueba el dispositivo móvil seleccionado y el registro de BackupCheckup."
     }
   }
 }

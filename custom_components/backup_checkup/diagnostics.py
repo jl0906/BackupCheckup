@@ -8,7 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import __version__ as home_assistant_version
 from homeassistant.core import HomeAssistant
 
-from .const import VERSION
+from .const import CONF_NOTIFICATION_TARGETS, VERSION
 from .coordinator import BackupCheckupCoordinator
 from .models import BackupRecord
 
@@ -21,6 +21,9 @@ async def async_get_config_entry_diagnostics(
     coordinator: BackupCheckupCoordinator = entry.runtime_data
     data = coordinator.data
 
+    configuration = {**entry.data, **entry.options}
+    notification_targets = configuration.pop(CONF_NOTIFICATION_TARGETS, [])
+
     return {
         "integration": {
             "version": VERSION,
@@ -29,8 +32,14 @@ async def async_get_config_entry_diagnostics(
             "title": entry.title,
         },
         "configuration": {
-            **entry.data,
-            **entry.options,
+            **configuration,
+            "notification_target_count": len(notification_targets or []),
+        },
+        "notifications": {
+            "enabled": coordinator.notifications_enabled,
+            "target_count": len(coordinator.notification_targets),
+            "notify_on_recovery": coordinator.notify_on_recovery,
+            "last_error": coordinator.notification_manager.last_error,
         },
         "coordinator": {
             "last_update_success": coordinator.last_update_success,

@@ -20,5 +20,7 @@ entities:
     name: Problem detected
   - entity: button.backup_checkup_verify_latest_backup
     name: Verify latest backup
+  - entity: button.backup_checkup_test_notification
+    name: Send test notification
   - entity: button.backup_checkup_refresh
     name: Refresh backup data

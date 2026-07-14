@@ -4,12 +4,20 @@
     "step": {
       "user": {
         "title": "Configurer BackupCheckup",
-        "description": "Choisissez un profil de surveillance prêt à l’emploi. Vous pourrez le modifier plus tard dans les options de l’intégration.",
+        "description": "Choisissez un profil de surveillance, un mode d’entités indépendant et éventuellement des appareils Home Assistant Companion App pour les notifications. Tout peut être modifié ensuite dans les options de l’intégration.",
         "data": {
-          "monitoring_profile": "Profil de surveillance"
+          "monitoring_profile": "Profil de surveillance",
+          "entity_mode": "Mode des entités",
+          "notifications_enabled": "Activer les notifications mobiles",
+          "notification_targets": "Appareils mobiles à notifier",
+          "notify_on_recovery": "Notifier lorsque les problèmes sont résolus"
         },
         "data_description": {
-          "monitoring_profile": "Standard est simple et convient à la plupart des installations. Sécurisé exige un second emplacement de stockage. Personnalisé affiche tous les paramètres."
+          "monitoring_profile": "Standard est simple et convient à la plupart des installations. Sécurisé exige un second emplacement de stockage. Personnalisé affiche tous les paramètres.",
+          "entity_mode": "Choisissez indépendamment du profil de surveillance combien d’entités BackupCheckup seront activées après la configuration. Standard active les principales entités de surveillance et de problème. Expert active également toutes les entités d’analyse, de diagnostic, d’intégrité, de planification et d’emplacement de stockage.",
+          "notifications_enabled": "Envoie une notification mobile lorsque les problèmes de sauvegarde actifs changent. Les contrôles répétés ne créent pas de doublons.",
+          "notification_targets": "Seules les entités de notification créées par l’application Home Assistant Companion sont affichées. Vous pouvez sélectionner un ou plusieurs téléphones ou tablettes.",
+          "notify_on_recovery": "Envoie une notification finale lorsque tous les problèmes de sauvegarde précédemment signalés sont résolus."
         }
       },
       "advanced": {
@@ -45,16 +53,27 @@
       "single_instance_allowed": "Une seule instance de BackupCheckup est autorisée."
     },
     "error": {
-      "fixed_size_required": "Avec une taille minimale fixe, saisissez une valeur supérieure à 0 Mo."
+      "fixed_size_required": "Avec une taille minimale fixe, saisissez une valeur supérieure à 0 Mo.",
+      "notification_target_required": "Sélectionnez au moins un appareil mobile lorsque les notifications mobiles sont activées."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Options de BackupCheckup",
-        "description": "Choisissez un profil de surveillance. Personnalisé ouvre tous les paramètres individuels.",
+        "description": "Choisissez un profil de surveillance, un mode d’entités indépendant et des cibles de notification Companion App facultatives. Personnalisé ouvre tous les paramètres de surveillance.",
         "data": {
-          "monitoring_profile": "Profil de surveillance"
+          "monitoring_profile": "Profil de surveillance",
+          "entity_mode": "Mode des entités",
+          "notifications_enabled": "Activer les notifications mobiles",
+          "notification_targets": "Appareils mobiles à notifier",
+          "notify_on_recovery": "Notifier lorsque les problèmes sont résolus"
+        },
+        "data_description": {
+          "entity_mode": "Choisissez indépendamment du profil de surveillance combien d’entités BackupCheckup seront activées après la configuration. Standard active les principales entités de surveillance et de problème. Expert active également toutes les entités d’analyse, de diagnostic, d’intégrité, de planification et d’emplacement de stockage.",
+          "notifications_enabled": "Envoie une notification mobile lorsque les problèmes de sauvegarde actifs changent. Les contrôles répétés ne créent pas de doublons.",
+          "notification_targets": "Seules les entités de notification créées par l’application Home Assistant Companion sont affichées. Vous pouvez sélectionner un ou plusieurs téléphones ou tablettes.",
+          "notify_on_recovery": "Envoie une notification finale lorsque tous les problèmes de sauvegarde précédemment signalés sont résolus."
         }
       },
       "advanced": {
@@ -87,7 +106,8 @@
       }
     },
     "error": {
-      "fixed_size_required": "Avec une taille minimale fixe, saisissez une valeur supérieure à 0 Mo."
+      "fixed_size_required": "Avec une taille minimale fixe, saisissez une valeur supérieure à 0 Mo.",
+      "notification_target_required": "Sélectionnez au moins un appareil mobile lorsque les notifications mobiles sont activées."
     }
   },
   "entity": {
@@ -321,6 +341,9 @@
       },
       "verify_latest_backup": {
         "name": "Vérifier entièrement la dernière sauvegarde"
+      },
+      "test_notification": {
+        "name": "Envoyer une notification de test"
       }
     }
   },
@@ -337,6 +360,12 @@
         "automatic": "Comparaison automatique",
         "fixed": "Taille minimale fixe",
         "disabled": "Désactivé"
+      }
+    },
+    "entity_mode": {
+      "options": {
+        "standard": "Mode standard",
+        "expert": "Mode expert"
       }
     }
   },
@@ -388,6 +417,11 @@
     "backup_integrity_failed": {
       "title": "La sauvegarde est corrompue ou illisible",
       "description": "La vérification complète de l’intégrité de la copie de sauvegarde sur {location} a échoué à {checked}. Créez et vérifiez une nouvelle sauvegarde avant de compter sur la copie concernée."
+    }
+  },
+  "exceptions": {
+    "notification_failed": {
+      "message": "La notification de test n'a pas pu être envoyée. Vérifiez l'appareil mobile sélectionné et le journal BackupCheckup."
     }
   }
 }

@@ -4,12 +4,20 @@
     "step": {
       "user": {
         "title": "Konfigurera BackupCheckup",
-        "description": "Välj en färdig övervakningsprofil. Du kan ändra den senare i integrationens alternativ.",
+        "description": "Välj en övervakningsprofil, ett oberoende entitetsläge och valfria Home Assistant Companion App-enheter för aviseringar. Allt kan ändras senare i integrationsalternativen.",
         "data": {
-          "monitoring_profile": "Övervakningsprofil"
+          "monitoring_profile": "Övervakningsprofil",
+          "entity_mode": "Entitetsläge",
+          "notifications_enabled": "Aktivera mobilaviseringar",
+          "notification_targets": "Mobila enheter som ska aviseras",
+          "notify_on_recovery": "Avisera när problem har lösts"
         },
         "data_description": {
-          "monitoring_profile": "Standard är enkel och passar de flesta installationer. Säker kräver en andra lagringsplats. Anpassad visar alla inställningar."
+          "monitoring_profile": "Standard är enkel och passar de flesta installationer. Säker kräver en andra lagringsplats. Anpassad visar alla inställningar.",
+          "entity_mode": "Välj oberoende av övervakningsprofilen hur många BackupCheckup-entiteter som ska aktiveras efter installationen. Standard aktiverar de viktigaste övervaknings- och problementiteterna. Expert aktiverar även alla analys-, diagnostik-, integritets-, schema- och lagringsplatsentiteter.",
+          "notifications_enabled": "Skickar en mobilavisering när de aktiva säkerhetskopieringsproblemen ändras. Upprepade kontroller skickar inte dubbletter.",
+          "notification_targets": "Endast aviseringsentiteter från Home Assistant Companion App visas. Du kan välja en eller flera telefoner eller surfplattor.",
+          "notify_on_recovery": "Skickar en slutlig avisering när alla tidigare rapporterade säkerhetskopieringsproblem har lösts."
         }
       },
       "advanced": {
@@ -45,16 +53,27 @@
       "single_instance_allowed": "Endast en instans av BackupCheckup är tillåten."
     },
     "error": {
-      "fixed_size_required": "Ange ett värde större än 0 MB när fast minsta storlek används."
+      "fixed_size_required": "Ange ett värde större än 0 MB när fast minsta storlek används.",
+      "notification_target_required": "Välj minst en mobil enhet när mobilaviseringar är aktiverade."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Alternativ för BackupCheckup",
-        "description": "Välj en övervakningsprofil. Anpassad öppnar alla enskilda inställningar.",
+        "description": "Välj en övervakningsprofil, ett oberoende entitetsläge och valfria Companion App-mål. Anpassad öppnar alla enskilda övervakningsinställningar.",
         "data": {
-          "monitoring_profile": "Övervakningsprofil"
+          "monitoring_profile": "Övervakningsprofil",
+          "entity_mode": "Entitetsläge",
+          "notifications_enabled": "Aktivera mobilaviseringar",
+          "notification_targets": "Mobila enheter som ska aviseras",
+          "notify_on_recovery": "Avisera när problem har lösts"
+        },
+        "data_description": {
+          "entity_mode": "Välj oberoende av övervakningsprofilen hur många BackupCheckup-entiteter som ska aktiveras efter installationen. Standard aktiverar de viktigaste övervaknings- och problementiteterna. Expert aktiverar även alla analys-, diagnostik-, integritets-, schema- och lagringsplatsentiteter.",
+          "notifications_enabled": "Skickar en mobilavisering när de aktiva säkerhetskopieringsproblemen ändras. Upprepade kontroller skickar inte dubbletter.",
+          "notification_targets": "Endast aviseringsentiteter från Home Assistant Companion App visas. Du kan välja en eller flera telefoner eller surfplattor.",
+          "notify_on_recovery": "Skickar en slutlig avisering när alla tidigare rapporterade säkerhetskopieringsproblem har lösts."
         }
       },
       "advanced": {
@@ -87,7 +106,8 @@
       }
     },
     "error": {
-      "fixed_size_required": "Ange ett värde större än 0 MB när fast minsta storlek används."
+      "fixed_size_required": "Ange ett värde större än 0 MB när fast minsta storlek används.",
+      "notification_target_required": "Välj minst en mobil enhet när mobilaviseringar är aktiverade."
     }
   },
   "entity": {
@@ -321,6 +341,9 @@
       },
       "verify_latest_backup": {
         "name": "Verifiera senaste säkerhetskopian fullständigt"
+      },
+      "test_notification": {
+        "name": "Skicka testavisering"
       }
     }
   },
@@ -337,6 +360,12 @@
         "automatic": "Automatisk jämförelse",
         "fixed": "Fast minimistorlek",
         "disabled": "Inaktiverad"
+      }
+    },
+    "entity_mode": {
+      "options": {
+        "standard": "Standardläge",
+        "expert": "Expertläge"
       }
     }
   },
@@ -388,6 +417,11 @@
     "backup_integrity_failed": {
       "title": "Säkerhetskopian är skadad eller oläsbar",
       "description": "Den fullständiga integritetskontrollen av säkerhetskopian på {location} misslyckades {checked}. Skapa och verifiera en ny säkerhetskopia innan du förlitar dig på den berörda kopian."
+    }
+  },
+  "exceptions": {
+    "notification_failed": {
+      "message": "Testaviseringen kunde inte skickas. Kontrollera den valda mobila enheten och BackupCheckup-loggen."
     }
   }
 }

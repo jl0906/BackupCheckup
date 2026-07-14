@@ -4,12 +4,20 @@
     "step": {
       "user": {
         "title": "Configura BackupCheckup",
-        "description": "Scegli un profilo di monitoraggio pronto all’uso. Potrai modificarlo in seguito nelle opzioni dell’integrazione.",
+        "description": "Scegli un profilo di monitoraggio, una modalità entità indipendente e, facoltativamente, i dispositivi Home Assistant Companion App per le notifiche. Tutto può essere modificato in seguito nelle opzioni dell’integrazione.",
         "data": {
-          "monitoring_profile": "Profilo di monitoraggio"
+          "monitoring_profile": "Profilo di monitoraggio",
+          "entity_mode": "Modalità entità",
+          "notifications_enabled": "Abilita notifiche mobili",
+          "notification_targets": "Dispositivi mobili da notificare",
+          "notify_on_recovery": "Notifica quando i problemi sono risolti"
         },
         "data_description": {
-          "monitoring_profile": "Standard è semplice e adatto alla maggior parte delle installazioni. Sicuro richiede una seconda posizione di archiviazione. Personalizzato mostra tutte le impostazioni."
+          "monitoring_profile": "Standard è semplice e adatto alla maggior parte delle installazioni. Sicuro richiede una seconda posizione di archiviazione. Personalizzato mostra tutte le impostazioni.",
+          "entity_mode": "Scegli indipendentemente dal profilo di monitoraggio quante entità BackupCheckup attivare dopo la configurazione. Standard attiva le entità di monitoraggio e problema più utili. Esperto attiva anche tutte le entità di analisi, diagnostica, integrità, pianificazione e posizione di archiviazione.",
+          "notifications_enabled": "Invia una notifica mobile quando cambiano i problemi di backup attivi. I controlli ripetuti non inviano notifiche duplicate.",
+          "notification_targets": "Vengono mostrate solo le entità di notifica create dalla Home Assistant Companion App. Puoi selezionare uno o più telefoni o tablet.",
+          "notify_on_recovery": "Invia una notifica finale quando tutti i problemi di backup segnalati in precedenza sono stati risolti."
         }
       },
       "advanced": {
@@ -45,16 +53,27 @@
       "single_instance_allowed": "È consentita una sola istanza di BackupCheckup."
     },
     "error": {
-      "fixed_size_required": "Con la dimensione minima fissa inserisci un valore superiore a 0 MB."
+      "fixed_size_required": "Con la dimensione minima fissa inserisci un valore superiore a 0 MB.",
+      "notification_target_required": "Seleziona almeno un dispositivo mobile quando le notifiche mobili sono abilitate."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Opzioni di BackupCheckup",
-        "description": "Scegli un profilo di monitoraggio. Selezionando Personalizzato si aprono tutte le impostazioni.",
+        "description": "Scegli un profilo di monitoraggio, una modalità entità indipendente e destinazioni di notifica Companion App opzionali. Personalizzato apre tutte le impostazioni di monitoraggio.",
         "data": {
-          "monitoring_profile": "Profilo di monitoraggio"
+          "monitoring_profile": "Profilo di monitoraggio",
+          "entity_mode": "Modalità entità",
+          "notifications_enabled": "Abilita notifiche mobili",
+          "notification_targets": "Dispositivi mobili da notificare",
+          "notify_on_recovery": "Notifica quando i problemi sono risolti"
+        },
+        "data_description": {
+          "entity_mode": "Scegli indipendentemente dal profilo di monitoraggio quante entità BackupCheckup attivare dopo la configurazione. Standard attiva le entità di monitoraggio e problema più utili. Esperto attiva anche tutte le entità di analisi, diagnostica, integrità, pianificazione e posizione di archiviazione.",
+          "notifications_enabled": "Invia una notifica mobile quando cambiano i problemi di backup attivi. I controlli ripetuti non inviano notifiche duplicate.",
+          "notification_targets": "Vengono mostrate solo le entità di notifica create dalla Home Assistant Companion App. Puoi selezionare uno o più telefoni o tablet.",
+          "notify_on_recovery": "Invia una notifica finale quando tutti i problemi di backup segnalati in precedenza sono stati risolti."
         }
       },
       "advanced": {
@@ -87,7 +106,8 @@
       }
     },
     "error": {
-      "fixed_size_required": "Con la dimensione minima fissa inserisci un valore superiore a 0 MB."
+      "fixed_size_required": "Con la dimensione minima fissa inserisci un valore superiore a 0 MB.",
+      "notification_target_required": "Seleziona almeno un dispositivo mobile quando le notifiche mobili sono abilitate."
     }
   },
   "entity": {
@@ -321,6 +341,9 @@
       },
       "verify_latest_backup": {
         "name": "Verifica completamente il backup più recente"
+      },
+      "test_notification": {
+        "name": "Invia notifica di prova"
       }
     }
   },
@@ -337,6 +360,12 @@
         "automatic": "Confronto automatico",
         "fixed": "Dimensione minima fissa",
         "disabled": "Disattivato"
+      }
+    },
+    "entity_mode": {
+      "options": {
+        "standard": "Modalità standard",
+        "expert": "Modalità esperto"
       }
     }
   },
@@ -388,6 +417,11 @@
     "backup_integrity_failed": {
       "title": "Il backup è danneggiato o illeggibile",
       "description": "Il controllo completo di integrità della copia di backup su {location} non è riuscito alle {checked}. Crea e verifica un nuovo backup prima di fare affidamento sulla copia interessata."
+    }
+  },
+  "exceptions": {
+    "notification_failed": {
+      "message": "Non è stato possibile inviare la notifica di prova. Controlla il dispositivo mobile selezionato e il registro di BackupCheckup."
     }
   }
 }

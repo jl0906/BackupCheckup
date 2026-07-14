@@ -4,12 +4,20 @@
     "step": {
       "user": {
         "title": "BackupCheckup einrichten",
-        "description": "Wähle ein sofort nutzbares Überwachungsprofil. Du kannst es später in den Integrationsoptionen ändern.",
+        "description": "Wähle ein Überwachungsprofil, einen davon unabhängigen Entitätsmodus und optional Geräte der Home Assistant Companion App für Benachrichtigungen. Alles kann später in den Integrationsoptionen geändert werden.",
         "data": {
-          "monitoring_profile": "Überwachungsprofil"
+          "monitoring_profile": "Überwachungsprofil",
+          "entity_mode": "Entitätsmodus",
+          "notifications_enabled": "Mobile Benachrichtigungen aktivieren",
+          "notification_targets": "Zu benachrichtigende Mobilgeräte",
+          "notify_on_recovery": "Bei behobenen Problemen benachrichtigen"
         },
         "data_description": {
-          "monitoring_profile": "Standard ist einfach und für die meisten Installationen geeignet. Sicher erwartet einen zweiten Speicherort. Benutzerdefiniert zeigt alle Einstellungen."
+          "monitoring_profile": "Standard ist einfach und für die meisten Installationen geeignet. Sicher erwartet einen zweiten Speicherort. Benutzerdefiniert zeigt alle Einstellungen.",
+          "entity_mode": "Lege unabhängig vom Überwachungsprofil fest, wie viele BackupCheckup-Entitäten nach der Einrichtung aktiviert werden. Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert zusätzlich sämtliche Analyse-, Diagnose-, Integritäts-, Zeitplan- und Speicherortentitäten.",
+          "notifications_enabled": "Sendet eine mobile Benachrichtigung, wenn sich die aktiven Backup-Probleme ändern. Wiederholte Abfragen erzeugen keine doppelten Meldungen.",
+          "notification_targets": "Es werden nur Benachrichtigungsentitäten der Home Assistant Companion App angezeigt. Du kannst ein oder mehrere Smartphones oder Tablets auswählen.",
+          "notify_on_recovery": "Sendet eine abschließende Benachrichtigung, sobald alle zuvor gemeldeten Backup-Probleme behoben wurden."
         }
       },
       "advanced": {
@@ -45,16 +53,27 @@
       "single_instance_allowed": "Es kann nur eine BackupCheckup-Instanz eingerichtet werden."
     },
     "error": {
-      "fixed_size_required": "Gib bei der festen Mindestgröße einen Wert größer als 0 MB ein."
+      "fixed_size_required": "Gib bei der festen Mindestgröße einen Wert größer als 0 MB ein.",
+      "notification_target_required": "Wähle mindestens ein Mobilgerät aus, wenn mobile Benachrichtigungen aktiviert sind."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "BackupCheckup-Optionen",
-        "description": "Wähle ein Überwachungsprofil. Mit Benutzerdefiniert werden alle einzelnen Einstellungen geöffnet.",
+        "description": "Wähle ein Überwachungsprofil, einen davon unabhängigen Entitätsmodus und optionale Companion-App-Benachrichtigungsziele. Mit Benutzerdefiniert werden alle einzelnen Überwachungseinstellungen geöffnet.",
         "data": {
-          "monitoring_profile": "Überwachungsprofil"
+          "monitoring_profile": "Überwachungsprofil",
+          "entity_mode": "Entitätsmodus",
+          "notifications_enabled": "Mobile Benachrichtigungen aktivieren",
+          "notification_targets": "Zu benachrichtigende Mobilgeräte",
+          "notify_on_recovery": "Bei behobenen Problemen benachrichtigen"
+        },
+        "data_description": {
+          "entity_mode": "Lege unabhängig vom Überwachungsprofil fest, wie viele BackupCheckup-Entitäten nach der Einrichtung aktiviert werden. Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert zusätzlich sämtliche Analyse-, Diagnose-, Integritäts-, Zeitplan- und Speicherortentitäten.",
+          "notifications_enabled": "Sendet eine mobile Benachrichtigung, wenn sich die aktiven Backup-Probleme ändern. Wiederholte Abfragen erzeugen keine doppelten Meldungen.",
+          "notification_targets": "Es werden nur Benachrichtigungsentitäten der Home Assistant Companion App angezeigt. Du kannst ein oder mehrere Smartphones oder Tablets auswählen.",
+          "notify_on_recovery": "Sendet eine abschließende Benachrichtigung, sobald alle zuvor gemeldeten Backup-Probleme behoben wurden."
         }
       },
       "advanced": {
@@ -87,7 +106,8 @@
       }
     },
     "error": {
-      "fixed_size_required": "Gib bei der festen Mindestgröße einen Wert größer als 0 MB ein."
+      "fixed_size_required": "Gib bei der festen Mindestgröße einen Wert größer als 0 MB ein.",
+      "notification_target_required": "Wähle mindestens ein Mobilgerät aus, wenn mobile Benachrichtigungen aktiviert sind."
     }
   },
   "entity": {
@@ -321,6 +341,9 @@
       },
       "verify_latest_backup": {
         "name": "Neuestes Backup vollständig prüfen"
+      },
+      "test_notification": {
+        "name": "Testbenachrichtigung senden"
       }
     }
   },
@@ -337,6 +360,12 @@
         "automatic": "Automatischer Vergleich",
         "fixed": "Feste Mindestgröße",
         "disabled": "Deaktiviert"
+      }
+    },
+    "entity_mode": {
+      "options": {
+        "standard": "Standardmodus",
+        "expert": "Expertenmodus"
       }
     }
   },
@@ -388,6 +417,11 @@
     "backup_integrity_failed": {
       "title": "Backup ist beschädigt oder nicht lesbar",
       "description": "Die vollständige Integritätsprüfung der Backup-Kopie auf {location} ist am {checked} fehlgeschlagen. Erstelle ein neues Backup und prüfe es, bevor du dich auf die betroffene Kopie verlässt."
+    }
+  },
+  "exceptions": {
+    "notification_failed": {
+      "message": "Die Testbenachrichtigung konnte nicht gesendet werden. Prüfe das ausgewählte Mobilgerät und das BackupCheckup-Protokoll."
     }
   }
 }

@@ -57,7 +57,7 @@ It is removed when the BackupCheckup config entry is deleted.
 
 ## Why are fewer entities enabled on a new installation?
 
-Version 2.0 presents a compact everyday set. Detailed analytics, schedule,
+Version 2.1 presents a compact everyday set. Detailed analytics, schedule,
 per-storage, checksum, database, and troubleshooting entities remain available but
 are disabled by default. Existing installations are not forcibly changed.
 
@@ -79,3 +79,21 @@ continue to work.
 
 Home Assistant does not expose a complete historical attempt list. BackupCheckup
 records outcomes locally from version 1.5.0 onward and does not invent earlier data.
+
+
+## How are mobile notification targets selected?
+
+The options flow lists only enabled `notify` entities provided by Home Assistant's
+`mobile_app` integration. This normally corresponds to phones and tablets registered
+through the official Companion App.
+
+## Why did I receive only one notification?
+
+BackupCheckup intentionally deduplicates alerts. The same unchanged problem is not
+resent at every polling interval. A new message is sent when the active problem set
+changes, and an optional recovery message is sent after all problems are resolved.
+
+## Where is the full troubleshooting guide?
+
+See [`docs/troubleshooting.md`](troubleshooting.md) for installation, notification,
+size-unit, integrity, storage, diagnostics, and rollback guidance.

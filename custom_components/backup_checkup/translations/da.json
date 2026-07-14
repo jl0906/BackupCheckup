@@ -4,12 +4,20 @@
     "step": {
       "user": {
         "title": "Konfigurer BackupCheckup",
-        "description": "Vælg en klar-til-brug overvågningsprofil. Du kan ændre den senere i integrationens indstillinger.",
+        "description": "Vælg en overvågningsprofil, en uafhængig enhedstilstand og eventuelt Home Assistant Companion App-enheder til notifikationer. Alt kan senere ændres i integrationsindstillingerne.",
         "data": {
-          "monitoring_profile": "Overvågningsprofil"
+          "monitoring_profile": "Overvågningsprofil",
+          "entity_mode": "Enhedstilstand",
+          "notifications_enabled": "Aktivér mobilnotifikationer",
+          "notification_targets": "Mobile enheder der skal underrettes",
+          "notify_on_recovery": "Underret når problemer er løst"
         },
         "data_description": {
-          "monitoring_profile": "Standard er enkel og egnet til de fleste installationer. Sikker kræver en ekstra lagerplacering. Brugerdefineret viser alle indstillinger."
+          "monitoring_profile": "Standard er enkel og egnet til de fleste installationer. Sikker kræver en ekstra lagerplacering. Brugerdefineret viser alle indstillinger.",
+          "entity_mode": "Vælg uafhængigt af overvågningsprofilen, hvor mange BackupCheckup-enheder der aktiveres efter opsætningen. Standard aktiverer de vigtigste overvågnings- og problemenheder. Ekspert aktiverer også alle analyse-, diagnose-, integritets-, tidsplan- og lagerplaceringsenheder.",
+          "notifications_enabled": "Sender en mobilnotifikation, når de aktive sikkerhedskopieringsproblemer ændrer sig. Gentagne kontroller sender ikke dubletter.",
+          "notification_targets": "Kun notifikationsentiteter fra Home Assistant Companion App vises. Du kan vælge en eller flere telefoner eller tablets.",
+          "notify_on_recovery": "Sender en afsluttende notifikation, når alle tidligere rapporterede sikkerhedskopieringsproblemer er løst."
         }
       },
       "advanced": {
@@ -45,16 +53,27 @@
       "single_instance_allowed": "Der må kun være én BackupCheckup-instans."
     },
     "error": {
-      "fixed_size_required": "Angiv en værdi større end 0 MB ved fast minimumsstørrelse."
+      "fixed_size_required": "Angiv en værdi større end 0 MB ved fast minimumsstørrelse.",
+      "notification_target_required": "Vælg mindst én mobil enhed, når mobilnotifikationer er aktiveret."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Indstillinger for BackupCheckup",
-        "description": "Vælg en overvågningsprofil. Brugerdefineret åbner alle individuelle indstillinger.",
+        "description": "Vælg en overvågningsprofil, en uafhængig enhedstilstand og valgfrie Companion App-notifikationsmål. Brugerdefineret åbner alle overvågningsindstillinger.",
         "data": {
-          "monitoring_profile": "Overvågningsprofil"
+          "monitoring_profile": "Overvågningsprofil",
+          "entity_mode": "Enhedstilstand",
+          "notifications_enabled": "Aktivér mobilnotifikationer",
+          "notification_targets": "Mobile enheder der skal underrettes",
+          "notify_on_recovery": "Underret når problemer er løst"
+        },
+        "data_description": {
+          "entity_mode": "Vælg uafhængigt af overvågningsprofilen, hvor mange BackupCheckup-enheder der aktiveres efter opsætningen. Standard aktiverer de vigtigste overvågnings- og problemenheder. Ekspert aktiverer også alle analyse-, diagnose-, integritets-, tidsplan- og lagerplaceringsenheder.",
+          "notifications_enabled": "Sender en mobilnotifikation, når de aktive sikkerhedskopieringsproblemer ændrer sig. Gentagne kontroller sender ikke dubletter.",
+          "notification_targets": "Kun notifikationsentiteter fra Home Assistant Companion App vises. Du kan vælge en eller flere telefoner eller tablets.",
+          "notify_on_recovery": "Sender en afsluttende notifikation, når alle tidligere rapporterede sikkerhedskopieringsproblemer er løst."
         }
       },
       "advanced": {
@@ -87,7 +106,8 @@
       }
     },
     "error": {
-      "fixed_size_required": "Angiv en værdi større end 0 MB ved fast minimumsstørrelse."
+      "fixed_size_required": "Angiv en værdi større end 0 MB ved fast minimumsstørrelse.",
+      "notification_target_required": "Vælg mindst én mobil enhed, når mobilnotifikationer er aktiveret."
     }
   },
   "entity": {
@@ -321,6 +341,9 @@
       },
       "verify_latest_backup": {
         "name": "Kontrollér den nyeste sikkerhedskopi fuldstændigt"
+      },
+      "test_notification": {
+        "name": "Send testnotifikation"
       }
     }
   },
@@ -337,6 +360,12 @@
         "automatic": "Automatisk sammenligning",
         "fixed": "Fast minimumsstørrelse",
         "disabled": "Deaktiveret"
+      }
+    },
+    "entity_mode": {
+      "options": {
+        "standard": "Standardtilstand",
+        "expert": "Eksperttilstand"
       }
     }
   },
@@ -388,6 +417,11 @@
     "backup_integrity_failed": {
       "title": "Sikkerhedskopien er beskadiget eller ulæselig",
       "description": "Den fulde integritetskontrol af sikkerhedskopien på {location} mislykkedes {checked}. Opret og kontrollér en ny sikkerhedskopi, før du stoler på den berørte kopi."
+    }
+  },
+  "exceptions": {
+    "notification_failed": {
+      "message": "Testnotifikationen kunne ikke sendes. Kontrollér den valgte mobilenhed og BackupCheckup-loggen."
     }
   }
 }

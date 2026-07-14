@@ -4,7 +4,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "backup_checkup"
 NAME = "BackupCheckup"
-VERSION = "2.0.0"
+VERSION = "2.1.0"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -13,7 +13,7 @@ PLATFORMS: tuple[Platform, ...] = (
 )
 
 DOCUMENTATION_URL = "https://github.com/jl0906/BackupCheckup"
-TROUBLESHOOTING_URL = f"{DOCUMENTATION_URL}#troubleshooting"
+TROUBLESHOOTING_URL = f"{DOCUMENTATION_URL}/blob/main/docs/troubleshooting.md"
 
 CONF_MAX_AGE_DAYS = "max_age_days"
 CONF_UPDATE_INTERVAL_MINUTES = "update_interval_minutes"
@@ -26,6 +26,10 @@ CONF_REPAIR_ISSUES_ENABLED = "repair_issues_enabled"
 CONF_ANALYTICS_WINDOW_DAYS = "analytics_window_days"
 CONF_AUTO_VERIFY_NEW_BACKUPS = "auto_verify_new_backups"
 CONF_DATABASE_INTEGRITY_CHECK = "database_integrity_check"
+CONF_NOTIFICATIONS_ENABLED = "notifications_enabled"
+CONF_NOTIFICATION_TARGETS = "notification_targets"
+CONF_NOTIFY_ON_RECOVERY = "notify_on_recovery"
+CONF_ENTITY_MODE = "entity_mode"
 
 PROFILE_STANDARD = "standard"
 PROFILE_SECURE = "secure"
@@ -43,6 +47,14 @@ DEFAULT_REPAIR_ISSUES_ENABLED = True
 DEFAULT_ANALYTICS_WINDOW_DAYS = 30
 DEFAULT_AUTO_VERIFY_NEW_BACKUPS = False
 DEFAULT_DATABASE_INTEGRITY_CHECK = False
+DEFAULT_NOTIFICATIONS_ENABLED = False
+DEFAULT_NOTIFICATION_TARGETS: list[str] = []
+DEFAULT_NOTIFY_ON_RECOVERY = True
+
+ENTITY_MODE_STANDARD = "standard"
+ENTITY_MODE_EXPERT = "expert"
+ENTITY_MODE_OPTIONS = [ENTITY_MODE_STANDARD, ENTITY_MODE_EXPERT]
+DEFAULT_ENTITY_MODE = ENTITY_MODE_STANDARD
 
 DEFAULT_MAX_AGE_DAYS = 4
 DEFAULT_UPDATE_INTERVAL_MINUTES = 5

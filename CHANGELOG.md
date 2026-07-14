@@ -1,5 +1,35 @@
 # Changelog
 
+## 2.1.0
+
+### Added
+- Independent **Standard mode** and **Expert mode** entity presets in the initial setup and options flow.
+- Standard mode enables the main monitoring, analytics, integrity, and global problem entities; Expert mode enables every BackupCheckup entity.
+- Optional built-in mobile notifications for active backup problems.
+- Guided selection of one or more Home Assistant Companion App notify entities, filtered to mobile-app devices only.
+- Optional recovery notification after all previously reported backup problems are resolved.
+- A **Send test notification** button for validating the selected mobile devices.
+- Persistent notification deduplication so regular polling does not repeatedly send the same warning.
+- A dedicated and expanded troubleshooting guide under `docs/troubleshooting.md`.
+
+### Changed
+- Expanded the default Standard entity set so the most useful entities are available without manually enabling almost every entity.
+- Added entity-registry preset application when the entity mode is changed while preserving entities explicitly disabled by the user.
+- Changed the newest-backup and newest-automatic-backup size sensors from bytes to megabytes with two decimal places.
+- Added automatic entity-registry unit migration for existing installations of both size sensors.
+- Updated diagnostics with sanitized notification configuration and the latest notification error without exposing selected entity IDs.
+- Moved troubleshooting content out of the README and linked Repair issues directly to the dedicated guide.
+- Updated integration, manifest, device, README, documentation, and config-entry metadata to 2.1.0.
+
+### Fixed
+- Repaired enum translation metadata for the backup integrity status so states such as `valid` are localized in normal Home Assistant entity views.
+- Ensured enum translation metadata is migrated for all existing BackupCheckup enum sensors.
+
+### Notes
+- Developer Tools intentionally continues to show stable raw enum states such as `valid`; normal cards and device views use translated states.
+- Mobile notifications are disabled by default and require the Home Assistant Companion App to expose an enabled `notify` entity.
+- Notifications are sent only when the active problem set changes, not at every coordinator refresh.
+
 ## 2.0.0
 
 ### Added

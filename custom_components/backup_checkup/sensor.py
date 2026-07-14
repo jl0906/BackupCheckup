@@ -39,6 +39,7 @@ from .const import (
 )
 from .coordinator import BackupCheckupCoordinator
 from .entity import BackupCheckupAgentEntity, BackupCheckupEntity
+from .entity_mode import entity_enabled_by_default
 from .models import BackupAgentSummary, BackupCheckupData
 
 
@@ -392,10 +393,16 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         translation_key="latest_backup_size",
         icon="mdi:database",
         device_class=SensorDeviceClass.DATA_SIZE,
-        native_unit_of_measurement=UnitOfInformation.BYTES,
+        native_unit_of_measurement=UnitOfInformation.MEGABYTES,
+        suggested_display_precision=2,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda data: data.latest_backup_size,
+        value_fn=lambda data: (
+            round(data.latest_backup_size / 1_000_000, 2)
+            if data.latest_backup_size is not None
+            else None
+        ),
         attributes_fn=lambda data: {
+            "size_bytes": data.latest_backup_size,
             "size_check_mode": data.size_check_mode,
             "minimum_backup_size_bytes": data.minimum_backup_size_bytes,
             "size_change_percent": data.latest_backup_size_change_percent,
@@ -408,9 +415,17 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         entity_registry_enabled_default=False,
         icon="mdi:database-clock",
         device_class=SensorDeviceClass.DATA_SIZE,
-        native_unit_of_measurement=UnitOfInformation.BYTES,
+        native_unit_of_measurement=UnitOfInformation.MEGABYTES,
+        suggested_display_precision=2,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda data: data.latest_automatic_backup_size,
+        value_fn=lambda data: (
+            round(data.latest_automatic_backup_size / 1_000_000, 2)
+            if data.latest_automatic_backup_size is not None
+            else None
+        ),
+        attributes_fn=lambda data: {
+            "size_bytes": data.latest_automatic_backup_size,
+        },
     ),
     BackupCheckupSensorDescription(
         key="latest_backup_size_change",
@@ -490,24 +505,56 @@ AGENT_METRICS: tuple[str, ...] = (
 )
 
 
-def _migrate_average_backup_size_unit(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Ensure the existing average-size sensor is displayed in megabytes."""
+ENUM_SENSOR_KEYS = frozenset(
+    {
+        "integrity_status",
+        "database_integrity_status",
+        "health_rating",
+        "size_trend",
+        "status",
+        "recommendation",
+        "latest_backup_result",
+    }
+)
+
+
+def _migrate_enum_translation_keys(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Repair missing enum translation metadata on existing entities."""
     registry = er.async_get(hass)
-    unique_id = f"{entry.entry_id}_average_backup_size"
-    entity_id = registry.async_get_entity_id("sensor", DOMAIN, unique_id)
-    if entity_id is None:
-        return
+    for key in ENUM_SENSOR_KEYS:
+        unique_id = f"{entry.entry_id}_{key}"
+        entity_id = registry.async_get_entity_id("sensor", DOMAIN, unique_id)
+        if entity_id is None:
+            continue
+        registry_entry = registry.async_get(entity_id)
+        if registry_entry is None or registry_entry.translation_key == key:
+            continue
+        registry.async_update_entity(entity_id, translation_key=key)
 
-    registry_entry = registry.async_get(entity_id)
-    if registry_entry is None:
-        return
 
-    sensor_options = dict(registry_entry.options.get("sensor", {}))
-    if sensor_options.get(CONF_UNIT_OF_MEASUREMENT) == UnitOfInformation.MEGABYTES:
-        return
+def _migrate_size_sensor_units(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Ensure existing backup-size sensors are displayed in megabytes."""
+    registry = er.async_get(hass)
+    for key in (
+        "average_backup_size",
+        "latest_backup_size",
+        "latest_automatic_backup_size",
+    ):
+        unique_id = f"{entry.entry_id}_{key}"
+        entity_id = registry.async_get_entity_id("sensor", DOMAIN, unique_id)
+        if entity_id is None:
+            continue
 
-    sensor_options[CONF_UNIT_OF_MEASUREMENT] = UnitOfInformation.MEGABYTES
-    registry.async_update_entity_options(entity_id, "sensor", sensor_options)
+        registry_entry = registry.async_get(entity_id)
+        if registry_entry is None:
+            continue
+
+        sensor_options = dict(registry_entry.options.get("sensor", {}))
+        if sensor_options.get(CONF_UNIT_OF_MEASUREMENT) == UnitOfInformation.MEGABYTES:
+            continue
+
+        sensor_options[CONF_UNIT_OF_MEASUREMENT] = UnitOfInformation.MEGABYTES
+        registry.async_update_entity_options(entity_id, "sensor", sensor_options)
 
 
 async def async_setup_entry(
@@ -517,7 +564,8 @@ async def async_setup_entry(
 ) -> None:
     """Set up BackupCheckup sensors."""
     coordinator: BackupCheckupCoordinator = entry.runtime_data
-    _migrate_average_backup_size_unit(hass, entry)
+    _migrate_enum_translation_keys(hass, entry)
+    _migrate_size_sensor_units(hass, entry)
     entities: list[SensorEntity] = [
         BackupCheckupSensor(coordinator, entry, description) for description in SENSORS
     ]
@@ -559,12 +607,17 @@ class BackupCheckupSensor(BackupCheckupEntity, SensorEntity):
         description: BackupCheckupSensorDescription,
     ) -> None:
         """Initialize a BackupCheckup sensor."""
-        super().__init__(coordinator, entry)
         self.entity_description = description
         self._attr_translation_key = description.translation_key
+        self._attr_entity_registry_enabled_default = entity_enabled_by_default(
+            "sensor",
+            description.key,
+            coordinator.entity_mode,
+        )
         if description.device_class is SensorDeviceClass.ENUM:
             self._attr_device_class = SensorDeviceClass.ENUM
             self._attr_options = list(description.options or [])
+        super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
         self.entity_id = f"sensor.backup_checkup_{description.key}"
 
@@ -600,7 +653,12 @@ class BackupCheckupAgentSensor(BackupCheckupAgentEntity, SensorEntity):
         self._attr_translation_key = f"agent_{metric}"
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
-        self._attr_entity_registry_enabled_default = False
+        self._attr_entity_registry_enabled_default = entity_enabled_by_default(
+            "sensor",
+            metric,
+            coordinator.entity_mode,
+            agent_entity=True,
+        )
 
         if metric == "latest_backup":
             self._attr_device_class = SensorDeviceClass.TIMESTAMP

@@ -8,31 +8,41 @@ from homeassistant.core import HomeAssistant
 from .const import (
     CONF_AUTO_VERIFY_NEW_BACKUPS,
     CONF_DATABASE_INTEGRITY_CHECK,
+    CONF_ENTITY_MODE,
     CONF_MAXIMUM_SIZE_DROP_PERCENT,
     CONF_MINIMUM_BACKUP_SIZE_MB,
     CONF_MINIMUM_REDUNDANT_LOCATIONS,
     CONF_MONITORING_PROFILE,
+    CONF_NOTIFICATION_TARGETS,
+    CONF_NOTIFICATIONS_ENABLED,
+    CONF_NOTIFY_ON_RECOVERY,
     CONF_REPAIR_ISSUES_ENABLED,
     CONF_SIZE_CHECK_MODE,
     DEFAULT_AUTO_VERIFY_NEW_BACKUPS,
     DEFAULT_DATABASE_INTEGRITY_CHECK,
+    DEFAULT_ENTITY_MODE,
     DEFAULT_MAXIMUM_SIZE_DROP_PERCENT,
     DEFAULT_MINIMUM_BACKUP_SIZE_MB,
     DEFAULT_MINIMUM_REDUNDANT_LOCATIONS,
+    DEFAULT_NOTIFICATION_TARGETS,
+    DEFAULT_NOTIFICATIONS_ENABLED,
+    DEFAULT_NOTIFY_ON_RECOVERY,
     DEFAULT_REPAIR_ISSUES_ENABLED,
     DEFAULT_SIZE_CHECK_MODE,
     PLATFORMS,
     PROFILE_CUSTOM,
 )
 from .coordinator import BackupCheckupCoordinator
+from .entity_mode import async_apply_entity_mode
 from .history import BackupCheckupHistory
 from .integrity import BackupIntegrityStore
+from .notifications import BackupCheckupNotificationManager
 from .repairs import async_remove_issues, async_update_issues
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate older BackupCheckup configuration entries."""
-    if entry.version >= 3:
+    if entry.version >= 5:
         return True
 
     migrated_data = {
@@ -44,12 +54,22 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         CONF_REPAIR_ISSUES_ENABLED: DEFAULT_REPAIR_ISSUES_ENABLED,
         CONF_AUTO_VERIFY_NEW_BACKUPS: DEFAULT_AUTO_VERIFY_NEW_BACKUPS,
         CONF_DATABASE_INTEGRITY_CHECK: DEFAULT_DATABASE_INTEGRITY_CHECK,
+        CONF_ENTITY_MODE: DEFAULT_ENTITY_MODE,
+        CONF_NOTIFICATIONS_ENABLED: DEFAULT_NOTIFICATIONS_ENABLED,
+        CONF_NOTIFICATION_TARGETS: list(DEFAULT_NOTIFICATION_TARGETS),
+        CONF_NOTIFY_ON_RECOVERY: DEFAULT_NOTIFY_ON_RECOVERY,
         **dict(entry.data),
     }
+    async_apply_entity_mode(
+        hass,
+        entry,
+        DEFAULT_ENTITY_MODE,
+        disable_others=False,
+    )
     hass.config_entries.async_update_entry(
         entry,
         data=migrated_data,
-        version=3,
+        version=5,
     )
     return True
 
@@ -95,7 +115,9 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     if isinstance(coordinator, BackupCheckupCoordinator):
         await coordinator.history.async_remove()
         await coordinator.integrity_verifier.store.async_remove()
+        await coordinator.notification_manager.async_remove()
         return
     history = BackupCheckupHistory(hass, entry.entry_id)
     await history.async_remove()
     await BackupIntegrityStore(hass, entry.entry_id).async_remove()
+    await BackupCheckupNotificationManager(hass, entry.entry_id).async_remove()

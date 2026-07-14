@@ -6,8 +6,10 @@ from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .const import DOMAIN
 from .coordinator import BackupCheckupCoordinator
 from .entity import BackupCheckupEntity
 
@@ -23,6 +25,7 @@ async def async_setup_entry(
         [
             BackupCheckupVerifyButton(coordinator, entry),
             BackupCheckupRefreshButton(coordinator, entry),
+            BackupCheckupTestNotificationButton(coordinator, entry),
         ]
     )
 
@@ -76,3 +79,39 @@ class BackupCheckupRefreshButton(BackupCheckupEntity, ButtonEntity):
     async def async_press(self) -> None:
         """Refresh BackupCheckup data immediately."""
         await self.coordinator.async_request_refresh()
+
+
+class BackupCheckupTestNotificationButton(BackupCheckupEntity, ButtonEntity):
+    """Send a test message to configured mobile devices."""
+
+    _attr_translation_key = "test_notification"
+    _attr_icon = "mdi:cellphone-message"
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(
+        self,
+        coordinator: BackupCheckupCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        """Initialize the test-notification button."""
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{entry.entry_id}_test_notification"
+        self.entity_id = "button.backup_checkup_test_notification"
+
+    @property
+    def available(self) -> bool:
+        """Only allow testing when mobile notifications are configured."""
+        return bool(
+            self.coordinator.notifications_enabled
+            and self.coordinator.notification_targets
+        )
+
+    async def async_press(self) -> None:
+        """Send a localized test message."""
+        if not await self.coordinator.notification_manager.async_send_test(
+            self.coordinator.notification_targets
+        ):
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="notification_failed",
+            )

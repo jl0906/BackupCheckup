@@ -1,6 +1,6 @@
 # Backup integrity verification
 
-BackupCheckup 2.0 performs a non-destructive structural verification of the newest
+BackupCheckup 2.x performs a non-destructive structural verification of the newest
 Home Assistant backup.
 
 ## Verification process

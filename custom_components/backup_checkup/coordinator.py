@@ -27,10 +27,14 @@ from .const import (
     CONF_ANALYTICS_WINDOW_DAYS,
     CONF_AUTO_VERIFY_NEW_BACKUPS,
     CONF_DATABASE_INTEGRITY_CHECK,
+    CONF_ENTITY_MODE,
     CONF_MAX_AGE_DAYS,
     CONF_MAXIMUM_SIZE_DROP_PERCENT,
     CONF_MINIMUM_BACKUP_SIZE_MB,
     CONF_MINIMUM_REDUNDANT_LOCATIONS,
+    CONF_NOTIFICATION_TARGETS,
+    CONF_NOTIFICATIONS_ENABLED,
+    CONF_NOTIFY_ON_RECOVERY,
     CONF_REPAIR_ISSUES_ENABLED,
     CONF_SIZE_CHECK_MODE,
     CONF_UPDATE_INTERVAL_MINUTES,
@@ -41,10 +45,14 @@ from .const import (
     DEFAULT_ANALYTICS_WINDOW_DAYS,
     DEFAULT_AUTO_VERIFY_NEW_BACKUPS,
     DEFAULT_DATABASE_INTEGRITY_CHECK,
+    DEFAULT_ENTITY_MODE,
     DEFAULT_MAX_AGE_DAYS,
     DEFAULT_MAXIMUM_SIZE_DROP_PERCENT,
     DEFAULT_MINIMUM_BACKUP_SIZE_MB,
     DEFAULT_MINIMUM_REDUNDANT_LOCATIONS,
+    DEFAULT_NOTIFICATION_TARGETS,
+    DEFAULT_NOTIFICATIONS_ENABLED,
+    DEFAULT_NOTIFY_ON_RECOVERY,
     DEFAULT_REPAIR_ISSUES_ENABLED,
     DEFAULT_SIZE_CHECK_MODE,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
@@ -84,6 +92,7 @@ from .models import (
     BackupIntegrityResult,
     BackupRecord,
 )
+from .notifications import BackupCheckupNotificationManager
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -98,6 +107,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self.config_entry = entry
         options = {**entry.data, **entry.options}
 
+        self.entity_mode = str(options.get(CONF_ENTITY_MODE, DEFAULT_ENTITY_MODE))
         self.max_age_days = int(options.get(CONF_MAX_AGE_DAYS, DEFAULT_MAX_AGE_DAYS))
         self.minimum_backup_size_bytes = (
             int(
@@ -145,11 +155,37 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self.database_integrity_check = bool(
             options.get(
                 CONF_DATABASE_INTEGRITY_CHECK,
+                CONF_ENTITY_MODE,
                 DEFAULT_DATABASE_INTEGRITY_CHECK,
+                DEFAULT_ENTITY_MODE,
+            )
+        )
+        self.notifications_enabled = bool(
+            options.get(
+                CONF_NOTIFICATIONS_ENABLED,
+                DEFAULT_NOTIFICATIONS_ENABLED,
+            )
+        )
+        notification_targets = options.get(
+            CONF_NOTIFICATION_TARGETS,
+            DEFAULT_NOTIFICATION_TARGETS,
+        )
+        if isinstance(notification_targets, str):
+            notification_targets = [notification_targets]
+        self.notification_targets = tuple(
+            str(entity_id) for entity_id in notification_targets or []
+        )
+        self.notify_on_recovery = bool(
+            options.get(
+                CONF_NOTIFY_ON_RECOVERY,
+                DEFAULT_NOTIFY_ON_RECOVERY,
             )
         )
         self.history = BackupCheckupHistory(hass, entry.entry_id)
         self.integrity_verifier = BackupIntegrityVerifier(hass, entry.entry_id)
+        self.notification_manager = BackupCheckupNotificationManager(
+            hass, entry.entry_id
+        )
         self.integrity_result = BackupIntegrityResult.not_checked()
         self.integrity_check_running = False
         self._integrity_loaded = False
@@ -532,6 +568,18 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             integrity=self.integrity_result,
             integrity_check_running=self.integrity_check_running,
         )
+
+        try:
+            await self.notification_manager.async_process(
+                data,
+                enabled=self.notifications_enabled,
+                targets=self.notification_targets,
+                notify_on_recovery=self.notify_on_recovery,
+            )
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception(
+                "Unexpected error while processing BackupCheckup notifications"
+            )
 
         if (
             self.auto_verify_new_backups
