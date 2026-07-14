@@ -2,7 +2,7 @@
 
 BackupCheckup is a local Home Assistant custom integration that reads the **actual backup inventory** from Home Assistant's backup manager. It does not depend on a separate automation or helper and it detects when a backup file has subsequently been deleted.
 
-Version: **1.1.1**
+Version: **1.2.0**
 
 ## Features
 
@@ -14,6 +14,10 @@ Version: **1.1.1**
 - Configurable maximum backup age and polling interval.
 - English, German, Dutch, Polish, Swedish, Italian, French, Danish, and Spanish translations.
 - Belgian users are covered by the available Dutch, French, and German translations.
+- Checks the latest backup size against a configurable minimum and the previous comparable backup.
+- Detects partial backups with failed add-ons, folders, or storage agents.
+- Creates separate monitoring entities for every detected backup storage agent.
+- Checks whether the latest backup is stored on a configurable minimum number of locations.
 - No cloud connection and no external Python dependency.
 
 ## Installation with HACS
@@ -28,6 +32,10 @@ Version: **1.1.1**
 ## Manual installation
 
 Copy `custom_components/backup_checkup` into your Home Assistant `/config/custom_components/` directory, restart Home Assistant, and add BackupCheckup from **Settings → Devices & services**.
+
+## Health-check options
+
+The integration options allow you to configure the maximum backup age, polling interval, minimum backup size, maximum permitted size drop compared with the previous comparable backup, and the minimum number of storage locations required for redundancy. Set the minimum backup size to `0` to disable the absolute size threshold.
 
 ## Default entities
 
@@ -47,6 +55,13 @@ Copy `custom_components/backup_checkup` into your Home Assistant `/config/custom
 - `sensor.backup_checkup_last_successful_automatic_event`
 - `sensor.backup_checkup_next_automatic_backup`
 - `sensor.backup_checkup_backup_manager_state`
+- `sensor.backup_checkup_latest_backup_size`
+- `sensor.backup_checkup_latest_automatic_backup_size`
+- `sensor.backup_checkup_latest_backup_size_change`
+- `sensor.backup_checkup_latest_backup_result`
+- `sensor.backup_checkup_latest_backup_locations`
+
+For every detected storage agent, BackupCheckup also creates sensors for backup count, latest backup, latest backup age, latest backup size, and total stored backup size.
 
 ### Binary sensors
 
@@ -59,6 +74,12 @@ Copy `custom_components/backup_checkup` into your Home Assistant `/config/custom
 - `binary_sensor.backup_checkup_automatic_schedule_overdue`
 - `binary_sensor.backup_checkup_backup_manager_unavailable`
 - `binary_sensor.backup_checkup_storage_error`
+- `binary_sensor.backup_checkup_backup_size_suspicious`
+- `binary_sensor.backup_checkup_latest_backup_incomplete`
+- `binary_sensor.backup_checkup_backup_not_redundant`
+- `binary_sensor.backup_checkup_required_location_missing`
+
+A separate problem binary sensor is also created for every detected storage agent.
 
 The default automatic-backup rule is considered overdue when the latest automatic backup is older than the configured maximum age and no newer manual or other backup still exists. The integration also separately reports when the newest backup of any type is too old.
 

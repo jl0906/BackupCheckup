@@ -7,7 +7,10 @@
         "description": "Övervaka säkerhetskopiorna som faktiskt lagras av Home Assistant.",
         "data": {
           "max_age_days": "Maximal ålder för säkerhetskopia i dagar",
-          "update_interval_minutes": "Uppdateringsintervall i minuter"
+          "update_interval_minutes": "Uppdateringsintervall i minuter",
+          "minimum_backup_size_mb": "Minsta säkerhetskopieringsstorlek i MB",
+          "maximum_size_drop_percent": "Största tillåtna storleksminskning i procent",
+          "minimum_redundant_locations": "Minsta antal lagringsplatser"
         }
       }
     },
@@ -21,7 +24,10 @@
         "title": "Alternativ för BackupCheckup",
         "data": {
           "max_age_days": "Maximal ålder för säkerhetskopia i dagar",
-          "update_interval_minutes": "Uppdateringsintervall i minuter"
+          "update_interval_minutes": "Uppdateringsintervall i minuter",
+          "minimum_backup_size_mb": "Minsta säkerhetskopieringsstorlek i MB",
+          "maximum_size_drop_percent": "Största tillåtna storleksminskning i procent",
+          "minimum_redundant_locations": "Minsta antal lagringsplatser"
         }
       }
     }
@@ -39,7 +45,10 @@
           "schedule_missing": "Automatiskt schema saknas",
           "schedule_overdue": "Automatiskt schema är försenat",
           "manager_unavailable": "Hanteraren för säkerhetskopior är inte tillgänglig",
-          "storage_error": "Fel i lagringen av säkerhetskopior"
+          "storage_error": "Fel i lagringen av säkerhetskopior",
+          "backup_size_suspicious": "Misstänkt säkerhetskopieringsstorlek",
+          "backup_incomplete": "Ofullständig säkerhetskopia",
+          "backup_not_redundant": "Säkerhetskopian saknar redundans"
         }
       },
       "stored_backups": {
@@ -80,6 +89,26 @@
       },
       "last_successful_automatic_event": {
         "name": "Senaste lyckade händelsen för automatisk säkerhetskopiering"
+      },
+      "latest_backup_size": {
+        "name": "Senaste säkerhetskopians storlek"
+      },
+      "latest_automatic_backup_size": {
+        "name": "Senaste automatiska säkerhetskopians storlek"
+      },
+      "latest_backup_size_change": {
+        "name": "Storleksändring för senaste säkerhetskopian"
+      },
+      "latest_backup_result": {
+        "name": "Resultat för senaste säkerhetskopian",
+        "state": {
+          "complete": "Fullständig",
+          "partial": "Delvis",
+          "unknown": "Okänd"
+        }
+      },
+      "latest_backup_locations": {
+        "name": "Lagringsplatser för senaste säkerhetskopian"
       }
     },
     "binary_sensor": {
@@ -109,6 +138,18 @@
       },
       "storage_error": {
         "name": "Fel i lagringen av säkerhetskopior"
+      },
+      "backup_size_suspicious": {
+        "name": "Misstänkt säkerhetskopieringsstorlek"
+      },
+      "latest_backup_incomplete": {
+        "name": "Senaste säkerhetskopian ofullständig"
+      },
+      "backup_not_redundant": {
+        "name": "Säkerhetskopian saknar redundans"
+      },
+      "required_location_missing": {
+        "name": "Nödvändig lagringsplats saknas"
       }
     }
   }

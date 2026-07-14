@@ -7,7 +7,10 @@
         "description": "Overvåg de sikkerhedskopier, der faktisk er gemt af Home Assistant.",
         "data": {
           "max_age_days": "Maksimal alder for sikkerhedskopi i dage",
-          "update_interval_minutes": "Opdateringsinterval i minutter"
+          "update_interval_minutes": "Opdateringsinterval i minutter",
+          "minimum_backup_size_mb": "Mindste backupstørrelse i MB",
+          "maximum_size_drop_percent": "Maksimalt tilladt størrelsesfald i procent",
+          "minimum_redundant_locations": "Mindste antal backuplaceringer"
         }
       }
     },
@@ -21,7 +24,10 @@
         "title": "Indstillinger for BackupCheckup",
         "data": {
           "max_age_days": "Maksimal alder for sikkerhedskopi i dage",
-          "update_interval_minutes": "Opdateringsinterval i minutter"
+          "update_interval_minutes": "Opdateringsinterval i minutter",
+          "minimum_backup_size_mb": "Mindste backupstørrelse i MB",
+          "maximum_size_drop_percent": "Maksimalt tilladt størrelsesfald i procent",
+          "minimum_redundant_locations": "Mindste antal backuplaceringer"
         }
       }
     }
@@ -39,7 +45,10 @@
           "schedule_missing": "Automatisk tidsplan mangler",
           "schedule_overdue": "Automatisk tidsplan er forsinket",
           "manager_unavailable": "Sikkerhedskopieringsmanageren er ikke tilgængelig",
-          "storage_error": "Fejl i lageret til sikkerhedskopier"
+          "storage_error": "Fejl i lageret til sikkerhedskopier",
+          "backup_size_suspicious": "Mistænkelig backupstørrelse",
+          "backup_incomplete": "Ufuldstændig backup",
+          "backup_not_redundant": "Backup er ikke redundant"
         }
       },
       "stored_backups": {
@@ -80,6 +89,26 @@
       },
       "last_successful_automatic_event": {
         "name": "Seneste vellykkede automatiske sikkerhedskopieringshændelse"
+      },
+      "latest_backup_size": {
+        "name": "Seneste backupstørrelse"
+      },
+      "latest_automatic_backup_size": {
+        "name": "Seneste automatiske backupstørrelse"
+      },
+      "latest_backup_size_change": {
+        "name": "Størrelsesændring for seneste backup"
+      },
+      "latest_backup_result": {
+        "name": "Resultat for seneste backup",
+        "state": {
+          "complete": "Fuldstændig",
+          "partial": "Delvis",
+          "unknown": "Ukendt"
+        }
+      },
+      "latest_backup_locations": {
+        "name": "Placeringer for seneste backup"
       }
     },
     "binary_sensor": {
@@ -109,6 +138,18 @@
       },
       "storage_error": {
         "name": "Fejl i lageret til sikkerhedskopier"
+      },
+      "backup_size_suspicious": {
+        "name": "Mistænkelig backupstørrelse"
+      },
+      "latest_backup_incomplete": {
+        "name": "Seneste backup ufuldstændig"
+      },
+      "backup_not_redundant": {
+        "name": "Backup er ikke redundant"
+      },
+      "required_location_missing": {
+        "name": "Påkrævet backuplacering mangler"
       }
     }
   }

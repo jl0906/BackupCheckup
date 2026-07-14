@@ -13,14 +13,15 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfTime
+from homeassistant.const import PERCENTAGE, UnitOfInformation, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import slugify
 
-from .const import DOMAIN, STATUS_OPTIONS
+from .const import BACKUP_RESULT_OPTIONS, DOMAIN, STATUS_OPTIONS
 from .coordinator import BackupCheckupCoordinator
 from .entity import BackupCheckupEntity
-from .models import BackupCheckupData
+from .models import BackupAgentSummary, BackupCheckupData
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -55,6 +56,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
             "automatic_backups": data.automatic_backups,
             "manual_or_other_backups": data.manual_backups,
             "agent_errors": data.agent_errors,
+            "agents": [item.as_dict() for item in data.agent_summaries],
             "backups": [item.as_dict() for item in data.backups[:25]],
             "checked_at": data.checked_at.isoformat(),
         },
@@ -122,6 +124,58 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         value_fn=lambda data: data.manual_backup_age_days,
     ),
     BackupCheckupSensorDescription(
+        key="latest_backup_size",
+        translation_key="latest_backup_size",
+        icon="mdi:database",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.latest_backup_size,
+        attributes_fn=lambda data: {
+            "minimum_backup_size_bytes": data.minimum_backup_size_bytes,
+            "size_change_percent": data.latest_backup_size_change_percent,
+        },
+    ),
+    BackupCheckupSensorDescription(
+        key="latest_automatic_backup_size",
+        translation_key="latest_automatic_backup_size",
+        icon="mdi:database-clock",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.latest_automatic_backup_size,
+    ),
+    BackupCheckupSensorDescription(
+        key="latest_backup_size_change",
+        translation_key="latest_backup_size_change",
+        icon="mdi:percent",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.latest_backup_size_change_percent,
+    ),
+    BackupCheckupSensorDescription(
+        key="latest_backup_result",
+        translation_key="latest_backup_result",
+        icon="mdi:clipboard-check-outline",
+        device_class=SensorDeviceClass.ENUM,
+        options=BACKUP_RESULT_OPTIONS,
+        value_fn=lambda data: data.latest_backup_result,
+        attributes_fn=lambda data: (
+            data.backups[0].as_dict() if data.backups else {}
+        ),
+    ),
+    BackupCheckupSensorDescription(
+        key="latest_backup_locations",
+        translation_key="latest_backup_locations",
+        icon="mdi:server-network",
+        native_unit_of_measurement="locations",
+        value_fn=lambda data: data.latest_backup_locations,
+        attributes_fn=lambda data: {
+            "location_ids": list(data.latest_backup_location_ids),
+            "minimum_required": data.minimum_redundant_locations,
+        },
+    ),
+    BackupCheckupSensorDescription(
         key="last_automatic_attempt",
         translation_key="last_automatic_attempt",
         icon="mdi:backup-restore",
@@ -158,9 +212,43 @@ async def async_setup_entry(
 ) -> None:
     """Set up BackupCheckup sensors."""
     coordinator: BackupCheckupCoordinator = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities(
+    entities: list[SensorEntity] = [
         BackupCheckupSensor(coordinator, entry, description)
         for description in SENSORS
+    ]
+    known_agents = {summary.agent_id for summary in coordinator.data.agent_summaries}
+    for agent_id in sorted(known_agents):
+        entities.extend(_agent_sensor_entities(coordinator, entry, agent_id))
+    async_add_entities(entities)
+
+    def _add_new_agents() -> None:
+        current_agents = {summary.agent_id for summary in coordinator.data.agent_summaries}
+        new_agents = current_agents - known_agents
+        if not new_agents:
+            return
+        known_agents.update(new_agents)
+        async_add_entities(
+            entity
+            for agent_id in sorted(new_agents)
+            for entity in _agent_sensor_entities(coordinator, entry, agent_id)
+        )
+
+    entry.async_on_unload(coordinator.async_add_listener(_add_new_agents))
+
+
+def _agent_sensor_entities(
+    coordinator: BackupCheckupCoordinator, entry: ConfigEntry, agent_id: str
+) -> tuple[BackupCheckupAgentSensor, ...]:
+    """Create all sensors for one backup storage agent."""
+    return tuple(
+        BackupCheckupAgentSensor(coordinator, entry, agent_id, metric)
+        for metric in (
+            "backups",
+            "latest_backup",
+            "latest_backup_age",
+            "latest_backup_size",
+            "stored_bytes",
+        )
     )
 
 
@@ -192,3 +280,78 @@ class BackupCheckupSensor(BackupCheckupEntity, SensorEntity):
         if self.entity_description.attributes_fn is None:
             return None
         return self.entity_description.attributes_fn(self.coordinator.data)
+
+
+class BackupCheckupAgentSensor(BackupCheckupEntity, SensorEntity):
+    """A sensor for one Home Assistant backup storage agent."""
+
+    _attr_has_entity_name = False
+
+    def __init__(
+        self,
+        coordinator: BackupCheckupCoordinator,
+        entry: ConfigEntry,
+        agent_id: str,
+        metric: str,
+    ) -> None:
+        """Initialize an agent sensor."""
+        super().__init__(coordinator, entry)
+        self.agent_id = agent_id
+        self.metric = metric
+        agent_slug = slugify(agent_id)
+        self._attr_unique_id = f"{entry.entry_id}_agent_{agent_id}_{metric}"
+        self.entity_id = f"sensor.backup_checkup_{agent_slug}_{metric}"
+        labels = {
+            "backups": "backups",
+            "latest_backup": "latest backup",
+            "latest_backup_age": "latest backup age",
+            "latest_backup_size": "latest backup size",
+            "stored_bytes": "stored backup size",
+        }
+        self._attr_name = f"BackupCheckup {agent_id} {labels[metric]}"
+        if metric == "latest_backup":
+            self._attr_device_class = SensorDeviceClass.TIMESTAMP
+            self._attr_icon = "mdi:archive-clock"
+        elif metric == "latest_backup_age":
+            self._attr_device_class = SensorDeviceClass.DURATION
+            self._attr_native_unit_of_measurement = UnitOfTime.DAYS
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+            self._attr_icon = "mdi:timer-sand"
+        elif metric in {"latest_backup_size", "stored_bytes"}:
+            self._attr_device_class = SensorDeviceClass.DATA_SIZE
+            self._attr_native_unit_of_measurement = UnitOfInformation.BYTES
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+            self._attr_icon = "mdi:database"
+        else:
+            self._attr_native_unit_of_measurement = "backups"
+            self._attr_icon = "mdi:archive-multiple"
+
+    def _summary(self) -> BackupAgentSummary | None:
+        return next(
+            (
+                item
+                for item in self.coordinator.data.agent_summaries
+                if item.agent_id == self.agent_id
+            ),
+            None,
+        )
+
+    @property
+    def native_value(self) -> Any:
+        """Return the agent metric."""
+        summary = self._summary()
+        if summary is None:
+            return None
+        return {
+            "backups": summary.backup_count,
+            "latest_backup": summary.latest_backup,
+            "latest_backup_age": summary.latest_backup_age_days,
+            "latest_backup_size": summary.latest_backup_size,
+            "stored_bytes": summary.stored_bytes,
+        }[self.metric]
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return agent details."""
+        summary = self._summary()
+        return summary.as_dict() if summary else {"agent_id": self.agent_id}

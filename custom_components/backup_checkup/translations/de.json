@@ -7,7 +7,10 @@
         "description": "Überwacht die tatsächlich in Home Assistant gespeicherten Backups.",
         "data": {
           "max_age_days": "Maximales Backupalter in Tagen",
-          "update_interval_minutes": "Aktualisierungsintervall in Minuten"
+          "update_interval_minutes": "Aktualisierungsintervall in Minuten",
+          "minimum_backup_size_mb": "Minimale Backup-Größe in MB",
+          "maximum_size_drop_percent": "Maximal zulässiger Größenabfall in Prozent",
+          "minimum_redundant_locations": "Mindestanzahl der Backup-Speicherorte"
         }
       }
     },
@@ -21,7 +24,10 @@
         "title": "BackupCheckup-Optionen",
         "data": {
           "max_age_days": "Maximales Backupalter in Tagen",
-          "update_interval_minutes": "Aktualisierungsintervall in Minuten"
+          "update_interval_minutes": "Aktualisierungsintervall in Minuten",
+          "minimum_backup_size_mb": "Minimale Backup-Größe in MB",
+          "maximum_size_drop_percent": "Maximal zulässiger Größenabfall in Prozent",
+          "minimum_redundant_locations": "Mindestanzahl der Backup-Speicherorte"
         }
       }
     }
@@ -39,7 +45,10 @@
           "schedule_missing": "Automatischer Zeitplan fehlt",
           "schedule_overdue": "Automatischer Zeitplan überfällig",
           "manager_unavailable": "Backup-Manager nicht verfügbar",
-          "storage_error": "Fehler beim Backup-Speicher"
+          "storage_error": "Fehler beim Backup-Speicher",
+          "backup_size_suspicious": "Verdächtige Backup-Größe",
+          "backup_incomplete": "Unvollständiges Backup",
+          "backup_not_redundant": "Backup nicht redundant"
         }
       },
       "stored_backups": {
@@ -80,6 +89,26 @@
       },
       "last_successful_automatic_event": {
         "name": "Letztes erfolgreiches automatisches Backupereignis"
+      },
+      "latest_backup_size": {
+        "name": "Größe des neuesten Backups"
+      },
+      "latest_automatic_backup_size": {
+        "name": "Größe des neuesten automatischen Backups"
+      },
+      "latest_backup_size_change": {
+        "name": "Größenänderung des neuesten Backups"
+      },
+      "latest_backup_result": {
+        "name": "Ergebnis des neuesten Backups",
+        "state": {
+          "complete": "Vollständig",
+          "partial": "Teilweise",
+          "unknown": "Unbekannt"
+        }
+      },
+      "latest_backup_locations": {
+        "name": "Speicherorte des neuesten Backups"
       }
     },
     "binary_sensor": {
@@ -109,6 +138,18 @@
       },
       "storage_error": {
         "name": "Fehler beim Backup-Speicher"
+      },
+      "backup_size_suspicious": {
+        "name": "Backup-Größe verdächtig"
+      },
+      "latest_backup_incomplete": {
+        "name": "Neuestes Backup unvollständig"
+      },
+      "backup_not_redundant": {
+        "name": "Backup nicht redundant"
+      },
+      "required_location_missing": {
+        "name": "Erforderlicher Backup-Speicherort fehlt"
       }
     }
   }

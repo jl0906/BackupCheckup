@@ -7,7 +7,10 @@
         "description": "Bewaak de back-ups die daadwerkelijk door Home Assistant zijn opgeslagen.",
         "data": {
           "max_age_days": "Maximale leeftijd van back-up in dagen",
-          "update_interval_minutes": "Update-interval in minuten"
+          "update_interval_minutes": "Update-interval in minuten",
+          "minimum_backup_size_mb": "Minimale back-upgrootte in MB",
+          "maximum_size_drop_percent": "Maximaal toegestane afname in procent",
+          "minimum_redundant_locations": "Minimumaantal back-uplocaties"
         }
       }
     },
@@ -21,7 +24,10 @@
         "title": "BackupCheckup-opties",
         "data": {
           "max_age_days": "Maximale leeftijd van back-up in dagen",
-          "update_interval_minutes": "Update-interval in minuten"
+          "update_interval_minutes": "Update-interval in minuten",
+          "minimum_backup_size_mb": "Minimale back-upgrootte in MB",
+          "maximum_size_drop_percent": "Maximaal toegestane afname in procent",
+          "minimum_redundant_locations": "Minimumaantal back-uplocaties"
         }
       }
     }
@@ -39,7 +45,10 @@
           "schedule_missing": "Automatisch schema ontbreekt",
           "schedule_overdue": "Automatisch schema is te laat",
           "manager_unavailable": "Back-upbeheerder niet beschikbaar",
-          "storage_error": "Fout in back-upopslag"
+          "storage_error": "Fout in back-upopslag",
+          "backup_size_suspicious": "Verdachte back-upgrootte",
+          "backup_incomplete": "Onvolledige back-up",
+          "backup_not_redundant": "Back-up niet redundant"
         }
       },
       "stored_backups": {
@@ -80,6 +89,26 @@
       },
       "last_successful_automatic_event": {
         "name": "Laatste geslaagde automatische back-upgebeurtenis"
+      },
+      "latest_backup_size": {
+        "name": "Grootte nieuwste back-up"
+      },
+      "latest_automatic_backup_size": {
+        "name": "Grootte nieuwste automatische back-up"
+      },
+      "latest_backup_size_change": {
+        "name": "Grootteverandering nieuwste back-up"
+      },
+      "latest_backup_result": {
+        "name": "Resultaat nieuwste back-up",
+        "state": {
+          "complete": "Volledig",
+          "partial": "Gedeeltelijk",
+          "unknown": "Onbekend"
+        }
+      },
+      "latest_backup_locations": {
+        "name": "Locaties nieuwste back-up"
       }
     },
     "binary_sensor": {
@@ -109,6 +138,18 @@
       },
       "storage_error": {
         "name": "Fout in back-upopslag"
+      },
+      "backup_size_suspicious": {
+        "name": "Back-upgrootte verdacht"
+      },
+      "latest_backup_incomplete": {
+        "name": "Nieuwste back-up onvolledig"
+      },
+      "backup_not_redundant": {
+        "name": "Back-up niet redundant"
+      },
+      "required_location_missing": {
+        "name": "Vereiste back-uplocatie ontbreekt"
       }
     }
   }

@@ -7,7 +7,10 @@
         "description": "Supervisa las copias de seguridad realmente almacenadas por Home Assistant.",
         "data": {
           "max_age_days": "Antigüedad máxima de la copia de seguridad en días",
-          "update_interval_minutes": "Intervalo de actualización en minutos"
+          "update_interval_minutes": "Intervalo de actualización en minutos",
+          "minimum_backup_size_mb": "Tamaño mínimo de copia en MB",
+          "maximum_size_drop_percent": "Disminución máxima permitida en porcentaje",
+          "minimum_redundant_locations": "Número mínimo de ubicaciones de copia"
         }
       }
     },
@@ -21,7 +24,10 @@
         "title": "Opciones de BackupCheckup",
         "data": {
           "max_age_days": "Antigüedad máxima de la copia de seguridad en días",
-          "update_interval_minutes": "Intervalo de actualización en minutos"
+          "update_interval_minutes": "Intervalo de actualización en minutos",
+          "minimum_backup_size_mb": "Tamaño mínimo de copia en MB",
+          "maximum_size_drop_percent": "Disminución máxima permitida en porcentaje",
+          "minimum_redundant_locations": "Número mínimo de ubicaciones de copia"
         }
       }
     }
@@ -39,7 +45,10 @@
           "schedule_missing": "Falta la programación automática",
           "schedule_overdue": "Programación automática atrasada",
           "manager_unavailable": "Gestor de copias de seguridad no disponible",
-          "storage_error": "Error de almacenamiento de copias de seguridad"
+          "storage_error": "Error de almacenamiento de copias de seguridad",
+          "backup_size_suspicious": "Tamaño de copia sospechoso",
+          "backup_incomplete": "Copia incompleta",
+          "backup_not_redundant": "Copia sin redundancia"
         }
       },
       "stored_backups": {
@@ -80,6 +89,26 @@
       },
       "last_successful_automatic_event": {
         "name": "Último evento correcto de copia de seguridad automática"
+      },
+      "latest_backup_size": {
+        "name": "Tamaño de la copia más reciente"
+      },
+      "latest_automatic_backup_size": {
+        "name": "Tamaño de la copia automática más reciente"
+      },
+      "latest_backup_size_change": {
+        "name": "Cambio de tamaño de la copia más reciente"
+      },
+      "latest_backup_result": {
+        "name": "Resultado de la copia más reciente",
+        "state": {
+          "complete": "Completa",
+          "partial": "Parcial",
+          "unknown": "Desconocido"
+        }
+      },
+      "latest_backup_locations": {
+        "name": "Ubicaciones de la copia más reciente"
       }
     },
     "binary_sensor": {
@@ -109,6 +138,18 @@
       },
       "storage_error": {
         "name": "Error de almacenamiento de copias de seguridad"
+      },
+      "backup_size_suspicious": {
+        "name": "Tamaño de copia sospechoso"
+      },
+      "latest_backup_incomplete": {
+        "name": "Copia más reciente incompleta"
+      },
+      "backup_not_redundant": {
+        "name": "Copia sin redundancia"
+      },
+      "required_location_missing": {
+        "name": "Falta una ubicación de copia requerida"
       }
     }
   }

@@ -17,17 +17,29 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from .const import (
+    BACKUP_RESULT_COMPLETE,
+    BACKUP_RESULT_PARTIAL,
+    BACKUP_RESULT_UNKNOWN,
+    CONF_MAXIMUM_SIZE_DROP_PERCENT,
     CONF_MAX_AGE_DAYS,
+    CONF_MINIMUM_BACKUP_SIZE_MB,
+    CONF_MINIMUM_REDUNDANT_LOCATIONS,
     CONF_UPDATE_INTERVAL_MINUTES,
     CORE_BACKUP_MANAGER_STATE,
     CORE_LAST_AUTOMATIC_ATTEMPT,
     CORE_LAST_SUCCESSFUL_AUTOMATIC_BACKUP,
     CORE_NEXT_AUTOMATIC_BACKUP,
+    DEFAULT_MAXIMUM_SIZE_DROP_PERCENT,
     DEFAULT_MAX_AGE_DAYS,
+    DEFAULT_MINIMUM_BACKUP_SIZE_MB,
+    DEFAULT_MINIMUM_REDUNDANT_LOCATIONS,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
     DOMAIN,
     STATUS_AUTOMATIC_BACKUP_FAILED,
     STATUS_AUTOMATIC_BACKUP_OVERDUE,
+    STATUS_BACKUP_INCOMPLETE,
+    STATUS_BACKUP_NOT_REDUNDANT,
+    STATUS_BACKUP_SIZE_SUSPICIOUS,
     STATUS_BACKUP_STALE,
     STATUS_MANAGER_UNAVAILABLE,
     STATUS_NO_BACKUPS,
@@ -36,7 +48,12 @@ from .const import (
     STATUS_SCHEDULE_OVERDUE,
     STATUS_STORAGE_ERROR,
 )
-from .models import BackupCheckupData, BackupRecord
+from .models import (
+    BackupAgentRecord,
+    BackupAgentSummary,
+    BackupCheckupData,
+    BackupRecord,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,6 +70,33 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             entry.options.get(
                 CONF_MAX_AGE_DAYS,
                 entry.data.get(CONF_MAX_AGE_DAYS, DEFAULT_MAX_AGE_DAYS),
+            )
+        )
+        self.minimum_backup_size_bytes = int(
+            entry.options.get(
+                CONF_MINIMUM_BACKUP_SIZE_MB,
+                entry.data.get(
+                    CONF_MINIMUM_BACKUP_SIZE_MB,
+                    DEFAULT_MINIMUM_BACKUP_SIZE_MB,
+                ),
+            )
+        ) * 1024 * 1024
+        self.maximum_size_drop_percent = int(
+            entry.options.get(
+                CONF_MAXIMUM_SIZE_DROP_PERCENT,
+                entry.data.get(
+                    CONF_MAXIMUM_SIZE_DROP_PERCENT,
+                    DEFAULT_MAXIMUM_SIZE_DROP_PERCENT,
+                ),
+            )
+        )
+        self.minimum_redundant_locations = int(
+            entry.options.get(
+                CONF_MINIMUM_REDUNDANT_LOCATIONS,
+                entry.data.get(
+                    CONF_MINIMUM_REDUNDANT_LOCATIONS,
+                    DEFAULT_MINIMUM_REDUNDANT_LOCATIONS,
+                ),
             )
         )
         update_minutes = int(
@@ -114,6 +158,41 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             return None
         return floor(value)
 
+    @staticmethod
+    def _as_bool(value: Any) -> bool | None:
+        """Return a boolean value when one is available."""
+        return value if isinstance(value, bool) else None
+
+    @staticmethod
+    def _as_string_tuple(value: Any) -> tuple[str, ...]:
+        """Normalize an iterable or mapping to a sorted string tuple."""
+        if value is None:
+            return ()
+        if isinstance(value, Mapping):
+            value = value.keys()
+        if isinstance(value, str):
+            return (value,)
+        try:
+            return tuple(sorted(str(item) for item in value))
+        except TypeError:
+            return ()
+
+    @staticmethod
+    def _agent_copy(agent_id: Any, details: Any) -> BackupAgentRecord:
+        """Normalize one backup-agent copy record across HA model versions."""
+        size_raw = getattr(details, "size", None)
+        if size_raw is None and isinstance(details, Mapping):
+            size_raw = details.get("size")
+        size = int(size_raw) if isinstance(size_raw, (int, float)) else None
+
+        protected_raw = getattr(details, "protected", None)
+        if protected_raw is None:
+            protected_raw = getattr(details, "is_protected", None)
+        if protected_raw is None and isinstance(details, Mapping):
+            protected_raw = details.get("protected", details.get("is_protected"))
+        protected = protected_raw if isinstance(protected_raw, bool) else None
+        return BackupAgentRecord(str(agent_id), size, protected)
+
     async def _async_update_data(self) -> BackupCheckupData:
         """Read and evaluate the backup inventory."""
         try:
@@ -136,20 +215,42 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 )
                 continue
 
-            agents_raw = getattr(backup, "agents", {})
+            agents_raw = getattr(backup, "agents", {}) or {}
             if isinstance(agents_raw, Mapping):
-                agents = tuple(sorted(str(agent_id) for agent_id in agents_raw))
-            else:
-                agents = tuple(sorted(str(agent_id) for agent_id in (agents_raw or [])))
-
-            failed_agents = tuple(
-                sorted(
-                    str(agent_id)
-                    for agent_id in (getattr(backup, "failed_agent_ids", []) or [])
+                agent_copies = tuple(
+                    sorted(
+                        (
+                            self._agent_copy(agent_id, details)
+                            for agent_id, details in agents_raw.items()
+                        ),
+                        key=lambda item: item.agent_id,
+                    )
                 )
+            else:
+                agent_copies = tuple(
+                    BackupAgentRecord(str(agent_id), None, None)
+                    for agent_id in sorted(agents_raw, key=str)
+                )
+            agents = tuple(copy.agent_id for copy in agent_copies)
+
+            failed_agents = self._as_string_tuple(
+                getattr(backup, "failed_agent_ids", None)
+                or getattr(backup, "failed_agents", None)
             )
-            size_raw = getattr(backup, "size", None)
-            size = int(size_raw) if isinstance(size_raw, (int, float)) else None
+            failed_addons = self._as_string_tuple(
+                getattr(backup, "failed_addons", None)
+                or getattr(backup, "failed_addon_ids", None)
+            )
+            failed_folders = self._as_string_tuple(
+                getattr(backup, "failed_folders", None)
+                or getattr(backup, "failed_folder_ids", None)
+            )
+            known_sizes = [copy.size for copy in agent_copies if copy.size is not None]
+            legacy_size = getattr(backup, "size", None)
+            size = max(known_sizes) if known_sizes else (
+                int(legacy_size) if isinstance(legacy_size, (int, float)) else None
+            )
+            incomplete = bool(failed_agents or failed_addons or failed_folders)
 
             records.append(
                 BackupRecord(
@@ -158,23 +259,88 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                     date=backup_date,
                     automatic=getattr(backup, "with_automatic_settings", None) is True,
                     agents=agents,
+                    agent_copies=agent_copies,
                     failed_agents=failed_agents,
+                    failed_addons=failed_addons,
+                    failed_folders=failed_folders,
+                    database_included=self._as_bool(
+                        getattr(backup, "database_included", None)
+                    ),
+                    homeassistant_included=self._as_bool(
+                        getattr(backup, "homeassistant_included", None)
+                    ),
                     size=size,
+                    incomplete=incomplete,
                 )
             )
 
         records.sort(key=lambda item: item.date, reverse=True)
         automatic_records = [item for item in records if item.automatic]
         manual_records = [item for item in records if not item.automatic]
+        latest_record = records[0] if records else None
+        latest_automatic_record = automatic_records[0] if automatic_records else None
 
-        latest_backup = records[0].date if records else None
-        latest_automatic = automatic_records[0].date if automatic_records else None
+        latest_backup = latest_record.date if latest_record else None
+        latest_automatic = (
+            latest_automatic_record.date if latest_automatic_record else None
+        )
         latest_manual = manual_records[0].date if manual_records else None
 
         latest_age = self._age_days(now, latest_backup)
         automatic_age_precise = self._age_days(now, latest_automatic)
         automatic_age = self._completed_days(automatic_age_precise)
         manual_age = self._age_days(now, latest_manual)
+
+        previous_comparable = None
+        if latest_record is not None:
+            previous_comparable = next(
+                (
+                    item
+                    for item in records[1:]
+                    if item.automatic == latest_record.automatic and item.size is not None
+                ),
+                None,
+            )
+        size_change_percent = None
+        if (
+            latest_record is not None
+            and latest_record.size is not None
+            and previous_comparable is not None
+            and previous_comparable.size not in {None, 0}
+        ):
+            size_change_percent = round(
+                ((latest_record.size - previous_comparable.size) / previous_comparable.size)
+                * 100,
+                1,
+            )
+
+        below_minimum = (
+            latest_record is not None
+            and latest_record.size is not None
+            and self.minimum_backup_size_bytes > 0
+            and latest_record.size < self.minimum_backup_size_bytes
+        )
+        excessive_drop = (
+            self.maximum_size_drop_percent > 0
+            and size_change_percent is not None
+            and size_change_percent <= -self.maximum_size_drop_percent
+        )
+        backup_size_suspicious = bool(below_minimum or excessive_drop)
+
+        latest_backup_incomplete = bool(latest_record and latest_record.incomplete)
+        if latest_record is None:
+            latest_backup_result = BACKUP_RESULT_UNKNOWN
+        elif latest_record.incomplete:
+            latest_backup_result = BACKUP_RESULT_PARTIAL
+        else:
+            latest_backup_result = BACKUP_RESULT_COMPLETE
+
+        latest_location_ids = latest_record.agents if latest_record else ()
+        latest_locations = len(latest_location_ids)
+        backup_not_redundant = bool(
+            latest_record
+            and latest_locations < self.minimum_redundant_locations
+        )
 
         last_automatic_attempt = self._entity_datetime(CORE_LAST_AUTOMATIC_ATTEMPT)
         last_successful_automatic_event = self._entity_datetime(
@@ -183,9 +349,8 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         next_automatic = self._entity_datetime(CORE_NEXT_AUTOMATIC_BACKUP)
         manager_state = self._entity_state(CORE_BACKUP_MANAGER_STATE)
 
-        no_backup = len(records) == 0
+        no_backup = not records
         backup_stale = latest_age is not None and latest_age > self.max_age_days
-
         manual_covers_automatic = (
             latest_manual is not None
             and (latest_automatic is None or latest_manual > latest_automatic)
@@ -228,6 +393,49 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         }
         storage_error = bool(agent_errors)
 
+        all_agent_ids = sorted(
+            {agent for item in records for agent in item.agents} | set(agent_errors)
+        )
+        agent_summaries: list[BackupAgentSummary] = []
+        for agent_id in all_agent_ids:
+            agent_records = [item for item in records if agent_id in item.agents]
+            newest = agent_records[0] if agent_records else None
+            sizes = [
+                copy.size
+                for item in agent_records
+                for copy in item.agent_copies
+                if copy.agent_id == agent_id and copy.size is not None
+            ]
+            newest_size = next(
+                (
+                    copy.size
+                    for copy in (newest.agent_copies if newest else ())
+                    if copy.agent_id == agent_id
+                ),
+                None,
+            )
+            age = self._age_days(now, newest.date if newest else None)
+            stale = age is None or age > self.max_age_days
+            error = agent_errors.get(agent_id)
+            agent_summaries.append(
+                BackupAgentSummary(
+                    agent_id=agent_id,
+                    backup_count=len(agent_records),
+                    latest_backup=newest.date if newest else None,
+                    latest_backup_age_days=age,
+                    latest_backup_size=newest_size,
+                    stored_bytes=sum(sizes) if sizes else None,
+                    error=error,
+                    stale=stale,
+                    problem=bool(error or stale),
+                )
+            )
+
+        required_location_missing = bool(
+            latest_record
+            and any(summary.problem for summary in agent_summaries)
+        )
+
         if no_backup:
             status = STATUS_NO_BACKUPS
         elif manager_unavailable:
@@ -236,6 +444,12 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             status = STATUS_SCHEDULE_MISSING
         elif storage_error:
             status = STATUS_STORAGE_ERROR
+        elif latest_backup_incomplete:
+            status = STATUS_BACKUP_INCOMPLETE
+        elif backup_size_suspicious:
+            status = STATUS_BACKUP_SIZE_SUSPICIOUS
+        elif backup_not_redundant:
+            status = STATUS_BACKUP_NOT_REDUNDANT
         elif automatic_backup_failed:
             status = STATUS_AUTOMATIC_BACKUP_FAILED
         elif automatic_backup_overdue:
@@ -257,12 +471,19 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 automatic_schedule_overdue,
                 manager_unavailable,
                 storage_error,
+                backup_size_suspicious,
+                latest_backup_incomplete,
+                backup_not_redundant,
+                required_location_missing,
             )
         )
 
         return BackupCheckupData(
             checked_at=now,
             max_age_days=self.max_age_days,
+            minimum_backup_size_bytes=self.minimum_backup_size_bytes,
+            maximum_size_drop_percent=self.maximum_size_drop_percent,
+            minimum_redundant_locations=self.minimum_redundant_locations,
             total_backups=len(records),
             automatic_backups=len(automatic_records),
             manual_backups=len(manual_records),
@@ -273,11 +494,20 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             automatic_backup_age_days=automatic_age,
             automatic_backup_age_days_precise=automatic_age_precise,
             manual_backup_age_days=manual_age,
+            latest_backup_size=latest_record.size if latest_record else None,
+            latest_automatic_backup_size=(
+                latest_automatic_record.size if latest_automatic_record else None
+            ),
+            latest_backup_size_change_percent=size_change_percent,
+            latest_backup_result=latest_backup_result,
+            latest_backup_locations=latest_locations,
+            latest_backup_location_ids=latest_location_ids,
             last_automatic_attempt=last_automatic_attempt,
             last_successful_automatic_event=last_successful_automatic_event,
             next_automatic_backup=next_automatic,
             manager_state=manager_state,
             agent_errors=agent_errors,
+            agent_summaries=tuple(agent_summaries),
             backups=tuple(records),
             no_backup=no_backup,
             backup_stale=backup_stale,
@@ -287,6 +517,10 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             automatic_schedule_overdue=automatic_schedule_overdue,
             manager_unavailable=manager_unavailable,
             storage_error=storage_error,
+            backup_size_suspicious=backup_size_suspicious,
+            latest_backup_incomplete=latest_backup_incomplete,
+            backup_not_redundant=backup_not_redundant,
+            required_location_missing=required_location_missing,
             problem=problem,
             status=status,
         )

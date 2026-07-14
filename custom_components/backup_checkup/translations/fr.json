@@ -7,7 +7,10 @@
         "description": "Surveille les sauvegardes réellement stockées par Home Assistant.",
         "data": {
           "max_age_days": "Âge maximal des sauvegardes en jours",
-          "update_interval_minutes": "Intervalle de mise à jour en minutes"
+          "update_interval_minutes": "Intervalle de mise à jour en minutes",
+          "minimum_backup_size_mb": "Taille minimale de sauvegarde en Mo",
+          "maximum_size_drop_percent": "Baisse maximale autorisée en pourcentage",
+          "minimum_redundant_locations": "Nombre minimal d’emplacements de sauvegarde"
         }
       }
     },
@@ -21,7 +24,10 @@
         "title": "Options de BackupCheckup",
         "data": {
           "max_age_days": "Âge maximal des sauvegardes en jours",
-          "update_interval_minutes": "Intervalle de mise à jour en minutes"
+          "update_interval_minutes": "Intervalle de mise à jour en minutes",
+          "minimum_backup_size_mb": "Taille minimale de sauvegarde en Mo",
+          "maximum_size_drop_percent": "Baisse maximale autorisée en pourcentage",
+          "minimum_redundant_locations": "Nombre minimal d’emplacements de sauvegarde"
         }
       }
     }
@@ -39,7 +45,10 @@
           "schedule_missing": "Planification automatique manquante",
           "schedule_overdue": "Planification automatique en retard",
           "manager_unavailable": "Gestionnaire de sauvegardes indisponible",
-          "storage_error": "Erreur de stockage des sauvegardes"
+          "storage_error": "Erreur de stockage des sauvegardes",
+          "backup_size_suspicious": "Taille de sauvegarde suspecte",
+          "backup_incomplete": "Sauvegarde incomplète",
+          "backup_not_redundant": "Sauvegarde non redondante"
         }
       },
       "stored_backups": {
@@ -80,6 +89,26 @@
       },
       "last_successful_automatic_event": {
         "name": "Dernier événement de sauvegarde automatique réussi"
+      },
+      "latest_backup_size": {
+        "name": "Taille de la dernière sauvegarde"
+      },
+      "latest_automatic_backup_size": {
+        "name": "Taille de la dernière sauvegarde automatique"
+      },
+      "latest_backup_size_change": {
+        "name": "Variation de taille de la dernière sauvegarde"
+      },
+      "latest_backup_result": {
+        "name": "Résultat de la dernière sauvegarde",
+        "state": {
+          "complete": "Complète",
+          "partial": "Partielle",
+          "unknown": "Inconnu"
+        }
+      },
+      "latest_backup_locations": {
+        "name": "Emplacements de la dernière sauvegarde"
       }
     },
     "binary_sensor": {
@@ -109,6 +138,18 @@
       },
       "storage_error": {
         "name": "Erreur de stockage des sauvegardes"
+      },
+      "backup_size_suspicious": {
+        "name": "Taille de sauvegarde suspecte"
+      },
+      "latest_backup_incomplete": {
+        "name": "Dernière sauvegarde incomplète"
+      },
+      "backup_not_redundant": {
+        "name": "Sauvegarde non redondante"
+      },
+      "required_location_missing": {
+        "name": "Emplacement requis manquant"
       }
     }
   }

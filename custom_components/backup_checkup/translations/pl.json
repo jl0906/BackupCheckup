@@ -7,7 +7,10 @@
         "description": "Monitoruj kopie zapasowe faktycznie przechowywane przez Home Assistant.",
         "data": {
           "max_age_days": "Maksymalny wiek kopii zapasowej w dniach",
-          "update_interval_minutes": "Interwał aktualizacji w minutach"
+          "update_interval_minutes": "Interwał aktualizacji w minutach",
+          "minimum_backup_size_mb": "Minimalny rozmiar kopii zapasowej w MB",
+          "maximum_size_drop_percent": "Maksymalny dozwolony spadek rozmiaru w procentach",
+          "minimum_redundant_locations": "Minimalna liczba lokalizacji kopii"
         }
       }
     },
@@ -21,7 +24,10 @@
         "title": "Opcje BackupCheckup",
         "data": {
           "max_age_days": "Maksymalny wiek kopii zapasowej w dniach",
-          "update_interval_minutes": "Interwał aktualizacji w minutach"
+          "update_interval_minutes": "Interwał aktualizacji w minutach",
+          "minimum_backup_size_mb": "Minimalny rozmiar kopii zapasowej w MB",
+          "maximum_size_drop_percent": "Maksymalny dozwolony spadek rozmiaru w procentach",
+          "minimum_redundant_locations": "Minimalna liczba lokalizacji kopii"
         }
       }
     }
@@ -39,7 +45,10 @@
           "schedule_missing": "Brak harmonogramu automatycznych kopii zapasowych",
           "schedule_overdue": "Harmonogram automatycznych kopii zapasowych jest opóźniony",
           "manager_unavailable": "Menedżer kopii zapasowych jest niedostępny",
-          "storage_error": "Błąd magazynu kopii zapasowych"
+          "storage_error": "Błąd magazynu kopii zapasowych",
+          "backup_size_suspicious": "Podejrzany rozmiar kopii",
+          "backup_incomplete": "Niekompletna kopia",
+          "backup_not_redundant": "Kopia bez redundancji"
         }
       },
       "stored_backups": {
@@ -80,6 +89,26 @@
       },
       "last_successful_automatic_event": {
         "name": "Ostatnie udane zdarzenie automatycznego tworzenia kopii zapasowej"
+      },
+      "latest_backup_size": {
+        "name": "Rozmiar najnowszej kopii"
+      },
+      "latest_automatic_backup_size": {
+        "name": "Rozmiar najnowszej automatycznej kopii"
+      },
+      "latest_backup_size_change": {
+        "name": "Zmiana rozmiaru najnowszej kopii"
+      },
+      "latest_backup_result": {
+        "name": "Wynik najnowszej kopii",
+        "state": {
+          "complete": "Kompletna",
+          "partial": "Częściowa",
+          "unknown": "Nieznany"
+        }
+      },
+      "latest_backup_locations": {
+        "name": "Lokalizacje najnowszej kopii"
       }
     },
     "binary_sensor": {
@@ -109,6 +138,18 @@
       },
       "storage_error": {
         "name": "Błąd magazynu kopii zapasowych"
+      },
+      "backup_size_suspicious": {
+        "name": "Podejrzany rozmiar kopii"
+      },
+      "latest_backup_incomplete": {
+        "name": "Najnowsza kopia niekompletna"
+      },
+      "backup_not_redundant": {
+        "name": "Kopia bez redundancji"
+      },
+      "required_location_missing": {
+        "name": "Brak wymaganej lokalizacji kopii"
       }
     }
   }

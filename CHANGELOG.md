@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.2.0
+
+- Added backup-size monitoring using the size reported by each Home Assistant backup storage agent.
+- Added configurable minimum backup size and detection of unusually large size drops compared with the previous comparable backup.
+- Added detection of incomplete backups with failed add-ons, folders, or storage agents.
+- Added a backup-result sensor with detailed attributes for the latest backup.
+- Added separate backup count, timestamp, age, size, stored-size, and problem entities for every detected storage agent.
+- Added configurable redundancy monitoring based on the number of locations containing the latest backup.
+- Added new status values, diagnostics, options, documentation, and translations for all supported languages.
+
 ## 1.1.1
 
 - Fixed `sensor.backup_checkup_automatic_backup_age` displaying long fractional values.

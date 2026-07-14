@@ -26,18 +26,15 @@ async def async_get_config_entry_diagnostics(
         "automatic_backups": data.automatic_backups,
         "manual_or_other_backups": data.manual_backups,
         "latest_backup": data.latest_backup.isoformat() if data.latest_backup else None,
-        "latest_automatic_backup": (
-            data.latest_automatic_backup.isoformat()
-            if data.latest_automatic_backup
-            else None
-        ),
-        "latest_manual_backup": (
-            data.latest_manual_backup.isoformat()
-            if data.latest_manual_backup
-            else None
-        ),
+        "latest_backup_size": data.latest_backup_size,
+        "latest_backup_size_change_percent": data.latest_backup_size_change_percent,
+        "latest_backup_result": data.latest_backup_result,
+        "latest_backup_locations": list(data.latest_backup_location_ids),
+        "latest_automatic_backup": data.latest_automatic_backup.isoformat() if data.latest_automatic_backup else None,
+        "latest_manual_backup": data.latest_manual_backup.isoformat() if data.latest_manual_backup else None,
         "manager_state": data.manager_state,
         "agent_errors": data.agent_errors,
+        "agents": [item.as_dict() for item in data.agent_summaries],
         "flags": {
             "no_backup": data.no_backup,
             "backup_stale": data.backup_stale,
@@ -47,6 +44,10 @@ async def async_get_config_entry_diagnostics(
             "automatic_schedule_overdue": data.automatic_schedule_overdue,
             "manager_unavailable": data.manager_unavailable,
             "storage_error": data.storage_error,
+            "backup_size_suspicious": data.backup_size_suspicious,
+            "latest_backup_incomplete": data.latest_backup_incomplete,
+            "backup_not_redundant": data.backup_not_redundant,
+            "required_location_missing": data.required_location_missing,
             "problem": data.problem,
         },
         "backups": [item.as_dict() for item in data.backups],

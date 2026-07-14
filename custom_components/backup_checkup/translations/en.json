@@ -7,7 +7,10 @@
         "description": "Monitor the backups actually stored by Home Assistant.",
         "data": {
           "max_age_days": "Maximum backup age in days",
-          "update_interval_minutes": "Update interval in minutes"
+          "update_interval_minutes": "Update interval in minutes",
+          "minimum_backup_size_mb": "Minimum backup size in MB",
+          "maximum_size_drop_percent": "Maximum allowed size drop in percent",
+          "minimum_redundant_locations": "Minimum backup locations"
         }
       }
     },
@@ -21,7 +24,10 @@
         "title": "BackupCheckup options",
         "data": {
           "max_age_days": "Maximum backup age in days",
-          "update_interval_minutes": "Update interval in minutes"
+          "update_interval_minutes": "Update interval in minutes",
+          "minimum_backup_size_mb": "Minimum backup size in MB",
+          "maximum_size_drop_percent": "Maximum allowed size drop in percent",
+          "minimum_redundant_locations": "Minimum backup locations"
         }
       }
     }
@@ -39,7 +45,10 @@
           "schedule_missing": "Automatic schedule missing",
           "schedule_overdue": "Automatic schedule overdue",
           "manager_unavailable": "Backup manager unavailable",
-          "storage_error": "Backup storage error"
+          "storage_error": "Backup storage error",
+          "backup_size_suspicious": "Suspicious backup size",
+          "backup_incomplete": "Incomplete backup",
+          "backup_not_redundant": "Backup not redundant"
         }
       },
       "stored_backups": {
@@ -80,6 +89,26 @@
       },
       "last_successful_automatic_event": {
         "name": "Last successful automatic backup event"
+      },
+      "latest_backup_size": {
+        "name": "Latest backup size"
+      },
+      "latest_automatic_backup_size": {
+        "name": "Latest automatic backup size"
+      },
+      "latest_backup_size_change": {
+        "name": "Latest backup size change"
+      },
+      "latest_backup_result": {
+        "name": "Latest backup result",
+        "state": {
+          "complete": "Complete",
+          "partial": "Partial",
+          "unknown": "Unknown"
+        }
+      },
+      "latest_backup_locations": {
+        "name": "Latest backup locations"
       }
     },
     "binary_sensor": {
@@ -109,6 +138,18 @@
       },
       "storage_error": {
         "name": "Backup storage error"
+      },
+      "backup_size_suspicious": {
+        "name": "Backup size suspicious"
+      },
+      "latest_backup_incomplete": {
+        "name": "Latest backup incomplete"
+      },
+      "backup_not_redundant": {
+        "name": "Backup not redundant"
+      },
+      "required_location_missing": {
+        "name": "Required backup location missing"
       }
     }
   }

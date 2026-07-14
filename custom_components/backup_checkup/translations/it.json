@@ -7,7 +7,10 @@
         "description": "Monitora i backup effettivamente archiviati da Home Assistant.",
         "data": {
           "max_age_days": "Età massima del backup in giorni",
-          "update_interval_minutes": "Intervallo di aggiornamento in minuti"
+          "update_interval_minutes": "Intervallo di aggiornamento in minuti",
+          "minimum_backup_size_mb": "Dimensione minima del backup in MB",
+          "maximum_size_drop_percent": "Riduzione massima consentita in percentuale",
+          "minimum_redundant_locations": "Numero minimo di posizioni di backup"
         }
       }
     },
@@ -21,7 +24,10 @@
         "title": "Opzioni di BackupCheckup",
         "data": {
           "max_age_days": "Età massima del backup in giorni",
-          "update_interval_minutes": "Intervallo di aggiornamento in minuti"
+          "update_interval_minutes": "Intervallo di aggiornamento in minuti",
+          "minimum_backup_size_mb": "Dimensione minima del backup in MB",
+          "maximum_size_drop_percent": "Riduzione massima consentita in percentuale",
+          "minimum_redundant_locations": "Numero minimo di posizioni di backup"
         }
       }
     }
@@ -39,7 +45,10 @@
           "schedule_missing": "Pianificazione automatica mancante",
           "schedule_overdue": "Pianificazione automatica in ritardo",
           "manager_unavailable": "Gestore dei backup non disponibile",
-          "storage_error": "Errore di archiviazione dei backup"
+          "storage_error": "Errore di archiviazione dei backup",
+          "backup_size_suspicious": "Dimensione backup sospetta",
+          "backup_incomplete": "Backup incompleto",
+          "backup_not_redundant": "Backup non ridondante"
         }
       },
       "stored_backups": {
@@ -80,6 +89,26 @@
       },
       "last_successful_automatic_event": {
         "name": "Ultimo evento di backup automatico riuscito"
+      },
+      "latest_backup_size": {
+        "name": "Dimensione ultimo backup"
+      },
+      "latest_automatic_backup_size": {
+        "name": "Dimensione ultimo backup automatico"
+      },
+      "latest_backup_size_change": {
+        "name": "Variazione dimensione ultimo backup"
+      },
+      "latest_backup_result": {
+        "name": "Risultato ultimo backup",
+        "state": {
+          "complete": "Completo",
+          "partial": "Parziale",
+          "unknown": "Sconosciuto"
+        }
+      },
+      "latest_backup_locations": {
+        "name": "Posizioni ultimo backup"
       }
     },
     "binary_sensor": {
@@ -109,6 +138,18 @@
       },
       "storage_error": {
         "name": "Errore di archiviazione dei backup"
+      },
+      "backup_size_suspicious": {
+        "name": "Dimensione backup sospetta"
+      },
+      "latest_backup_incomplete": {
+        "name": "Ultimo backup incompleto"
+      },
+      "backup_not_redundant": {
+        "name": "Backup non ridondante"
+      },
+      "required_location_missing": {
+        "name": "Posizione di backup richiesta mancante"
       }
     }
   }
