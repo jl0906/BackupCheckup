@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.0
+
+### Added
+- Guided Standard, Secure, and Custom monitoring profiles.
+- Automatic backup-size baseline based on recent backups.
+- Recommendation sensor with clear next steps.
+- Active-problem count and problem list.
+- Explanations for every setup and options field.
+
+### Changed
+- Simplified initial setup for users without technical backup knowledge.
+- Moved advanced diagnostic entities out of the default entity set.
+
 ## 1.2.0
 
 - Added backup-size monitoring using the size reported by each Home Assistant backup storage agent.

@@ -138,3 +138,7 @@ class BackupCheckupData:
     required_location_missing: bool
     problem: bool
     status: str
+    recommendation: str
+    problem_count: int
+    active_problems: tuple[str, ...]
+    size_check_mode: str

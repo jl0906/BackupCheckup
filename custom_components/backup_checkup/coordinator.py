@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
 import logging
 from math import floor
+from statistics import median
 from typing import Any
 
 from homeassistant.components.backup import async_get_manager
@@ -25,6 +26,19 @@ from .const import (
     CONF_MINIMUM_BACKUP_SIZE_MB,
     CONF_MINIMUM_REDUNDANT_LOCATIONS,
     CONF_UPDATE_INTERVAL_MINUTES,
+    CONF_SIZE_CHECK_MODE,
+    DEFAULT_SIZE_CHECK_MODE,
+    SIZE_CHECK_AUTO,
+    SIZE_CHECK_FIXED,
+    SIZE_CHECK_OFF,
+    RECOMMENDATION_NONE,
+    RECOMMENDATION_CREATE_BACKUP,
+    RECOMMENDATION_CHECK_SCHEDULE,
+    RECOMMENDATION_CHECK_STORAGE,
+    RECOMMENDATION_CHECK_BACKUP_CONTENTS,
+    RECOMMENDATION_CHECK_BACKUP_SIZE,
+    RECOMMENDATION_ADD_STORAGE_LOCATION,
+    RECOMMENDATION_CHECK_BACKUP_SYSTEM,
     CORE_BACKUP_MANAGER_STATE,
     CORE_LAST_AUTOMATIC_ATTEMPT,
     CORE_LAST_SUCCESSFUL_AUTOMATIC_BACKUP,
@@ -90,6 +104,9 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 ),
             )
         )
+        self.size_check_mode = str(
+            entry.options.get(CONF_SIZE_CHECK_MODE, entry.data.get(CONF_SIZE_CHECK_MODE, DEFAULT_SIZE_CHECK_MODE))
+        )
         self.minimum_redundant_locations = int(
             entry.options.get(
                 CONF_MINIMUM_REDUNDANT_LOCATIONS,
@@ -102,8 +119,34 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         update_minutes = int(
             entry.options.get(
                 CONF_UPDATE_INTERVAL_MINUTES,
+    CONF_SIZE_CHECK_MODE,
+    DEFAULT_SIZE_CHECK_MODE,
+    SIZE_CHECK_AUTO,
+    SIZE_CHECK_FIXED,
+    SIZE_CHECK_OFF,
+    RECOMMENDATION_NONE,
+    RECOMMENDATION_CREATE_BACKUP,
+    RECOMMENDATION_CHECK_SCHEDULE,
+    RECOMMENDATION_CHECK_STORAGE,
+    RECOMMENDATION_CHECK_BACKUP_CONTENTS,
+    RECOMMENDATION_CHECK_BACKUP_SIZE,
+    RECOMMENDATION_ADD_STORAGE_LOCATION,
+    RECOMMENDATION_CHECK_BACKUP_SYSTEM,
                 entry.data.get(
                     CONF_UPDATE_INTERVAL_MINUTES,
+    CONF_SIZE_CHECK_MODE,
+    DEFAULT_SIZE_CHECK_MODE,
+    SIZE_CHECK_AUTO,
+    SIZE_CHECK_FIXED,
+    SIZE_CHECK_OFF,
+    RECOMMENDATION_NONE,
+    RECOMMENDATION_CREATE_BACKUP,
+    RECOMMENDATION_CHECK_SCHEDULE,
+    RECOMMENDATION_CHECK_STORAGE,
+    RECOMMENDATION_CHECK_BACKUP_CONTENTS,
+    RECOMMENDATION_CHECK_BACKUP_SIZE,
+    RECOMMENDATION_ADD_STORAGE_LOCATION,
+    RECOMMENDATION_CHECK_BACKUP_SYSTEM,
                     DEFAULT_UPDATE_INTERVAL_MINUTES,
                 ),
             )
@@ -314,18 +357,45 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 1,
             )
 
+        previous_sizes = [
+            item.size for item in records[1:6]
+            if item.size is not None and item.size > 0
+        ]
+        automatic_baseline = median(previous_sizes) if previous_sizes else None
+        automatic_drop_percent = (
+            round(((latest_record.size - automatic_baseline) / automatic_baseline) * 100, 1)
+            if latest_record is not None
+            and latest_record.size is not None
+            and automatic_baseline
+            else None
+        )
         below_minimum = (
             latest_record is not None
             and latest_record.size is not None
             and self.minimum_backup_size_bytes > 0
             and latest_record.size < self.minimum_backup_size_bytes
         )
-        excessive_drop = (
-            self.maximum_size_drop_percent > 0
-            and size_change_percent is not None
-            and size_change_percent <= -self.maximum_size_drop_percent
-        )
-        backup_size_suspicious = bool(below_minimum or excessive_drop)
+        if self.size_check_mode == SIZE_CHECK_OFF:
+            backup_size_suspicious = False
+        elif self.size_check_mode == SIZE_CHECK_FIXED:
+            backup_size_suspicious = bool(below_minimum)
+        else:
+            effective_drop = (
+                automatic_drop_percent
+                if automatic_drop_percent is not None
+                else size_change_percent
+            )
+            backup_size_suspicious = bool(
+                latest_record
+                and (
+                    (latest_record.size is not None and latest_record.size <= 0)
+                    or (
+                        self.maximum_size_drop_percent > 0
+                        and effective_drop is not None
+                        and effective_drop <= -self.maximum_size_drop_percent
+                    )
+                )
+            )
 
         latest_backup_incomplete = bool(latest_record and latest_record.incomplete)
         if latest_record is None:
@@ -478,6 +548,34 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             )
         )
 
+        active_problems = tuple(
+            key for key, active in (
+                ("no_backup", no_backup), ("backup_stale", backup_stale),
+                ("automatic_backup_overdue", automatic_backup_overdue),
+                ("automatic_backup_failed", automatic_backup_failed),
+                ("automatic_schedule_missing", automatic_schedule_missing),
+                ("automatic_schedule_overdue", automatic_schedule_overdue),
+                ("manager_unavailable", manager_unavailable), ("storage_error", storage_error),
+                ("backup_size_suspicious", backup_size_suspicious),
+                ("latest_backup_incomplete", latest_backup_incomplete),
+                ("backup_not_redundant", backup_not_redundant),
+                ("required_location_missing", required_location_missing),
+            ) if active
+        )
+        recommendation = {
+            STATUS_OK: RECOMMENDATION_NONE, STATUS_NO_BACKUPS: RECOMMENDATION_CREATE_BACKUP,
+            STATUS_BACKUP_STALE: RECOMMENDATION_CREATE_BACKUP,
+            STATUS_AUTOMATIC_BACKUP_OVERDUE: RECOMMENDATION_CHECK_SCHEDULE,
+            STATUS_AUTOMATIC_BACKUP_FAILED: RECOMMENDATION_CHECK_SCHEDULE,
+            STATUS_SCHEDULE_MISSING: RECOMMENDATION_CHECK_SCHEDULE,
+            STATUS_SCHEDULE_OVERDUE: RECOMMENDATION_CHECK_SCHEDULE,
+            STATUS_MANAGER_UNAVAILABLE: RECOMMENDATION_CHECK_BACKUP_SYSTEM,
+            STATUS_STORAGE_ERROR: RECOMMENDATION_CHECK_STORAGE,
+            STATUS_BACKUP_INCOMPLETE: RECOMMENDATION_CHECK_BACKUP_CONTENTS,
+            STATUS_BACKUP_SIZE_SUSPICIOUS: RECOMMENDATION_CHECK_BACKUP_SIZE,
+            STATUS_BACKUP_NOT_REDUNDANT: RECOMMENDATION_ADD_STORAGE_LOCATION,
+        }.get(status, RECOMMENDATION_CHECK_BACKUP_SYSTEM)
+
         return BackupCheckupData(
             checked_at=now,
             max_age_days=self.max_age_days,
@@ -523,4 +621,8 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             required_location_missing=required_location_missing,
             problem=problem,
             status=status,
+            recommendation=recommendation,
+            problem_count=len(active_problems),
+            active_problems=active_problems,
+            size_check_mode=self.size_check_mode,
         )

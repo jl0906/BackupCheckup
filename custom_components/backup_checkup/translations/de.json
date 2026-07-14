@@ -4,13 +4,32 @@
     "step": {
       "user": {
         "title": "BackupCheckup einrichten",
-        "description": "Überwacht die tatsächlich in Home Assistant gespeicherten Backups.",
+        "description": "Choose a ready-to-use monitoring profile. You can change it later in the integration options.",
         "data": {
-          "max_age_days": "Maximales Backupalter in Tagen",
-          "update_interval_minutes": "Aktualisierungsintervall in Minuten",
-          "minimum_backup_size_mb": "Minimale Backup-Größe in MB",
-          "maximum_size_drop_percent": "Maximal zulässiger Größenabfall in Prozent",
-          "minimum_redundant_locations": "Mindestanzahl der Backup-Speicherorte"
+          "monitoring_profile": "Überwachungsprofil"
+        },
+        "data_description": {
+          "monitoring_profile": "Standard is simple and suitable for most installations. Secure expects a second storage location. Custom shows all settings."
+        }
+      },
+      "advanced": {
+        "title": "Custom monitoring settings",
+        "description": "Set your own limits. Automatic size checking compares the newest backup with recent backups.",
+        "data": {
+          "max_age_days": "Maximum backup age in days",
+          "update_interval_minutes": "Update interval in minutes",
+          "size_check_mode": "Prüfung der Backup-Größe",
+          "minimum_backup_size_mb": "Fixed minimum backup size in MB",
+          "maximum_size_drop_percent": "Maximum allowed size drop in percent",
+          "minimum_redundant_locations": "Required backup locations"
+        },
+        "data_description": {
+          "max_age_days": "A warning is shown after this many complete days.",
+          "update_interval_minutes": "How often BackupCheckup reads the Home Assistant backup inventory.",
+          "size_check_mode": "Automatic is recommended for users who do not know their normal backup size.",
+          "minimum_backup_size_mb": "Only used with the fixed minimum size mode.",
+          "maximum_size_drop_percent": "Used for automatic comparison with previous backups.",
+          "minimum_redundant_locations": "Use 1 for one storage location or 2 for local storage plus NAS/cloud."
         }
       }
     },
@@ -21,13 +40,30 @@
   "options": {
     "step": {
       "init": {
-        "title": "BackupCheckup-Optionen",
+        "title": "BackupCheckup options",
+        "description": "Choose a monitoring profile. Selecting Custom opens all individual settings.",
         "data": {
-          "max_age_days": "Maximales Backupalter in Tagen",
-          "update_interval_minutes": "Aktualisierungsintervall in Minuten",
-          "minimum_backup_size_mb": "Minimale Backup-Größe in MB",
-          "maximum_size_drop_percent": "Maximal zulässiger Größenabfall in Prozent",
-          "minimum_redundant_locations": "Mindestanzahl der Backup-Speicherorte"
+          "monitoring_profile": "Überwachungsprofil"
+        }
+      },
+      "advanced": {
+        "title": "Custom monitoring settings",
+        "description": "Set your own limits. Automatic size checking compares the newest backup with recent backups.",
+        "data": {
+          "max_age_days": "Maximum backup age in days",
+          "update_interval_minutes": "Update interval in minutes",
+          "size_check_mode": "Prüfung der Backup-Größe",
+          "minimum_backup_size_mb": "Fixed minimum backup size in MB",
+          "maximum_size_drop_percent": "Maximum allowed size drop in percent",
+          "minimum_redundant_locations": "Required backup locations"
+        },
+        "data_description": {
+          "max_age_days": "A warning is shown after this many complete days.",
+          "update_interval_minutes": "How often BackupCheckup reads the Home Assistant backup inventory.",
+          "size_check_mode": "Automatic is recommended for users who do not know their normal backup size.",
+          "minimum_backup_size_mb": "Only used with the fixed minimum size mode.",
+          "maximum_size_drop_percent": "Used for automatic comparison with previous backups.",
+          "minimum_redundant_locations": "Use 1 for one storage location or 2 for local storage plus NAS/cloud."
         }
       }
     }
@@ -109,6 +145,22 @@
       },
       "latest_backup_locations": {
         "name": "Speicherorte des neuesten Backups"
+      },
+      "recommendation": {
+        "name": "Recommendation",
+        "state": {
+          "none": "No action required",
+          "create_backup": "Create a new backup",
+          "check_schedule": "Check automatic backup schedule",
+          "check_storage": "Check backup storage",
+          "check_backup_contents": "Check incomplete backup contents",
+          "check_backup_size": "Check backup size and free space",
+          "add_storage_location": "Add or restore a backup location",
+          "check_backup_system": "Check Home Assistant backup system"
+        }
+      },
+      "problem_count": {
+        "name": "Active problems"
       }
     },
     "binary_sensor": {
@@ -150,6 +202,22 @@
       },
       "required_location_missing": {
         "name": "Erforderlicher Backup-Speicherort fehlt"
+      }
+    }
+  },
+  "selector": {
+    "monitoring_profile": {
+      "options": {
+        "standard": "Standard",
+        "secure": "Sicher",
+        "custom": "Benutzerdefiniert"
+      }
+    },
+    "size_check_mode": {
+      "options": {
+        "automatic": "Automatischer Vergleich",
+        "fixed": "Feste Mindestgröße",
+        "disabled": "Deaktiviert"
       }
     }
   }

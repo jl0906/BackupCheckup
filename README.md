@@ -2,7 +2,7 @@
 
 BackupCheckup is a local Home Assistant custom integration that reads the **actual backup inventory** from Home Assistant's backup manager. It does not depend on a separate automation or helper and it detects when a backup file has subsequently been deleted.
 
-Version: **1.2.0**
+Version: **1.3.0**
 
 ## Features
 
@@ -104,3 +104,8 @@ actions:
 ## License
 
 MIT
+
+
+## Easy setup and monitoring profiles
+
+Version 1.3.0 adds a guided setup with **Standard**, **Secure**, and **Custom** profiles. Standard works for most installations, Secure expects backups on at least two storage locations, and Custom exposes every threshold. Automatic size checking compares the newest backup with recent backups, so users do not need to know a suitable size in advance. The new recommendation and active-problem sensors explain what should be checked next.

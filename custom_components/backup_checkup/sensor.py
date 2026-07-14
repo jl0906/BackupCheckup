@@ -13,12 +13,12 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, UnitOfInformation, UnitOfTime
+from homeassistant.const import EntityCategory, PERCENTAGE, UnitOfInformation, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
 
-from .const import BACKUP_RESULT_OPTIONS, DOMAIN, STATUS_OPTIONS
+from .const import BACKUP_RESULT_OPTIONS, DOMAIN, RECOMMENDATION_OPTIONS, STATUS_OPTIONS
 from .coordinator import BackupCheckupCoordinator
 from .entity import BackupCheckupEntity
 from .models import BackupAgentSummary, BackupCheckupData
@@ -47,6 +47,17 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         },
     ),
     BackupCheckupSensorDescription(
+        key="recommendation", translation_key="recommendation", icon="mdi:lightbulb-on-outline",
+        device_class=SensorDeviceClass.ENUM, options=RECOMMENDATION_OPTIONS,
+        value_fn=lambda data: data.recommendation,
+        attributes_fn=lambda data: {"active_problems": list(data.active_problems), "problem_count": data.problem_count},
+    ),
+    BackupCheckupSensorDescription(
+        key="problem_count", translation_key="problem_count", icon="mdi:counter",
+        native_unit_of_measurement="problems", value_fn=lambda data: data.problem_count,
+        attributes_fn=lambda data: {"active_problems": list(data.active_problems)},
+    ),
+    BackupCheckupSensorDescription(
         key="stored_backups",
         translation_key="stored_backups",
         icon="mdi:archive-multiple",
@@ -64,6 +75,8 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="automatic_backups",
         translation_key="automatic_backups",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:calendar-sync",
         native_unit_of_measurement="backups",
         value_fn=lambda data: data.automatic_backups,
@@ -71,6 +84,8 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="manual_backups",
         translation_key="manual_backups",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:hand-back-right",
         native_unit_of_measurement="backups",
         value_fn=lambda data: data.manual_backups,
@@ -92,6 +107,8 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="latest_manual_backup",
         translation_key="latest_manual_backup",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:hand-okay",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=lambda data: data.latest_manual_backup,
@@ -117,6 +134,8 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="manual_backup_age",
         translation_key="manual_backup_age",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:timer-outline",
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.DAYS,
@@ -148,6 +167,8 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="latest_backup_size_change",
         translation_key="latest_backup_size_change",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:percent",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
@@ -178,6 +199,8 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="last_automatic_attempt",
         translation_key="last_automatic_attempt",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:backup-restore",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=lambda data: data.last_automatic_attempt,
@@ -185,6 +208,8 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="last_successful_automatic_event",
         translation_key="last_successful_automatic_event",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:backup-restore",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=lambda data: data.last_successful_automatic_event,
@@ -192,6 +217,8 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="next_automatic_backup",
         translation_key="next_automatic_backup",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:calendar-arrow-right",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=lambda data: data.next_automatic_backup,
@@ -199,6 +226,8 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="backup_manager_state",
         translation_key="backup_manager_state",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:state-machine",
         value_fn=lambda data: data.manager_state,
     ),
