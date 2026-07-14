@@ -22,7 +22,8 @@
           "minimum_backup_size_mb": "Fixed minimum backup size in MB",
           "maximum_size_drop_percent": "Maximum allowed size drop in percent",
           "minimum_redundant_locations": "Required backup locations",
-          "repair_issues_enabled": "Show repair notifications"
+          "repair_issues_enabled": "Show repair notifications",
+          "analytics_window_days": "Analysis period in days"
         },
         "data_description": {
           "max_age_days": "A warning is shown after this many complete days.",
@@ -31,7 +32,8 @@
           "minimum_backup_size_mb": "Only used with the fixed minimum size mode.",
           "maximum_size_drop_percent": "Used for automatic comparison with previous backups.",
           "minimum_redundant_locations": "Use 1 for one storage location or 2 for local storage plus NAS/cloud.",
-          "repair_issues_enabled": "Create Home Assistant Repair issues for active backup problems. Issues disappear automatically after the problem is resolved."
+          "repair_issues_enabled": "Create Home Assistant Repair issues for active backup problems. Issues disappear automatically after the problem is resolved.",
+          "analytics_window_days": "Backup statistics and the observed automatic-backup success rate use this period. Historical success tracking starts with version 1.5.0."
         }
       }
     },
@@ -61,7 +63,8 @@
           "minimum_backup_size_mb": "Fixed minimum backup size in MB",
           "maximum_size_drop_percent": "Maximum allowed size drop in percent",
           "minimum_redundant_locations": "Required backup locations",
-          "repair_issues_enabled": "Show repair notifications"
+          "repair_issues_enabled": "Show repair notifications",
+          "analytics_window_days": "Analysis period in days"
         },
         "data_description": {
           "max_age_days": "A warning is shown after this many complete days.",
@@ -70,7 +73,8 @@
           "minimum_backup_size_mb": "Only used with the fixed minimum size mode.",
           "maximum_size_drop_percent": "Used for automatic comparison with previous backups.",
           "minimum_redundant_locations": "Use 1 for one storage location or 2 for local storage plus NAS/cloud.",
-          "repair_issues_enabled": "Create Home Assistant Repair issues for active backup problems. Issues disappear automatically after the problem is resolved."
+          "repair_issues_enabled": "Create Home Assistant Repair issues for active backup problems. Issues disappear automatically after the problem is resolved.",
+          "analytics_window_days": "Backup statistics and the observed automatic-backup success rate use this period. Historical success tracking starts with version 1.5.0."
         }
       }
     },
@@ -186,6 +190,39 @@
       },
       "agent_stored_bytes": {
         "name": "Stored backup size"
+      },
+      "health_score": {
+        "name": "Backup health score"
+      },
+      "health_rating": {
+        "name": "Backup health rating",
+        "state": {
+          "excellent": "Excellent",
+          "good": "Good",
+          "warning": "Warning",
+          "critical": "Critical"
+        }
+      },
+      "size_trend": {
+        "name": "Backup size trend",
+        "state": {
+          "increasing": "Increasing",
+          "stable": "Stable",
+          "decreasing": "Decreasing",
+          "insufficient_data": "Not enough data"
+        }
+      },
+      "average_backup_size": {
+        "name": "Average backup size"
+      },
+      "longest_backup_gap": {
+        "name": "Longest backup gap"
+      },
+      "automatic_success_rate": {
+        "name": "Automatic backup success rate"
+      },
+      "consecutive_automatic_failures": {
+        "name": "Consecutive automatic backup failures"
       }
     },
     "binary_sensor": {

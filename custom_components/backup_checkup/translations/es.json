@@ -22,7 +22,8 @@
           "minimum_backup_size_mb": "Tamaño mínimo fijo de la copia en MB",
           "maximum_size_drop_percent": "Reducción máxima permitida del tamaño en porcentaje",
           "minimum_redundant_locations": "Ubicaciones de copia requeridas",
-          "repair_issues_enabled": "Mostrar avisos de reparación"
+          "repair_issues_enabled": "Mostrar avisos de reparación",
+          "analytics_window_days": "Periodo de análisis en días"
         },
         "data_description": {
           "max_age_days": "Se muestra una advertencia después de este número de días completos.",
@@ -31,7 +32,8 @@
           "minimum_backup_size_mb": "Solo se utiliza con el modo de tamaño mínimo fijo.",
           "maximum_size_drop_percent": "Se utiliza para la comparación automática con copias anteriores.",
           "minimum_redundant_locations": "Usa 1 para una ubicación o 2 para almacenamiento local más NAS/nube.",
-          "repair_issues_enabled": "Crea avisos de Reparaciones de Home Assistant para problemas de copia activos. Desaparecen automáticamente cuando se resuelve el problema."
+          "repair_issues_enabled": "Crea avisos de Reparaciones de Home Assistant para problemas de copia activos. Desaparecen automáticamente cuando se resuelve el problema.",
+          "analytics_window_days": "Las estadísticas de copias y la tasa de éxito observada de las copias automáticas usan este periodo. El registro histórico comienza con la versión 1.5.0."
         }
       }
     },
@@ -61,7 +63,8 @@
           "minimum_backup_size_mb": "Tamaño mínimo fijo de la copia en MB",
           "maximum_size_drop_percent": "Reducción máxima permitida del tamaño en porcentaje",
           "minimum_redundant_locations": "Ubicaciones de copia requeridas",
-          "repair_issues_enabled": "Mostrar avisos de reparación"
+          "repair_issues_enabled": "Mostrar avisos de reparación",
+          "analytics_window_days": "Periodo de análisis en días"
         },
         "data_description": {
           "max_age_days": "Se muestra una advertencia después de este número de días completos.",
@@ -70,7 +73,8 @@
           "minimum_backup_size_mb": "Solo se utiliza con el modo de tamaño mínimo fijo.",
           "maximum_size_drop_percent": "Se utiliza para la comparación automática con copias anteriores.",
           "minimum_redundant_locations": "Usa 1 para una ubicación o 2 para almacenamiento local más NAS/nube.",
-          "repair_issues_enabled": "Crea avisos de Reparaciones de Home Assistant para problemas de copia activos. Desaparecen automáticamente cuando se resuelve el problema."
+          "repair_issues_enabled": "Crea avisos de Reparaciones de Home Assistant para problemas de copia activos. Desaparecen automáticamente cuando se resuelve el problema.",
+          "analytics_window_days": "Las estadísticas de copias y la tasa de éxito observada de las copias automáticas usan este periodo. El registro histórico comienza con la versión 1.5.0."
         }
       }
     },
@@ -186,6 +190,39 @@
       },
       "agent_stored_bytes": {
         "name": "Tamaño de copias almacenadas"
+      },
+      "health_score": {
+        "name": "Puntuación de salud de las copias"
+      },
+      "health_rating": {
+        "name": "Valoración de salud de las copias",
+        "state": {
+          "excellent": "Excelente",
+          "good": "Buena",
+          "warning": "Advertencia",
+          "critical": "Crítica"
+        }
+      },
+      "size_trend": {
+        "name": "Tendencia del tamaño de las copias",
+        "state": {
+          "increasing": "En aumento",
+          "stable": "Estable",
+          "decreasing": "En descenso",
+          "insufficient_data": "Datos insuficientes"
+        }
+      },
+      "average_backup_size": {
+        "name": "Tamaño medio de las copias"
+      },
+      "longest_backup_gap": {
+        "name": "Intervalo más largo entre copias"
+      },
+      "automatic_success_rate": {
+        "name": "Tasa de éxito de las copias automáticas"
+      },
+      "consecutive_automatic_failures": {
+        "name": "Fallos consecutivos de las copias automáticas"
       }
     },
     "binary_sensor": {

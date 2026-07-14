@@ -22,7 +22,8 @@
           "minimum_backup_size_mb": "Dimensione minima fissa del backup in MB",
           "maximum_size_drop_percent": "Riduzione massima consentita delle dimensioni in percentuale",
           "minimum_redundant_locations": "Posizioni di backup richieste",
-          "repair_issues_enabled": "Mostra avvisi di riparazione"
+          "repair_issues_enabled": "Mostra avvisi di riparazione",
+          "analytics_window_days": "Periodo di analisi in giorni"
         },
         "data_description": {
           "max_age_days": "Viene mostrato un avviso dopo questo numero di giorni completi.",
@@ -31,7 +32,8 @@
           "minimum_backup_size_mb": "Utilizzata solo con la modalità a dimensione minima fissa.",
           "maximum_size_drop_percent": "Utilizzata per il confronto automatico con i backup precedenti.",
           "minimum_redundant_locations": "Usa 1 per una posizione oppure 2 per archiviazione locale più NAS/cloud.",
-          "repair_issues_enabled": "Crea avvisi Riparazioni di Home Assistant per i problemi di backup attivi. Gli avvisi scompaiono automaticamente quando il problema è risolto."
+          "repair_issues_enabled": "Crea avvisi Riparazioni di Home Assistant per i problemi di backup attivi. Gli avvisi scompaiono automaticamente quando il problema è risolto.",
+          "analytics_window_days": "Le statistiche dei backup e la percentuale di successo osservata dei backup automatici usano questo periodo. La registrazione storica inizia con la versione 1.5.0."
         }
       }
     },
@@ -61,7 +63,8 @@
           "minimum_backup_size_mb": "Dimensione minima fissa del backup in MB",
           "maximum_size_drop_percent": "Riduzione massima consentita delle dimensioni in percentuale",
           "minimum_redundant_locations": "Posizioni di backup richieste",
-          "repair_issues_enabled": "Mostra avvisi di riparazione"
+          "repair_issues_enabled": "Mostra avvisi di riparazione",
+          "analytics_window_days": "Periodo di analisi in giorni"
         },
         "data_description": {
           "max_age_days": "Viene mostrato un avviso dopo questo numero di giorni completi.",
@@ -70,7 +73,8 @@
           "minimum_backup_size_mb": "Utilizzata solo con la modalità a dimensione minima fissa.",
           "maximum_size_drop_percent": "Utilizzata per il confronto automatico con i backup precedenti.",
           "minimum_redundant_locations": "Usa 1 per una posizione oppure 2 per archiviazione locale più NAS/cloud.",
-          "repair_issues_enabled": "Crea avvisi Riparazioni di Home Assistant per i problemi di backup attivi. Gli avvisi scompaiono automaticamente quando il problema è risolto."
+          "repair_issues_enabled": "Crea avvisi Riparazioni di Home Assistant per i problemi di backup attivi. Gli avvisi scompaiono automaticamente quando il problema è risolto.",
+          "analytics_window_days": "Le statistiche dei backup e la percentuale di successo osservata dei backup automatici usano questo periodo. La registrazione storica inizia con la versione 1.5.0."
         }
       }
     },
@@ -186,6 +190,39 @@
       },
       "agent_stored_bytes": {
         "name": "Dimensione backup archiviati"
+      },
+      "health_score": {
+        "name": "Punteggio salute backup"
+      },
+      "health_rating": {
+        "name": "Valutazione salute backup",
+        "state": {
+          "excellent": "Eccellente",
+          "good": "Buona",
+          "warning": "Avviso",
+          "critical": "Critica"
+        }
+      },
+      "size_trend": {
+        "name": "Tendenza dimensione backup",
+        "state": {
+          "increasing": "In aumento",
+          "stable": "Stabile",
+          "decreasing": "In diminuzione",
+          "insufficient_data": "Dati insufficienti"
+        }
+      },
+      "average_backup_size": {
+        "name": "Dimensione media dei backup"
+      },
+      "longest_backup_gap": {
+        "name": "Intervallo massimo tra backup"
+      },
+      "automatic_success_rate": {
+        "name": "Percentuale di successo dei backup automatici"
+      },
+      "consecutive_automatic_failures": {
+        "name": "Errori consecutivi dei backup automatici"
       }
     },
     "binary_sensor": {

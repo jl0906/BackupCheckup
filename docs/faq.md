@@ -46,3 +46,25 @@ backup metadata. User-defined backup names and backup IDs are excluded.
 
 Yes. Select the Custom profile and disable **Show repair notifications**. Sensors and
 binary sensors continue working normally.
+
+## How is the backup health score calculated?
+
+The score starts at 100 and applies fixed deductions for active problems. Examples
+include an old, incomplete, suspiciously small, or non-redundant backup. A low
+observed automatic success rate and repeated automatic failures can add further
+deductions. The complete deduction list is available as an attribute of the health
+score sensor. The calculation is local and deterministic.
+
+## Why is the automatic success rate unknown after updating?
+
+Home Assistant exposes the latest automatic attempt and latest successful automatic
+backup, but not a full historical attempt list. BackupCheckup begins recording
+outcomes locally when version 1.5.0 first runs. The success rate becomes available
+after at least one attempt has been resolved as successful or failed.
+
+## What does the backup-size trend compare?
+
+BackupCheckup uses up to six recent backups from the configured analysis period. It
+prefers automatic backups when enough comparable entries exist. The median of the
+newer group is compared with the older group; changes within five percent are shown
+as stable.

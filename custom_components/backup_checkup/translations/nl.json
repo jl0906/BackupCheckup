@@ -22,7 +22,8 @@
           "minimum_backup_size_mb": "Vaste minimale back-upgrootte in MB",
           "maximum_size_drop_percent": "Maximaal toegestane grootteafname in procenten",
           "minimum_redundant_locations": "Vereiste back-uplocaties",
-          "repair_issues_enabled": "Reparatiemeldingen tonen"
+          "repair_issues_enabled": "Reparatiemeldingen tonen",
+          "analytics_window_days": "Analyseperiode in dagen"
         },
         "data_description": {
           "max_age_days": "Na dit aantal volledig verstreken dagen wordt een waarschuwing getoond.",
@@ -31,7 +32,8 @@
           "minimum_backup_size_mb": "Wordt alleen gebruikt bij de modus met een vaste minimumgrootte.",
           "maximum_size_drop_percent": "Wordt gebruikt voor automatische vergelijking met eerdere back-ups.",
           "minimum_redundant_locations": "Gebruik 1 voor één opslaglocatie of 2 voor lokale opslag plus NAS/cloud.",
-          "repair_issues_enabled": "Maakt Home Assistant-reparatiemeldingen voor actieve back-upproblemen. Meldingen verdwijnen automatisch wanneer het probleem is opgelost."
+          "repair_issues_enabled": "Maakt Home Assistant-reparatiemeldingen voor actieve back-upproblemen. Meldingen verdwijnen automatisch wanneer het probleem is opgelost.",
+          "analytics_window_days": "Back-upstatistieken en het waargenomen succespercentage van automatische back-ups gebruiken deze periode. Historische succesregistratie begint met versie 1.5.0."
         }
       }
     },
@@ -61,7 +63,8 @@
           "minimum_backup_size_mb": "Vaste minimale back-upgrootte in MB",
           "maximum_size_drop_percent": "Maximaal toegestane grootteafname in procenten",
           "minimum_redundant_locations": "Vereiste back-uplocaties",
-          "repair_issues_enabled": "Reparatiemeldingen tonen"
+          "repair_issues_enabled": "Reparatiemeldingen tonen",
+          "analytics_window_days": "Analyseperiode in dagen"
         },
         "data_description": {
           "max_age_days": "Na dit aantal volledig verstreken dagen wordt een waarschuwing getoond.",
@@ -70,7 +73,8 @@
           "minimum_backup_size_mb": "Wordt alleen gebruikt bij de modus met een vaste minimumgrootte.",
           "maximum_size_drop_percent": "Wordt gebruikt voor automatische vergelijking met eerdere back-ups.",
           "minimum_redundant_locations": "Gebruik 1 voor één opslaglocatie of 2 voor lokale opslag plus NAS/cloud.",
-          "repair_issues_enabled": "Maakt Home Assistant-reparatiemeldingen voor actieve back-upproblemen. Meldingen verdwijnen automatisch wanneer het probleem is opgelost."
+          "repair_issues_enabled": "Maakt Home Assistant-reparatiemeldingen voor actieve back-upproblemen. Meldingen verdwijnen automatisch wanneer het probleem is opgelost.",
+          "analytics_window_days": "Back-upstatistieken en het waargenomen succespercentage van automatische back-ups gebruiken deze periode. Historische succesregistratie begint met versie 1.5.0."
         }
       }
     },
@@ -186,6 +190,39 @@
       },
       "agent_stored_bytes": {
         "name": "Opgeslagen back-upgrootte"
+      },
+      "health_score": {
+        "name": "Gezondheidsscore van back-ups"
+      },
+      "health_rating": {
+        "name": "Gezondheidsbeoordeling van back-ups",
+        "state": {
+          "excellent": "Uitstekend",
+          "good": "Goed",
+          "warning": "Waarschuwing",
+          "critical": "Kritiek"
+        }
+      },
+      "size_trend": {
+        "name": "Trend van back-upgrootte",
+        "state": {
+          "increasing": "Toenemend",
+          "stable": "Stabiel",
+          "decreasing": "Afnemend",
+          "insufficient_data": "Onvoldoende gegevens"
+        }
+      },
+      "average_backup_size": {
+        "name": "Gemiddelde back-upgrootte"
+      },
+      "longest_backup_gap": {
+        "name": "Langste interval tussen back-ups"
+      },
+      "automatic_success_rate": {
+        "name": "Succespercentage van automatische back-ups"
+      },
+      "consecutive_automatic_failures": {
+        "name": "Opeenvolgende mislukte automatische back-ups"
       }
     },
     "binary_sensor": {

@@ -22,7 +22,8 @@
           "minimum_backup_size_mb": "Taille minimale fixe de la sauvegarde en Mo",
           "maximum_size_drop_percent": "Baisse maximale autorisée de la taille en pourcentage",
           "minimum_redundant_locations": "Emplacements de sauvegarde requis",
-          "repair_issues_enabled": "Afficher les alertes de réparation"
+          "repair_issues_enabled": "Afficher les alertes de réparation",
+          "analytics_window_days": "Période d’analyse en jours"
         },
         "data_description": {
           "max_age_days": "Un avertissement est affiché après ce nombre de jours complets.",
@@ -31,7 +32,8 @@
           "minimum_backup_size_mb": "Utilisé uniquement avec le mode de taille minimale fixe.",
           "maximum_size_drop_percent": "Utilisé pour la comparaison automatique avec les sauvegardes précédentes.",
           "minimum_redundant_locations": "Utilisez 1 pour un emplacement ou 2 pour le stockage local plus un NAS/cloud.",
-          "repair_issues_enabled": "Crée des alertes Réparations Home Assistant pour les problèmes de sauvegarde actifs. Elles disparaissent automatiquement une fois le problème résolu."
+          "repair_issues_enabled": "Crée des alertes Réparations Home Assistant pour les problèmes de sauvegarde actifs. Elles disparaissent automatiquement une fois le problème résolu.",
+          "analytics_window_days": "Les statistiques de sauvegarde et le taux de réussite observé des sauvegardes automatiques utilisent cette période. Le suivi historique commence avec la version 1.5.0."
         }
       }
     },
@@ -61,7 +63,8 @@
           "minimum_backup_size_mb": "Taille minimale fixe de la sauvegarde en Mo",
           "maximum_size_drop_percent": "Baisse maximale autorisée de la taille en pourcentage",
           "minimum_redundant_locations": "Emplacements de sauvegarde requis",
-          "repair_issues_enabled": "Afficher les alertes de réparation"
+          "repair_issues_enabled": "Afficher les alertes de réparation",
+          "analytics_window_days": "Période d’analyse en jours"
         },
         "data_description": {
           "max_age_days": "Un avertissement est affiché après ce nombre de jours complets.",
@@ -70,7 +73,8 @@
           "minimum_backup_size_mb": "Utilisé uniquement avec le mode de taille minimale fixe.",
           "maximum_size_drop_percent": "Utilisé pour la comparaison automatique avec les sauvegardes précédentes.",
           "minimum_redundant_locations": "Utilisez 1 pour un emplacement ou 2 pour le stockage local plus un NAS/cloud.",
-          "repair_issues_enabled": "Crée des alertes Réparations Home Assistant pour les problèmes de sauvegarde actifs. Elles disparaissent automatiquement une fois le problème résolu."
+          "repair_issues_enabled": "Crée des alertes Réparations Home Assistant pour les problèmes de sauvegarde actifs. Elles disparaissent automatiquement une fois le problème résolu.",
+          "analytics_window_days": "Les statistiques de sauvegarde et le taux de réussite observé des sauvegardes automatiques utilisent cette période. Le suivi historique commence avec la version 1.5.0."
         }
       }
     },
@@ -186,6 +190,39 @@
       },
       "agent_stored_bytes": {
         "name": "Taille des sauvegardes stockées"
+      },
+      "health_score": {
+        "name": "Score de santé des sauvegardes"
+      },
+      "health_rating": {
+        "name": "Évaluation de santé des sauvegardes",
+        "state": {
+          "excellent": "Excellent",
+          "good": "Bon",
+          "warning": "Avertissement",
+          "critical": "Critique"
+        }
+      },
+      "size_trend": {
+        "name": "Tendance de la taille des sauvegardes",
+        "state": {
+          "increasing": "En hausse",
+          "stable": "Stable",
+          "decreasing": "En baisse",
+          "insufficient_data": "Données insuffisantes"
+        }
+      },
+      "average_backup_size": {
+        "name": "Taille moyenne des sauvegardes"
+      },
+      "longest_backup_gap": {
+        "name": "Plus long intervalle entre sauvegardes"
+      },
+      "automatic_success_rate": {
+        "name": "Taux de réussite des sauvegardes automatiques"
+      },
+      "consecutive_automatic_failures": {
+        "name": "Échecs consécutifs des sauvegardes automatiques"
       }
     },
     "binary_sensor": {

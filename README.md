@@ -3,10 +3,10 @@
 > **Backup health monitoring for Home Assistant**
 >
 > BackupCheckup checks whether your Home Assistant backups are available, recent,
-> complete, plausible in size, and stored on enough locations.
+> complete, plausible in size, stored on enough locations, and healthy over time.
 
 ![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)
-![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.5.0-blue.svg)
 ![License](https://img.shields.io/github/license/jl0906/BackupCheckup)
 
 BackupCheckup reads the **actual backup inventory** from Home Assistant's native
@@ -51,6 +51,20 @@ BackupCheckup detects problems such as:
 - Detection of incomplete backups with failed add-ons, folders, or storage agents.
 - Redundancy checks across multiple backup locations.
 - Central status, recommendation, and active-problem count.
+
+### Intelligent backup analytics
+
+- Transparent backup health score from `0` to `100`
+- Human-readable health rating: Excellent, Good, Warning, or Critical
+- Average backup size over a configurable analysis period
+- Increasing, stable, or decreasing backup-size trend
+- Longest interval between retained backups
+- Observed automatic-backup success rate
+- Consecutive automatic-backup failure counter
+- Local persistence of automatic-backup outcomes
+
+The health score is deterministic and exposes every deduction as a sensor attribute.
+It does not use cloud services or artificial intelligence.
 
 ### Storage monitoring
 
@@ -117,10 +131,34 @@ BackupCheckup offers three monitoring profiles.
 | Maximum size drop | Allowed reduction compared with recent comparable backups. |
 | Required backup locations | Minimum number of locations containing the newest backup. |
 | Repair notifications | Shows active backup problems under Home Assistant Repairs. |
+| Analysis period | Number of days used for size, gap, and observed success-rate statistics. |
 
 The automatic size mode compares the newest backup with up to five recent backups
 of the same type. This means users do not need to know a suitable backup size in
 advance.
+
+### Health score
+
+BackupCheckup starts at `100` points and subtracts documented values for active
+problems such as stale, incomplete, suspiciously small, or non-redundant backups.
+Repeated automatic failures and a reduced observed success rate can also lower the
+score. Open the attributes of `sensor.backup_checkup_health_score` to see every
+deduction.
+
+| Score | Rating |
+| --- | --- |
+| 90–100 | Excellent |
+| 75–89 | Good |
+| 50–74 | Warning |
+| 0–49 | Critical |
+
+### Historical automatic-backup metrics
+
+Home Assistant exposes only the latest automatic attempt and latest successful
+automatic backup. BackupCheckup therefore starts its own small local outcome history
+when version 1.5.0 is first run. The success-rate and consecutive-failure sensors do
+not invent failures that occurred before tracking began. The history contains only
+timestamps and result states and is removed when the integration entry is deleted.
 
 ## Recommended dashboard
 
@@ -131,12 +169,16 @@ A ready-to-copy example is available in
 type: entities
 title: BackupCheckup
 entities:
+  - entity: sensor.backup_checkup_health_score
+  - entity: sensor.backup_checkup_health_rating
   - entity: sensor.backup_checkup_status
   - entity: sensor.backup_checkup_recommendation
   - entity: sensor.backup_checkup_latest_backup
   - entity: sensor.backup_checkup_latest_backup_age
   - entity: sensor.backup_checkup_latest_backup_size
   - entity: sensor.backup_checkup_latest_backup_locations
+  - entity: sensor.backup_checkup_size_trend
+  - entity: sensor.backup_checkup_automatic_success_rate
   - entity: binary_sensor.backup_checkup_problem
   - entity: button.backup_checkup_refresh
 ```
@@ -177,8 +219,8 @@ Open the BackupCheckup integration page and choose **Download diagnostics** to e
 - Integration and Home Assistant versions
 - Effective configuration
 - Coordinator update state
-- Active problems and recommendation
-- Backup inventory summary
+- Health score, rating, deductions, active problems, and recommendation
+- Backup inventory and intelligent analytics summary
 - Automatic-backup schedule information
 - Per-storage health information
 - Sanitized details for the twenty newest backups

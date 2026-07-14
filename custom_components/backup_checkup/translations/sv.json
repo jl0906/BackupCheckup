@@ -22,7 +22,8 @@
           "minimum_backup_size_mb": "Fast minsta storlek för säkerhetskopia i MB",
           "maximum_size_drop_percent": "Största tillåtna storleksminskning i procent",
           "minimum_redundant_locations": "Krävda lagringsplatser för säkerhetskopior",
-          "repair_issues_enabled": "Visa reparationsmeddelanden"
+          "repair_issues_enabled": "Visa reparationsmeddelanden",
+          "analytics_window_days": "Analysperiod i dagar"
         },
         "data_description": {
           "max_age_days": "En varning visas efter så här många hela dagar.",
@@ -31,7 +32,8 @@
           "minimum_backup_size_mb": "Används endast i läget med fast minimistorlek.",
           "maximum_size_drop_percent": "Används för automatisk jämförelse med tidigare säkerhetskopior.",
           "minimum_redundant_locations": "Använd 1 för en lagringsplats eller 2 för lokal lagring plus NAS/moln.",
-          "repair_issues_enabled": "Skapar Home Assistant-reparationsärenden för aktiva säkerhetskopieringsproblem. De försvinner automatiskt när problemet är löst."
+          "repair_issues_enabled": "Skapar Home Assistant-reparationsärenden för aktiva säkerhetskopieringsproblem. De försvinner automatiskt när problemet är löst.",
+          "analytics_window_days": "Säkerhetskopieringsstatistik och observerad lyckandefrekvens för automatiska säkerhetskopior använder denna period. Historisk registrering börjar med version 1.5.0."
         }
       }
     },
@@ -61,7 +63,8 @@
           "minimum_backup_size_mb": "Fast minsta storlek för säkerhetskopia i MB",
           "maximum_size_drop_percent": "Största tillåtna storleksminskning i procent",
           "minimum_redundant_locations": "Krävda lagringsplatser för säkerhetskopior",
-          "repair_issues_enabled": "Visa reparationsmeddelanden"
+          "repair_issues_enabled": "Visa reparationsmeddelanden",
+          "analytics_window_days": "Analysperiod i dagar"
         },
         "data_description": {
           "max_age_days": "En varning visas efter så här många hela dagar.",
@@ -70,7 +73,8 @@
           "minimum_backup_size_mb": "Används endast i läget med fast minimistorlek.",
           "maximum_size_drop_percent": "Används för automatisk jämförelse med tidigare säkerhetskopior.",
           "minimum_redundant_locations": "Använd 1 för en lagringsplats eller 2 för lokal lagring plus NAS/moln.",
-          "repair_issues_enabled": "Skapar Home Assistant-reparationsärenden för aktiva säkerhetskopieringsproblem. De försvinner automatiskt när problemet är löst."
+          "repair_issues_enabled": "Skapar Home Assistant-reparationsärenden för aktiva säkerhetskopieringsproblem. De försvinner automatiskt när problemet är löst.",
+          "analytics_window_days": "Säkerhetskopieringsstatistik och observerad lyckandefrekvens för automatiska säkerhetskopior använder denna period. Historisk registrering börjar med version 1.5.0."
         }
       }
     },
@@ -186,6 +190,39 @@
       },
       "agent_stored_bytes": {
         "name": "Lagrad säkerhetskopieringsstorlek"
+      },
+      "health_score": {
+        "name": "Hälsopoäng för säkerhetskopior"
+      },
+      "health_rating": {
+        "name": "Hälsobedömning för säkerhetskopior",
+        "state": {
+          "excellent": "Utmärkt",
+          "good": "Bra",
+          "warning": "Varning",
+          "critical": "Kritisk"
+        }
+      },
+      "size_trend": {
+        "name": "Storlekstrend för säkerhetskopior",
+        "state": {
+          "increasing": "Ökande",
+          "stable": "Stabil",
+          "decreasing": "Minskande",
+          "insufficient_data": "Otillräckliga data"
+        }
+      },
+      "average_backup_size": {
+        "name": "Genomsnittlig storlek på säkerhetskopior"
+      },
+      "longest_backup_gap": {
+        "name": "Längsta intervall mellan säkerhetskopior"
+      },
+      "automatic_success_rate": {
+        "name": "Lyckandefrekvens för automatiska säkerhetskopior"
+      },
+      "consecutive_automatic_failures": {
+        "name": "Misslyckade automatiska säkerhetskopior i följd"
       }
     },
     "binary_sensor": {

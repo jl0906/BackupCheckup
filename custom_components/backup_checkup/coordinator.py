@@ -17,10 +17,12 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
+from .analytics import calculate_health_score, calculate_inventory_analytics
 from .const import (
     BACKUP_RESULT_COMPLETE,
     BACKUP_RESULT_PARTIAL,
     BACKUP_RESULT_UNKNOWN,
+    CONF_ANALYTICS_WINDOW_DAYS,
     CONF_MAX_AGE_DAYS,
     CONF_MAXIMUM_SIZE_DROP_PERCENT,
     CONF_MINIMUM_BACKUP_SIZE_MB,
@@ -32,6 +34,7 @@ from .const import (
     CORE_LAST_AUTOMATIC_ATTEMPT,
     CORE_LAST_SUCCESSFUL_AUTOMATIC_BACKUP,
     CORE_NEXT_AUTOMATIC_BACKUP,
+    DEFAULT_ANALYTICS_WINDOW_DAYS,
     DEFAULT_MAX_AGE_DAYS,
     DEFAULT_MAXIMUM_SIZE_DROP_PERCENT,
     DEFAULT_MINIMUM_BACKUP_SIZE_MB,
@@ -64,6 +67,7 @@ from .const import (
     STATUS_SCHEDULE_OVERDUE,
     STATUS_STORAGE_ERROR,
 )
+from .history import BackupCheckupHistory
 from .models import (
     BackupAgentRecord,
     BackupAgentSummary,
@@ -116,6 +120,13 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 DEFAULT_REPAIR_ISSUES_ENABLED,
             )
         )
+        self.analytics_window_days = int(
+            options.get(
+                CONF_ANALYTICS_WINDOW_DAYS,
+                DEFAULT_ANALYTICS_WINDOW_DAYS,
+            )
+        )
+        self.history = BackupCheckupHistory(hass, entry.entry_id)
         update_minutes = int(
             options.get(
                 CONF_UPDATE_INTERVAL_MINUTES,
@@ -274,6 +285,17 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         )
         next_automatic = self._entity_datetime(CORE_NEXT_AUTOMATIC_BACKUP)
         manager_state = self._entity_state(CORE_BACKUP_MANAGER_STATE)
+        history_metrics = await self.history.async_observe(
+            last_attempt=last_automatic_attempt,
+            last_success=last_successful_automatic_event,
+            now=now,
+            window_days=self.analytics_window_days,
+        )
+        inventory_analytics = calculate_inventory_analytics(
+            records,
+            now=now,
+            window_days=self.analytics_window_days,
+        )
 
         no_backup = not records
         backup_stale = latest_age is not None and latest_age > self.max_age_days
@@ -361,6 +383,27 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             if active
         )
 
+        score_flags = {
+            "no_backup": no_backup,
+            "backup_stale": backup_stale,
+            "automatic_backup_overdue": automatic_backup_overdue,
+            "automatic_backup_failed": automatic_backup_failed,
+            "automatic_schedule_missing": automatic_schedule_missing,
+            "automatic_schedule_overdue": automatic_schedule_overdue,
+            "manager_unavailable": manager_unavailable,
+            "storage_error": storage_error,
+            "backup_size_suspicious": backup_size_suspicious,
+            "latest_backup_incomplete": latest_backup_incomplete,
+            "backup_not_redundant": backup_not_redundant,
+            "required_location_missing": required_location_missing,
+        }
+        health = calculate_health_score(
+            score_flags,
+            automatic_success_rate=history_metrics.success_rate,
+            consecutive_automatic_failures=history_metrics.consecutive_failures,
+            resolved_attempts=history_metrics.resolved_attempts,
+        )
+
         recommendation = {
             STATUS_OK: RECOMMENDATION_NONE,
             STATUS_NO_BACKUPS: RECOMMENDATION_CREATE_BACKUP,
@@ -425,6 +468,21 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             problem_count=len(active_problems),
             active_problems=active_problems,
             size_check_mode=self.size_check_mode,
+            analytics_window_days=self.analytics_window_days,
+            health_score=health.score,
+            health_rating=health.rating,
+            health_score_deductions=health.deductions,
+            average_backup_size=inventory_analytics.average_backup_size,
+            longest_backup_gap_days=inventory_analytics.longest_backup_gap_days,
+            size_trend=inventory_analytics.size_trend,
+            size_trend_percent=inventory_analytics.size_trend_percent,
+            analyzed_backup_count=inventory_analytics.analyzed_backup_count,
+            automatic_success_rate=history_metrics.success_rate,
+            automatic_attempts_observed=history_metrics.resolved_attempts,
+            automatic_successes_observed=history_metrics.successful_attempts,
+            automatic_failures_observed=history_metrics.failed_attempts,
+            consecutive_automatic_failures=history_metrics.consecutive_failures,
+            history_tracking_started_at=history_metrics.tracking_started_at,
         )
 
     def _normalize_backups(

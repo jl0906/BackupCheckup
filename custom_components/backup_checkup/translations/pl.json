@@ -22,7 +22,8 @@
           "minimum_backup_size_mb": "Stały minimalny rozmiar kopii zapasowej w MB",
           "maximum_size_drop_percent": "Maksymalny dozwolony spadek rozmiaru w procentach",
           "minimum_redundant_locations": "Wymagane lokalizacje kopii zapasowej",
-          "repair_issues_enabled": "Pokazuj komunikaty naprawcze"
+          "repair_issues_enabled": "Pokazuj komunikaty naprawcze",
+          "analytics_window_days": "Okres analizy w dniach"
         },
         "data_description": {
           "max_age_days": "Ostrzeżenie pojawi się po tej liczbie pełnych dni.",
@@ -31,7 +32,8 @@
           "minimum_backup_size_mb": "Używane tylko w trybie stałego minimalnego rozmiaru.",
           "maximum_size_drop_percent": "Używane do automatycznego porównania z wcześniejszymi kopiami zapasowymi.",
           "minimum_redundant_locations": "Ustaw 1 dla jednej lokalizacji lub 2 dla pamięci lokalnej oraz NAS/chmury.",
-          "repair_issues_enabled": "Tworzy komunikaty Napraw Home Assistant dla aktywnych problemów z kopiami. Komunikaty znikają automatycznie po usunięciu problemu."
+          "repair_issues_enabled": "Tworzy komunikaty Napraw Home Assistant dla aktywnych problemów z kopiami. Komunikaty znikają automatycznie po usunięciu problemu.",
+          "analytics_window_days": "Statystyki kopii zapasowych i obserwowany wskaźnik powodzenia kopii automatycznych używają tego okresu. Rejestrowanie historii powodzenia rozpoczyna się od wersji 1.5.0."
         }
       }
     },
@@ -61,7 +63,8 @@
           "minimum_backup_size_mb": "Stały minimalny rozmiar kopii zapasowej w MB",
           "maximum_size_drop_percent": "Maksymalny dozwolony spadek rozmiaru w procentach",
           "minimum_redundant_locations": "Wymagane lokalizacje kopii zapasowej",
-          "repair_issues_enabled": "Pokazuj komunikaty naprawcze"
+          "repair_issues_enabled": "Pokazuj komunikaty naprawcze",
+          "analytics_window_days": "Okres analizy w dniach"
         },
         "data_description": {
           "max_age_days": "Ostrzeżenie pojawi się po tej liczbie pełnych dni.",
@@ -70,7 +73,8 @@
           "minimum_backup_size_mb": "Używane tylko w trybie stałego minimalnego rozmiaru.",
           "maximum_size_drop_percent": "Używane do automatycznego porównania z wcześniejszymi kopiami zapasowymi.",
           "minimum_redundant_locations": "Ustaw 1 dla jednej lokalizacji lub 2 dla pamięci lokalnej oraz NAS/chmury.",
-          "repair_issues_enabled": "Tworzy komunikaty Napraw Home Assistant dla aktywnych problemów z kopiami. Komunikaty znikają automatycznie po usunięciu problemu."
+          "repair_issues_enabled": "Tworzy komunikaty Napraw Home Assistant dla aktywnych problemów z kopiami. Komunikaty znikają automatycznie po usunięciu problemu.",
+          "analytics_window_days": "Statystyki kopii zapasowych i obserwowany wskaźnik powodzenia kopii automatycznych używają tego okresu. Rejestrowanie historii powodzenia rozpoczyna się od wersji 1.5.0."
         }
       }
     },
@@ -186,6 +190,39 @@
       },
       "agent_stored_bytes": {
         "name": "Łączny rozmiar kopii"
+      },
+      "health_score": {
+        "name": "Wynik kondycji kopii zapasowych"
+      },
+      "health_rating": {
+        "name": "Ocena kondycji kopii zapasowych",
+        "state": {
+          "excellent": "Doskonała",
+          "good": "Dobra",
+          "warning": "Ostrzeżenie",
+          "critical": "Krytyczna"
+        }
+      },
+      "size_trend": {
+        "name": "Trend rozmiaru kopii zapasowych",
+        "state": {
+          "increasing": "Rosnący",
+          "stable": "Stabilny",
+          "decreasing": "Malejący",
+          "insufficient_data": "Za mało danych"
+        }
+      },
+      "average_backup_size": {
+        "name": "Średni rozmiar kopii zapasowej"
+      },
+      "longest_backup_gap": {
+        "name": "Najdłuższa przerwa między kopiami"
+      },
+      "automatic_success_rate": {
+        "name": "Skuteczność automatycznych kopii zapasowych"
+      },
+      "consecutive_automatic_failures": {
+        "name": "Kolejne nieudane automatyczne kopie zapasowe"
       }
     },
     "binary_sensor": {

@@ -7,6 +7,13 @@ Home Assistant may preserve a previously customized entity ID after an update.
 
 | Entity | Purpose | Default |
 | --- | --- | --- |
+| `sensor.backup_checkup_health_score` | Transparent overall health score from 0 to 100; deductions are available as attributes | Enabled |
+| `sensor.backup_checkup_health_rating` | Excellent, Good, Warning, or Critical | Enabled |
+| `sensor.backup_checkup_size_trend` | Increasing, stable, decreasing, or insufficient data | Enabled |
+| `sensor.backup_checkup_average_backup_size` | Average size of retained backups in the analysis period | Enabled |
+| `sensor.backup_checkup_longest_backup_gap` | Longest interval between retained backups in the analysis period | Enabled |
+| `sensor.backup_checkup_automatic_success_rate` | Success rate of automatic attempts observed since 1.5.0 | Enabled |
+| `sensor.backup_checkup_consecutive_automatic_failures` | Number of observed automatic failures in a row | Enabled |
 | `sensor.backup_checkup_status` | Highest-priority overall backup health state | Enabled |
 | `sensor.backup_checkup_recommendation` | Suggested next action | Enabled |
 | `sensor.backup_checkup_problem_count` | Number of active problems; problem keys are available as an attribute | Enabled |
@@ -81,3 +88,34 @@ binary_sensor.backup_checkup_local_problem
 | Entity | Action |
 | --- | --- |
 | `button.backup_checkup_refresh` | Immediately reads and evaluates the native backup inventory |
+
+## Intelligent analytics notes
+
+- The health score is deterministic. Its `deductions` attribute lists every applied deduction.
+- Size trend prefers automatic backups when at least four comparable automatic backups are available.
+- Average size and longest gap use the configured analysis period and fall back to the retained inventory when the period contains no backups.
+- Automatic success tracking begins with version 1.5.0. Home Assistant does not expose a complete historical attempt log, so BackupCheckup does not estimate older failures.
+- A pending automatic attempt is considered failed after six hours or when a newer attempt appears without a matching success.
+
+### Health-score deductions
+
+| Condition | Deduction |
+| --- | ---: |
+| No backup available | 100 |
+| Backup manager unavailable | 50 |
+| Backup too old | 25 |
+| Latest backup incomplete | 25 |
+| Latest automatic backup failed | 20 |
+| Storage error | 20 |
+| Backup unusually small | 15 |
+| Backup not redundant | 15 |
+| Automatic backup overdue | 15 |
+| Automatic schedule missing | 10 |
+| Automatic schedule overdue | 10 |
+| Required location currently unhealthy | 10 |
+| Observed success rate below 95% / 80% / 60% | 5 / 12 / 20 |
+| Consecutive automatic failures | 5 each, maximum 15 |
+
+Deductions can overlap and the final score is limited to a minimum of `0`.
+Historical success-rate deductions are applied only after at least three automatic
+attempts have been resolved inside the configured analysis period.

@@ -142,3 +142,18 @@ class BackupCheckupData:
     problem_count: int
     active_problems: tuple[str, ...]
     size_check_mode: str
+    analytics_window_days: int
+    health_score: int
+    health_rating: str
+    health_score_deductions: dict[str, int]
+    average_backup_size: int | None
+    longest_backup_gap_days: float | None
+    size_trend: str
+    size_trend_percent: float | None
+    analyzed_backup_count: int
+    automatic_success_rate: float | None
+    automatic_attempts_observed: int
+    automatic_successes_observed: int
+    automatic_failures_observed: int
+    consecutive_automatic_failures: int
+    history_tracking_started_at: datetime | None

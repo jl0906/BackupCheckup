@@ -22,7 +22,8 @@
           "minimum_backup_size_mb": "Feste Mindestgröße des Backups in MB",
           "maximum_size_drop_percent": "Maximal zulässige Größenabnahme in Prozent",
           "minimum_redundant_locations": "Erforderliche Backup-Speicherorte",
-          "repair_issues_enabled": "Reparaturhinweise anzeigen"
+          "repair_issues_enabled": "Reparaturhinweise anzeigen",
+          "analytics_window_days": "Analysezeitraum in Tagen"
         },
         "data_description": {
           "max_age_days": "Nach dieser Anzahl vollständig vergangener Tage wird eine Warnung angezeigt.",
@@ -31,7 +32,8 @@
           "minimum_backup_size_mb": "Wird nur im Modus mit fester Mindestgröße verwendet.",
           "maximum_size_drop_percent": "Wird für den automatischen Vergleich mit früheren Backups verwendet.",
           "minimum_redundant_locations": "Verwende 1 für einen Speicherort oder 2 für lokalen Speicher plus NAS/Cloud.",
-          "repair_issues_enabled": "Erstellt Home-Assistant-Reparaturhinweise für aktive Backup-Probleme. Die Hinweise verschwinden automatisch, sobald das Problem behoben ist."
+          "repair_issues_enabled": "Erstellt Home-Assistant-Reparaturhinweise für aktive Backup-Probleme. Die Hinweise verschwinden automatisch, sobald das Problem behoben ist.",
+          "analytics_window_days": "Backup-Statistiken und die beobachtete Erfolgsquote automatischer Backups verwenden diesen Zeitraum. Die historische Erfolgsaufzeichnung beginnt mit Version 1.5.0."
         }
       }
     },
@@ -61,7 +63,8 @@
           "minimum_backup_size_mb": "Feste Mindestgröße des Backups in MB",
           "maximum_size_drop_percent": "Maximal zulässige Größenabnahme in Prozent",
           "minimum_redundant_locations": "Erforderliche Backup-Speicherorte",
-          "repair_issues_enabled": "Reparaturhinweise anzeigen"
+          "repair_issues_enabled": "Reparaturhinweise anzeigen",
+          "analytics_window_days": "Analysezeitraum in Tagen"
         },
         "data_description": {
           "max_age_days": "Nach dieser Anzahl vollständig vergangener Tage wird eine Warnung angezeigt.",
@@ -70,7 +73,8 @@
           "minimum_backup_size_mb": "Wird nur im Modus mit fester Mindestgröße verwendet.",
           "maximum_size_drop_percent": "Wird für den automatischen Vergleich mit früheren Backups verwendet.",
           "minimum_redundant_locations": "Verwende 1 für einen Speicherort oder 2 für lokalen Speicher plus NAS/Cloud.",
-          "repair_issues_enabled": "Erstellt Home-Assistant-Reparaturhinweise für aktive Backup-Probleme. Die Hinweise verschwinden automatisch, sobald das Problem behoben ist."
+          "repair_issues_enabled": "Erstellt Home-Assistant-Reparaturhinweise für aktive Backup-Probleme. Die Hinweise verschwinden automatisch, sobald das Problem behoben ist.",
+          "analytics_window_days": "Backup-Statistiken und die beobachtete Erfolgsquote automatischer Backups verwenden diesen Zeitraum. Die historische Erfolgsaufzeichnung beginnt mit Version 1.5.0."
         }
       }
     },
@@ -186,6 +190,39 @@
       },
       "agent_stored_bytes": {
         "name": "Gespeicherte Backup-Größe"
+      },
+      "health_score": {
+        "name": "Backup-Gesundheitswert"
+      },
+      "health_rating": {
+        "name": "Backup-Bewertung",
+        "state": {
+          "excellent": "Ausgezeichnet",
+          "good": "Gut",
+          "warning": "Warnung",
+          "critical": "Kritisch"
+        }
+      },
+      "size_trend": {
+        "name": "Trend der Backup-Größe",
+        "state": {
+          "increasing": "Zunehmend",
+          "stable": "Stabil",
+          "decreasing": "Abnehmend",
+          "insufficient_data": "Nicht genügend Daten"
+        }
+      },
+      "average_backup_size": {
+        "name": "Durchschnittliche Backup-Größe"
+      },
+      "longest_backup_gap": {
+        "name": "Längste Backup-Lücke"
+      },
+      "automatic_success_rate": {
+        "name": "Erfolgsquote automatischer Backups"
+      },
+      "consecutive_automatic_failures": {
+        "name": "Aufeinanderfolgende Fehler automatischer Backups"
       }
     },
     "binary_sensor": {

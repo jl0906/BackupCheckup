@@ -22,7 +22,8 @@
           "minimum_backup_size_mb": "Fast minimumsstørrelse for sikkerhedskopi i MB",
           "maximum_size_drop_percent": "Maksimalt tilladt størrelsesfald i procent",
           "minimum_redundant_locations": "Påkrævede placeringer til sikkerhedskopier",
-          "repair_issues_enabled": "Vis reparationsmeddelelser"
+          "repair_issues_enabled": "Vis reparationsmeddelelser",
+          "analytics_window_days": "Analyseperiode i dage"
         },
         "data_description": {
           "max_age_days": "Der vises en advarsel efter dette antal hele dage.",
@@ -31,7 +32,8 @@
           "minimum_backup_size_mb": "Bruges kun i tilstanden med fast minimumsstørrelse.",
           "maximum_size_drop_percent": "Bruges til automatisk sammenligning med tidligere sikkerhedskopier.",
           "minimum_redundant_locations": "Brug 1 for én lagerplacering eller 2 for lokal lagring plus NAS/cloud.",
-          "repair_issues_enabled": "Opretter Home Assistant-reparationsmeddelelser for aktive backup-problemer. De forsvinder automatisk, når problemet er løst."
+          "repair_issues_enabled": "Opretter Home Assistant-reparationsmeddelelser for aktive backup-problemer. De forsvinder automatisk, når problemet er løst.",
+          "analytics_window_days": "Sikkerhedskopieringsstatistik og den observerede succesrate for automatiske sikkerhedskopier bruger denne periode. Historisk registrering starter med version 1.5.0."
         }
       }
     },
@@ -61,7 +63,8 @@
           "minimum_backup_size_mb": "Fast minimumsstørrelse for sikkerhedskopi i MB",
           "maximum_size_drop_percent": "Maksimalt tilladt størrelsesfald i procent",
           "minimum_redundant_locations": "Påkrævede placeringer til sikkerhedskopier",
-          "repair_issues_enabled": "Vis reparationsmeddelelser"
+          "repair_issues_enabled": "Vis reparationsmeddelelser",
+          "analytics_window_days": "Analyseperiode i dage"
         },
         "data_description": {
           "max_age_days": "Der vises en advarsel efter dette antal hele dage.",
@@ -70,7 +73,8 @@
           "minimum_backup_size_mb": "Bruges kun i tilstanden med fast minimumsstørrelse.",
           "maximum_size_drop_percent": "Bruges til automatisk sammenligning med tidligere sikkerhedskopier.",
           "minimum_redundant_locations": "Brug 1 for én lagerplacering eller 2 for lokal lagring plus NAS/cloud.",
-          "repair_issues_enabled": "Opretter Home Assistant-reparationsmeddelelser for aktive backup-problemer. De forsvinder automatisk, når problemet er løst."
+          "repair_issues_enabled": "Opretter Home Assistant-reparationsmeddelelser for aktive backup-problemer. De forsvinder automatisk, når problemet er løst.",
+          "analytics_window_days": "Sikkerhedskopieringsstatistik og den observerede succesrate for automatiske sikkerhedskopier bruger denne periode. Historisk registrering starter med version 1.5.0."
         }
       }
     },
@@ -186,6 +190,39 @@
       },
       "agent_stored_bytes": {
         "name": "Samlet backupstørrelse"
+      },
+      "health_score": {
+        "name": "Sundhedsscore for sikkerhedskopier"
+      },
+      "health_rating": {
+        "name": "Sundhedsvurdering af sikkerhedskopier",
+        "state": {
+          "excellent": "Fremragende",
+          "good": "God",
+          "warning": "Advarsel",
+          "critical": "Kritisk"
+        }
+      },
+      "size_trend": {
+        "name": "Størrelsestendens for sikkerhedskopier",
+        "state": {
+          "increasing": "Stigende",
+          "stable": "Stabil",
+          "decreasing": "Faldende",
+          "insufficient_data": "Utilstrækkelige data"
+        }
+      },
+      "average_backup_size": {
+        "name": "Gennemsnitlig sikkerhedskopistørrelse"
+      },
+      "longest_backup_gap": {
+        "name": "Længste interval mellem sikkerhedskopier"
+      },
+      "automatic_success_rate": {
+        "name": "Succesrate for automatiske sikkerhedskopier"
+      },
+      "consecutive_automatic_failures": {
+        "name": "Sammenhængende mislykkede automatiske sikkerhedskopier"
       }
     },
     "binary_sensor": {

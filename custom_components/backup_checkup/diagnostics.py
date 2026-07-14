@@ -47,6 +47,9 @@ async def async_get_config_entry_diagnostics(
             "checked_at": data.checked_at.isoformat(),
         },
         "health": {
+            "score": data.health_score,
+            "rating": data.health_rating,
+            "score_deductions": data.health_score_deductions,
             "status": data.status,
             "recommendation": data.recommendation,
             "problem": data.problem,
@@ -96,6 +99,24 @@ async def async_get_config_entry_diagnostics(
                 else None
             ),
             "manager_state": data.manager_state,
+        },
+        "analytics": {
+            "window_days": data.analytics_window_days,
+            "analyzed_backup_count": data.analyzed_backup_count,
+            "average_backup_size": data.average_backup_size,
+            "longest_backup_gap_days": data.longest_backup_gap_days,
+            "size_trend": data.size_trend,
+            "size_trend_percent": data.size_trend_percent,
+            "automatic_success_rate": data.automatic_success_rate,
+            "automatic_attempts_observed": data.automatic_attempts_observed,
+            "automatic_successes_observed": data.automatic_successes_observed,
+            "automatic_failures_observed": data.automatic_failures_observed,
+            "consecutive_automatic_failures": (data.consecutive_automatic_failures),
+            "history_tracking_started_at": (
+                data.history_tracking_started_at.isoformat()
+                if data.history_tracking_started_at
+                else None
+            ),
         },
         "automatic_backup_system": {
             "last_attempt": (

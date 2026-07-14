@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.5.0
+
+### Added
+- Transparent backup health score from 0 to 100 with per-problem deductions exposed as attributes.
+- Human-readable Excellent, Good, Warning, and Critical health rating sensor.
+- Backup-size trend analysis using recent retained backups.
+- Average backup-size and longest-backup-gap sensors.
+- Persistent local observation history for automatic backup attempts.
+- Observed automatic-backup success-rate and consecutive-failure sensors.
+- Configurable analytics period from 7 to 365 days.
+- Analytics details in diagnostics, documentation, dashboard examples, and every supported translation.
+
+### Changed
+- Expanded the recommended dashboard around the health score and trend metrics.
+- Updated integration, device, manifest, and documentation version metadata to 1.5.0.
+
+### Notes
+- Automatic success history begins when version 1.5.0 is first run because Home Assistant exposes only the latest attempt and latest success. No older failures are inferred.
+
 ## 1.4.0
 
 ### Added

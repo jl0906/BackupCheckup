@@ -1,0 +1,167 @@
+"""Pure analytics helpers for BackupCheckup."""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from statistics import mean, median
+
+from .models import BackupRecord
+
+HEALTH_RATING_EXCELLENT = "excellent"
+HEALTH_RATING_GOOD = "good"
+HEALTH_RATING_WARNING = "warning"
+HEALTH_RATING_CRITICAL = "critical"
+
+SIZE_TREND_INCREASING = "increasing"
+SIZE_TREND_STABLE = "stable"
+SIZE_TREND_DECREASING = "decreasing"
+SIZE_TREND_INSUFFICIENT_DATA = "insufficient_data"
+
+CURRENT_PROBLEM_DEDUCTIONS: dict[str, int] = {
+    "no_backup": 100,
+    "manager_unavailable": 50,
+    "backup_stale": 25,
+    "automatic_backup_overdue": 15,
+    "automatic_backup_failed": 20,
+    "automatic_schedule_missing": 10,
+    "automatic_schedule_overdue": 10,
+    "storage_error": 20,
+    "backup_size_suspicious": 15,
+    "latest_backup_incomplete": 25,
+    "backup_not_redundant": 15,
+    "required_location_missing": 10,
+}
+
+
+@dataclass(frozen=True, slots=True)
+class InventoryAnalytics:
+    """Analytics calculated from the currently retained backup inventory."""
+
+    average_backup_size: int | None
+    longest_backup_gap_days: float | None
+    size_trend: str
+    size_trend_percent: float | None
+    analyzed_backup_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class HealthScore:
+    """Transparent health-score result."""
+
+    score: int
+    rating: str
+    deductions: dict[str, int]
+
+
+def calculate_inventory_analytics(
+    records: tuple[BackupRecord, ...],
+    *,
+    now: datetime,
+    window_days: int,
+    stable_threshold_percent: float = 5.0,
+) -> InventoryAnalytics:
+    """Calculate size and interval analytics from retained backups."""
+    window_start = now - timedelta(days=window_days)
+    window_records = tuple(record for record in records if record.date >= window_start)
+    analysis_records = window_records or records
+
+    known_sizes = [
+        record.size for record in analysis_records if record.size is not None
+    ]
+    average_size = round(mean(known_sizes)) if known_sizes else None
+
+    chronological = sorted(record.date for record in analysis_records)
+    gaps = [
+        (newer - older).total_seconds() / 86400
+        for older, newer in zip(chronological, chronological[1:], strict=False)
+    ]
+    longest_gap = round(max(gaps), 2) if gaps else None
+
+    automatic_with_sizes = [
+        record
+        for record in analysis_records
+        if record.automatic and record.size is not None and record.size > 0
+    ]
+    all_with_sizes = [
+        record
+        for record in analysis_records
+        if record.size is not None and record.size > 0
+    ]
+    trend_records = (
+        automatic_with_sizes if len(automatic_with_sizes) >= 4 else all_with_sizes
+    )[:6]
+
+    if len(trend_records) < 4:
+        trend = SIZE_TREND_INSUFFICIENT_DATA
+        trend_percent = None
+    else:
+        split = len(trend_records) // 2
+        recent_baseline = median(
+            record.size for record in trend_records[:split] if record.size is not None
+        )
+        older_baseline = median(
+            record.size for record in trend_records[split:] if record.size is not None
+        )
+        trend_percent = (
+            round(((recent_baseline - older_baseline) / older_baseline) * 100, 1)
+            if older_baseline
+            else None
+        )
+        if trend_percent is None:
+            trend = SIZE_TREND_INSUFFICIENT_DATA
+        elif trend_percent > stable_threshold_percent:
+            trend = SIZE_TREND_INCREASING
+        elif trend_percent < -stable_threshold_percent:
+            trend = SIZE_TREND_DECREASING
+        else:
+            trend = SIZE_TREND_STABLE
+
+    return InventoryAnalytics(
+        average_backup_size=average_size,
+        longest_backup_gap_days=longest_gap,
+        size_trend=trend,
+        size_trend_percent=trend_percent,
+        analyzed_backup_count=len(analysis_records),
+    )
+
+
+def calculate_health_score(
+    flags: Mapping[str, bool],
+    *,
+    automatic_success_rate: float | None,
+    consecutive_automatic_failures: int,
+    resolved_attempts: int,
+) -> HealthScore:
+    """Calculate a transparent 0-100 backup health score."""
+    deductions = {
+        key: deduction
+        for key, deduction in CURRENT_PROBLEM_DEDUCTIONS.items()
+        if flags.get(key, False)
+    }
+
+    if resolved_attempts >= 3 and automatic_success_rate is not None:
+        if automatic_success_rate < 60:
+            deductions["low_automatic_success_rate"] = 20
+        elif automatic_success_rate < 80:
+            deductions["reduced_automatic_success_rate"] = 12
+        elif automatic_success_rate < 95:
+            deductions["imperfect_automatic_success_rate"] = 5
+
+    if consecutive_automatic_failures > 0:
+        deductions["consecutive_automatic_failures"] = min(
+            15, consecutive_automatic_failures * 5
+        )
+
+    score = max(0, 100 - sum(deductions.values()))
+    if score >= 90:
+        rating = HEALTH_RATING_EXCELLENT
+    elif score >= 75:
+        rating = HEALTH_RATING_GOOD
+    elif score >= 50:
+        rating = HEALTH_RATING_WARNING
+    else:
+        rating = HEALTH_RATING_CRITICAL
+
+    return HealthScore(score=score, rating=rating, deductions=deductions)

@@ -23,7 +23,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
 
-from .const import BACKUP_RESULT_OPTIONS, RECOMMENDATION_OPTIONS, STATUS_OPTIONS
+from .const import (
+    BACKUP_RESULT_OPTIONS,
+    HEALTH_RATING_OPTIONS,
+    RECOMMENDATION_OPTIONS,
+    SIZE_TREND_OPTIONS,
+    STATUS_OPTIONS,
+)
 from .coordinator import BackupCheckupCoordinator
 from .entity import BackupCheckupAgentEntity, BackupCheckupEntity
 from .models import BackupAgentSummary, BackupCheckupData
@@ -39,6 +45,105 @@ class BackupCheckupSensorDescription(SensorEntityDescription):
 
 SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
+        key="health_score",
+        translation_key="health_score",
+        icon="mdi:shield-check-outline",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.health_score,
+        attributes_fn=lambda data: {
+            "rating": data.health_rating,
+            "deductions": data.health_score_deductions,
+            "analysis_window_days": data.analytics_window_days,
+            "automatic_success_rate": data.automatic_success_rate,
+            "consecutive_automatic_failures": (data.consecutive_automatic_failures),
+        },
+    ),
+    BackupCheckupSensorDescription(
+        key="health_rating",
+        translation_key="health_rating",
+        icon="mdi:shield-star-outline",
+        device_class=SensorDeviceClass.ENUM,
+        options=HEALTH_RATING_OPTIONS,
+        value_fn=lambda data: data.health_rating,
+        attributes_fn=lambda data: {
+            "score": data.health_score,
+            "deductions": data.health_score_deductions,
+        },
+    ),
+    BackupCheckupSensorDescription(
+        key="size_trend",
+        translation_key="size_trend",
+        icon="mdi:chart-line",
+        device_class=SensorDeviceClass.ENUM,
+        options=SIZE_TREND_OPTIONS,
+        value_fn=lambda data: data.size_trend,
+        attributes_fn=lambda data: {
+            "change_percent": data.size_trend_percent,
+            "analyzed_backup_count": data.analyzed_backup_count,
+            "analysis_window_days": data.analytics_window_days,
+        },
+    ),
+    BackupCheckupSensorDescription(
+        key="average_backup_size",
+        translation_key="average_backup_size",
+        icon="mdi:database-arrow-left-outline",
+        device_class=SensorDeviceClass.DATA_SIZE,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.average_backup_size,
+        attributes_fn=lambda data: {
+            "analyzed_backup_count": data.analyzed_backup_count,
+            "analysis_window_days": data.analytics_window_days,
+        },
+    ),
+    BackupCheckupSensorDescription(
+        key="longest_backup_gap",
+        translation_key="longest_backup_gap",
+        icon="mdi:timeline-clock-outline",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.DAYS,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.longest_backup_gap_days,
+        attributes_fn=lambda data: {
+            "analyzed_backup_count": data.analyzed_backup_count,
+            "analysis_window_days": data.analytics_window_days,
+        },
+    ),
+    BackupCheckupSensorDescription(
+        key="automatic_success_rate",
+        translation_key="automatic_success_rate",
+        icon="mdi:check-decagram-outline",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: data.automatic_success_rate,
+        attributes_fn=lambda data: {
+            "observed_attempts": data.automatic_attempts_observed,
+            "successful_attempts": data.automatic_successes_observed,
+            "failed_attempts": data.automatic_failures_observed,
+            "tracking_started_at": (
+                data.history_tracking_started_at.isoformat()
+                if data.history_tracking_started_at
+                else None
+            ),
+            "analysis_window_days": data.analytics_window_days,
+        },
+    ),
+    BackupCheckupSensorDescription(
+        key="consecutive_automatic_failures",
+        translation_key="consecutive_automatic_failures",
+        icon="mdi:alert-circle-check-outline",
+        value_fn=lambda data: data.consecutive_automatic_failures,
+        attributes_fn=lambda data: {
+            "observed_attempts": data.automatic_attempts_observed,
+            "tracking_started_at": (
+                data.history_tracking_started_at.isoformat()
+                if data.history_tracking_started_at
+                else None
+            ),
+        },
+    ),
+    BackupCheckupSensorDescription(
         key="status",
         translation_key="status",
         icon="mdi:backup-restore",
@@ -50,6 +155,8 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
             "checked_at": data.checked_at.isoformat(),
             "problem": data.problem,
             "problem_count": data.problem_count,
+            "health_score": data.health_score,
+            "health_rating": data.health_rating,
             "active_problems": list(data.active_problems),
         },
     ),
@@ -63,6 +170,8 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         attributes_fn=lambda data: {
             "active_problems": list(data.active_problems),
             "problem_count": data.problem_count,
+            "health_score": data.health_score,
+            "health_rating": data.health_rating,
         },
     ),
     BackupCheckupSensorDescription(

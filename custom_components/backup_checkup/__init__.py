@@ -21,6 +21,7 @@ from .const import (
     PROFILE_CUSTOM,
 )
 from .coordinator import BackupCheckupCoordinator
+from .history import BackupCheckupHistory
 from .repairs import async_remove_issues, async_update_issues
 
 
@@ -77,3 +78,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def _async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload BackupCheckup after its options change."""
     await hass.config_entries.async_reload(entry.entry_id)
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Remove persistent BackupCheckup history when the entry is deleted."""
+    coordinator = getattr(entry, "runtime_data", None)
+    if isinstance(coordinator, BackupCheckupCoordinator):
+        await coordinator.history.async_remove()
+        return
+    history = BackupCheckupHistory(hass, entry.entry_id)
+    await history.async_remove()
