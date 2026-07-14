@@ -1,0 +1,115 @@
+{
+  "title": "BackupCheckup",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurar BackupCheckup",
+        "description": "Supervisa las copias de seguridad realmente almacenadas por Home Assistant.",
+        "data": {
+          "max_age_days": "Antigüedad máxima de la copia de seguridad en días",
+          "update_interval_minutes": "Intervalo de actualización en minutos"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Solo se permite una instancia de BackupCheckup."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opciones de BackupCheckup",
+        "data": {
+          "max_age_days": "Antigüedad máxima de la copia de seguridad en días",
+          "update_interval_minutes": "Intervalo de actualización en minutos"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Estado",
+        "state": {
+          "ok": "OK",
+          "no_backups": "Sin copias de seguridad",
+          "automatic_backup_overdue": "Copia de seguridad automática atrasada",
+          "backup_stale": "Copia de seguridad demasiado antigua",
+          "automatic_backup_failed": "Error en la copia de seguridad automática",
+          "schedule_missing": "Falta la programación automática",
+          "schedule_overdue": "Programación automática atrasada",
+          "manager_unavailable": "Gestor de copias de seguridad no disponible",
+          "storage_error": "Error de almacenamiento de copias de seguridad"
+        }
+      },
+      "stored_backups": {
+        "name": "Copias de seguridad almacenadas"
+      },
+      "automatic_backups": {
+        "name": "Copias de seguridad automáticas"
+      },
+      "manual_backups": {
+        "name": "Copias de seguridad manuales o de otro tipo"
+      },
+      "latest_backup": {
+        "name": "Copia de seguridad más reciente"
+      },
+      "latest_automatic_backup": {
+        "name": "Copia de seguridad automática más reciente"
+      },
+      "latest_manual_backup": {
+        "name": "Copia de seguridad manual o de otro tipo más reciente"
+      },
+      "latest_backup_age": {
+        "name": "Antigüedad de la copia de seguridad más reciente"
+      },
+      "automatic_backup_age": {
+        "name": "Antigüedad de la copia de seguridad automática"
+      },
+      "manual_backup_age": {
+        "name": "Antigüedad de la copia de seguridad manual o de otro tipo"
+      },
+      "last_automatic_attempt": {
+        "name": "Último intento de copia de seguridad automática"
+      },
+      "next_automatic_backup": {
+        "name": "Próxima copia de seguridad automática"
+      },
+      "backup_manager_state": {
+        "name": "Estado del gestor de copias de seguridad"
+      },
+      "last_successful_automatic_event": {
+        "name": "Último evento correcto de copia de seguridad automática"
+      }
+    },
+    "binary_sensor": {
+      "problem": {
+        "name": "Problema"
+      },
+      "no_backup": {
+        "name": "No hay ninguna copia de seguridad almacenada"
+      },
+      "backup_stale": {
+        "name": "La copia de seguridad más reciente es demasiado antigua"
+      },
+      "automatic_backup_overdue": {
+        "name": "Copia de seguridad automática atrasada"
+      },
+      "automatic_backup_failed": {
+        "name": "Error en la copia de seguridad automática"
+      },
+      "automatic_schedule_missing": {
+        "name": "Falta la programación automática"
+      },
+      "automatic_schedule_overdue": {
+        "name": "Programación automática atrasada"
+      },
+      "backup_manager_unavailable": {
+        "name": "Gestor de copias de seguridad no disponible"
+      },
+      "storage_error": {
+        "name": "Error de almacenamiento de copias de seguridad"
+      }
+    }
+  }
+}

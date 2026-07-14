@@ -1,0 +1,115 @@
+{
+  "title": "BackupCheckup",
+  "config": {
+    "step": {
+      "user": {
+        "title": "BackupCheckup instellen",
+        "description": "Bewaak de back-ups die daadwerkelijk door Home Assistant zijn opgeslagen.",
+        "data": {
+          "max_age_days": "Maximale leeftijd van back-up in dagen",
+          "update_interval_minutes": "Update-interval in minuten"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Er is slechts één BackupCheckup-instantie toegestaan."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "BackupCheckup-opties",
+        "data": {
+          "max_age_days": "Maximale leeftijd van back-up in dagen",
+          "update_interval_minutes": "Update-interval in minuten"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "ok": "OK",
+          "no_backups": "Geen back-ups",
+          "automatic_backup_overdue": "Automatische back-up is te laat",
+          "backup_stale": "Back-up is te oud",
+          "automatic_backup_failed": "Automatische back-up mislukt",
+          "schedule_missing": "Automatisch schema ontbreekt",
+          "schedule_overdue": "Automatisch schema is te laat",
+          "manager_unavailable": "Back-upbeheerder niet beschikbaar",
+          "storage_error": "Fout in back-upopslag"
+        }
+      },
+      "stored_backups": {
+        "name": "Opgeslagen back-ups"
+      },
+      "automatic_backups": {
+        "name": "Automatische back-ups"
+      },
+      "manual_backups": {
+        "name": "Handmatige of andere back-ups"
+      },
+      "latest_backup": {
+        "name": "Nieuwste back-up"
+      },
+      "latest_automatic_backup": {
+        "name": "Nieuwste automatische back-up"
+      },
+      "latest_manual_backup": {
+        "name": "Nieuwste handmatige of andere back-up"
+      },
+      "latest_backup_age": {
+        "name": "Leeftijd van nieuwste back-up"
+      },
+      "automatic_backup_age": {
+        "name": "Leeftijd van automatische back-up"
+      },
+      "manual_backup_age": {
+        "name": "Leeftijd van handmatige of andere back-up"
+      },
+      "last_automatic_attempt": {
+        "name": "Laatste automatische back-uppoging"
+      },
+      "next_automatic_backup": {
+        "name": "Volgende automatische back-up"
+      },
+      "backup_manager_state": {
+        "name": "Status van back-upbeheerder"
+      },
+      "last_successful_automatic_event": {
+        "name": "Laatste geslaagde automatische back-upgebeurtenis"
+      }
+    },
+    "binary_sensor": {
+      "problem": {
+        "name": "Probleem"
+      },
+      "no_backup": {
+        "name": "Geen back-up opgeslagen"
+      },
+      "backup_stale": {
+        "name": "Nieuwste back-up is te oud"
+      },
+      "automatic_backup_overdue": {
+        "name": "Automatische back-up is te laat"
+      },
+      "automatic_backup_failed": {
+        "name": "Automatische back-up mislukt"
+      },
+      "automatic_schedule_missing": {
+        "name": "Automatisch schema ontbreekt"
+      },
+      "automatic_schedule_overdue": {
+        "name": "Automatisch schema is te laat"
+      },
+      "backup_manager_unavailable": {
+        "name": "Back-upbeheerder niet beschikbaar"
+      },
+      "storage_error": {
+        "name": "Fout in back-upopslag"
+      }
+    }
+  }
+}

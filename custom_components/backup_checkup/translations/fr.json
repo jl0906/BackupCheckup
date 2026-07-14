@@ -1,0 +1,115 @@
+{
+  "title": "BackupCheckup",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configurer BackupCheckup",
+        "description": "Surveille les sauvegardes réellement stockées par Home Assistant.",
+        "data": {
+          "max_age_days": "Âge maximal des sauvegardes en jours",
+          "update_interval_minutes": "Intervalle de mise à jour en minutes"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Une seule instance de BackupCheckup est autorisée."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options de BackupCheckup",
+        "data": {
+          "max_age_days": "Âge maximal des sauvegardes en jours",
+          "update_interval_minutes": "Intervalle de mise à jour en minutes"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "État",
+        "state": {
+          "ok": "OK",
+          "no_backups": "Aucune sauvegarde",
+          "automatic_backup_overdue": "Sauvegarde automatique en retard",
+          "backup_stale": "Sauvegarde trop ancienne",
+          "automatic_backup_failed": "Échec de la sauvegarde automatique",
+          "schedule_missing": "Planification automatique manquante",
+          "schedule_overdue": "Planification automatique en retard",
+          "manager_unavailable": "Gestionnaire de sauvegardes indisponible",
+          "storage_error": "Erreur de stockage des sauvegardes"
+        }
+      },
+      "stored_backups": {
+        "name": "Sauvegardes stockées"
+      },
+      "automatic_backups": {
+        "name": "Sauvegardes automatiques"
+      },
+      "manual_backups": {
+        "name": "Sauvegardes manuelles ou autres"
+      },
+      "latest_backup": {
+        "name": "Dernière sauvegarde"
+      },
+      "latest_automatic_backup": {
+        "name": "Dernière sauvegarde automatique"
+      },
+      "latest_manual_backup": {
+        "name": "Dernière sauvegarde manuelle ou autre"
+      },
+      "latest_backup_age": {
+        "name": "Âge de la dernière sauvegarde"
+      },
+      "automatic_backup_age": {
+        "name": "Âge de la sauvegarde automatique"
+      },
+      "manual_backup_age": {
+        "name": "Âge de la sauvegarde manuelle ou autre"
+      },
+      "last_automatic_attempt": {
+        "name": "Dernière tentative de sauvegarde automatique"
+      },
+      "next_automatic_backup": {
+        "name": "Prochaine sauvegarde automatique"
+      },
+      "backup_manager_state": {
+        "name": "État du gestionnaire de sauvegardes"
+      },
+      "last_successful_automatic_event": {
+        "name": "Dernier événement de sauvegarde automatique réussi"
+      }
+    },
+    "binary_sensor": {
+      "problem": {
+        "name": "Problème"
+      },
+      "no_backup": {
+        "name": "Aucune sauvegarde stockée"
+      },
+      "backup_stale": {
+        "name": "Dernière sauvegarde trop ancienne"
+      },
+      "automatic_backup_overdue": {
+        "name": "Sauvegarde automatique en retard"
+      },
+      "automatic_backup_failed": {
+        "name": "Échec de la sauvegarde automatique"
+      },
+      "automatic_schedule_missing": {
+        "name": "Planification automatique manquante"
+      },
+      "automatic_schedule_overdue": {
+        "name": "Planification automatique en retard"
+      },
+      "backup_manager_unavailable": {
+        "name": "Gestionnaire de sauvegardes indisponible"
+      },
+      "storage_error": {
+        "name": "Erreur de stockage des sauvegardes"
+      }
+    }
+  }
+}

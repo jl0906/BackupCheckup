@@ -1,0 +1,115 @@
+{
+  "title": "BackupCheckup",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Konfigurera BackupCheckup",
+        "description": "Övervaka säkerhetskopiorna som faktiskt lagras av Home Assistant.",
+        "data": {
+          "max_age_days": "Maximal ålder för säkerhetskopia i dagar",
+          "update_interval_minutes": "Uppdateringsintervall i minuter"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Endast en instans av BackupCheckup är tillåten."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Alternativ för BackupCheckup",
+        "data": {
+          "max_age_days": "Maximal ålder för säkerhetskopia i dagar",
+          "update_interval_minutes": "Uppdateringsintervall i minuter"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "ok": "OK",
+          "no_backups": "Inga säkerhetskopior",
+          "automatic_backup_overdue": "Automatisk säkerhetskopiering är försenad",
+          "backup_stale": "Säkerhetskopian är för gammal",
+          "automatic_backup_failed": "Automatisk säkerhetskopiering misslyckades",
+          "schedule_missing": "Automatiskt schema saknas",
+          "schedule_overdue": "Automatiskt schema är försenat",
+          "manager_unavailable": "Hanteraren för säkerhetskopior är inte tillgänglig",
+          "storage_error": "Fel i lagringen av säkerhetskopior"
+        }
+      },
+      "stored_backups": {
+        "name": "Lagrade säkerhetskopior"
+      },
+      "automatic_backups": {
+        "name": "Automatiska säkerhetskopior"
+      },
+      "manual_backups": {
+        "name": "Manuella eller andra säkerhetskopior"
+      },
+      "latest_backup": {
+        "name": "Senaste säkerhetskopian"
+      },
+      "latest_automatic_backup": {
+        "name": "Senaste automatiska säkerhetskopian"
+      },
+      "latest_manual_backup": {
+        "name": "Senaste manuella eller andra säkerhetskopian"
+      },
+      "latest_backup_age": {
+        "name": "Ålder på senaste säkerhetskopian"
+      },
+      "automatic_backup_age": {
+        "name": "Ålder på automatisk säkerhetskopia"
+      },
+      "manual_backup_age": {
+        "name": "Ålder på manuell eller annan säkerhetskopia"
+      },
+      "last_automatic_attempt": {
+        "name": "Senaste försöket till automatisk säkerhetskopiering"
+      },
+      "next_automatic_backup": {
+        "name": "Nästa automatiska säkerhetskopia"
+      },
+      "backup_manager_state": {
+        "name": "Status för hanteraren av säkerhetskopior"
+      },
+      "last_successful_automatic_event": {
+        "name": "Senaste lyckade händelsen för automatisk säkerhetskopiering"
+      }
+    },
+    "binary_sensor": {
+      "problem": {
+        "name": "Problem"
+      },
+      "no_backup": {
+        "name": "Ingen säkerhetskopia lagrad"
+      },
+      "backup_stale": {
+        "name": "Senaste säkerhetskopian är för gammal"
+      },
+      "automatic_backup_overdue": {
+        "name": "Automatisk säkerhetskopiering är försenad"
+      },
+      "automatic_backup_failed": {
+        "name": "Automatisk säkerhetskopiering misslyckades"
+      },
+      "automatic_schedule_missing": {
+        "name": "Automatiskt schema saknas"
+      },
+      "automatic_schedule_overdue": {
+        "name": "Automatiskt schema är försenat"
+      },
+      "backup_manager_unavailable": {
+        "name": "Hanteraren för säkerhetskopior är inte tillgänglig"
+      },
+      "storage_error": {
+        "name": "Fel i lagringen av säkerhetskopior"
+      }
+    }
+  }
+}

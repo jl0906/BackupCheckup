@@ -1,0 +1,115 @@
+{
+  "title": "BackupCheckup",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Konfigurer BackupCheckup",
+        "description": "Overvåg de sikkerhedskopier, der faktisk er gemt af Home Assistant.",
+        "data": {
+          "max_age_days": "Maksimal alder for sikkerhedskopi i dage",
+          "update_interval_minutes": "Opdateringsinterval i minutter"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Der må kun være én BackupCheckup-instans."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Indstillinger for BackupCheckup",
+        "data": {
+          "max_age_days": "Maksimal alder for sikkerhedskopi i dage",
+          "update_interval_minutes": "Opdateringsinterval i minutter"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Status",
+        "state": {
+          "ok": "OK",
+          "no_backups": "Ingen sikkerhedskopier",
+          "automatic_backup_overdue": "Automatisk sikkerhedskopi er forsinket",
+          "backup_stale": "Sikkerhedskopien er for gammel",
+          "automatic_backup_failed": "Automatisk sikkerhedskopiering mislykkedes",
+          "schedule_missing": "Automatisk tidsplan mangler",
+          "schedule_overdue": "Automatisk tidsplan er forsinket",
+          "manager_unavailable": "Sikkerhedskopieringsmanageren er ikke tilgængelig",
+          "storage_error": "Fejl i lageret til sikkerhedskopier"
+        }
+      },
+      "stored_backups": {
+        "name": "Gemte sikkerhedskopier"
+      },
+      "automatic_backups": {
+        "name": "Automatiske sikkerhedskopier"
+      },
+      "manual_backups": {
+        "name": "Manuelle eller andre sikkerhedskopier"
+      },
+      "latest_backup": {
+        "name": "Seneste sikkerhedskopi"
+      },
+      "latest_automatic_backup": {
+        "name": "Seneste automatiske sikkerhedskopi"
+      },
+      "latest_manual_backup": {
+        "name": "Seneste manuelle eller anden sikkerhedskopi"
+      },
+      "latest_backup_age": {
+        "name": "Alder på seneste sikkerhedskopi"
+      },
+      "automatic_backup_age": {
+        "name": "Alder på automatisk sikkerhedskopi"
+      },
+      "manual_backup_age": {
+        "name": "Alder på manuel eller anden sikkerhedskopi"
+      },
+      "last_automatic_attempt": {
+        "name": "Seneste forsøg på automatisk sikkerhedskopiering"
+      },
+      "next_automatic_backup": {
+        "name": "Næste automatiske sikkerhedskopi"
+      },
+      "backup_manager_state": {
+        "name": "Status for sikkerhedskopieringsmanageren"
+      },
+      "last_successful_automatic_event": {
+        "name": "Seneste vellykkede automatiske sikkerhedskopieringshændelse"
+      }
+    },
+    "binary_sensor": {
+      "problem": {
+        "name": "Problem"
+      },
+      "no_backup": {
+        "name": "Ingen sikkerhedskopi gemt"
+      },
+      "backup_stale": {
+        "name": "Seneste sikkerhedskopi er for gammel"
+      },
+      "automatic_backup_overdue": {
+        "name": "Automatisk sikkerhedskopi er forsinket"
+      },
+      "automatic_backup_failed": {
+        "name": "Automatisk sikkerhedskopiering mislykkedes"
+      },
+      "automatic_schedule_missing": {
+        "name": "Automatisk tidsplan mangler"
+      },
+      "automatic_schedule_overdue": {
+        "name": "Automatisk tidsplan er forsinket"
+      },
+      "backup_manager_unavailable": {
+        "name": "Sikkerhedskopieringsmanageren er ikke tilgængelig"
+      },
+      "storage_error": {
+        "name": "Fejl i lageret til sikkerhedskopier"
+      }
+    }
+  }
+}

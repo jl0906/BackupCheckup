@@ -1,0 +1,115 @@
+{
+  "title": "BackupCheckup",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Skonfiguruj BackupCheckup",
+        "description": "Monitoruj kopie zapasowe faktycznie przechowywane przez Home Assistant.",
+        "data": {
+          "max_age_days": "Maksymalny wiek kopii zapasowej w dniach",
+          "update_interval_minutes": "Interwał aktualizacji w minutach"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Dozwolona jest tylko jedna instancja BackupCheckup."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcje BackupCheckup",
+        "data": {
+          "max_age_days": "Maksymalny wiek kopii zapasowej w dniach",
+          "update_interval_minutes": "Interwał aktualizacji w minutach"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Stan",
+        "state": {
+          "ok": "OK",
+          "no_backups": "Brak kopii zapasowych",
+          "automatic_backup_overdue": "Automatyczna kopia zapasowa jest opóźniona",
+          "backup_stale": "Kopia zapasowa jest zbyt stara",
+          "automatic_backup_failed": "Automatyczne tworzenie kopii zapasowej nie powiodło się",
+          "schedule_missing": "Brak harmonogramu automatycznych kopii zapasowych",
+          "schedule_overdue": "Harmonogram automatycznych kopii zapasowych jest opóźniony",
+          "manager_unavailable": "Menedżer kopii zapasowych jest niedostępny",
+          "storage_error": "Błąd magazynu kopii zapasowych"
+        }
+      },
+      "stored_backups": {
+        "name": "Przechowywane kopie zapasowe"
+      },
+      "automatic_backups": {
+        "name": "Automatyczne kopie zapasowe"
+      },
+      "manual_backups": {
+        "name": "Ręczne lub inne kopie zapasowe"
+      },
+      "latest_backup": {
+        "name": "Najnowsza kopia zapasowa"
+      },
+      "latest_automatic_backup": {
+        "name": "Najnowsza automatyczna kopia zapasowa"
+      },
+      "latest_manual_backup": {
+        "name": "Najnowsza ręczna lub inna kopia zapasowa"
+      },
+      "latest_backup_age": {
+        "name": "Wiek najnowszej kopii zapasowej"
+      },
+      "automatic_backup_age": {
+        "name": "Wiek automatycznej kopii zapasowej"
+      },
+      "manual_backup_age": {
+        "name": "Wiek ręcznej lub innej kopii zapasowej"
+      },
+      "last_automatic_attempt": {
+        "name": "Ostatnia próba automatycznego utworzenia kopii zapasowej"
+      },
+      "next_automatic_backup": {
+        "name": "Następna automatyczna kopia zapasowa"
+      },
+      "backup_manager_state": {
+        "name": "Stan menedżera kopii zapasowych"
+      },
+      "last_successful_automatic_event": {
+        "name": "Ostatnie udane zdarzenie automatycznego tworzenia kopii zapasowej"
+      }
+    },
+    "binary_sensor": {
+      "problem": {
+        "name": "Problem"
+      },
+      "no_backup": {
+        "name": "Brak zapisanej kopii zapasowej"
+      },
+      "backup_stale": {
+        "name": "Najnowsza kopia zapasowa jest zbyt stara"
+      },
+      "automatic_backup_overdue": {
+        "name": "Automatyczna kopia zapasowa jest opóźniona"
+      },
+      "automatic_backup_failed": {
+        "name": "Automatyczne tworzenie kopii zapasowej nie powiodło się"
+      },
+      "automatic_schedule_missing": {
+        "name": "Brak harmonogramu automatycznych kopii zapasowych"
+      },
+      "automatic_schedule_overdue": {
+        "name": "Harmonogram automatycznych kopii zapasowych jest opóźniony"
+      },
+      "backup_manager_unavailable": {
+        "name": "Menedżer kopii zapasowych jest niedostępny"
+      },
+      "storage_error": {
+        "name": "Błąd magazynu kopii zapasowych"
+      }
+    }
+  }
+}

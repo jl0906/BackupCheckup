@@ -1,0 +1,115 @@
+{
+  "title": "BackupCheckup",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configura BackupCheckup",
+        "description": "Monitora i backup effettivamente archiviati da Home Assistant.",
+        "data": {
+          "max_age_days": "Età massima del backup in giorni",
+          "update_interval_minutes": "Intervallo di aggiornamento in minuti"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "È consentita una sola istanza di BackupCheckup."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opzioni di BackupCheckup",
+        "data": {
+          "max_age_days": "Età massima del backup in giorni",
+          "update_interval_minutes": "Intervallo di aggiornamento in minuti"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "status": {
+        "name": "Stato",
+        "state": {
+          "ok": "OK",
+          "no_backups": "Nessun backup",
+          "automatic_backup_overdue": "Backup automatico in ritardo",
+          "backup_stale": "Backup troppo vecchio",
+          "automatic_backup_failed": "Backup automatico non riuscito",
+          "schedule_missing": "Pianificazione automatica mancante",
+          "schedule_overdue": "Pianificazione automatica in ritardo",
+          "manager_unavailable": "Gestore dei backup non disponibile",
+          "storage_error": "Errore di archiviazione dei backup"
+        }
+      },
+      "stored_backups": {
+        "name": "Backup archiviati"
+      },
+      "automatic_backups": {
+        "name": "Backup automatici"
+      },
+      "manual_backups": {
+        "name": "Backup manuali o di altro tipo"
+      },
+      "latest_backup": {
+        "name": "Backup più recente"
+      },
+      "latest_automatic_backup": {
+        "name": "Backup automatico più recente"
+      },
+      "latest_manual_backup": {
+        "name": "Backup manuale o di altro tipo più recente"
+      },
+      "latest_backup_age": {
+        "name": "Età del backup più recente"
+      },
+      "automatic_backup_age": {
+        "name": "Età del backup automatico"
+      },
+      "manual_backup_age": {
+        "name": "Età del backup manuale o di altro tipo"
+      },
+      "last_automatic_attempt": {
+        "name": "Ultimo tentativo di backup automatico"
+      },
+      "next_automatic_backup": {
+        "name": "Prossimo backup automatico"
+      },
+      "backup_manager_state": {
+        "name": "Stato del gestore dei backup"
+      },
+      "last_successful_automatic_event": {
+        "name": "Ultimo evento di backup automatico riuscito"
+      }
+    },
+    "binary_sensor": {
+      "problem": {
+        "name": "Problema"
+      },
+      "no_backup": {
+        "name": "Nessun backup archiviato"
+      },
+      "backup_stale": {
+        "name": "Backup più recente troppo vecchio"
+      },
+      "automatic_backup_overdue": {
+        "name": "Backup automatico in ritardo"
+      },
+      "automatic_backup_failed": {
+        "name": "Backup automatico non riuscito"
+      },
+      "automatic_schedule_missing": {
+        "name": "Pianificazione automatica mancante"
+      },
+      "automatic_schedule_overdue": {
+        "name": "Pianificazione automatica in ritardo"
+      },
+      "backup_manager_unavailable": {
+        "name": "Gestore dei backup non disponibile"
+      },
+      "storage_error": {
+        "name": "Errore di archiviazione dei backup"
+      }
+    }
+  }
+}
