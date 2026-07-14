@@ -4,68 +4,78 @@
     "step": {
       "user": {
         "title": "Konfigurer BackupCheckup",
-        "description": "Choose a ready-to-use monitoring profile. You can change it later in the integration options.",
+        "description": "Vælg en klar-til-brug overvågningsprofil. Du kan ændre den senere i integrationens indstillinger.",
         "data": {
           "monitoring_profile": "Overvågningsprofil"
         },
         "data_description": {
-          "monitoring_profile": "Standard is simple and suitable for most installations. Secure expects a second storage location. Custom shows all settings."
+          "monitoring_profile": "Standard er enkel og egnet til de fleste installationer. Sikker kræver en ekstra lagerplacering. Brugerdefineret viser alle indstillinger."
         }
       },
       "advanced": {
-        "title": "Custom monitoring settings",
-        "description": "Set your own limits. Automatic size checking compares the newest backup with recent backups.",
+        "title": "Brugerdefinerede overvågningsindstillinger",
+        "description": "Angiv dine egne grænser. Automatisk størrelseskontrol sammenligner den nyeste sikkerhedskopi med nylige kopier.",
         "data": {
-          "max_age_days": "Maximum backup age in days",
-          "update_interval_minutes": "Update interval in minutes",
+          "max_age_days": "Maksimal alder på sikkerhedskopi i dage",
+          "update_interval_minutes": "Opdateringsinterval i minutter",
           "size_check_mode": "Kontrol af backupstørrelse",
-          "minimum_backup_size_mb": "Fixed minimum backup size in MB",
-          "maximum_size_drop_percent": "Maximum allowed size drop in percent",
-          "minimum_redundant_locations": "Required backup locations"
+          "minimum_backup_size_mb": "Fast minimumsstørrelse for sikkerhedskopi i MB",
+          "maximum_size_drop_percent": "Maksimalt tilladt størrelsesfald i procent",
+          "minimum_redundant_locations": "Påkrævede placeringer til sikkerhedskopier",
+          "repair_issues_enabled": "Vis reparationsmeddelelser"
         },
         "data_description": {
-          "max_age_days": "A warning is shown after this many complete days.",
-          "update_interval_minutes": "How often BackupCheckup reads the Home Assistant backup inventory.",
-          "size_check_mode": "Automatic is recommended for users who do not know their normal backup size.",
-          "minimum_backup_size_mb": "Only used with the fixed minimum size mode.",
-          "maximum_size_drop_percent": "Used for automatic comparison with previous backups.",
-          "minimum_redundant_locations": "Use 1 for one storage location or 2 for local storage plus NAS/cloud."
+          "max_age_days": "Der vises en advarsel efter dette antal hele dage.",
+          "update_interval_minutes": "Hvor ofte BackupCheckup læser Home Assistants oversigt over sikkerhedskopier.",
+          "size_check_mode": "Automatisk anbefales til brugere, der ikke kender deres normale sikkerhedskopistørrelse.",
+          "minimum_backup_size_mb": "Bruges kun i tilstanden med fast minimumsstørrelse.",
+          "maximum_size_drop_percent": "Bruges til automatisk sammenligning med tidligere sikkerhedskopier.",
+          "minimum_redundant_locations": "Brug 1 for én lagerplacering eller 2 for lokal lagring plus NAS/cloud.",
+          "repair_issues_enabled": "Opretter Home Assistant-reparationsmeddelelser for aktive backup-problemer. De forsvinder automatisk, når problemet er løst."
         }
       }
     },
     "abort": {
       "single_instance_allowed": "Der må kun være én BackupCheckup-instans."
+    },
+    "error": {
+      "fixed_size_required": "Angiv en værdi større end 0 MB ved fast minimumsstørrelse."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "BackupCheckup options",
-        "description": "Choose a monitoring profile. Selecting Custom opens all individual settings.",
+        "title": "Indstillinger for BackupCheckup",
+        "description": "Vælg en overvågningsprofil. Brugerdefineret åbner alle individuelle indstillinger.",
         "data": {
           "monitoring_profile": "Overvågningsprofil"
         }
       },
       "advanced": {
-        "title": "Custom monitoring settings",
-        "description": "Set your own limits. Automatic size checking compares the newest backup with recent backups.",
+        "title": "Brugerdefinerede overvågningsindstillinger",
+        "description": "Angiv dine egne grænser. Automatisk størrelseskontrol sammenligner den nyeste sikkerhedskopi med nylige kopier.",
         "data": {
-          "max_age_days": "Maximum backup age in days",
-          "update_interval_minutes": "Update interval in minutes",
+          "max_age_days": "Maksimal alder på sikkerhedskopi i dage",
+          "update_interval_minutes": "Opdateringsinterval i minutter",
           "size_check_mode": "Kontrol af backupstørrelse",
-          "minimum_backup_size_mb": "Fixed minimum backup size in MB",
-          "maximum_size_drop_percent": "Maximum allowed size drop in percent",
-          "minimum_redundant_locations": "Required backup locations"
+          "minimum_backup_size_mb": "Fast minimumsstørrelse for sikkerhedskopi i MB",
+          "maximum_size_drop_percent": "Maksimalt tilladt størrelsesfald i procent",
+          "minimum_redundant_locations": "Påkrævede placeringer til sikkerhedskopier",
+          "repair_issues_enabled": "Vis reparationsmeddelelser"
         },
         "data_description": {
-          "max_age_days": "A warning is shown after this many complete days.",
-          "update_interval_minutes": "How often BackupCheckup reads the Home Assistant backup inventory.",
-          "size_check_mode": "Automatic is recommended for users who do not know their normal backup size.",
-          "minimum_backup_size_mb": "Only used with the fixed minimum size mode.",
-          "maximum_size_drop_percent": "Used for automatic comparison with previous backups.",
-          "minimum_redundant_locations": "Use 1 for one storage location or 2 for local storage plus NAS/cloud."
+          "max_age_days": "Der vises en advarsel efter dette antal hele dage.",
+          "update_interval_minutes": "Hvor ofte BackupCheckup læser Home Assistants oversigt over sikkerhedskopier.",
+          "size_check_mode": "Automatisk anbefales til brugere, der ikke kender deres normale sikkerhedskopistørrelse.",
+          "minimum_backup_size_mb": "Bruges kun i tilstanden med fast minimumsstørrelse.",
+          "maximum_size_drop_percent": "Bruges til automatisk sammenligning med tidligere sikkerhedskopier.",
+          "minimum_redundant_locations": "Brug 1 for én lagerplacering eller 2 for lokal lagring plus NAS/cloud.",
+          "repair_issues_enabled": "Opretter Home Assistant-reparationsmeddelelser for aktive backup-problemer. De forsvinder automatisk, når problemet er løst."
         }
       }
+    },
+    "error": {
+      "fixed_size_required": "Angiv en værdi større end 0 MB ved fast minimumsstørrelse."
     }
   },
   "entity": {
@@ -147,20 +157,35 @@
         "name": "Placeringer for seneste backup"
       },
       "recommendation": {
-        "name": "Recommendation",
+        "name": "Anbefaling",
         "state": {
-          "none": "No action required",
-          "create_backup": "Create a new backup",
-          "check_schedule": "Check automatic backup schedule",
-          "check_storage": "Check backup storage",
-          "check_backup_contents": "Check incomplete backup contents",
-          "check_backup_size": "Check backup size and free space",
-          "add_storage_location": "Add or restore a backup location",
-          "check_backup_system": "Check Home Assistant backup system"
+          "none": "Ingen handling nødvendig",
+          "create_backup": "Opret en ny sikkerhedskopi",
+          "check_schedule": "Kontrollér tidsplanen for automatiske sikkerhedskopier",
+          "check_storage": "Kontrollér lageret til sikkerhedskopier",
+          "check_backup_contents": "Kontrollér indholdet af den ufuldstændige sikkerhedskopi",
+          "check_backup_size": "Kontrollér sikkerhedskopistørrelsen og den ledige plads",
+          "add_storage_location": "Tilføj eller gendan en placering til sikkerhedskopier",
+          "check_backup_system": "Kontrollér Home Assistants sikkerhedskopisystem"
         }
       },
       "problem_count": {
-        "name": "Active problems"
+        "name": "Aktive problemer"
+      },
+      "agent_backups": {
+        "name": "Antal backups"
+      },
+      "agent_latest_backup": {
+        "name": "Seneste backup"
+      },
+      "agent_latest_backup_age": {
+        "name": "Alder på seneste backup"
+      },
+      "agent_latest_backup_size": {
+        "name": "Størrelse på seneste backup"
+      },
+      "agent_stored_bytes": {
+        "name": "Samlet backupstørrelse"
       }
     },
     "binary_sensor": {
@@ -202,6 +227,14 @@
       },
       "required_location_missing": {
         "name": "Påkrævet backuplacering mangler"
+      },
+      "agent_problem": {
+        "name": "Problem"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Opdater backupdata"
       }
     }
   },
@@ -219,6 +252,52 @@
         "fixed": "Fast minimumsstørrelse",
         "disabled": "Deaktiveret"
       }
+    }
+  },
+  "issues": {
+    "no_backup": {
+      "title": "Ingen backup tilgængelig",
+      "description": "BackupCheckup kunne ikke finde nogen gemt backup. Åbn Home Assistants backupindstillinger og opret en backup."
+    },
+    "backup_stale": {
+      "title": "Seneste backup er for gammel",
+      "description": "Den seneste backup er {age} dage gammel. Den indstillede grænse er {maximum} dage. Opret en ny backup og kontrollér tidsplanen."
+    },
+    "automatic_backup_overdue": {
+      "title": "Automatisk backup er forsinket",
+      "description": "Den seneste automatiske backup er {age} dage gammel. Grænsen er {maximum} dage. Kontrollér tidsplanen."
+    },
+    "automatic_backup_failed": {
+      "title": "Seneste automatiske backup mislykkedes",
+      "description": "Det seneste forsøg var {attempt}, og den seneste vellykkede backup var {success}. Kontrollér loggen og lagerplaceringerne."
+    },
+    "automatic_schedule_missing": {
+      "title": "Tidsplan for automatiske backups mangler",
+      "description": "Home Assistant viser ingen næste automatiske backup. Konfigurér eller aktivér automatiske backups."
+    },
+    "automatic_schedule_overdue": {
+      "title": "Tidsplan for automatisk backup er forsinket",
+      "description": "Den næste backup blev angivet til {scheduled}, men tidspunktet er passeret. Kontrollér konfigurationen."
+    },
+    "manager_unavailable": {
+      "title": "Backup-manager er ikke tilgængelig",
+      "description": "Home Assistants backup-manager viser tilstanden “{state}”. Kontrollér den indbyggede Backup-integration eller genstart Home Assistant."
+    },
+    "storage_error": {
+      "title": "Fejl på backupplacering",
+      "description": "Home Assistant rapporterede fejl for: {locations}. Kontrollér forbindelse, loginoplysninger og ledig plads."
+    },
+    "backup_size_suspicious": {
+      "title": "Størrelsen på seneste backup er mistænkelig",
+      "description": "Den seneste backup er {size} og ændrede sig med {change} i forhold til den forrige sammenlignelige backup. Grænsen er {threshold}%."
+    },
+    "latest_backup_incomplete": {
+      "title": "Seneste backup er ufuldstændig",
+      "description": "Dele af den seneste backup mislykkedes. Tilføjelser: {addons}. Mapper: {folders}. Placeringer: {locations}. Kontrollér loggen og opret en ny backup."
+    },
+    "backup_not_redundant": {
+      "title": "Backup er ikke gemt redundant",
+      "description": "Den seneste backup findes på {current} placering(er), men {required} er påkrævet. Tilføj eller gendan en placering."
     }
   }
 }

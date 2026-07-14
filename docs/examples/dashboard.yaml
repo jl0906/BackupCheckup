@@ -1,0 +1,22 @@
+type: entities
+title: BackupCheckup
+show_header_toggle: false
+entities:
+  - entity: sensor.backup_checkup_status
+    name: Overall status
+  - entity: sensor.backup_checkup_recommendation
+    name: Recommendation
+  - entity: sensor.backup_checkup_latest_backup
+    name: Latest backup
+  - entity: sensor.backup_checkup_latest_backup_age
+    name: Backup age
+  - entity: sensor.backup_checkup_latest_backup_size
+    name: Backup size
+  - entity: sensor.backup_checkup_latest_backup_locations
+    name: Storage locations
+  - entity: sensor.backup_checkup_problem_count
+    name: Active problems
+  - entity: binary_sensor.backup_checkup_problem
+    name: Problem detected
+  - entity: button.backup_checkup_refresh
+    name: Refresh backup data

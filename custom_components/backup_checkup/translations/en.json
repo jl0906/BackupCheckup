@@ -21,7 +21,8 @@
           "size_check_mode": "Size check mode",
           "minimum_backup_size_mb": "Fixed minimum backup size in MB",
           "maximum_size_drop_percent": "Maximum allowed size drop in percent",
-          "minimum_redundant_locations": "Required backup locations"
+          "minimum_redundant_locations": "Required backup locations",
+          "repair_issues_enabled": "Show repair notifications"
         },
         "data_description": {
           "max_age_days": "A warning is shown after this many complete days.",
@@ -29,12 +30,16 @@
           "size_check_mode": "Automatic is recommended for users who do not know their normal backup size.",
           "minimum_backup_size_mb": "Only used with the fixed minimum size mode.",
           "maximum_size_drop_percent": "Used for automatic comparison with previous backups.",
-          "minimum_redundant_locations": "Use 1 for one storage location or 2 for local storage plus NAS/cloud."
+          "minimum_redundant_locations": "Use 1 for one storage location or 2 for local storage plus NAS/cloud.",
+          "repair_issues_enabled": "Create Home Assistant Repair issues for active backup problems. Issues disappear automatically after the problem is resolved."
         }
       }
     },
     "abort": {
       "single_instance_allowed": "Only one BackupCheckup instance is allowed."
+    },
+    "error": {
+      "fixed_size_required": "Enter a minimum backup size greater than 0 MB when using the fixed minimum size mode."
     }
   },
   "options": {
@@ -55,7 +60,8 @@
           "size_check_mode": "Size check mode",
           "minimum_backup_size_mb": "Fixed minimum backup size in MB",
           "maximum_size_drop_percent": "Maximum allowed size drop in percent",
-          "minimum_redundant_locations": "Required backup locations"
+          "minimum_redundant_locations": "Required backup locations",
+          "repair_issues_enabled": "Show repair notifications"
         },
         "data_description": {
           "max_age_days": "A warning is shown after this many complete days.",
@@ -63,9 +69,13 @@
           "size_check_mode": "Automatic is recommended for users who do not know their normal backup size.",
           "minimum_backup_size_mb": "Only used with the fixed minimum size mode.",
           "maximum_size_drop_percent": "Used for automatic comparison with previous backups.",
-          "minimum_redundant_locations": "Use 1 for one storage location or 2 for local storage plus NAS/cloud."
+          "minimum_redundant_locations": "Use 1 for one storage location or 2 for local storage plus NAS/cloud.",
+          "repair_issues_enabled": "Create Home Assistant Repair issues for active backup problems. Issues disappear automatically after the problem is resolved."
         }
       }
+    },
+    "error": {
+      "fixed_size_required": "Enter a minimum backup size greater than 0 MB when using the fixed minimum size mode."
     }
   },
   "entity": {
@@ -161,6 +171,21 @@
       },
       "problem_count": {
         "name": "Active problems"
+      },
+      "agent_backups": {
+        "name": "Backup count"
+      },
+      "agent_latest_backup": {
+        "name": "Latest backup"
+      },
+      "agent_latest_backup_age": {
+        "name": "Latest backup age"
+      },
+      "agent_latest_backup_size": {
+        "name": "Latest backup size"
+      },
+      "agent_stored_bytes": {
+        "name": "Stored backup size"
       }
     },
     "binary_sensor": {
@@ -202,6 +227,14 @@
       },
       "required_location_missing": {
         "name": "Required backup location missing"
+      },
+      "agent_problem": {
+        "name": "Problem"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Refresh backup data"
       }
     }
   },
@@ -219,6 +252,52 @@
         "fixed": "Fixed minimum size",
         "disabled": "Disabled"
       }
+    }
+  },
+  "issues": {
+    "no_backup": {
+      "title": "No backup is available",
+      "description": "BackupCheckup could not find any stored backup. Open Home Assistant backup settings and create a backup."
+    },
+    "backup_stale": {
+      "title": "Latest backup is too old",
+      "description": "The latest backup is {age} days old. The configured maximum is {maximum} days. Create a new backup and check the automatic schedule."
+    },
+    "automatic_backup_overdue": {
+      "title": "Automatic backup is overdue",
+      "description": "The latest automatic backup is {age} days old. The configured maximum is {maximum} days. Check the automatic backup schedule."
+    },
+    "automatic_backup_failed": {
+      "title": "Last automatic backup failed",
+      "description": "The last automatic attempt was {attempt}, while the last successful automatic backup was {success}. Check the Home Assistant backup log and storage locations."
+    },
+    "automatic_schedule_missing": {
+      "title": "Automatic backup schedule is missing",
+      "description": "Home Assistant does not currently report a next scheduled automatic backup. Configure or enable automatic backups."
+    },
+    "automatic_schedule_overdue": {
+      "title": "Automatic backup schedule is overdue",
+      "description": "The next automatic backup was reported as {scheduled}, which is already in the past. Check the automatic backup configuration."
+    },
+    "manager_unavailable": {
+      "title": "Backup manager is unavailable",
+      "description": "The Home Assistant backup manager currently reports the state “{state}”. Restart or check the native Backup integration."
+    },
+    "storage_error": {
+      "title": "Backup storage location has an error",
+      "description": "Home Assistant reported an error for these backup storage locations: {locations}. Check their connection, credentials and available space."
+    },
+    "backup_size_suspicious": {
+      "title": "Latest backup size is suspicious",
+      "description": "The latest backup is {size} and changed by {change} compared with the previous comparable backup. The configured warning threshold is {threshold}%."
+    },
+    "latest_backup_incomplete": {
+      "title": "Latest backup is incomplete",
+      "description": "The latest backup contains failed components. Add-ons: {addons}. Folders: {folders}. Storage locations: {locations}. Check the backup log and create a new backup."
+    },
+    "backup_not_redundant": {
+      "title": "Backup is not stored redundantly",
+      "description": "The latest backup is available on {current} storage location(s), but {required} are required. Add or restore another backup location."
     }
   }
 }

@@ -1,4 +1,4 @@
-"""Base entity for BackupCheckup."""
+"""Base entities for BackupCheckup."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from .coordinator import BackupCheckupCoordinator
 
 
 class BackupCheckupEntity(CoordinatorEntity[BackupCheckupCoordinator]):
-    """Base BackupCheckup entity."""
+    """Base entity attached to the main BackupCheckup device."""
 
     _attr_has_entity_name = True
 
@@ -22,10 +22,32 @@ class BackupCheckupEntity(CoordinatorEntity[BackupCheckupCoordinator]):
     ) -> None:
         """Initialize a BackupCheckup entity."""
         super().__init__(coordinator)
+        self._entry = entry
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, entry.entry_id)},
             name=NAME,
             manufacturer="BackupCheckup",
-            model="Home Assistant backup monitor",
+            model="Home Assistant backup health monitor",
             sw_version=VERSION,
+        )
+
+
+class BackupCheckupAgentEntity(BackupCheckupEntity):
+    """Base entity attached to one backup storage location device."""
+
+    def __init__(
+        self,
+        coordinator: BackupCheckupCoordinator,
+        entry: ConfigEntry,
+        agent_id: str,
+    ) -> None:
+        """Initialize a backup storage location entity."""
+        super().__init__(coordinator, entry)
+        self.agent_id = agent_id
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, f"{entry.entry_id}:{agent_id}")},
+            name=f"Backup storage: {agent_id}",
+            manufacturer="Home Assistant",
+            model="Backup storage location",
+            via_device=(DOMAIN, entry.entry_id),
         )

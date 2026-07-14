@@ -4,68 +4,78 @@
     "step": {
       "user": {
         "title": "Configurar BackupCheckup",
-        "description": "Choose a ready-to-use monitoring profile. You can change it later in the integration options.",
+        "description": "Elige un perfil de supervisión listo para usar. Podrás cambiarlo más adelante en las opciones de la integración.",
         "data": {
           "monitoring_profile": "Perfil de supervisión"
         },
         "data_description": {
-          "monitoring_profile": "Standard is simple and suitable for most installations. Secure expects a second storage location. Custom shows all settings."
+          "monitoring_profile": "Estándar es sencillo y adecuado para la mayoría de las instalaciones. Seguro requiere una segunda ubicación de almacenamiento. Personalizado muestra todos los ajustes."
         }
       },
       "advanced": {
-        "title": "Custom monitoring settings",
-        "description": "Set your own limits. Automatic size checking compares the newest backup with recent backups.",
+        "title": "Configuración de supervisión personalizada",
+        "description": "Establece tus propios límites. La comprobación automática del tamaño compara la copia más reciente con copias recientes.",
         "data": {
-          "max_age_days": "Maximum backup age in days",
-          "update_interval_minutes": "Update interval in minutes",
+          "max_age_days": "Antigüedad máxima de la copia en días",
+          "update_interval_minutes": "Intervalo de actualización en minutos",
           "size_check_mode": "Control del tamaño",
-          "minimum_backup_size_mb": "Fixed minimum backup size in MB",
-          "maximum_size_drop_percent": "Maximum allowed size drop in percent",
-          "minimum_redundant_locations": "Required backup locations"
+          "minimum_backup_size_mb": "Tamaño mínimo fijo de la copia en MB",
+          "maximum_size_drop_percent": "Reducción máxima permitida del tamaño en porcentaje",
+          "minimum_redundant_locations": "Ubicaciones de copia requeridas",
+          "repair_issues_enabled": "Mostrar avisos de reparación"
         },
         "data_description": {
-          "max_age_days": "A warning is shown after this many complete days.",
-          "update_interval_minutes": "How often BackupCheckup reads the Home Assistant backup inventory.",
-          "size_check_mode": "Automatic is recommended for users who do not know their normal backup size.",
-          "minimum_backup_size_mb": "Only used with the fixed minimum size mode.",
-          "maximum_size_drop_percent": "Used for automatic comparison with previous backups.",
-          "minimum_redundant_locations": "Use 1 for one storage location or 2 for local storage plus NAS/cloud."
+          "max_age_days": "Se muestra una advertencia después de este número de días completos.",
+          "update_interval_minutes": "Frecuencia con la que BackupCheckup lee el inventario de copias de Home Assistant.",
+          "size_check_mode": "El modo automático se recomienda a quienes no conocen el tamaño habitual de sus copias.",
+          "minimum_backup_size_mb": "Solo se utiliza con el modo de tamaño mínimo fijo.",
+          "maximum_size_drop_percent": "Se utiliza para la comparación automática con copias anteriores.",
+          "minimum_redundant_locations": "Usa 1 para una ubicación o 2 para almacenamiento local más NAS/nube.",
+          "repair_issues_enabled": "Crea avisos de Reparaciones de Home Assistant para problemas de copia activos. Desaparecen automáticamente cuando se resuelve el problema."
         }
       }
     },
     "abort": {
       "single_instance_allowed": "Solo se permite una instancia de BackupCheckup."
+    },
+    "error": {
+      "fixed_size_required": "Con el tamaño mínimo fijo, introduce un valor superior a 0 MB."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "BackupCheckup options",
-        "description": "Choose a monitoring profile. Selecting Custom opens all individual settings.",
+        "title": "Opciones de BackupCheckup",
+        "description": "Elige un perfil de supervisión. Personalizado abre todos los ajustes individuales.",
         "data": {
           "monitoring_profile": "Perfil de supervisión"
         }
       },
       "advanced": {
-        "title": "Custom monitoring settings",
-        "description": "Set your own limits. Automatic size checking compares the newest backup with recent backups.",
+        "title": "Configuración de supervisión personalizada",
+        "description": "Establece tus propios límites. La comprobación automática del tamaño compara la copia más reciente con copias recientes.",
         "data": {
-          "max_age_days": "Maximum backup age in days",
-          "update_interval_minutes": "Update interval in minutes",
+          "max_age_days": "Antigüedad máxima de la copia en días",
+          "update_interval_minutes": "Intervalo de actualización en minutos",
           "size_check_mode": "Control del tamaño",
-          "minimum_backup_size_mb": "Fixed minimum backup size in MB",
-          "maximum_size_drop_percent": "Maximum allowed size drop in percent",
-          "minimum_redundant_locations": "Required backup locations"
+          "minimum_backup_size_mb": "Tamaño mínimo fijo de la copia en MB",
+          "maximum_size_drop_percent": "Reducción máxima permitida del tamaño en porcentaje",
+          "minimum_redundant_locations": "Ubicaciones de copia requeridas",
+          "repair_issues_enabled": "Mostrar avisos de reparación"
         },
         "data_description": {
-          "max_age_days": "A warning is shown after this many complete days.",
-          "update_interval_minutes": "How often BackupCheckup reads the Home Assistant backup inventory.",
-          "size_check_mode": "Automatic is recommended for users who do not know their normal backup size.",
-          "minimum_backup_size_mb": "Only used with the fixed minimum size mode.",
-          "maximum_size_drop_percent": "Used for automatic comparison with previous backups.",
-          "minimum_redundant_locations": "Use 1 for one storage location or 2 for local storage plus NAS/cloud."
+          "max_age_days": "Se muestra una advertencia después de este número de días completos.",
+          "update_interval_minutes": "Frecuencia con la que BackupCheckup lee el inventario de copias de Home Assistant.",
+          "size_check_mode": "El modo automático se recomienda a quienes no conocen el tamaño habitual de sus copias.",
+          "minimum_backup_size_mb": "Solo se utiliza con el modo de tamaño mínimo fijo.",
+          "maximum_size_drop_percent": "Se utiliza para la comparación automática con copias anteriores.",
+          "minimum_redundant_locations": "Usa 1 para una ubicación o 2 para almacenamiento local más NAS/nube.",
+          "repair_issues_enabled": "Crea avisos de Reparaciones de Home Assistant para problemas de copia activos. Desaparecen automáticamente cuando se resuelve el problema."
         }
       }
+    },
+    "error": {
+      "fixed_size_required": "Con el tamaño mínimo fijo, introduce un valor superior a 0 MB."
     }
   },
   "entity": {
@@ -147,20 +157,35 @@
         "name": "Ubicaciones de la copia más reciente"
       },
       "recommendation": {
-        "name": "Recommendation",
+        "name": "Recomendación",
         "state": {
-          "none": "No action required",
-          "create_backup": "Create a new backup",
-          "check_schedule": "Check automatic backup schedule",
-          "check_storage": "Check backup storage",
-          "check_backup_contents": "Check incomplete backup contents",
-          "check_backup_size": "Check backup size and free space",
-          "add_storage_location": "Add or restore a backup location",
-          "check_backup_system": "Check Home Assistant backup system"
+          "none": "No se requiere ninguna acción",
+          "create_backup": "Crear una nueva copia de seguridad",
+          "check_schedule": "Comprobar la programación de copias automáticas",
+          "check_storage": "Comprobar el almacenamiento de copias",
+          "check_backup_contents": "Comprobar el contenido de la copia incompleta",
+          "check_backup_size": "Comprobar el tamaño de la copia y el espacio libre",
+          "add_storage_location": "Añadir o restaurar una ubicación de copia",
+          "check_backup_system": "Comprobar el sistema de copias de Home Assistant"
         }
       },
       "problem_count": {
-        "name": "Active problems"
+        "name": "Problemas activos"
+      },
+      "agent_backups": {
+        "name": "Número de copias"
+      },
+      "agent_latest_backup": {
+        "name": "Copia más reciente"
+      },
+      "agent_latest_backup_age": {
+        "name": "Antigüedad de la copia más reciente"
+      },
+      "agent_latest_backup_size": {
+        "name": "Tamaño de la copia más reciente"
+      },
+      "agent_stored_bytes": {
+        "name": "Tamaño de copias almacenadas"
       }
     },
     "binary_sensor": {
@@ -202,6 +227,14 @@
       },
       "required_location_missing": {
         "name": "Falta una ubicación de copia requerida"
+      },
+      "agent_problem": {
+        "name": "Problema"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Actualizar datos de copias"
       }
     }
   },
@@ -219,6 +252,52 @@
         "fixed": "Tamaño mínimo fijo",
         "disabled": "Desactivado"
       }
+    }
+  },
+  "issues": {
+    "no_backup": {
+      "title": "No hay ninguna copia disponible",
+      "description": "BackupCheckup no encontró ninguna copia almacenada. Abre los ajustes de copias de Home Assistant y crea una copia."
+    },
+    "backup_stale": {
+      "title": "La copia más reciente es demasiado antigua",
+      "description": "La copia más reciente tiene {age} días. El máximo configurado es {maximum} días. Crea una nueva copia y revisa la programación."
+    },
+    "automatic_backup_overdue": {
+      "title": "La copia automática está retrasada",
+      "description": "La copia automática más reciente tiene {age} días. El máximo configurado es {maximum} días. Revisa la programación."
+    },
+    "automatic_backup_failed": {
+      "title": "La última copia automática falló",
+      "description": "El último intento fue {attempt} y la última copia correcta fue {success}. Revisa el registro y las ubicaciones de almacenamiento."
+    },
+    "automatic_schedule_missing": {
+      "title": "Falta la programación automática",
+      "description": "Home Assistant no informa de una próxima copia automática. Configura o activa las copias automáticas."
+    },
+    "automatic_schedule_overdue": {
+      "title": "La programación automática está retrasada",
+      "description": "La próxima copia se indicó para {scheduled}, pero la fecha ya pasó. Revisa la configuración."
+    },
+    "manager_unavailable": {
+      "title": "El gestor de copias no está disponible",
+      "description": "El gestor de copias de Home Assistant informa del estado “{state}”. Revisa la integración Backup nativa o reinicia Home Assistant."
+    },
+    "storage_error": {
+      "title": "Error en una ubicación de copia",
+      "description": "Home Assistant informó de un error en: {locations}. Revisa la conexión, las credenciales y el espacio libre."
+    },
+    "backup_size_suspicious": {
+      "title": "El tamaño de la copia es sospechoso",
+      "description": "La copia más reciente mide {size} y cambió un {change} frente a la anterior comparable. El umbral configurado es {threshold}%."
+    },
+    "latest_backup_incomplete": {
+      "title": "La copia más reciente está incompleta",
+      "description": "Fallaron algunos componentes. Complementos: {addons}. Carpetas: {folders}. Ubicaciones: {locations}. Revisa el registro y crea una nueva copia."
+    },
+    "backup_not_redundant": {
+      "title": "La copia no está almacenada de forma redundante",
+      "description": "La copia más reciente está en {current} ubicación(es), pero se requieren {required}. Añade o recupera otra ubicación."
     }
   }
 }

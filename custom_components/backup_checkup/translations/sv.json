@@ -4,68 +4,78 @@
     "step": {
       "user": {
         "title": "Konfigurera BackupCheckup",
-        "description": "Choose a ready-to-use monitoring profile. You can change it later in the integration options.",
+        "description": "Välj en färdig övervakningsprofil. Du kan ändra den senare i integrationens alternativ.",
         "data": {
           "monitoring_profile": "Övervakningsprofil"
         },
         "data_description": {
-          "monitoring_profile": "Standard is simple and suitable for most installations. Secure expects a second storage location. Custom shows all settings."
+          "monitoring_profile": "Standard är enkel och passar de flesta installationer. Säker kräver en andra lagringsplats. Anpassad visar alla inställningar."
         }
       },
       "advanced": {
-        "title": "Custom monitoring settings",
-        "description": "Set your own limits. Automatic size checking compares the newest backup with recent backups.",
+        "title": "Anpassade övervakningsinställningar",
+        "description": "Ange egna gränsvärden. Automatisk storlekskontroll jämför den senaste säkerhetskopian med nyligen skapade kopior.",
         "data": {
-          "max_age_days": "Maximum backup age in days",
-          "update_interval_minutes": "Update interval in minutes",
+          "max_age_days": "Högsta ålder för säkerhetskopia i dagar",
+          "update_interval_minutes": "Uppdateringsintervall i minuter",
           "size_check_mode": "Storlekskontroll",
-          "minimum_backup_size_mb": "Fixed minimum backup size in MB",
-          "maximum_size_drop_percent": "Maximum allowed size drop in percent",
-          "minimum_redundant_locations": "Required backup locations"
+          "minimum_backup_size_mb": "Fast minsta storlek för säkerhetskopia i MB",
+          "maximum_size_drop_percent": "Största tillåtna storleksminskning i procent",
+          "minimum_redundant_locations": "Krävda lagringsplatser för säkerhetskopior",
+          "repair_issues_enabled": "Visa reparationsmeddelanden"
         },
         "data_description": {
-          "max_age_days": "A warning is shown after this many complete days.",
-          "update_interval_minutes": "How often BackupCheckup reads the Home Assistant backup inventory.",
-          "size_check_mode": "Automatic is recommended for users who do not know their normal backup size.",
-          "minimum_backup_size_mb": "Only used with the fixed minimum size mode.",
-          "maximum_size_drop_percent": "Used for automatic comparison with previous backups.",
-          "minimum_redundant_locations": "Use 1 for one storage location or 2 for local storage plus NAS/cloud."
+          "max_age_days": "En varning visas efter så här många hela dagar.",
+          "update_interval_minutes": "Hur ofta BackupCheckup läser Home Assistants säkerhetskopieringsregister.",
+          "size_check_mode": "Automatisk rekommenderas för användare som inte känner till sin normala säkerhetskopieringsstorlek.",
+          "minimum_backup_size_mb": "Används endast i läget med fast minimistorlek.",
+          "maximum_size_drop_percent": "Används för automatisk jämförelse med tidigare säkerhetskopior.",
+          "minimum_redundant_locations": "Använd 1 för en lagringsplats eller 2 för lokal lagring plus NAS/moln.",
+          "repair_issues_enabled": "Skapar Home Assistant-reparationsärenden för aktiva säkerhetskopieringsproblem. De försvinner automatiskt när problemet är löst."
         }
       }
     },
     "abort": {
       "single_instance_allowed": "Endast en instans av BackupCheckup är tillåten."
+    },
+    "error": {
+      "fixed_size_required": "Ange ett värde större än 0 MB när fast minsta storlek används."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "BackupCheckup options",
-        "description": "Choose a monitoring profile. Selecting Custom opens all individual settings.",
+        "title": "Alternativ för BackupCheckup",
+        "description": "Välj en övervakningsprofil. Anpassad öppnar alla enskilda inställningar.",
         "data": {
           "monitoring_profile": "Övervakningsprofil"
         }
       },
       "advanced": {
-        "title": "Custom monitoring settings",
-        "description": "Set your own limits. Automatic size checking compares the newest backup with recent backups.",
+        "title": "Anpassade övervakningsinställningar",
+        "description": "Ange egna gränsvärden. Automatisk storlekskontroll jämför den senaste säkerhetskopian med nyligen skapade kopior.",
         "data": {
-          "max_age_days": "Maximum backup age in days",
-          "update_interval_minutes": "Update interval in minutes",
+          "max_age_days": "Högsta ålder för säkerhetskopia i dagar",
+          "update_interval_minutes": "Uppdateringsintervall i minuter",
           "size_check_mode": "Storlekskontroll",
-          "minimum_backup_size_mb": "Fixed minimum backup size in MB",
-          "maximum_size_drop_percent": "Maximum allowed size drop in percent",
-          "minimum_redundant_locations": "Required backup locations"
+          "minimum_backup_size_mb": "Fast minsta storlek för säkerhetskopia i MB",
+          "maximum_size_drop_percent": "Största tillåtna storleksminskning i procent",
+          "minimum_redundant_locations": "Krävda lagringsplatser för säkerhetskopior",
+          "repair_issues_enabled": "Visa reparationsmeddelanden"
         },
         "data_description": {
-          "max_age_days": "A warning is shown after this many complete days.",
-          "update_interval_minutes": "How often BackupCheckup reads the Home Assistant backup inventory.",
-          "size_check_mode": "Automatic is recommended for users who do not know their normal backup size.",
-          "minimum_backup_size_mb": "Only used with the fixed minimum size mode.",
-          "maximum_size_drop_percent": "Used for automatic comparison with previous backups.",
-          "minimum_redundant_locations": "Use 1 for one storage location or 2 for local storage plus NAS/cloud."
+          "max_age_days": "En varning visas efter så här många hela dagar.",
+          "update_interval_minutes": "Hur ofta BackupCheckup läser Home Assistants säkerhetskopieringsregister.",
+          "size_check_mode": "Automatisk rekommenderas för användare som inte känner till sin normala säkerhetskopieringsstorlek.",
+          "minimum_backup_size_mb": "Används endast i läget med fast minimistorlek.",
+          "maximum_size_drop_percent": "Används för automatisk jämförelse med tidigare säkerhetskopior.",
+          "minimum_redundant_locations": "Använd 1 för en lagringsplats eller 2 för lokal lagring plus NAS/moln.",
+          "repair_issues_enabled": "Skapar Home Assistant-reparationsärenden för aktiva säkerhetskopieringsproblem. De försvinner automatiskt när problemet är löst."
         }
       }
+    },
+    "error": {
+      "fixed_size_required": "Ange ett värde större än 0 MB när fast minsta storlek används."
     }
   },
   "entity": {
@@ -147,20 +157,35 @@
         "name": "Lagringsplatser för senaste säkerhetskopian"
       },
       "recommendation": {
-        "name": "Recommendation",
+        "name": "Rekommendation",
         "state": {
-          "none": "No action required",
-          "create_backup": "Create a new backup",
-          "check_schedule": "Check automatic backup schedule",
-          "check_storage": "Check backup storage",
-          "check_backup_contents": "Check incomplete backup contents",
-          "check_backup_size": "Check backup size and free space",
-          "add_storage_location": "Add or restore a backup location",
-          "check_backup_system": "Check Home Assistant backup system"
+          "none": "Ingen åtgärd krävs",
+          "create_backup": "Skapa en ny säkerhetskopia",
+          "check_schedule": "Kontrollera schemat för automatiska säkerhetskopior",
+          "check_storage": "Kontrollera lagringen för säkerhetskopior",
+          "check_backup_contents": "Kontrollera innehållet i den ofullständiga säkerhetskopian",
+          "check_backup_size": "Kontrollera säkerhetskopians storlek och ledigt utrymme",
+          "add_storage_location": "Lägg till eller återställ en lagringsplats",
+          "check_backup_system": "Kontrollera Home Assistants säkerhetskopieringssystem"
         }
       },
       "problem_count": {
-        "name": "Active problems"
+        "name": "Aktiva problem"
+      },
+      "agent_backups": {
+        "name": "Antal säkerhetskopior"
+      },
+      "agent_latest_backup": {
+        "name": "Senaste säkerhetskopia"
+      },
+      "agent_latest_backup_age": {
+        "name": "Ålder på senaste säkerhetskopia"
+      },
+      "agent_latest_backup_size": {
+        "name": "Storlek på senaste säkerhetskopia"
+      },
+      "agent_stored_bytes": {
+        "name": "Lagrad säkerhetskopieringsstorlek"
       }
     },
     "binary_sensor": {
@@ -202,6 +227,14 @@
       },
       "required_location_missing": {
         "name": "Nödvändig lagringsplats saknas"
+      },
+      "agent_problem": {
+        "name": "Problem"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Uppdatera säkerhetskopieringsdata"
       }
     }
   },
@@ -219,6 +252,52 @@
         "fixed": "Fast minimistorlek",
         "disabled": "Inaktiverad"
       }
+    }
+  },
+  "issues": {
+    "no_backup": {
+      "title": "Ingen säkerhetskopia finns",
+      "description": "BackupCheckup kunde inte hitta någon lagrad säkerhetskopia. Öppna Home Assistants säkerhetskopieringsinställningar och skapa en kopia."
+    },
+    "backup_stale": {
+      "title": "Senaste säkerhetskopian är för gammal",
+      "description": "Den senaste säkerhetskopian är {age} dagar gammal. Maxgränsen är {maximum} dagar. Skapa en ny kopia och kontrollera schemat."
+    },
+    "automatic_backup_overdue": {
+      "title": "Automatisk säkerhetskopia är försenad",
+      "description": "Den senaste automatiska säkerhetskopian är {age} dagar gammal. Maxgränsen är {maximum} dagar. Kontrollera schemat."
+    },
+    "automatic_backup_failed": {
+      "title": "Senaste automatiska säkerhetskopian misslyckades",
+      "description": "Det senaste försöket var {attempt} och den senaste lyckade kopian {success}. Kontrollera loggen och lagringsplatserna."
+    },
+    "automatic_schedule_missing": {
+      "title": "Schema för automatiska säkerhetskopior saknas",
+      "description": "Home Assistant rapporterar ingen nästa automatisk säkerhetskopia. Konfigurera eller aktivera automatiska kopior."
+    },
+    "automatic_schedule_overdue": {
+      "title": "Schemat för automatisk säkerhetskopiering är försenat",
+      "description": "Nästa automatiska kopia rapporterades som {scheduled}, men tiden har redan passerat. Kontrollera konfigurationen."
+    },
+    "manager_unavailable": {
+      "title": "Hanteraren för säkerhetskopior är inte tillgänglig",
+      "description": "Home Assistants säkerhetskopieringshanterare rapporterar tillståndet ”{state}”. Kontrollera den inbyggda integrationen eller starta om Home Assistant."
+    },
+    "storage_error": {
+      "title": "Fel på lagringsplats för säkerhetskopior",
+      "description": "Home Assistant rapporterade fel för följande platser: {locations}. Kontrollera anslutning, inloggning och ledigt utrymme."
+    },
+    "backup_size_suspicious": {
+      "title": "Storleken på senaste säkerhetskopian är misstänkt",
+      "description": "Den senaste kopian är {size} och ändrades med {change} jämfört med föregående jämförbara kopia. Varningsgränsen är {threshold}%."
+    },
+    "latest_backup_incomplete": {
+      "title": "Senaste säkerhetskopian är ofullständig",
+      "description": "Delar av den senaste kopian misslyckades. Tillägg: {addons}. Mappar: {folders}. Lagringsplatser: {locations}. Kontrollera loggen och skapa en ny kopia."
+    },
+    "backup_not_redundant": {
+      "title": "Säkerhetskopian lagras inte redundant",
+      "description": "Den senaste kopian finns på {current} lagringsplats(er), men {required} krävs. Lägg till eller återställ en plats."
     }
   }
 }

@@ -4,68 +4,78 @@
     "step": {
       "user": {
         "title": "BackupCheckup instellen",
-        "description": "Choose a ready-to-use monitoring profile. You can change it later in the integration options.",
+        "description": "Kies een gebruiksklaar bewakingsprofiel. Je kunt dit later wijzigen in de integratieopties.",
         "data": {
           "monitoring_profile": "Bewakingsprofiel"
         },
         "data_description": {
-          "monitoring_profile": "Standard is simple and suitable for most installations. Secure expects a second storage location. Custom shows all settings."
+          "monitoring_profile": "Standaard is eenvoudig en geschikt voor de meeste installaties. Veilig vereist een tweede opslaglocatie. Aangepast toont alle instellingen."
         }
       },
       "advanced": {
-        "title": "Custom monitoring settings",
-        "description": "Set your own limits. Automatic size checking compares the newest backup with recent backups.",
+        "title": "Aangepaste bewakingsinstellingen",
+        "description": "Stel je eigen limieten in. Automatische groottecontrole vergelijkt de nieuwste back-up met recente back-ups.",
         "data": {
-          "max_age_days": "Maximum backup age in days",
-          "update_interval_minutes": "Update interval in minutes",
+          "max_age_days": "Maximale leeftijd van back-up in dagen",
+          "update_interval_minutes": "Update-interval in minuten",
           "size_check_mode": "Controle van back-upgrootte",
-          "minimum_backup_size_mb": "Fixed minimum backup size in MB",
-          "maximum_size_drop_percent": "Maximum allowed size drop in percent",
-          "minimum_redundant_locations": "Required backup locations"
+          "minimum_backup_size_mb": "Vaste minimale back-upgrootte in MB",
+          "maximum_size_drop_percent": "Maximaal toegestane grootteafname in procenten",
+          "minimum_redundant_locations": "Vereiste back-uplocaties",
+          "repair_issues_enabled": "Reparatiemeldingen tonen"
         },
         "data_description": {
-          "max_age_days": "A warning is shown after this many complete days.",
-          "update_interval_minutes": "How often BackupCheckup reads the Home Assistant backup inventory.",
-          "size_check_mode": "Automatic is recommended for users who do not know their normal backup size.",
-          "minimum_backup_size_mb": "Only used with the fixed minimum size mode.",
-          "maximum_size_drop_percent": "Used for automatic comparison with previous backups.",
-          "minimum_redundant_locations": "Use 1 for one storage location or 2 for local storage plus NAS/cloud."
+          "max_age_days": "Na dit aantal volledig verstreken dagen wordt een waarschuwing getoond.",
+          "update_interval_minutes": "Hoe vaak BackupCheckup de back-upinventaris van Home Assistant uitleest.",
+          "size_check_mode": "Automatisch wordt aanbevolen voor gebruikers die hun normale back-upgrootte niet kennen.",
+          "minimum_backup_size_mb": "Wordt alleen gebruikt bij de modus met een vaste minimumgrootte.",
+          "maximum_size_drop_percent": "Wordt gebruikt voor automatische vergelijking met eerdere back-ups.",
+          "minimum_redundant_locations": "Gebruik 1 voor één opslaglocatie of 2 voor lokale opslag plus NAS/cloud.",
+          "repair_issues_enabled": "Maakt Home Assistant-reparatiemeldingen voor actieve back-upproblemen. Meldingen verdwijnen automatisch wanneer het probleem is opgelost."
         }
       }
     },
     "abort": {
       "single_instance_allowed": "Er is slechts één BackupCheckup-instantie toegestaan."
+    },
+    "error": {
+      "fixed_size_required": "Voer bij een vaste minimumgrootte een waarde groter dan 0 MB in."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "BackupCheckup options",
-        "description": "Choose a monitoring profile. Selecting Custom opens all individual settings.",
+        "title": "BackupCheckup-opties",
+        "description": "Kies een bewakingsprofiel. Met Aangepast worden alle afzonderlijke instellingen geopend.",
         "data": {
           "monitoring_profile": "Bewakingsprofiel"
         }
       },
       "advanced": {
-        "title": "Custom monitoring settings",
-        "description": "Set your own limits. Automatic size checking compares the newest backup with recent backups.",
+        "title": "Aangepaste bewakingsinstellingen",
+        "description": "Stel je eigen limieten in. Automatische groottecontrole vergelijkt de nieuwste back-up met recente back-ups.",
         "data": {
-          "max_age_days": "Maximum backup age in days",
-          "update_interval_minutes": "Update interval in minutes",
+          "max_age_days": "Maximale leeftijd van back-up in dagen",
+          "update_interval_minutes": "Update-interval in minuten",
           "size_check_mode": "Controle van back-upgrootte",
-          "minimum_backup_size_mb": "Fixed minimum backup size in MB",
-          "maximum_size_drop_percent": "Maximum allowed size drop in percent",
-          "minimum_redundant_locations": "Required backup locations"
+          "minimum_backup_size_mb": "Vaste minimale back-upgrootte in MB",
+          "maximum_size_drop_percent": "Maximaal toegestane grootteafname in procenten",
+          "minimum_redundant_locations": "Vereiste back-uplocaties",
+          "repair_issues_enabled": "Reparatiemeldingen tonen"
         },
         "data_description": {
-          "max_age_days": "A warning is shown after this many complete days.",
-          "update_interval_minutes": "How often BackupCheckup reads the Home Assistant backup inventory.",
-          "size_check_mode": "Automatic is recommended for users who do not know their normal backup size.",
-          "minimum_backup_size_mb": "Only used with the fixed minimum size mode.",
-          "maximum_size_drop_percent": "Used for automatic comparison with previous backups.",
-          "minimum_redundant_locations": "Use 1 for one storage location or 2 for local storage plus NAS/cloud."
+          "max_age_days": "Na dit aantal volledig verstreken dagen wordt een waarschuwing getoond.",
+          "update_interval_minutes": "Hoe vaak BackupCheckup de back-upinventaris van Home Assistant uitleest.",
+          "size_check_mode": "Automatisch wordt aanbevolen voor gebruikers die hun normale back-upgrootte niet kennen.",
+          "minimum_backup_size_mb": "Wordt alleen gebruikt bij de modus met een vaste minimumgrootte.",
+          "maximum_size_drop_percent": "Wordt gebruikt voor automatische vergelijking met eerdere back-ups.",
+          "minimum_redundant_locations": "Gebruik 1 voor één opslaglocatie of 2 voor lokale opslag plus NAS/cloud.",
+          "repair_issues_enabled": "Maakt Home Assistant-reparatiemeldingen voor actieve back-upproblemen. Meldingen verdwijnen automatisch wanneer het probleem is opgelost."
         }
       }
+    },
+    "error": {
+      "fixed_size_required": "Voer bij een vaste minimumgrootte een waarde groter dan 0 MB in."
     }
   },
   "entity": {
@@ -147,20 +157,35 @@
         "name": "Locaties nieuwste back-up"
       },
       "recommendation": {
-        "name": "Recommendation",
+        "name": "Aanbeveling",
         "state": {
-          "none": "No action required",
-          "create_backup": "Create a new backup",
-          "check_schedule": "Check automatic backup schedule",
-          "check_storage": "Check backup storage",
-          "check_backup_contents": "Check incomplete backup contents",
-          "check_backup_size": "Check backup size and free space",
-          "add_storage_location": "Add or restore a backup location",
-          "check_backup_system": "Check Home Assistant backup system"
+          "none": "Geen actie nodig",
+          "create_backup": "Maak een nieuwe back-up",
+          "check_schedule": "Controleer het automatische back-upschema",
+          "check_storage": "Controleer de back-upopslag",
+          "check_backup_contents": "Controleer de inhoud van de onvolledige back-up",
+          "check_backup_size": "Controleer de back-upgrootte en vrije ruimte",
+          "add_storage_location": "Voeg een back-uplocatie toe of herstel deze",
+          "check_backup_system": "Controleer het back-upsysteem van Home Assistant"
         }
       },
       "problem_count": {
-        "name": "Active problems"
+        "name": "Actieve problemen"
+      },
+      "agent_backups": {
+        "name": "Aantal back-ups"
+      },
+      "agent_latest_backup": {
+        "name": "Nieuwste back-up"
+      },
+      "agent_latest_backup_age": {
+        "name": "Leeftijd nieuwste back-up"
+      },
+      "agent_latest_backup_size": {
+        "name": "Grootte nieuwste back-up"
+      },
+      "agent_stored_bytes": {
+        "name": "Opgeslagen back-upgrootte"
       }
     },
     "binary_sensor": {
@@ -202,6 +227,14 @@
       },
       "required_location_missing": {
         "name": "Vereiste back-uplocatie ontbreekt"
+      },
+      "agent_problem": {
+        "name": "Probleem"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Back-upgegevens vernieuwen"
       }
     }
   },
@@ -219,6 +252,52 @@
         "fixed": "Vaste minimumgrootte",
         "disabled": "Uitgeschakeld"
       }
+    }
+  },
+  "issues": {
+    "no_backup": {
+      "title": "Geen back-up beschikbaar",
+      "description": "BackupCheckup kon geen opgeslagen back-up vinden. Open de back-upinstellingen van Home Assistant en maak een back-up."
+    },
+    "backup_stale": {
+      "title": "Nieuwste back-up is te oud",
+      "description": "De nieuwste back-up is {age} dagen oud. Het ingestelde maximum is {maximum} dagen. Maak een nieuwe back-up en controleer het automatische schema."
+    },
+    "automatic_backup_overdue": {
+      "title": "Automatische back-up is te laat",
+      "description": "De nieuwste automatische back-up is {age} dagen oud. Het ingestelde maximum is {maximum} dagen. Controleer het automatische back-upschema."
+    },
+    "automatic_backup_failed": {
+      "title": "Laatste automatische back-up mislukt",
+      "description": "De laatste automatische poging was {attempt}; de laatste succesvolle automatische back-up was {success}. Controleer het back-uplogboek en de opslaglocaties."
+    },
+    "automatic_schedule_missing": {
+      "title": "Automatisch back-upschema ontbreekt",
+      "description": "Home Assistant meldt momenteel geen volgende geplande automatische back-up. Configureer of activeer automatische back-ups."
+    },
+    "automatic_schedule_overdue": {
+      "title": "Automatisch back-upschema is te laat",
+      "description": "De volgende automatische back-up werd gemeld als {scheduled}, maar dat tijdstip ligt al in het verleden. Controleer de configuratie."
+    },
+    "manager_unavailable": {
+      "title": "Back-upbeheer niet beschikbaar",
+      "description": "De back-upbeheerder van Home Assistant meldt momenteel de status “{state}”. Controleer de ingebouwde back-upintegratie of herstart Home Assistant."
+    },
+    "storage_error": {
+      "title": "Fout bij back-upopslag",
+      "description": "Home Assistant meldde een fout voor deze opslaglocaties: {locations}. Controleer verbinding, inloggegevens en vrije ruimte."
+    },
+    "backup_size_suspicious": {
+      "title": "Grootte nieuwste back-up is verdacht",
+      "description": "De nieuwste back-up is {size} en veranderde met {change} ten opzichte van de vorige vergelijkbare back-up. De waarschuwingsgrens is {threshold}%."
+    },
+    "latest_backup_incomplete": {
+      "title": "Nieuwste back-up is onvolledig",
+      "description": "Onderdelen van de nieuwste back-up zijn mislukt. Add-ons: {addons}. Mappen: {folders}. Opslaglocaties: {locations}. Controleer het logboek en maak een nieuwe back-up."
+    },
+    "backup_not_redundant": {
+      "title": "Back-up is niet redundant opgeslagen",
+      "description": "De nieuwste back-up staat op {current} opslaglocatie(s), maar {required} zijn vereist. Voeg een locatie toe of herstel deze."
     }
   }
 }

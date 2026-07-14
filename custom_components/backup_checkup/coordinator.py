@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from datetime import UTC, datetime, timedelta
-import logging
 from math import floor
 from statistics import median
 from typing import Any
@@ -21,34 +21,36 @@ from .const import (
     BACKUP_RESULT_COMPLETE,
     BACKUP_RESULT_PARTIAL,
     BACKUP_RESULT_UNKNOWN,
-    CONF_MAXIMUM_SIZE_DROP_PERCENT,
     CONF_MAX_AGE_DAYS,
+    CONF_MAXIMUM_SIZE_DROP_PERCENT,
     CONF_MINIMUM_BACKUP_SIZE_MB,
     CONF_MINIMUM_REDUNDANT_LOCATIONS,
-    CONF_UPDATE_INTERVAL_MINUTES,
+    CONF_REPAIR_ISSUES_ENABLED,
     CONF_SIZE_CHECK_MODE,
-    DEFAULT_SIZE_CHECK_MODE,
-    SIZE_CHECK_AUTO,
-    SIZE_CHECK_FIXED,
-    SIZE_CHECK_OFF,
-    RECOMMENDATION_NONE,
-    RECOMMENDATION_CREATE_BACKUP,
-    RECOMMENDATION_CHECK_SCHEDULE,
-    RECOMMENDATION_CHECK_STORAGE,
-    RECOMMENDATION_CHECK_BACKUP_CONTENTS,
-    RECOMMENDATION_CHECK_BACKUP_SIZE,
-    RECOMMENDATION_ADD_STORAGE_LOCATION,
-    RECOMMENDATION_CHECK_BACKUP_SYSTEM,
+    CONF_UPDATE_INTERVAL_MINUTES,
     CORE_BACKUP_MANAGER_STATE,
     CORE_LAST_AUTOMATIC_ATTEMPT,
     CORE_LAST_SUCCESSFUL_AUTOMATIC_BACKUP,
     CORE_NEXT_AUTOMATIC_BACKUP,
-    DEFAULT_MAXIMUM_SIZE_DROP_PERCENT,
     DEFAULT_MAX_AGE_DAYS,
+    DEFAULT_MAXIMUM_SIZE_DROP_PERCENT,
     DEFAULT_MINIMUM_BACKUP_SIZE_MB,
     DEFAULT_MINIMUM_REDUNDANT_LOCATIONS,
+    DEFAULT_REPAIR_ISSUES_ENABLED,
+    DEFAULT_SIZE_CHECK_MODE,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
     DOMAIN,
+    RECOMMENDATION_ADD_STORAGE_LOCATION,
+    RECOMMENDATION_CHECK_BACKUP_CONTENTS,
+    RECOMMENDATION_CHECK_BACKUP_SIZE,
+    RECOMMENDATION_CHECK_BACKUP_SYSTEM,
+    RECOMMENDATION_CHECK_SCHEDULE,
+    RECOMMENDATION_CHECK_STORAGE,
+    RECOMMENDATION_CREATE_BACKUP,
+    RECOMMENDATION_NONE,
+    SIZE_CHECK_AUTO,
+    SIZE_CHECK_FIXED,
+    SIZE_CHECK_OFF,
     STATUS_AUTOMATIC_BACKUP_FAILED,
     STATUS_AUTOMATIC_BACKUP_OVERDUE,
     STATUS_BACKUP_INCOMPLETE,
@@ -80,80 +82,51 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize the coordinator."""
         self.config_entry = entry
-        self.max_age_days = int(
-            entry.options.get(
-                CONF_MAX_AGE_DAYS,
-                entry.data.get(CONF_MAX_AGE_DAYS, DEFAULT_MAX_AGE_DAYS),
-            )
-        )
-        self.minimum_backup_size_bytes = int(
-            entry.options.get(
-                CONF_MINIMUM_BACKUP_SIZE_MB,
-                entry.data.get(
+        options = {**entry.data, **entry.options}
+
+        self.max_age_days = int(options.get(CONF_MAX_AGE_DAYS, DEFAULT_MAX_AGE_DAYS))
+        self.minimum_backup_size_bytes = (
+            int(
+                options.get(
                     CONF_MINIMUM_BACKUP_SIZE_MB,
                     DEFAULT_MINIMUM_BACKUP_SIZE_MB,
-                ),
+                )
             )
-        ) * 1024 * 1024
+            * 1024
+            * 1024
+        )
         self.maximum_size_drop_percent = int(
-            entry.options.get(
+            options.get(
                 CONF_MAXIMUM_SIZE_DROP_PERCENT,
-                entry.data.get(
-                    CONF_MAXIMUM_SIZE_DROP_PERCENT,
-                    DEFAULT_MAXIMUM_SIZE_DROP_PERCENT,
-                ),
+                DEFAULT_MAXIMUM_SIZE_DROP_PERCENT,
             )
         )
         self.size_check_mode = str(
-            entry.options.get(CONF_SIZE_CHECK_MODE, entry.data.get(CONF_SIZE_CHECK_MODE, DEFAULT_SIZE_CHECK_MODE))
+            options.get(CONF_SIZE_CHECK_MODE, DEFAULT_SIZE_CHECK_MODE)
         )
         self.minimum_redundant_locations = int(
-            entry.options.get(
+            options.get(
                 CONF_MINIMUM_REDUNDANT_LOCATIONS,
-                entry.data.get(
-                    CONF_MINIMUM_REDUNDANT_LOCATIONS,
-                    DEFAULT_MINIMUM_REDUNDANT_LOCATIONS,
-                ),
+                DEFAULT_MINIMUM_REDUNDANT_LOCATIONS,
+            )
+        )
+        self.repair_issues_enabled = bool(
+            options.get(
+                CONF_REPAIR_ISSUES_ENABLED,
+                DEFAULT_REPAIR_ISSUES_ENABLED,
             )
         )
         update_minutes = int(
-            entry.options.get(
+            options.get(
                 CONF_UPDATE_INTERVAL_MINUTES,
-    CONF_SIZE_CHECK_MODE,
-    DEFAULT_SIZE_CHECK_MODE,
-    SIZE_CHECK_AUTO,
-    SIZE_CHECK_FIXED,
-    SIZE_CHECK_OFF,
-    RECOMMENDATION_NONE,
-    RECOMMENDATION_CREATE_BACKUP,
-    RECOMMENDATION_CHECK_SCHEDULE,
-    RECOMMENDATION_CHECK_STORAGE,
-    RECOMMENDATION_CHECK_BACKUP_CONTENTS,
-    RECOMMENDATION_CHECK_BACKUP_SIZE,
-    RECOMMENDATION_ADD_STORAGE_LOCATION,
-    RECOMMENDATION_CHECK_BACKUP_SYSTEM,
-                entry.data.get(
-                    CONF_UPDATE_INTERVAL_MINUTES,
-    CONF_SIZE_CHECK_MODE,
-    DEFAULT_SIZE_CHECK_MODE,
-    SIZE_CHECK_AUTO,
-    SIZE_CHECK_FIXED,
-    SIZE_CHECK_OFF,
-    RECOMMENDATION_NONE,
-    RECOMMENDATION_CREATE_BACKUP,
-    RECOMMENDATION_CHECK_SCHEDULE,
-    RECOMMENDATION_CHECK_STORAGE,
-    RECOMMENDATION_CHECK_BACKUP_CONTENTS,
-    RECOMMENDATION_CHECK_BACKUP_SIZE,
-    RECOMMENDATION_ADD_STORAGE_LOCATION,
-    RECOMMENDATION_CHECK_BACKUP_SYSTEM,
-                    DEFAULT_UPDATE_INTERVAL_MINUTES,
-                ),
+                DEFAULT_UPDATE_INTERVAL_MINUTES,
             )
         )
+
         super().__init__(
             hass,
             _LOGGER,
+            config_entry=entry,
             name=DOMAIN,
             update_interval=timedelta(minutes=update_minutes),
         )
@@ -176,7 +149,12 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
     def _entity_datetime(self, entity_id: str) -> datetime | None:
         """Read an ISO datetime from a Home Assistant entity state."""
         state = self.hass.states.get(entity_id)
-        if state is None or state.state in {STATE_UNKNOWN, STATE_UNAVAILABLE, "", "none"}:
+        if state is None or state.state in {
+            STATE_UNKNOWN,
+            STATE_UNAVAILABLE,
+            "",
+            "none",
+        }:
             return None
         return self._as_datetime(state.state)
 
@@ -242,11 +220,217 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             manager = async_get_manager(self.hass)
             backups, agent_errors_raw = await manager.async_get_backups()
         except HomeAssistantError as err:
-            raise UpdateFailed(f"Home Assistant backup manager is not ready: {err}") from err
+            raise UpdateFailed(
+                f"Home Assistant backup manager is not ready: {err}"
+            ) from err
         except Exception as err:  # noqa: BLE001
             raise UpdateFailed(f"Unable to read Home Assistant backups: {err}") from err
 
         now = dt_util.utcnow()
+        records = self._normalize_backups(backups)
+        automatic_records = [item for item in records if item.automatic]
+        manual_records = [item for item in records if not item.automatic]
+        latest_record = records[0] if records else None
+        latest_automatic_record = automatic_records[0] if automatic_records else None
+
+        latest_backup = latest_record.date if latest_record else None
+        latest_automatic = (
+            latest_automatic_record.date if latest_automatic_record else None
+        )
+        latest_manual = manual_records[0].date if manual_records else None
+
+        latest_age = self._age_days(now, latest_backup)
+        automatic_age_precise = self._age_days(now, latest_automatic)
+        automatic_age = self._completed_days(automatic_age_precise)
+        manual_age = self._age_days(now, latest_manual)
+
+        size_change_percent, automatic_drop_percent = self._size_changes(
+            latest_record,
+            records,
+        )
+        backup_size_suspicious = self._is_size_suspicious(
+            latest_record,
+            size_change_percent,
+            automatic_drop_percent,
+        )
+
+        latest_backup_incomplete = bool(latest_record and latest_record.incomplete)
+        if latest_record is None:
+            latest_backup_result = BACKUP_RESULT_UNKNOWN
+        elif latest_record.incomplete:
+            latest_backup_result = BACKUP_RESULT_PARTIAL
+        else:
+            latest_backup_result = BACKUP_RESULT_COMPLETE
+
+        latest_location_ids = latest_record.agents if latest_record else ()
+        latest_locations = len(latest_location_ids)
+        backup_not_redundant = bool(
+            latest_record and latest_locations < self.minimum_redundant_locations
+        )
+
+        last_automatic_attempt = self._entity_datetime(CORE_LAST_AUTOMATIC_ATTEMPT)
+        last_successful_automatic_event = self._entity_datetime(
+            CORE_LAST_SUCCESSFUL_AUTOMATIC_BACKUP
+        )
+        next_automatic = self._entity_datetime(CORE_NEXT_AUTOMATIC_BACKUP)
+        manager_state = self._entity_state(CORE_BACKUP_MANAGER_STATE)
+
+        no_backup = not records
+        backup_stale = latest_age is not None and latest_age > self.max_age_days
+        manual_covers_automatic = latest_manual is not None and (
+            latest_automatic is None or latest_manual > latest_automatic
+        )
+        if latest_automatic is None:
+            automatic_backup_overdue = (
+                latest_manual is None
+                or manual_age is None
+                or manual_age > self.max_age_days
+            )
+        else:
+            automatic_backup_overdue = (
+                automatic_age_precise is not None
+                and automatic_age_precise > self.max_age_days
+                and not manual_covers_automatic
+            )
+
+        automatic_backup_failed = last_automatic_attempt is not None and (
+            last_successful_automatic_event is None
+            or last_automatic_attempt
+            > last_successful_automatic_event + timedelta(seconds=60)
+        )
+        automatic_schedule_missing = next_automatic is None
+        automatic_schedule_overdue = (
+            next_automatic is not None and next_automatic < now - timedelta(hours=6)
+        )
+        manager_unavailable = manager_state in {
+            STATE_UNKNOWN,
+            STATE_UNAVAILABLE,
+            "none",
+            "",
+        }
+        agent_errors = {
+            str(agent_id): f"{type(error).__name__}: {error}"
+            for agent_id, error in agent_errors_raw.items()
+        }
+        storage_error = bool(agent_errors)
+
+        agent_summaries = self._build_agent_summaries(
+            records,
+            agent_errors,
+            now,
+        )
+        required_location_missing = bool(
+            latest_record
+            and any(
+                summary.problem
+                for summary in agent_summaries
+                if summary.agent_id in latest_location_ids
+            )
+        )
+
+        status = self._status(
+            no_backup=no_backup,
+            manager_unavailable=manager_unavailable,
+            automatic_schedule_missing=automatic_schedule_missing,
+            storage_error=storage_error,
+            latest_backup_incomplete=latest_backup_incomplete,
+            backup_size_suspicious=backup_size_suspicious,
+            backup_not_redundant=backup_not_redundant,
+            automatic_backup_failed=automatic_backup_failed,
+            automatic_backup_overdue=automatic_backup_overdue,
+            backup_stale=backup_stale,
+            automatic_schedule_overdue=automatic_schedule_overdue,
+        )
+
+        active_problems = tuple(
+            key
+            for key, active in (
+                ("no_backup", no_backup),
+                ("backup_stale", backup_stale),
+                ("automatic_backup_overdue", automatic_backup_overdue),
+                ("automatic_backup_failed", automatic_backup_failed),
+                ("automatic_schedule_missing", automatic_schedule_missing),
+                ("automatic_schedule_overdue", automatic_schedule_overdue),
+                ("manager_unavailable", manager_unavailable),
+                ("storage_error", storage_error),
+                ("backup_size_suspicious", backup_size_suspicious),
+                ("latest_backup_incomplete", latest_backup_incomplete),
+                ("backup_not_redundant", backup_not_redundant),
+                ("required_location_missing", required_location_missing),
+            )
+            if active
+        )
+
+        recommendation = {
+            STATUS_OK: RECOMMENDATION_NONE,
+            STATUS_NO_BACKUPS: RECOMMENDATION_CREATE_BACKUP,
+            STATUS_BACKUP_STALE: RECOMMENDATION_CREATE_BACKUP,
+            STATUS_AUTOMATIC_BACKUP_OVERDUE: RECOMMENDATION_CHECK_SCHEDULE,
+            STATUS_AUTOMATIC_BACKUP_FAILED: RECOMMENDATION_CHECK_SCHEDULE,
+            STATUS_SCHEDULE_MISSING: RECOMMENDATION_CHECK_SCHEDULE,
+            STATUS_SCHEDULE_OVERDUE: RECOMMENDATION_CHECK_SCHEDULE,
+            STATUS_MANAGER_UNAVAILABLE: RECOMMENDATION_CHECK_BACKUP_SYSTEM,
+            STATUS_STORAGE_ERROR: RECOMMENDATION_CHECK_STORAGE,
+            STATUS_BACKUP_INCOMPLETE: RECOMMENDATION_CHECK_BACKUP_CONTENTS,
+            STATUS_BACKUP_SIZE_SUSPICIOUS: RECOMMENDATION_CHECK_BACKUP_SIZE,
+            STATUS_BACKUP_NOT_REDUNDANT: RECOMMENDATION_ADD_STORAGE_LOCATION,
+        }.get(status, RECOMMENDATION_CHECK_BACKUP_SYSTEM)
+
+        return BackupCheckupData(
+            checked_at=now,
+            max_age_days=self.max_age_days,
+            minimum_backup_size_bytes=self.minimum_backup_size_bytes,
+            maximum_size_drop_percent=self.maximum_size_drop_percent,
+            minimum_redundant_locations=self.minimum_redundant_locations,
+            total_backups=len(records),
+            automatic_backups=len(automatic_records),
+            manual_backups=len(manual_records),
+            latest_backup=latest_backup,
+            latest_automatic_backup=latest_automatic,
+            latest_manual_backup=latest_manual,
+            latest_backup_age_days=latest_age,
+            automatic_backup_age_days=automatic_age,
+            automatic_backup_age_days_precise=automatic_age_precise,
+            manual_backup_age_days=manual_age,
+            latest_backup_size=latest_record.size if latest_record else None,
+            latest_automatic_backup_size=(
+                latest_automatic_record.size if latest_automatic_record else None
+            ),
+            latest_backup_size_change_percent=size_change_percent,
+            latest_backup_result=latest_backup_result,
+            latest_backup_locations=latest_locations,
+            latest_backup_location_ids=latest_location_ids,
+            last_automatic_attempt=last_automatic_attempt,
+            last_successful_automatic_event=last_successful_automatic_event,
+            next_automatic_backup=next_automatic,
+            manager_state=manager_state,
+            agent_errors=agent_errors,
+            agent_summaries=agent_summaries,
+            backups=records,
+            no_backup=no_backup,
+            backup_stale=backup_stale,
+            automatic_backup_overdue=automatic_backup_overdue,
+            automatic_backup_failed=automatic_backup_failed,
+            automatic_schedule_missing=automatic_schedule_missing,
+            automatic_schedule_overdue=automatic_schedule_overdue,
+            manager_unavailable=manager_unavailable,
+            storage_error=storage_error,
+            backup_size_suspicious=backup_size_suspicious,
+            latest_backup_incomplete=latest_backup_incomplete,
+            backup_not_redundant=backup_not_redundant,
+            required_location_missing=required_location_missing,
+            problem=bool(active_problems),
+            status=status,
+            recommendation=recommendation,
+            problem_count=len(active_problems),
+            active_problems=active_problems,
+            size_check_mode=self.size_check_mode,
+        )
+
+    def _normalize_backups(
+        self, backups: Mapping[str, Any]
+    ) -> tuple[BackupRecord, ...]:
+        """Normalize Home Assistant backup models into stable local records."""
         records: list[BackupRecord] = []
 
         for backup in backups.values():
@@ -290,8 +474,12 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             )
             known_sizes = [copy.size for copy in agent_copies if copy.size is not None]
             legacy_size = getattr(backup, "size", None)
-            size = max(known_sizes) if known_sizes else (
-                int(legacy_size) if isinstance(legacy_size, (int, float)) else None
+            size = (
+                max(known_sizes)
+                if known_sizes
+                else (
+                    int(legacy_size) if isinstance(legacy_size, (int, float)) else None
+                )
             )
             incomplete = bool(failed_agents or failed_addons or failed_folders)
 
@@ -300,7 +488,9 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                     backup_id=str(getattr(backup, "backup_id", "")),
                     name=str(getattr(backup, "name", "")),
                     date=backup_date,
-                    automatic=getattr(backup, "with_automatic_settings", None) is True,
+                    automatic=(
+                        getattr(backup, "with_automatic_settings", None) is True
+                    ),
                     agents=agents,
                     agent_copies=agent_copies,
                     failed_agents=failed_agents,
@@ -318,155 +508,84 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             )
 
         records.sort(key=lambda item: item.date, reverse=True)
-        automatic_records = [item for item in records if item.automatic]
-        manual_records = [item for item in records if not item.automatic]
-        latest_record = records[0] if records else None
-        latest_automatic_record = automatic_records[0] if automatic_records else None
+        return tuple(records)
 
-        latest_backup = latest_record.date if latest_record else None
-        latest_automatic = (
-            latest_automatic_record.date if latest_automatic_record else None
-        )
-        latest_manual = manual_records[0].date if manual_records else None
+    def _size_changes(
+        self,
+        latest_record: BackupRecord | None,
+        records: tuple[BackupRecord, ...],
+    ) -> tuple[float | None, float | None]:
+        """Return previous-backup and automatic-baseline size changes."""
+        if latest_record is None or latest_record.size is None:
+            return None, None
 
-        latest_age = self._age_days(now, latest_backup)
-        automatic_age_precise = self._age_days(now, latest_automatic)
-        automatic_age = self._completed_days(automatic_age_precise)
-        manual_age = self._age_days(now, latest_manual)
-
-        previous_comparable = None
-        if latest_record is not None:
-            previous_comparable = next(
-                (
-                    item
-                    for item in records[1:]
-                    if item.automatic == latest_record.automatic and item.size is not None
-                ),
-                None,
-            )
+        comparable = [
+            item
+            for item in records[1:]
+            if item.automatic == latest_record.automatic
+            and item.size is not None
+            and item.size > 0
+        ]
+        previous = comparable[0] if comparable else None
         size_change_percent = None
-        if (
-            latest_record is not None
-            and latest_record.size is not None
-            and previous_comparable is not None
-            and previous_comparable.size not in {None, 0}
-        ):
+        if previous is not None and previous.size:
             size_change_percent = round(
-                ((latest_record.size - previous_comparable.size) / previous_comparable.size)
-                * 100,
+                ((latest_record.size - previous.size) / previous.size) * 100,
                 1,
             )
 
-        previous_sizes = [
-            item.size for item in records[1:6]
-            if item.size is not None and item.size > 0
-        ]
-        automatic_baseline = median(previous_sizes) if previous_sizes else None
-        automatic_drop_percent = (
-            round(((latest_record.size - automatic_baseline) / automatic_baseline) * 100, 1)
-            if latest_record is not None
-            and latest_record.size is not None
-            and automatic_baseline
+        baseline_sizes = [item.size for item in comparable[:5] if item.size]
+        baseline = median(baseline_sizes) if baseline_sizes else None
+        baseline_change = (
+            round(((latest_record.size - baseline) / baseline) * 100, 1)
+            if baseline
             else None
         )
-        below_minimum = (
-            latest_record is not None
-            and latest_record.size is not None
-            and self.minimum_backup_size_bytes > 0
-            and latest_record.size < self.minimum_backup_size_bytes
-        )
-        if self.size_check_mode == SIZE_CHECK_OFF:
-            backup_size_suspicious = False
-        elif self.size_check_mode == SIZE_CHECK_FIXED:
-            backup_size_suspicious = bool(below_minimum)
-        else:
-            effective_drop = (
-                automatic_drop_percent
-                if automatic_drop_percent is not None
-                else size_change_percent
+        return size_change_percent, baseline_change
+
+    def _is_size_suspicious(
+        self,
+        latest_record: BackupRecord | None,
+        size_change_percent: float | None,
+        baseline_change_percent: float | None,
+    ) -> bool:
+        """Evaluate the configured backup-size rule."""
+        if self.size_check_mode == SIZE_CHECK_OFF or latest_record is None:
+            return False
+        if latest_record.size is not None and latest_record.size <= 0:
+            return True
+        if self.size_check_mode == SIZE_CHECK_FIXED:
+            return bool(
+                latest_record.size is not None
+                and self.minimum_backup_size_bytes > 0
+                and latest_record.size < self.minimum_backup_size_bytes
             )
-            backup_size_suspicious = bool(
-                latest_record
-                and (
-                    (latest_record.size is not None and latest_record.size <= 0)
-                    or (
-                        self.maximum_size_drop_percent > 0
-                        and effective_drop is not None
-                        and effective_drop <= -self.maximum_size_drop_percent
-                    )
-                )
-            )
+        if self.size_check_mode != SIZE_CHECK_AUTO:
+            return False
 
-        latest_backup_incomplete = bool(latest_record and latest_record.incomplete)
-        if latest_record is None:
-            latest_backup_result = BACKUP_RESULT_UNKNOWN
-        elif latest_record.incomplete:
-            latest_backup_result = BACKUP_RESULT_PARTIAL
-        else:
-            latest_backup_result = BACKUP_RESULT_COMPLETE
-
-        latest_location_ids = latest_record.agents if latest_record else ()
-        latest_locations = len(latest_location_ids)
-        backup_not_redundant = bool(
-            latest_record
-            and latest_locations < self.minimum_redundant_locations
+        effective_drop = (
+            baseline_change_percent
+            if baseline_change_percent is not None
+            else size_change_percent
+        )
+        return bool(
+            self.maximum_size_drop_percent > 0
+            and effective_drop is not None
+            and effective_drop <= -self.maximum_size_drop_percent
         )
 
-        last_automatic_attempt = self._entity_datetime(CORE_LAST_AUTOMATIC_ATTEMPT)
-        last_successful_automatic_event = self._entity_datetime(
-            CORE_LAST_SUCCESSFUL_AUTOMATIC_BACKUP
-        )
-        next_automatic = self._entity_datetime(CORE_NEXT_AUTOMATIC_BACKUP)
-        manager_state = self._entity_state(CORE_BACKUP_MANAGER_STATE)
-
-        no_backup = not records
-        backup_stale = latest_age is not None and latest_age > self.max_age_days
-        manual_covers_automatic = (
-            latest_manual is not None
-            and (latest_automatic is None or latest_manual > latest_automatic)
-        )
-        if latest_automatic is None:
-            automatic_backup_overdue = (
-                latest_manual is None
-                or manual_age is None
-                or manual_age > self.max_age_days
-            )
-        else:
-            automatic_backup_overdue = (
-                automatic_age_precise is not None
-                and automatic_age_precise > self.max_age_days
-                and not manual_covers_automatic
-            )
-
-        automatic_backup_failed = (
-            last_automatic_attempt is not None
-            and (
-                last_successful_automatic_event is None
-                or last_automatic_attempt
-                > last_successful_automatic_event + timedelta(seconds=60)
-            )
-        )
-        automatic_schedule_missing = next_automatic is None
-        automatic_schedule_overdue = (
-            next_automatic is not None
-            and next_automatic < now - timedelta(hours=6)
-        )
-        manager_unavailable = manager_state in {
-            STATE_UNKNOWN,
-            STATE_UNAVAILABLE,
-            "none",
-            "",
-        }
-        agent_errors = {
-            str(agent_id): f"{type(error).__name__}: {error}"
-            for agent_id, error in agent_errors_raw.items()
-        }
-        storage_error = bool(agent_errors)
-
+    def _build_agent_summaries(
+        self,
+        records: tuple[BackupRecord, ...],
+        agent_errors: dict[str, str],
+        now: datetime,
+    ) -> tuple[BackupAgentSummary, ...]:
+        """Build one health summary per detected backup storage agent."""
         all_agent_ids = sorted(
             {agent for item in records for agent in item.agents} | set(agent_errors)
         )
-        agent_summaries: list[BackupAgentSummary] = []
+        summaries: list[BackupAgentSummary] = []
+
         for agent_id in all_agent_ids:
             agent_records = [item for item in records if agent_id in item.agents]
             newest = agent_records[0] if agent_records else None
@@ -487,7 +606,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             age = self._age_days(now, newest.date if newest else None)
             stale = age is None or age > self.max_age_days
             error = agent_errors.get(agent_id)
-            agent_summaries.append(
+            summaries.append(
                 BackupAgentSummary(
                     agent_id=agent_id,
                     backup_count=len(agent_records),
@@ -501,128 +620,22 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 )
             )
 
-        required_location_missing = bool(
-            latest_record
-            and any(summary.problem for summary in agent_summaries)
-        )
+        return tuple(summaries)
 
-        if no_backup:
-            status = STATUS_NO_BACKUPS
-        elif manager_unavailable:
-            status = STATUS_MANAGER_UNAVAILABLE
-        elif automatic_schedule_missing:
-            status = STATUS_SCHEDULE_MISSING
-        elif storage_error:
-            status = STATUS_STORAGE_ERROR
-        elif latest_backup_incomplete:
-            status = STATUS_BACKUP_INCOMPLETE
-        elif backup_size_suspicious:
-            status = STATUS_BACKUP_SIZE_SUSPICIOUS
-        elif backup_not_redundant:
-            status = STATUS_BACKUP_NOT_REDUNDANT
-        elif automatic_backup_failed:
-            status = STATUS_AUTOMATIC_BACKUP_FAILED
-        elif automatic_backup_overdue:
-            status = STATUS_AUTOMATIC_BACKUP_OVERDUE
-        elif backup_stale:
-            status = STATUS_BACKUP_STALE
-        elif automatic_schedule_overdue:
-            status = STATUS_SCHEDULE_OVERDUE
-        else:
-            status = STATUS_OK
-
-        problem = any(
-            (
-                no_backup,
-                backup_stale,
-                automatic_backup_overdue,
-                automatic_backup_failed,
-                automatic_schedule_missing,
-                automatic_schedule_overdue,
-                manager_unavailable,
-                storage_error,
-                backup_size_suspicious,
-                latest_backup_incomplete,
-                backup_not_redundant,
-                required_location_missing,
-            )
+    @staticmethod
+    def _status(**flags: bool) -> str:
+        """Return the highest-priority status from the active flags."""
+        priority = (
+            ("no_backup", STATUS_NO_BACKUPS),
+            ("manager_unavailable", STATUS_MANAGER_UNAVAILABLE),
+            ("automatic_schedule_missing", STATUS_SCHEDULE_MISSING),
+            ("storage_error", STATUS_STORAGE_ERROR),
+            ("latest_backup_incomplete", STATUS_BACKUP_INCOMPLETE),
+            ("backup_size_suspicious", STATUS_BACKUP_SIZE_SUSPICIOUS),
+            ("backup_not_redundant", STATUS_BACKUP_NOT_REDUNDANT),
+            ("automatic_backup_failed", STATUS_AUTOMATIC_BACKUP_FAILED),
+            ("automatic_backup_overdue", STATUS_AUTOMATIC_BACKUP_OVERDUE),
+            ("backup_stale", STATUS_BACKUP_STALE),
+            ("automatic_schedule_overdue", STATUS_SCHEDULE_OVERDUE),
         )
-
-        active_problems = tuple(
-            key for key, active in (
-                ("no_backup", no_backup), ("backup_stale", backup_stale),
-                ("automatic_backup_overdue", automatic_backup_overdue),
-                ("automatic_backup_failed", automatic_backup_failed),
-                ("automatic_schedule_missing", automatic_schedule_missing),
-                ("automatic_schedule_overdue", automatic_schedule_overdue),
-                ("manager_unavailable", manager_unavailable), ("storage_error", storage_error),
-                ("backup_size_suspicious", backup_size_suspicious),
-                ("latest_backup_incomplete", latest_backup_incomplete),
-                ("backup_not_redundant", backup_not_redundant),
-                ("required_location_missing", required_location_missing),
-            ) if active
-        )
-        recommendation = {
-            STATUS_OK: RECOMMENDATION_NONE, STATUS_NO_BACKUPS: RECOMMENDATION_CREATE_BACKUP,
-            STATUS_BACKUP_STALE: RECOMMENDATION_CREATE_BACKUP,
-            STATUS_AUTOMATIC_BACKUP_OVERDUE: RECOMMENDATION_CHECK_SCHEDULE,
-            STATUS_AUTOMATIC_BACKUP_FAILED: RECOMMENDATION_CHECK_SCHEDULE,
-            STATUS_SCHEDULE_MISSING: RECOMMENDATION_CHECK_SCHEDULE,
-            STATUS_SCHEDULE_OVERDUE: RECOMMENDATION_CHECK_SCHEDULE,
-            STATUS_MANAGER_UNAVAILABLE: RECOMMENDATION_CHECK_BACKUP_SYSTEM,
-            STATUS_STORAGE_ERROR: RECOMMENDATION_CHECK_STORAGE,
-            STATUS_BACKUP_INCOMPLETE: RECOMMENDATION_CHECK_BACKUP_CONTENTS,
-            STATUS_BACKUP_SIZE_SUSPICIOUS: RECOMMENDATION_CHECK_BACKUP_SIZE,
-            STATUS_BACKUP_NOT_REDUNDANT: RECOMMENDATION_ADD_STORAGE_LOCATION,
-        }.get(status, RECOMMENDATION_CHECK_BACKUP_SYSTEM)
-
-        return BackupCheckupData(
-            checked_at=now,
-            max_age_days=self.max_age_days,
-            minimum_backup_size_bytes=self.minimum_backup_size_bytes,
-            maximum_size_drop_percent=self.maximum_size_drop_percent,
-            minimum_redundant_locations=self.minimum_redundant_locations,
-            total_backups=len(records),
-            automatic_backups=len(automatic_records),
-            manual_backups=len(manual_records),
-            latest_backup=latest_backup,
-            latest_automatic_backup=latest_automatic,
-            latest_manual_backup=latest_manual,
-            latest_backup_age_days=latest_age,
-            automatic_backup_age_days=automatic_age,
-            automatic_backup_age_days_precise=automatic_age_precise,
-            manual_backup_age_days=manual_age,
-            latest_backup_size=latest_record.size if latest_record else None,
-            latest_automatic_backup_size=(
-                latest_automatic_record.size if latest_automatic_record else None
-            ),
-            latest_backup_size_change_percent=size_change_percent,
-            latest_backup_result=latest_backup_result,
-            latest_backup_locations=latest_locations,
-            latest_backup_location_ids=latest_location_ids,
-            last_automatic_attempt=last_automatic_attempt,
-            last_successful_automatic_event=last_successful_automatic_event,
-            next_automatic_backup=next_automatic,
-            manager_state=manager_state,
-            agent_errors=agent_errors,
-            agent_summaries=tuple(agent_summaries),
-            backups=tuple(records),
-            no_backup=no_backup,
-            backup_stale=backup_stale,
-            automatic_backup_overdue=automatic_backup_overdue,
-            automatic_backup_failed=automatic_backup_failed,
-            automatic_schedule_missing=automatic_schedule_missing,
-            automatic_schedule_overdue=automatic_schedule_overdue,
-            manager_unavailable=manager_unavailable,
-            storage_error=storage_error,
-            backup_size_suspicious=backup_size_suspicious,
-            latest_backup_incomplete=latest_backup_incomplete,
-            backup_not_redundant=backup_not_redundant,
-            required_location_missing=required_location_missing,
-            problem=problem,
-            status=status,
-            recommendation=recommendation,
-            problem_count=len(active_problems),
-            active_problems=active_problems,
-            size_check_mode=self.size_check_mode,
-        )
+        return next((status for key, status in priority if flags[key]), STATUS_OK)

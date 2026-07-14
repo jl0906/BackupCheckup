@@ -5,50 +5,136 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import __version__ as home_assistant_version
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN
+from .const import VERSION
 from .coordinator import BackupCheckupCoordinator
+from .models import BackupRecord
 
 
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant,
     entry: ConfigEntry,
 ) -> dict[str, Any]:
-    """Return diagnostics for a BackupCheckup config entry."""
-    coordinator: BackupCheckupCoordinator = hass.data[DOMAIN][entry.entry_id]
+    """Return privacy-conscious diagnostics for a BackupCheckup config entry."""
+    coordinator: BackupCheckupCoordinator = entry.runtime_data
     data = coordinator.data
+
     return {
-        "config": {**entry.data, **entry.options},
-        "status": data.status,
-        "checked_at": data.checked_at.isoformat(),
-        "total_backups": data.total_backups,
-        "automatic_backups": data.automatic_backups,
-        "manual_or_other_backups": data.manual_backups,
-        "latest_backup": data.latest_backup.isoformat() if data.latest_backup else None,
-        "latest_backup_size": data.latest_backup_size,
-        "latest_backup_size_change_percent": data.latest_backup_size_change_percent,
-        "latest_backup_result": data.latest_backup_result,
-        "latest_backup_locations": list(data.latest_backup_location_ids),
-        "latest_automatic_backup": data.latest_automatic_backup.isoformat() if data.latest_automatic_backup else None,
-        "latest_manual_backup": data.latest_manual_backup.isoformat() if data.latest_manual_backup else None,
-        "manager_state": data.manager_state,
-        "agent_errors": data.agent_errors,
-        "agents": [item.as_dict() for item in data.agent_summaries],
-        "flags": {
-            "no_backup": data.no_backup,
-            "backup_stale": data.backup_stale,
-            "automatic_backup_overdue": data.automatic_backup_overdue,
-            "automatic_backup_failed": data.automatic_backup_failed,
-            "automatic_schedule_missing": data.automatic_schedule_missing,
-            "automatic_schedule_overdue": data.automatic_schedule_overdue,
-            "manager_unavailable": data.manager_unavailable,
-            "storage_error": data.storage_error,
-            "backup_size_suspicious": data.backup_size_suspicious,
-            "latest_backup_incomplete": data.latest_backup_incomplete,
-            "backup_not_redundant": data.backup_not_redundant,
-            "required_location_missing": data.required_location_missing,
-            "problem": data.problem,
+        "integration": {
+            "version": VERSION,
+            "home_assistant_version": home_assistant_version,
+            "config_entry_version": entry.version,
+            "title": entry.title,
         },
-        "backups": [item.as_dict() for item in data.backups],
+        "configuration": {
+            **entry.data,
+            **entry.options,
+        },
+        "coordinator": {
+            "last_update_success": coordinator.last_update_success,
+            "last_exception": (
+                str(coordinator.last_exception)
+                if coordinator.last_exception is not None
+                else None
+            ),
+            "update_interval_seconds": (
+                coordinator.update_interval.total_seconds()
+                if coordinator.update_interval is not None
+                else None
+            ),
+            "checked_at": data.checked_at.isoformat(),
+        },
+        "health": {
+            "status": data.status,
+            "recommendation": data.recommendation,
+            "problem": data.problem,
+            "problem_count": data.problem_count,
+            "active_problems": list(data.active_problems),
+            "flags": {
+                "no_backup": data.no_backup,
+                "backup_stale": data.backup_stale,
+                "automatic_backup_overdue": data.automatic_backup_overdue,
+                "automatic_backup_failed": data.automatic_backup_failed,
+                "automatic_schedule_missing": data.automatic_schedule_missing,
+                "automatic_schedule_overdue": data.automatic_schedule_overdue,
+                "manager_unavailable": data.manager_unavailable,
+                "storage_error": data.storage_error,
+                "backup_size_suspicious": data.backup_size_suspicious,
+                "latest_backup_incomplete": data.latest_backup_incomplete,
+                "backup_not_redundant": data.backup_not_redundant,
+                "required_location_missing": data.required_location_missing,
+            },
+        },
+        "inventory": {
+            "total_backups": data.total_backups,
+            "automatic_backups": data.automatic_backups,
+            "manual_or_other_backups": data.manual_backups,
+            "latest_backup": (
+                data.latest_backup.isoformat() if data.latest_backup else None
+            ),
+            "latest_backup_age_days": data.latest_backup_age_days,
+            "latest_backup_size": data.latest_backup_size,
+            "latest_backup_size_change_percent": (
+                data.latest_backup_size_change_percent
+            ),
+            "latest_backup_result": data.latest_backup_result,
+            "latest_backup_locations": list(data.latest_backup_location_ids),
+            "latest_automatic_backup": (
+                data.latest_automatic_backup.isoformat()
+                if data.latest_automatic_backup
+                else None
+            ),
+            "automatic_backup_age_days": data.automatic_backup_age_days,
+            "automatic_backup_age_days_precise": (
+                data.automatic_backup_age_days_precise
+            ),
+            "latest_manual_backup": (
+                data.latest_manual_backup.isoformat()
+                if data.latest_manual_backup
+                else None
+            ),
+            "manager_state": data.manager_state,
+        },
+        "automatic_backup_system": {
+            "last_attempt": (
+                data.last_automatic_attempt.isoformat()
+                if data.last_automatic_attempt
+                else None
+            ),
+            "last_success": (
+                data.last_successful_automatic_event.isoformat()
+                if data.last_successful_automatic_event
+                else None
+            ),
+            "next_scheduled": (
+                data.next_automatic_backup.isoformat()
+                if data.next_automatic_backup
+                else None
+            ),
+        },
+        "storage": {
+            "minimum_required_locations": data.minimum_redundant_locations,
+            "agent_errors": data.agent_errors,
+            "agents": [item.as_dict() for item in data.agent_summaries],
+        },
+        "recent_backups": [_serialize_backup(record) for record in data.backups[:20]],
+    }
+
+
+def _serialize_backup(record: BackupRecord) -> dict[str, Any]:
+    """Serialize a backup without exposing its user-defined name or ID."""
+    return {
+        "date": record.date.isoformat(),
+        "automatic": record.automatic,
+        "agents": list(record.agents),
+        "agent_copies": [copy.as_dict() for copy in record.agent_copies],
+        "failed_agents": list(record.failed_agents),
+        "failed_addons": list(record.failed_addons),
+        "failed_folders": list(record.failed_folders),
+        "database_included": record.database_included,
+        "homeassistant_included": record.homeassistant_included,
+        "size": record.size,
+        "incomplete": record.incomplete,
     }

@@ -13,14 +13,19 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory, PERCENTAGE, UnitOfInformation, UnitOfTime
+from homeassistant.const import (
+    PERCENTAGE,
+    EntityCategory,
+    UnitOfInformation,
+    UnitOfTime,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
 
-from .const import BACKUP_RESULT_OPTIONS, DOMAIN, RECOMMENDATION_OPTIONS, STATUS_OPTIONS
+from .const import BACKUP_RESULT_OPTIONS, RECOMMENDATION_OPTIONS, STATUS_OPTIONS
 from .coordinator import BackupCheckupCoordinator
-from .entity import BackupCheckupEntity
+from .entity import BackupCheckupAgentEntity, BackupCheckupEntity
 from .models import BackupAgentSummary, BackupCheckupData
 
 
@@ -44,31 +49,41 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
             "max_age_days": data.max_age_days,
             "checked_at": data.checked_at.isoformat(),
             "problem": data.problem,
+            "problem_count": data.problem_count,
+            "active_problems": list(data.active_problems),
         },
     ),
     BackupCheckupSensorDescription(
-        key="recommendation", translation_key="recommendation", icon="mdi:lightbulb-on-outline",
-        device_class=SensorDeviceClass.ENUM, options=RECOMMENDATION_OPTIONS,
+        key="recommendation",
+        translation_key="recommendation",
+        icon="mdi:lightbulb-on-outline",
+        device_class=SensorDeviceClass.ENUM,
+        options=RECOMMENDATION_OPTIONS,
         value_fn=lambda data: data.recommendation,
-        attributes_fn=lambda data: {"active_problems": list(data.active_problems), "problem_count": data.problem_count},
+        attributes_fn=lambda data: {
+            "active_problems": list(data.active_problems),
+            "problem_count": data.problem_count,
+        },
     ),
     BackupCheckupSensorDescription(
-        key="problem_count", translation_key="problem_count", icon="mdi:counter",
-        native_unit_of_measurement="problems", value_fn=lambda data: data.problem_count,
-        attributes_fn=lambda data: {"active_problems": list(data.active_problems)},
+        key="problem_count",
+        translation_key="problem_count",
+        icon="mdi:counter",
+        value_fn=lambda data: data.problem_count,
+        attributes_fn=lambda data: {
+            "active_problems": list(data.active_problems),
+        },
     ),
     BackupCheckupSensorDescription(
         key="stored_backups",
         translation_key="stored_backups",
         icon="mdi:archive-multiple",
-        native_unit_of_measurement="backups",
         value_fn=lambda data: data.total_backups,
         attributes_fn=lambda data: {
             "automatic_backups": data.automatic_backups,
             "manual_or_other_backups": data.manual_backups,
             "agent_errors": data.agent_errors,
             "agents": [item.as_dict() for item in data.agent_summaries],
-            "backups": [item.as_dict() for item in data.backups[:25]],
             "checked_at": data.checked_at.isoformat(),
         },
     ),
@@ -78,7 +93,6 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:calendar-sync",
-        native_unit_of_measurement="backups",
         value_fn=lambda data: data.automatic_backups,
     ),
     BackupCheckupSensorDescription(
@@ -87,7 +101,6 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:hand-back-right",
-        native_unit_of_measurement="backups",
         value_fn=lambda data: data.manual_backups,
     ),
     BackupCheckupSensorDescription(
@@ -130,6 +143,9 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         native_unit_of_measurement=UnitOfTime.DAYS,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda data: data.automatic_backup_age_days,
+        attributes_fn=lambda data: {
+            "precise_age_days": data.automatic_backup_age_days_precise,
+        },
     ),
     BackupCheckupSensorDescription(
         key="manual_backup_age",
@@ -151,8 +167,10 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda data: data.latest_backup_size,
         attributes_fn=lambda data: {
+            "size_check_mode": data.size_check_mode,
             "minimum_backup_size_bytes": data.minimum_backup_size_bytes,
             "size_change_percent": data.latest_backup_size_change_percent,
+            "maximum_size_drop_percent": data.maximum_size_drop_percent,
         },
     ),
     BackupCheckupSensorDescription(
@@ -181,15 +199,12 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         device_class=SensorDeviceClass.ENUM,
         options=BACKUP_RESULT_OPTIONS,
         value_fn=lambda data: data.latest_backup_result,
-        attributes_fn=lambda data: (
-            data.backups[0].as_dict() if data.backups else {}
-        ),
+        attributes_fn=lambda data: data.backups[0].as_dict() if data.backups else {},
     ),
     BackupCheckupSensorDescription(
         key="latest_backup_locations",
         translation_key="latest_backup_locations",
         icon="mdi:server-network",
-        native_unit_of_measurement="locations",
         value_fn=lambda data: data.latest_backup_locations,
         attributes_fn=lambda data: {
             "location_ids": list(data.latest_backup_location_ids),
@@ -210,7 +225,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         translation_key="last_successful_automatic_event",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:backup-restore",
+        icon="mdi:check-circle-outline",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=lambda data: data.last_successful_automatic_event,
     ),
@@ -219,7 +234,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         translation_key="next_automatic_backup",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:calendar-arrow-right",
+        icon="mdi:calendar-clock",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=lambda data: data.next_automatic_backup,
     ),
@@ -228,9 +243,18 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         translation_key="backup_manager_state",
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
-        icon="mdi:state-machine",
+        icon="mdi:database-cog-outline",
         value_fn=lambda data: data.manager_state,
     ),
+)
+
+
+AGENT_METRICS: tuple[str, ...] = (
+    "backups",
+    "latest_backup",
+    "latest_backup_age",
+    "latest_backup_size",
+    "stored_bytes",
 )
 
 
@@ -240,45 +264,34 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up BackupCheckup sensors."""
-    coordinator: BackupCheckupCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: BackupCheckupCoordinator = entry.runtime_data
     entities: list[SensorEntity] = [
-        BackupCheckupSensor(coordinator, entry, description)
-        for description in SENSORS
+        BackupCheckupSensor(coordinator, entry, description) for description in SENSORS
     ]
+
     known_agents = {summary.agent_id for summary in coordinator.data.agent_summaries}
-    for agent_id in sorted(known_agents):
-        entities.extend(_agent_sensor_entities(coordinator, entry, agent_id))
+    entities.extend(
+        BackupCheckupAgentSensor(coordinator, entry, agent_id, metric)
+        for agent_id in sorted(known_agents)
+        for metric in AGENT_METRICS
+    )
     async_add_entities(entities)
 
     def _add_new_agents() -> None:
-        current_agents = {summary.agent_id for summary in coordinator.data.agent_summaries}
+        current_agents = {
+            summary.agent_id for summary in coordinator.data.agent_summaries
+        }
         new_agents = current_agents - known_agents
         if not new_agents:
             return
         known_agents.update(new_agents)
         async_add_entities(
-            entity
+            BackupCheckupAgentSensor(coordinator, entry, agent_id, metric)
             for agent_id in sorted(new_agents)
-            for entity in _agent_sensor_entities(coordinator, entry, agent_id)
+            for metric in AGENT_METRICS
         )
 
     entry.async_on_unload(coordinator.async_add_listener(_add_new_agents))
-
-
-def _agent_sensor_entities(
-    coordinator: BackupCheckupCoordinator, entry: ConfigEntry, agent_id: str
-) -> tuple[BackupCheckupAgentSensor, ...]:
-    """Create all sensors for one backup storage agent."""
-    return tuple(
-        BackupCheckupAgentSensor(coordinator, entry, agent_id, metric)
-        for metric in (
-            "backups",
-            "latest_backup",
-            "latest_backup_age",
-            "latest_backup_size",
-            "stored_bytes",
-        )
-    )
 
 
 class BackupCheckupSensor(BackupCheckupEntity, SensorEntity):
@@ -292,7 +305,7 @@ class BackupCheckupSensor(BackupCheckupEntity, SensorEntity):
         entry: ConfigEntry,
         description: BackupCheckupSensorDescription,
     ) -> None:
-        """Initialize the sensor."""
+        """Initialize a BackupCheckup sensor."""
         super().__init__(coordinator, entry)
         self.entity_description = description
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
@@ -305,16 +318,14 @@ class BackupCheckupSensor(BackupCheckupEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
-        """Return additional state attributes."""
+        """Return sensor attributes."""
         if self.entity_description.attributes_fn is None:
             return None
         return self.entity_description.attributes_fn(self.coordinator.data)
 
 
-class BackupCheckupAgentSensor(BackupCheckupEntity, SensorEntity):
-    """A sensor for one Home Assistant backup storage agent."""
-
-    _attr_has_entity_name = False
+class BackupCheckupAgentSensor(BackupCheckupAgentEntity, SensorEntity):
+    """A metric for one Home Assistant backup storage location."""
 
     def __init__(
         self,
@@ -324,20 +335,21 @@ class BackupCheckupAgentSensor(BackupCheckupEntity, SensorEntity):
         metric: str,
     ) -> None:
         """Initialize an agent sensor."""
-        super().__init__(coordinator, entry)
-        self.agent_id = agent_id
+        super().__init__(coordinator, entry, agent_id)
         self.metric = metric
         agent_slug = slugify(agent_id)
         self._attr_unique_id = f"{entry.entry_id}_agent_{agent_id}_{metric}"
         self.entity_id = f"sensor.backup_checkup_{agent_slug}_{metric}"
-        labels = {
-            "backups": "backups",
-            "latest_backup": "latest backup",
-            "latest_backup_age": "latest backup age",
-            "latest_backup_size": "latest backup size",
-            "stored_bytes": "stored backup size",
-        }
-        self._attr_name = f"BackupCheckup {agent_id} {labels[metric]}"
+        self._attr_translation_key = f"agent_{metric}"
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+
+        if metric in {"latest_backup", "latest_backup_age"}:
+            self._attr_entity_registry_enabled_default = True
+        elif metric == "latest_backup_size":
+            self._attr_entity_registry_enabled_default = True
+        else:
+            self._attr_entity_registry_enabled_default = False
+
         if metric == "latest_backup":
             self._attr_device_class = SensorDeviceClass.TIMESTAMP
             self._attr_icon = "mdi:archive-clock"
@@ -352,10 +364,10 @@ class BackupCheckupAgentSensor(BackupCheckupEntity, SensorEntity):
             self._attr_state_class = SensorStateClass.MEASUREMENT
             self._attr_icon = "mdi:database"
         else:
-            self._attr_native_unit_of_measurement = "backups"
             self._attr_icon = "mdi:archive-multiple"
 
     def _summary(self) -> BackupAgentSummary | None:
+        """Return the current summary for this storage location."""
         return next(
             (
                 item
@@ -367,7 +379,7 @@ class BackupCheckupAgentSensor(BackupCheckupEntity, SensorEntity):
 
     @property
     def native_value(self) -> Any:
-        """Return the agent metric."""
+        """Return the storage location metric."""
         summary = self._summary()
         if summary is None:
             return None
@@ -381,6 +393,6 @@ class BackupCheckupAgentSensor(BackupCheckupEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return agent details."""
+        """Return storage location details."""
         summary = self._summary()
         return summary.as_dict() if summary else {"agent_id": self.agent_id}

@@ -4,68 +4,78 @@
     "step": {
       "user": {
         "title": "Configurer BackupCheckup",
-        "description": "Choose a ready-to-use monitoring profile. You can change it later in the integration options.",
+        "description": "Choisissez un profil de surveillance prêt à l’emploi. Vous pourrez le modifier plus tard dans les options de l’intégration.",
         "data": {
           "monitoring_profile": "Profil de surveillance"
         },
         "data_description": {
-          "monitoring_profile": "Standard is simple and suitable for most installations. Secure expects a second storage location. Custom shows all settings."
+          "monitoring_profile": "Standard est simple et convient à la plupart des installations. Sécurisé exige un second emplacement de stockage. Personnalisé affiche tous les paramètres."
         }
       },
       "advanced": {
-        "title": "Custom monitoring settings",
-        "description": "Set your own limits. Automatic size checking compares the newest backup with recent backups.",
+        "title": "Paramètres de surveillance personnalisés",
+        "description": "Définissez vos propres limites. Le contrôle automatique de la taille compare la sauvegarde la plus récente aux sauvegardes récentes.",
         "data": {
-          "max_age_days": "Maximum backup age in days",
-          "update_interval_minutes": "Update interval in minutes",
+          "max_age_days": "Âge maximal de la sauvegarde en jours",
+          "update_interval_minutes": "Intervalle de mise à jour en minutes",
           "size_check_mode": "Contrôle de taille",
-          "minimum_backup_size_mb": "Fixed minimum backup size in MB",
-          "maximum_size_drop_percent": "Maximum allowed size drop in percent",
-          "minimum_redundant_locations": "Required backup locations"
+          "minimum_backup_size_mb": "Taille minimale fixe de la sauvegarde en Mo",
+          "maximum_size_drop_percent": "Baisse maximale autorisée de la taille en pourcentage",
+          "minimum_redundant_locations": "Emplacements de sauvegarde requis",
+          "repair_issues_enabled": "Afficher les alertes de réparation"
         },
         "data_description": {
-          "max_age_days": "A warning is shown after this many complete days.",
-          "update_interval_minutes": "How often BackupCheckup reads the Home Assistant backup inventory.",
-          "size_check_mode": "Automatic is recommended for users who do not know their normal backup size.",
-          "minimum_backup_size_mb": "Only used with the fixed minimum size mode.",
-          "maximum_size_drop_percent": "Used for automatic comparison with previous backups.",
-          "minimum_redundant_locations": "Use 1 for one storage location or 2 for local storage plus NAS/cloud."
+          "max_age_days": "Un avertissement est affiché après ce nombre de jours complets.",
+          "update_interval_minutes": "Fréquence à laquelle BackupCheckup lit l’inventaire des sauvegardes de Home Assistant.",
+          "size_check_mode": "Le mode automatique est recommandé aux utilisateurs qui ne connaissent pas la taille habituelle de leurs sauvegardes.",
+          "minimum_backup_size_mb": "Utilisé uniquement avec le mode de taille minimale fixe.",
+          "maximum_size_drop_percent": "Utilisé pour la comparaison automatique avec les sauvegardes précédentes.",
+          "minimum_redundant_locations": "Utilisez 1 pour un emplacement ou 2 pour le stockage local plus un NAS/cloud.",
+          "repair_issues_enabled": "Crée des alertes Réparations Home Assistant pour les problèmes de sauvegarde actifs. Elles disparaissent automatiquement une fois le problème résolu."
         }
       }
     },
     "abort": {
       "single_instance_allowed": "Une seule instance de BackupCheckup est autorisée."
+    },
+    "error": {
+      "fixed_size_required": "Avec une taille minimale fixe, saisissez une valeur supérieure à 0 Mo."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "BackupCheckup options",
-        "description": "Choose a monitoring profile. Selecting Custom opens all individual settings.",
+        "title": "Options de BackupCheckup",
+        "description": "Choisissez un profil de surveillance. Personnalisé ouvre tous les paramètres individuels.",
         "data": {
           "monitoring_profile": "Profil de surveillance"
         }
       },
       "advanced": {
-        "title": "Custom monitoring settings",
-        "description": "Set your own limits. Automatic size checking compares the newest backup with recent backups.",
+        "title": "Paramètres de surveillance personnalisés",
+        "description": "Définissez vos propres limites. Le contrôle automatique de la taille compare la sauvegarde la plus récente aux sauvegardes récentes.",
         "data": {
-          "max_age_days": "Maximum backup age in days",
-          "update_interval_minutes": "Update interval in minutes",
+          "max_age_days": "Âge maximal de la sauvegarde en jours",
+          "update_interval_minutes": "Intervalle de mise à jour en minutes",
           "size_check_mode": "Contrôle de taille",
-          "minimum_backup_size_mb": "Fixed minimum backup size in MB",
-          "maximum_size_drop_percent": "Maximum allowed size drop in percent",
-          "minimum_redundant_locations": "Required backup locations"
+          "minimum_backup_size_mb": "Taille minimale fixe de la sauvegarde en Mo",
+          "maximum_size_drop_percent": "Baisse maximale autorisée de la taille en pourcentage",
+          "minimum_redundant_locations": "Emplacements de sauvegarde requis",
+          "repair_issues_enabled": "Afficher les alertes de réparation"
         },
         "data_description": {
-          "max_age_days": "A warning is shown after this many complete days.",
-          "update_interval_minutes": "How often BackupCheckup reads the Home Assistant backup inventory.",
-          "size_check_mode": "Automatic is recommended for users who do not know their normal backup size.",
-          "minimum_backup_size_mb": "Only used with the fixed minimum size mode.",
-          "maximum_size_drop_percent": "Used for automatic comparison with previous backups.",
-          "minimum_redundant_locations": "Use 1 for one storage location or 2 for local storage plus NAS/cloud."
+          "max_age_days": "Un avertissement est affiché après ce nombre de jours complets.",
+          "update_interval_minutes": "Fréquence à laquelle BackupCheckup lit l’inventaire des sauvegardes de Home Assistant.",
+          "size_check_mode": "Le mode automatique est recommandé aux utilisateurs qui ne connaissent pas la taille habituelle de leurs sauvegardes.",
+          "minimum_backup_size_mb": "Utilisé uniquement avec le mode de taille minimale fixe.",
+          "maximum_size_drop_percent": "Utilisé pour la comparaison automatique avec les sauvegardes précédentes.",
+          "minimum_redundant_locations": "Utilisez 1 pour un emplacement ou 2 pour le stockage local plus un NAS/cloud.",
+          "repair_issues_enabled": "Crée des alertes Réparations Home Assistant pour les problèmes de sauvegarde actifs. Elles disparaissent automatiquement une fois le problème résolu."
         }
       }
+    },
+    "error": {
+      "fixed_size_required": "Avec une taille minimale fixe, saisissez une valeur supérieure à 0 Mo."
     }
   },
   "entity": {
@@ -147,20 +157,35 @@
         "name": "Emplacements de la dernière sauvegarde"
       },
       "recommendation": {
-        "name": "Recommendation",
+        "name": "Recommandation",
         "state": {
-          "none": "No action required",
-          "create_backup": "Create a new backup",
-          "check_schedule": "Check automatic backup schedule",
-          "check_storage": "Check backup storage",
-          "check_backup_contents": "Check incomplete backup contents",
-          "check_backup_size": "Check backup size and free space",
-          "add_storage_location": "Add or restore a backup location",
-          "check_backup_system": "Check Home Assistant backup system"
+          "none": "Aucune action requise",
+          "create_backup": "Créer une nouvelle sauvegarde",
+          "check_schedule": "Vérifier la planification des sauvegardes automatiques",
+          "check_storage": "Vérifier le stockage des sauvegardes",
+          "check_backup_contents": "Vérifier le contenu de la sauvegarde incomplète",
+          "check_backup_size": "Vérifier la taille de la sauvegarde et l’espace libre",
+          "add_storage_location": "Ajouter ou restaurer un emplacement de sauvegarde",
+          "check_backup_system": "Vérifier le système de sauvegarde de Home Assistant"
         }
       },
       "problem_count": {
-        "name": "Active problems"
+        "name": "Problèmes actifs"
+      },
+      "agent_backups": {
+        "name": "Nombre de sauvegardes"
+      },
+      "agent_latest_backup": {
+        "name": "Dernière sauvegarde"
+      },
+      "agent_latest_backup_age": {
+        "name": "Âge de la dernière sauvegarde"
+      },
+      "agent_latest_backup_size": {
+        "name": "Taille de la dernière sauvegarde"
+      },
+      "agent_stored_bytes": {
+        "name": "Taille des sauvegardes stockées"
       }
     },
     "binary_sensor": {
@@ -202,6 +227,14 @@
       },
       "required_location_missing": {
         "name": "Emplacement requis manquant"
+      },
+      "agent_problem": {
+        "name": "Problème"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Actualiser les données de sauvegarde"
       }
     }
   },
@@ -219,6 +252,52 @@
         "fixed": "Taille minimale fixe",
         "disabled": "Désactivé"
       }
+    }
+  },
+  "issues": {
+    "no_backup": {
+      "title": "Aucune sauvegarde disponible",
+      "description": "BackupCheckup n’a trouvé aucune sauvegarde stockée. Ouvrez les paramètres de sauvegarde de Home Assistant et créez une sauvegarde."
+    },
+    "backup_stale": {
+      "title": "La dernière sauvegarde est trop ancienne",
+      "description": "La dernière sauvegarde date de {age} jours. Le maximum configuré est de {maximum} jours. Créez une sauvegarde et vérifiez la planification."
+    },
+    "automatic_backup_overdue": {
+      "title": "La sauvegarde automatique est en retard",
+      "description": "La dernière sauvegarde automatique date de {age} jours. Le maximum configuré est de {maximum} jours. Vérifiez la planification."
+    },
+    "automatic_backup_failed": {
+      "title": "La dernière sauvegarde automatique a échoué",
+      "description": "La dernière tentative date de {attempt}, et la dernière réussite de {success}. Vérifiez le journal et les emplacements de stockage."
+    },
+    "automatic_schedule_missing": {
+      "title": "Planification automatique absente",
+      "description": "Home Assistant n’indique aucune prochaine sauvegarde automatique. Configurez ou activez les sauvegardes automatiques."
+    },
+    "automatic_schedule_overdue": {
+      "title": "Planification automatique en retard",
+      "description": "La prochaine sauvegarde était annoncée pour {scheduled}, mais cette date est passée. Vérifiez la configuration."
+    },
+    "manager_unavailable": {
+      "title": "Gestionnaire de sauvegardes indisponible",
+      "description": "Le gestionnaire de sauvegardes Home Assistant indique l’état « {state} ». Vérifiez l’intégration Backup native ou redémarrez Home Assistant."
+    },
+    "storage_error": {
+      "title": "Erreur sur un emplacement de sauvegarde",
+      "description": "Home Assistant a signalé une erreur pour : {locations}. Vérifiez la connexion, les identifiants et l’espace disponible."
+    },
+    "backup_size_suspicious": {
+      "title": "Taille de sauvegarde suspecte",
+      "description": "La dernière sauvegarde fait {size} et a varié de {change} par rapport à la précédente comparable. Le seuil est de {threshold}%."
+    },
+    "latest_backup_incomplete": {
+      "title": "La dernière sauvegarde est incomplète",
+      "description": "Certains éléments ont échoué. Extensions : {addons}. Dossiers : {folders}. Emplacements : {locations}. Vérifiez le journal et créez une nouvelle sauvegarde."
+    },
+    "backup_not_redundant": {
+      "title": "La sauvegarde n’est pas redondante",
+      "description": "La dernière sauvegarde est présente sur {current} emplacement(s), alors que {required} sont requis. Ajoutez ou restaurez un emplacement."
     }
   }
 }

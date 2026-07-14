@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.4.0
+
+### Added
+- Native Home Assistant Repair issues for active backup problems with automatic removal after recovery.
+- A `button.backup_checkup_refresh` entity for immediate manual refreshes.
+- Separate Home Assistant devices for every detected backup storage location.
+- Expanded privacy-conscious diagnostics with health, schedule, storage, and sanitized recent-backup data.
+- Structured repository documentation under `docs/`, including entity, FAQ, dashboard, automation, and screenshot guidance.
+- Optional Repair notifications in the Custom monitoring profile.
+- GitHub issue templates, contribution guidance, security policy, and pull-request template.
+
+### Changed
+- Reorganized and expanded the README for easier installation, configuration, troubleshooting, and daily use.
+- Completed the guided setup, recommendation, and problem translations in every supported language.
+- Improved translated names for storage-location entities and the refresh button.
+- Automatic size comparison now uses recent backups of the same type.
+- Less frequently used storage metrics are disabled by default on new installations.
+
+### Fixed
+- Added automatic migration for configuration entries created by the public 1.0.0 release.
+- Fixed a broken update-interval lookup in the 1.3.0 coordinator that could prevent the integration from starting.
+- Removed backup names and IDs from exported diagnostics.
+
 ## 1.3.0
 
 ### Added

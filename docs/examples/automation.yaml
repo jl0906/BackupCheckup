@@ -1,0 +1,14 @@
+alias: BackupCheckup problem notification
+description: Notify when BackupCheckup detects a new backup problem.
+triggers:
+  - trigger: state
+    entity_id: binary_sensor.backup_checkup_problem
+    to: "on"
+actions:
+  - action: notify.notify
+    data:
+      title: BackupCheckup
+      message: >-
+        Status: {{ states('sensor.backup_checkup_status') }}.
+        Recommendation: {{ states('sensor.backup_checkup_recommendation') }}.
+mode: single

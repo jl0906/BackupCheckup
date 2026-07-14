@@ -4,18 +4,25 @@ from homeassistant.const import Platform
 
 DOMAIN = "backup_checkup"
 NAME = "BackupCheckup"
-VERSION = "1.3.0"
+VERSION = "1.4.0"
 
-PLATFORMS: tuple[Platform, ...] = (Platform.SENSOR, Platform.BINARY_SENSOR)
+PLATFORMS: tuple[Platform, ...] = (
+    Platform.SENSOR,
+    Platform.BINARY_SENSOR,
+    Platform.BUTTON,
+)
+
+DOCUMENTATION_URL = "https://github.com/jl0906/BackupCheckup"
+TROUBLESHOOTING_URL = f"{DOCUMENTATION_URL}#troubleshooting"
 
 CONF_MAX_AGE_DAYS = "max_age_days"
 CONF_UPDATE_INTERVAL_MINUTES = "update_interval_minutes"
 CONF_MINIMUM_BACKUP_SIZE_MB = "minimum_backup_size_mb"
 CONF_MAXIMUM_SIZE_DROP_PERCENT = "maximum_size_drop_percent"
 CONF_MINIMUM_REDUNDANT_LOCATIONS = "minimum_redundant_locations"
-
 CONF_MONITORING_PROFILE = "monitoring_profile"
 CONF_SIZE_CHECK_MODE = "size_check_mode"
+CONF_REPAIR_ISSUES_ENABLED = "repair_issues_enabled"
 
 PROFILE_STANDARD = "standard"
 PROFILE_SECURE = "secure"
@@ -29,12 +36,14 @@ SIZE_CHECK_OPTIONS = [SIZE_CHECK_AUTO, SIZE_CHECK_FIXED, SIZE_CHECK_OFF]
 
 DEFAULT_MONITORING_PROFILE = PROFILE_STANDARD
 DEFAULT_SIZE_CHECK_MODE = SIZE_CHECK_AUTO
+DEFAULT_REPAIR_ISSUES_ENABLED = True
 
 DEFAULT_MAX_AGE_DAYS = 4
-DEFAULT_UPDATE_INTERVAL_MINUTES = 1
+DEFAULT_UPDATE_INTERVAL_MINUTES = 5
 DEFAULT_MINIMUM_BACKUP_SIZE_MB = 1
 DEFAULT_MAXIMUM_SIZE_DROP_PERCENT = 50
-DEFAULT_MINIMUM_REDUNDANT_LOCATIONS = 2
+DEFAULT_MINIMUM_REDUNDANT_LOCATIONS = 1
+
 MIN_MAX_AGE_DAYS = 1
 MAX_MAX_AGE_DAYS = 365
 MIN_UPDATE_INTERVAL_MINUTES = 1
@@ -83,7 +92,6 @@ BACKUP_RESULT_OPTIONS = [
     BACKUP_RESULT_UNKNOWN,
 ]
 
-
 RECOMMENDATION_NONE = "none"
 RECOMMENDATION_CREATE_BACKUP = "create_backup"
 RECOMMENDATION_CHECK_SCHEDULE = "check_schedule"
@@ -107,3 +115,17 @@ CORE_BACKUP_MANAGER_STATE = "sensor.backup_backup_manager_state"
 CORE_LAST_AUTOMATIC_ATTEMPT = "sensor.backup_last_attempted_automatic_backup"
 CORE_LAST_SUCCESSFUL_AUTOMATIC_BACKUP = "sensor.backup_last_successful_automatic_backup"
 CORE_NEXT_AUTOMATIC_BACKUP = "sensor.backup_next_scheduled_automatic_backup"
+
+REPAIR_ISSUE_IDS = (
+    "no_backup",
+    "backup_stale",
+    "automatic_backup_overdue",
+    "automatic_backup_failed",
+    "automatic_schedule_missing",
+    "automatic_schedule_overdue",
+    "manager_unavailable",
+    "storage_error",
+    "backup_size_suspicious",
+    "latest_backup_incomplete",
+    "backup_not_redundant",
+)
