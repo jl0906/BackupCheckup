@@ -10,7 +10,7 @@ Home Assistant may preserve a previously customized entity ID after an update.
 | `sensor.backup_checkup_health_score` | Transparent overall health score from 0 to 100; deductions are available as attributes | Enabled |
 | `sensor.backup_checkup_health_rating` | Excellent, Good, Warning, or Critical | Enabled |
 | `sensor.backup_checkup_size_trend` | Increasing, stable, decreasing, or insufficient data | Enabled |
-| `sensor.backup_checkup_average_backup_size` | Average size of retained backups in the analysis period | Enabled |
+| `sensor.backup_checkup_average_backup_size` | Average size of retained backups in MB for the analysis period | Enabled |
 | `sensor.backup_checkup_longest_backup_gap` | Longest interval between retained backups in the analysis period | Enabled |
 | `sensor.backup_checkup_automatic_success_rate` | Success rate of automatic attempts observed since 1.5.0 | Enabled |
 | `sensor.backup_checkup_consecutive_automatic_failures` | Number of observed automatic failures in a row | Enabled |

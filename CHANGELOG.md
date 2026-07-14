@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.1
+
+### Fixed
+- Explicitly bound translated enum-state metadata so the backup health rating and backup-size trend are shown in the selected Home Assistant language.
+- Changed the average backup-size sensor from bytes to megabytes.
+- Added an automatic entity-registry unit migration so existing installations switch from `B` to `MB` after updating.
+
 ## 1.5.0
 
 ### Added

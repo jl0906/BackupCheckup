@@ -6,7 +6,7 @@
 > complete, plausible in size, stored on enough locations, and healthy over time.
 
 ![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)
-![Version](https://img.shields.io/badge/version-1.5.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.5.1-blue.svg)
 ![License](https://img.shields.io/github/license/jl0906/BackupCheckup)
 
 BackupCheckup reads the **actual backup inventory** from Home Assistant's native

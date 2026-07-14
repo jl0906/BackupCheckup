@@ -14,17 +14,20 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
+    CONF_UNIT_OF_MEASUREMENT,
     PERCENTAGE,
     EntityCategory,
     UnitOfInformation,
     UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
 
 from .const import (
     BACKUP_RESULT_OPTIONS,
+    DOMAIN,
     HEALTH_RATING_OPTIONS,
     RECOMMENDATION_OPTIONS,
     SIZE_TREND_OPTIONS,
@@ -89,10 +92,16 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         translation_key="average_backup_size",
         icon="mdi:database-arrow-left-outline",
         device_class=SensorDeviceClass.DATA_SIZE,
-        native_unit_of_measurement=UnitOfInformation.BYTES,
+        native_unit_of_measurement=UnitOfInformation.MEGABYTES,
+        suggested_display_precision=2,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda data: data.average_backup_size,
+        value_fn=lambda data: (
+            round(data.average_backup_size / 1_000_000, 2)
+            if data.average_backup_size is not None
+            else None
+        ),
         attributes_fn=lambda data: {
+            "average_backup_size_bytes": data.average_backup_size,
             "analyzed_backup_count": data.analyzed_backup_count,
             "analysis_window_days": data.analytics_window_days,
         },
@@ -367,6 +376,26 @@ AGENT_METRICS: tuple[str, ...] = (
 )
 
 
+def _migrate_average_backup_size_unit(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Ensure the existing average-size sensor is displayed in megabytes."""
+    registry = er.async_get(hass)
+    unique_id = f"{entry.entry_id}_average_backup_size"
+    entity_id = registry.async_get_entity_id("sensor", DOMAIN, unique_id)
+    if entity_id is None:
+        return
+
+    registry_entry = registry.async_get(entity_id)
+    if registry_entry is None:
+        return
+
+    sensor_options = dict(registry_entry.options.get("sensor", {}))
+    if sensor_options.get(CONF_UNIT_OF_MEASUREMENT) == UnitOfInformation.MEGABYTES:
+        return
+
+    sensor_options[CONF_UNIT_OF_MEASUREMENT] = UnitOfInformation.MEGABYTES
+    registry.async_update_entity_options(entity_id, "sensor", sensor_options)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -374,6 +403,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up BackupCheckup sensors."""
     coordinator: BackupCheckupCoordinator = entry.runtime_data
+    _migrate_average_backup_size_unit(hass, entry)
     entities: list[SensorEntity] = [
         BackupCheckupSensor(coordinator, entry, description) for description in SENSORS
     ]
@@ -417,6 +447,10 @@ class BackupCheckupSensor(BackupCheckupEntity, SensorEntity):
         """Initialize a BackupCheckup sensor."""
         super().__init__(coordinator, entry)
         self.entity_description = description
+        self._attr_translation_key = description.translation_key
+        if description.device_class is SensorDeviceClass.ENUM:
+            self._attr_device_class = SensorDeviceClass.ENUM
+            self._attr_options = list(description.options or [])
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
         self.entity_id = f"sensor.backup_checkup_{description.key}"
 
