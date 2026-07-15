@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.1
+
+### Fixed
+- Fixed a startup failure in the coordinator caused by an invalid `dict.get()` call while reading the database-integrity-check option.
+- Restored successful setup after fresh installation or reconfiguration through HACS.
+
 ## 2.1.0
 
 ### Added

@@ -45,7 +45,7 @@ Correct:
 Incorrect:
 
 ```text
-/config/custom_components/BackupCheckup-2.1.0/custom_components/backup_checkup/
+/config/custom_components/BackupCheckup-2.1.1/custom_components/backup_checkup/
 ```
 
 ### Remove old parallel copies
@@ -263,7 +263,7 @@ After updating:
 4. Remember that **Developer Tools → States** intentionally shows the raw state used
    by templates and automations.
 
-Version 2.1.0 also repairs missing enum translation metadata on existing
+Version 2.1.1 also repairs missing enum translation metadata on existing
 BackupCheckup entities during startup.
 
 ## Too many or too few entities are enabled

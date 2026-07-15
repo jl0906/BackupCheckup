@@ -6,10 +6,10 @@
 > complete, plausible in size, redundant, and structurally readable.
 
 ![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)
-![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-2.1.1-blue.svg)
 ![License](https://img.shields.io/github/license/jl0906/BackupCheckup)
 
-Version: **2.1.0**
+Version: **2.1.1**
 
 BackupCheckup reads the **actual backup inventory** from Home Assistant's native
 backup manager. It can download the newest backup, verify its complete archive

@@ -155,9 +155,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self.database_integrity_check = bool(
             options.get(
                 CONF_DATABASE_INTEGRITY_CHECK,
-                CONF_ENTITY_MODE,
                 DEFAULT_DATABASE_INTEGRITY_CHECK,
-                DEFAULT_ENTITY_MODE,
             )
         )
         self.notifications_enabled = bool(
