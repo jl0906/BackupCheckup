@@ -5,13 +5,14 @@ units, integrity verification, storage locations, diagnostics, and safe rollback
 
 ## Start with these checks
 
-1. Confirm that the complete integration folder exists at
+1. Confirm that Home Assistant is version **2026.3.0 or newer**.
+2. Confirm that the complete integration folder exists at
    `/config/custom_components/backup_checkup`.
-2. Confirm that `manifest.json` reports the expected version.
-3. Restart Home Assistant after replacing Python files. Reloading the integration is
+3. Confirm that `manifest.json` reports the expected version.
+4. Restart Home Assistant after replacing Python files. Reloading the integration is
    not always sufficient after an update.
-4. Open **Settings → System → Logs** and search for `backup_checkup`.
-5. Open **Settings → Devices & services → BackupCheckup** and press
+5. Open **Settings → System → Logs** and search for `backup_checkup`.
+6. Open **Settings → Devices & services → BackupCheckup** and press
    **Refresh backup data**.
 
 A successful refresh normally creates a debug line similar to:
@@ -45,7 +46,7 @@ Correct:
 Incorrect:
 
 ```text
-/config/custom_components/BackupCheckup-2.1.1/custom_components/backup_checkup/
+/config/custom_components/BackupCheckup-2.1.2/custom_components/backup_checkup/
 ```
 
 ### Remove old parallel copies
@@ -263,7 +264,7 @@ After updating:
 4. Remember that **Developer Tools → States** intentionally shows the raw state used
    by templates and automations.
 
-Version 2.1.1 also repairs missing enum translation metadata on existing
+Version 2.1.2 also repairs missing enum translation metadata on existing
 BackupCheckup entities during startup.
 
 ## Too many or too few entities are enabled

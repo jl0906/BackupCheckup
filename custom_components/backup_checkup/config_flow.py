@@ -232,7 +232,6 @@ def _advanced_schema(values: dict[str, Any]) -> vol.Schema:
             ): BooleanSelector(),
             vol.Required(
                 CONF_DATABASE_INTEGRITY_CHECK,
-                CONF_ENTITY_MODE,
                 default=values[CONF_DATABASE_INTEGRITY_CHECK],
             ): BooleanSelector(),
         }

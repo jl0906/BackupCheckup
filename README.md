@@ -6,10 +6,13 @@
 > complete, plausible in size, redundant, and structurally readable.
 
 ![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)
-![Version](https://img.shields.io/badge/version-2.1.1-blue.svg)
+![Version](https://img.shields.io/badge/version-2.1.2-blue.svg)
 ![License](https://img.shields.io/github/license/jl0906/BackupCheckup)
 
-Version: **2.1.1**
+Version: **2.1.2**
+
+**Requirements:** Home Assistant **2026.3.0 or newer**. Full encrypted-backup
+verification depends on the SecureTar archive API bundled with Home Assistant 2026.3+.
 
 BackupCheckup reads the **actual backup inventory** from Home Assistant's native
 backup manager. It can download the newest backup, verify its complete archive

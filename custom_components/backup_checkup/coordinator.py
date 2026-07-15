@@ -116,8 +116,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                     DEFAULT_MINIMUM_BACKUP_SIZE_MB,
                 )
             )
-            * 1024
-            * 1024
+            * 1_000_000
         )
         self.maximum_size_drop_percent = int(
             options.get(
@@ -302,7 +301,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             raise UpdateFailed(
                 f"Home Assistant backup manager is not ready: {err}"
             ) from err
-        except Exception as err:  # noqa: BLE001
+        except Exception as err:
             raise UpdateFailed(f"Unable to read Home Assistant backups: {err}") from err
 
         now = dt_util.utcnow()
@@ -574,7 +573,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 targets=self.notification_targets,
                 notify_on_recovery=self.notify_on_recovery,
             )
-        except Exception:  # noqa: BLE001
+        except Exception:
             _LOGGER.exception(
                 "Unexpected error while processing BackupCheckup notifications"
             )

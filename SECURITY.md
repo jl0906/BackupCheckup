@@ -11,7 +11,7 @@ the potential impact.
 
 ## Backup data handling
 
-BackupCheckup 2.0 can download the newest backup to Home Assistant's temporary local
+BackupCheckup 2.0 and newer can download the newest backup to Home Assistant's temporary local
 storage for a read-only integrity check. The temporary backup and any extracted
 SQLite database are removed when the check finishes.
 

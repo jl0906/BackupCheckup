@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import shutil
 import sqlite3
 import tarfile
 import tempfile
@@ -118,9 +119,10 @@ class BackupIntegrityVerifier:
         password = self._backup_password(manager)
 
         try:
-            temp_context = tempfile.TemporaryDirectory(
-                prefix="backup_checkup_",
-                ignore_cleanup_errors=True,
+            temp_dir = await self.hass.async_add_executor_job(
+                tempfile.mkdtemp,
+                "",
+                "backup_checkup_",
             )
         except OSError as err:
             _LOGGER.warning(
@@ -134,7 +136,7 @@ class BackupIntegrityVerifier:
                 error_code="temporary_storage_unavailable",
             )
 
-        with temp_context as temp_dir:
+        try:
             backup_path = Path(temp_dir) / "backup.tar"
             try:
                 downloaded_size, digest = await self._async_download(
@@ -222,6 +224,7 @@ class BackupIntegrityVerifier:
                 SecureTarError,
                 json.JSONDecodeError,
                 KeyError,
+                ValueError,
             ) as err:
                 _LOGGER.warning("Backup archive is corrupt or invalid: %s", err)
                 return BackupIntegrityResult(
@@ -260,7 +263,7 @@ class BackupIntegrityVerifier:
                     error_code="read_failed",
                     checksum_changed=checksum_changed,
                 )
-            except Exception as err:  # noqa: BLE001
+            except Exception as err:
                 _LOGGER.exception("Unexpected backup integrity check failure: %s", err)
                 return BackupIntegrityResult(
                     status=INTEGRITY_STATUS_UNREADABLE,
@@ -280,38 +283,46 @@ class BackupIntegrityVerifier:
                     checksum_changed=checksum_changed,
                 )
 
-        warnings.extend(details["warnings"])
-        database_status = details["database_status"]
-        if database_status == INTEGRITY_DATABASE_FAILED:
-            warnings.append("database_integrity_failed")
+            warnings.extend(details["warnings"])
+            database_status = details["database_status"]
+            if database_status == INTEGRITY_DATABASE_FAILED:
+                warnings.append("database_integrity_failed")
 
-        status = (
-            INTEGRITY_STATUS_VALID_WITH_WARNINGS if warnings else INTEGRITY_STATUS_VALID
-        )
-        if database_status == INTEGRITY_DATABASE_FAILED:
-            status = INTEGRITY_STATUS_CORRUPT
+            status = (
+                INTEGRITY_STATUS_VALID_WITH_WARNINGS
+                if warnings
+                else INTEGRITY_STATUS_VALID
+            )
+            if database_status == INTEGRITY_DATABASE_FAILED:
+                status = INTEGRITY_STATUS_CORRUPT
 
-        return BackupIntegrityResult(
-            status=status,
-            checked_at=dt_util.utcnow(),
-            backup_id=record.backup_id,
-            backup_date=record.date,
-            agent_id=agent_id,
-            sha256=digest,
-            verified_size=downloaded_size,
-            duration_seconds=round(time.monotonic() - started, 2),
-            archive_count=details["archive_count"],
-            file_count=details["file_count"],
-            protected=details["protected"],
-            database_status=database_status,
-            warnings=tuple(dict.fromkeys(warnings)),
-            error_code=(
-                "database_integrity_failed"
-                if database_status == INTEGRITY_DATABASE_FAILED
-                else None
-            ),
-            checksum_changed=checksum_changed,
-        )
+            return BackupIntegrityResult(
+                status=status,
+                checked_at=dt_util.utcnow(),
+                backup_id=record.backup_id,
+                backup_date=record.date,
+                agent_id=agent_id,
+                sha256=digest,
+                verified_size=downloaded_size,
+                duration_seconds=round(time.monotonic() - started, 2),
+                archive_count=details["archive_count"],
+                file_count=details["file_count"],
+                protected=details["protected"],
+                database_status=database_status,
+                warnings=tuple(dict.fromkeys(warnings)),
+                error_code=(
+                    "database_integrity_failed"
+                    if database_status == INTEGRITY_DATABASE_FAILED
+                    else None
+                ),
+                checksum_changed=checksum_changed,
+            )
+        finally:
+            await self.hass.async_add_executor_job(
+                shutil.rmtree,
+                temp_dir,
+                True,
+            )
 
     async def _async_download(
         self,
@@ -323,13 +334,16 @@ class BackupIntegrityVerifier:
         stream = await agent.async_download_backup(backup_id)
         digest = hashlib.sha256()
         size = 0
-        with path.open("wb") as file_handle:
+        file_handle = await self.hass.async_add_executor_job(path.open, "wb")
+        try:
             async for chunk in stream:
                 if not isinstance(chunk, bytes):
                     raise TypeError("Backup agent returned a non-bytes chunk")
                 digest.update(chunk)
                 size += len(chunk)
                 await self.hass.async_add_executor_job(file_handle.write, chunk)
+        finally:
+            await self.hass.async_add_executor_job(file_handle.close)
         return size, digest.hexdigest()
 
     @staticmethod

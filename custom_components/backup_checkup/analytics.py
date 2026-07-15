@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from itertools import pairwise
 from statistics import mean, median
 
 from .models import BackupRecord
@@ -76,7 +77,7 @@ def calculate_inventory_analytics(
     chronological = sorted(record.date for record in analysis_records)
     gaps = [
         (newer - older).total_seconds() / 86400
-        for older, newer in zip(chronological, chronological[1:], strict=False)
+        for older, newer in pairwise(chronological)
     ]
     longest_gap = round(max(gaps), 2) if gaps else None
 

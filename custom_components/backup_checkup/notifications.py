@@ -226,7 +226,7 @@ class BackupCheckupNotificationManager:
                 "entity",
                 integrations={DOMAIN},
             )
-        except Exception:  # noqa: BLE001
+        except Exception:
             _LOGGER.exception("Unable to load localized notification states")
             translations = {}
         status = translations.get(
@@ -278,7 +278,7 @@ class BackupCheckupNotificationManager:
             self.last_error = self._sanitized_error(err, targets)
             _LOGGER.warning("Unable to send BackupCheckup notification: %s", err)
             return False
-        except Exception as err:  # noqa: BLE001
+        except Exception as err:
             self.last_error = self._sanitized_error(err, targets)
             _LOGGER.exception("Unexpected BackupCheckup notification error")
             return False

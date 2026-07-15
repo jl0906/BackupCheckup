@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.2
+
+### Fixed
+- Fixed the Custom profile form where the entity-mode key was accidentally passed as an additional positional argument to `vol.Required()`.
+- Moved temporary-directory creation, backup-file opening and closing, and cleanup of potentially large verification files out of Home Assistant's event loop.
+- Corrected the minimum supported Home Assistant version to 2026.3.0 because full encrypted-backup verification uses the SecureTar archive API introduced with that Home Assistant release.
+- Made the configured minimum backup size use decimal megabytes consistently with the MB sensor output.
+- Classify malformed SecureTar headers as corrupt backups instead of unexpected read failures.
+
 ## 2.1.1
 
 ### Fixed
