@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant
 from .const import CONF_NOTIFICATION_TARGETS, VERSION
 from .coordinator import BackupCheckupCoordinator
 from .models import BackupRecord
+from .security import classify_exception, safe_error_type
 
 
 async def async_get_config_entry_diagnostics(
@@ -44,7 +45,10 @@ async def async_get_config_entry_diagnostics(
         "coordinator": {
             "last_update_success": coordinator.last_update_success,
             "last_exception": (
-                str(coordinator.last_exception)
+                {
+                    "error_code": classify_exception(coordinator.last_exception),
+                    "error_type": safe_error_type(coordinator.last_exception),
+                }
                 if coordinator.last_exception is not None
                 else None
             ),
@@ -122,6 +126,7 @@ async def async_get_config_entry_diagnostics(
                 if data.integrity.backup_date
                 else None
             ),
+            "backup_reference": data.integrity.backup_reference,
             "storage_location": data.integrity.agent_id,
             "sha256": data.integrity.sha256,
             "verified_size": data.integrity.verified_size,
@@ -180,16 +185,4 @@ async def async_get_config_entry_diagnostics(
 
 def _serialize_backup(record: BackupRecord) -> dict[str, Any]:
     """Serialize a backup without exposing its user-defined name or ID."""
-    return {
-        "date": record.date.isoformat(),
-        "automatic": record.automatic,
-        "agents": list(record.agents),
-        "agent_copies": [copy.as_dict() for copy in record.agent_copies],
-        "failed_agents": list(record.failed_agents),
-        "failed_addons": list(record.failed_addons),
-        "failed_folders": list(record.failed_folders),
-        "database_included": record.database_included,
-        "homeassistant_included": record.homeassistant_included,
-        "size": record.size,
-        "incomplete": record.incomplete,
-    }
+    return record.as_public_dict()

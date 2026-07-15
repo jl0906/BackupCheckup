@@ -46,7 +46,7 @@ Correct:
 Incorrect:
 
 ```text
-/config/custom_components/BackupCheckup-2.1.2/custom_components/backup_checkup/
+/config/custom_components/BackupCheckup-2.2.0/custom_components/backup_checkup/
 ```
 
 ### Remove old parallel copies
@@ -58,7 +58,7 @@ when it still contains a valid manifest with the same domain. Move backups outsi
 ### Check the log traceback
 
 Copy the complete traceback beginning with the first `custom_components.backup_checkup`
-line. Errors from other integrations do not
+line. Errors from Hue, Petlibro, Petkit, Apple TV, or another integration do not
 necessarily indicate a BackupCheckup problem.
 
 ## Mobile notification configuration
@@ -198,6 +198,31 @@ The backup could not be downloaded or opened. Check the storage location,
 permissions, network connectivity, and free temporary storage. An unreadable result
 can indicate an agent or transfer problem rather than archive corruption.
 
+### Aborted
+
+A configured safety limit stopped the check before completion. This does not prove
+that the backup is corrupt. Inspect the integrity sensor's `error_code` attribute:
+
+- `download_size_limit`: raise the maximum verification download only after confirming
+  that the reported backup size is expected.
+- `expanded_size_limit`: the archive expanded beyond the configured budget. Treat a
+  surprising expansion ratio cautiously.
+- `archive_member_limit` or `metadata_size_limit`: create a new backup and investigate
+  the unexpected archive structure before increasing a fixed limit.
+- `insufficient_free_space`: free temporary-storage capacity or disable the database
+  expert check.
+- `verification_timeout` or `database_timeout`: check storage speed and system load,
+  then adjust the corresponding timeout if the backup size justifies it.
+
+The Custom profile contains the configurable GB, timeout, and cooldown values.
+
+### Manual verification is unavailable or reports a cooldown
+
+Only a Home Assistant administrator can invoke the full manual verification action.
+Wait until the configured cooldown has expired and confirm that no automatic or
+manual check is already running. The cooldown protects the instance from repeated
+expensive downloads and archive scans.
+
 ### Valid with warnings
 
 The complete archive was readable, but a non-fatal inconsistency was detected. Open
@@ -219,6 +244,13 @@ expert database check additionally extracts the database and may temporarily req
 space close to the combined backup and database size.
 
 Disable the database expert option or free space before retrying.
+
+### Temporary verification data could not be removed
+
+BackupCheckup creates a Repair issue when its private temporary directory cannot be
+removed. Restart Home Assistant after resolving filesystem permissions or disk errors.
+At startup, BackupCheckup checks its own prefixed temporary directories and removes
+eligible stale data. Do not delete unrelated files from the system temporary directory.
 
 ## Backup manager or storage problems
 
@@ -264,8 +296,8 @@ After updating:
 4. Remember that **Developer Tools → States** intentionally shows the raw state used
    by templates and automations.
 
-Version 2.1.2 also repairs missing enum translation metadata on existing
-BackupCheckup entities during startup.
+Version 2.2 retains the enum translation repair for existing BackupCheckup
+entities during startup.
 
 ## Too many or too few entities are enabled
 

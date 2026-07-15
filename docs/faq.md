@@ -3,7 +3,9 @@
 ## Does BackupCheckup create, edit, delete, or restore backups?
 
 No. It monitors and verifies Home Assistant's native backups. All verification is
-read-only and temporary files are deleted after the check.
+read-only. Verification runs inside configured resource limits and private temporary
+files are deleted after the check. A Repair issue is created if cleanup cannot be
+confirmed.
 
 ## Does a successful integrity check guarantee a successful restore?
 
@@ -25,7 +27,8 @@ normal inventory polling remains lightweight.
 ## Why is automatic verification disabled by default?
 
 A full check downloads and reads the entire backup. Large backups can temporarily
-use substantial network bandwidth, CPU time, and local temporary storage.
+use substantial network bandwidth, CPU time, and local temporary storage. Version
+2.2 limits download size, expanded bytes, archive members, disk usage, and runtime.
 
 ## How are encrypted backups checked?
 
@@ -44,6 +47,13 @@ The archive was fully readable, but a non-fatal inconsistency was detected, such
 a downloaded size differing from the storage agent's reported size or a changed
 checksum for the same backup ID.
 
+## What does Aborted mean?
+
+A configured safety budget stopped the check because of size, member count, free
+space, overall duration, or database duration. The result is inconclusive and does
+not mean that the backup is corrupt. Inspect the privacy-safe `error_code` attribute
+before changing a limit.
+
 ## What does the database expert option do?
 
 It temporarily extracts `home-assistant_v2.db` and runs SQLite
@@ -55,9 +65,21 @@ space and can considerably lengthen verification.
 The last completed result is stored in Home Assistant's private integration storage.
 It is removed when the BackupCheckup config entry is deleted.
 
+## Are backup names and IDs exposed?
+
+Not by default. Normal entity attributes and diagnostics use a stable
+installation-local backup reference. The Custom profile contains an explicit expert
+option for exposing the native newest-backup name and ID when an automation requires
+them.
+
+## Who can start a manual full verification?
+
+The verification action requires Home Assistant administrator context. A configurable
+cooldown and the single-running-check guard prevent repeated overlapping checks.
+
 ## Why are fewer entities enabled on a new installation?
 
-Version 2.1 presents a compact everyday set. Detailed analytics, schedule,
+Version 2.1 and newer present a compact everyday set. Detailed analytics, schedule,
 per-storage, checksum, database, and troubleshooting entities remain available but
 are disabled by default. Existing installations are not forcibly changed.
 

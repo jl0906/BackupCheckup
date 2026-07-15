@@ -82,6 +82,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
                 if data.integrity.backup_date
                 else None
             ),
+            "backup_reference": data.integrity.backup_reference,
             "storage_location": data.integrity.agent_id,
             "archive_count": data.integrity.archive_count,
             "file_count": data.integrity.file_count,
@@ -445,7 +446,13 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         device_class=SensorDeviceClass.ENUM,
         options=BACKUP_RESULT_OPTIONS,
         value_fn=lambda data: data.latest_backup_result,
-        attributes_fn=lambda data: data.backups[0].as_dict() if data.backups else {},
+        attributes_fn=lambda data: (
+            data.backups[0].as_dict(
+                expose_metadata=data.expose_backup_metadata,
+            )
+            if data.backups
+            else {}
+        ),
     ),
     BackupCheckupSensorDescription(
         key="latest_backup_locations",

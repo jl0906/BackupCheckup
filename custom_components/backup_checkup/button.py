@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import DOMAIN, SERVICE_VERIFY_LATEST_BACKUP
 from .coordinator import BackupCheckupCoordinator
 from .entity import BackupCheckupEntity
 
@@ -51,12 +51,18 @@ class BackupCheckupVerifyButton(BackupCheckupEntity, ButtonEntity):
         """Only allow a check when a backup exists and no check is running."""
         return (
             bool(self.coordinator.data.backups)
-            and not self.coordinator.integrity_check_running
+            and not self.coordinator.integrity_check_pending_or_running
+            and not self.coordinator.manual_verification_cooldown_active
         )
 
     async def async_press(self) -> None:
-        """Start the integrity check without blocking the UI."""
-        await self.coordinator.async_start_integrity_check()
+        """Start the administrator-protected integrity-check action."""
+        await self.hass.services.async_call(
+            DOMAIN,
+            SERVICE_VERIFY_LATEST_BACKUP,
+            blocking=True,
+            context=self._context,
+        )
 
 
 class BackupCheckupRefreshButton(BackupCheckupEntity, ButtonEntity):

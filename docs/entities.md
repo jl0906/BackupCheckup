@@ -46,7 +46,7 @@ privacy-safe last error are included.
 
 | Entity | Default | Purpose |
 | --- | --- | --- |
-| `sensor.backup_checkup_integrity_status` | Enabled | `not_checked`, `checking`, `valid`, `valid_with_warnings`, `corrupt`, `unreadable`, or `password_required` |
+| `sensor.backup_checkup_integrity_status` | Enabled | `not_checked`, `checking`, `valid`, `valid_with_warnings`, `corrupt`, `unreadable`, `password_required`, or `aborted` |
 | `sensor.backup_checkup_last_integrity_check` | Standard | Timestamp of the last completed check |
 | `sensor.backup_checkup_integrity_checksum` | Disabled | Stored SHA-256 checksum of the downloaded backup |
 | `sensor.backup_checkup_verified_backup_size` | Disabled | Number of downloaded and verified megabytes |
@@ -54,9 +54,15 @@ privacy-safe last error are included.
 | `sensor.backup_checkup_database_integrity_status` | Disabled | SQLite expert-check result |
 | `binary_sensor.backup_checkup_backup_integrity_problem` | Standard | On when the newest backup is corrupt or unreadable |
 
-The integrity-status attributes include the check time, selected storage location,
-archive count, file count, encryption state, database result, warnings, and a
-privacy-safe error code.
+The integrity-status attributes include the check time, a privacy-safe backup
+reference, selected storage location, archive count, file count, encryption state,
+database result, warnings, and a privacy-safe error code. An `aborted` state means a
+configured safety budget stopped the check and is not treated as corruption.
+
+`sensor.backup_checkup_latest_backup_result` exposes only a backup reference and
+aggregate failure counts by default. The Custom-profile option **Expose detailed
+backup metadata** adds the native backup name, ID, and detailed failure lists for
+users who explicitly need them in automations.
 
 ## Additional backup sensors
 

@@ -29,6 +29,7 @@ class BackupRecord:
     """Serializable summary of one stored backup."""
 
     backup_id: str
+    backup_reference: str
     name: str
     date: datetime
     automatic: bool
@@ -42,23 +43,37 @@ class BackupRecord:
     size: int | None
     incomplete: bool
 
-    def as_dict(self) -> dict[str, Any]:
-        """Return a Home Assistant state-attribute-safe representation."""
+    def as_public_dict(self) -> dict[str, Any]:
+        """Return a privacy-safe state-attribute representation."""
         return {
-            "backup_id": self.backup_id,
-            "name": self.name,
+            "backup_reference": self.backup_reference,
             "date": self.date.isoformat(),
             "automatic": self.automatic,
             "agents": list(self.agents),
             "agent_copies": [copy.as_dict() for copy in self.agent_copies],
-            "failed_agents": list(self.failed_agents),
-            "failed_addons": list(self.failed_addons),
-            "failed_folders": list(self.failed_folders),
+            "failed_agent_count": len(self.failed_agents),
+            "failed_addon_count": len(self.failed_addons),
+            "failed_folder_count": len(self.failed_folders),
             "database_included": self.database_included,
             "homeassistant_included": self.homeassistant_included,
             "size": self.size,
             "incomplete": self.incomplete,
         }
+
+    def as_private_dict(self) -> dict[str, Any]:
+        """Return full metadata after the user explicitly opts in."""
+        return {
+            **self.as_public_dict(),
+            "backup_id": self.backup_id,
+            "name": self.name,
+            "failed_agents": list(self.failed_agents),
+            "failed_addons": list(self.failed_addons),
+            "failed_folders": list(self.failed_folders),
+        }
+
+    def as_dict(self, *, expose_metadata: bool = False) -> dict[str, Any]:
+        """Return public metadata unless full details were explicitly enabled."""
+        return self.as_private_dict() if expose_metadata else self.as_public_dict()
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,6 +114,7 @@ class BackupIntegrityResult:
     status: str
     checked_at: datetime | None
     backup_id: str | None
+    backup_reference: str | None
     backup_date: datetime | None
     agent_id: str | None
     sha256: str | None
@@ -124,6 +140,7 @@ class BackupIntegrityResult:
             status=INTEGRITY_STATUS_NOT_CHECKED,
             checked_at=None,
             backup_id=None,
+            backup_reference=None,
             backup_date=None,
             agent_id=None,
             sha256=None,
@@ -144,6 +161,7 @@ class BackupIntegrityResult:
             "status": self.status,
             "checked_at": self.checked_at.isoformat() if self.checked_at else None,
             "backup_id": self.backup_id,
+            "backup_reference": self.backup_reference,
             "backup_date": self.backup_date.isoformat() if self.backup_date else None,
             "agent_id": self.agent_id,
             "sha256": self.sha256,
@@ -174,6 +192,7 @@ class BackupIntegrityResult:
             return dt_util.parse_datetime(value)
 
         backup_id = data.get("backup_id")
+        backup_reference = data.get("backup_reference")
         agent_id = data.get("agent_id")
         sha256 = data.get("sha256")
         verified_size = data.get("verified_size")
@@ -185,6 +204,9 @@ class BackupIntegrityResult:
             status=str(data.get("status", INTEGRITY_STATUS_NOT_CHECKED)),
             checked_at=parse(data.get("checked_at")),
             backup_id=backup_id if isinstance(backup_id, str) else None,
+            backup_reference=(
+                backup_reference if isinstance(backup_reference, str) else None
+            ),
             backup_date=parse(data.get("backup_date")),
             agent_id=agent_id if isinstance(agent_id, str) else None,
             sha256=sha256 if isinstance(sha256, str) else None,
@@ -275,3 +297,4 @@ class BackupCheckupData:
     history_tracking_started_at: datetime | None
     integrity: BackupIntegrityResult
     integrity_check_running: bool
+    expose_backup_metadata: bool

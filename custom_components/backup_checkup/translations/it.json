@@ -33,7 +33,13 @@
           "repair_issues_enabled": "Mostra avvisi di riparazione",
           "analytics_window_days": "Periodo di analisi in giorni",
           "auto_verify_new_backups": "Verifica automaticamente ogni nuovo backup",
-          "database_integrity_check": "Esegui controllo integrità database (esperto)"
+          "database_integrity_check": "Esegui controllo integrità database (esperto)",
+          "max_verification_size_gb": "Maximum downloaded backup size in GB",
+          "max_expanded_size_gb": "Maximum expanded archive size in GB",
+          "verification_timeout_minutes": "Maximum verification duration in minutes",
+          "database_timeout_minutes": "Maximum database check duration in minutes",
+          "manual_verification_cooldown_minutes": "Manual verification cooldown in minutes",
+          "expose_backup_metadata": "Expose backup names and IDs (expert)"
         },
         "data_description": {
           "max_age_days": "Viene mostrato un avviso dopo questo numero di giorni completi.",
@@ -45,7 +51,13 @@
           "repair_issues_enabled": "Crea avvisi Riparazioni di Home Assistant per i problemi di backup attivi. Gli avvisi scompaiono automaticamente quando il problema è risolto.",
           "analytics_window_days": "Le statistiche dei backup e la percentuale di successo osservata dei backup automatici usano questo periodo. La registrazione storica inizia con la versione 1.5.0.",
           "auto_verify_new_backups": "Quando viene rilevato un nuovo backup più recente, viene scaricato e verificato completamente una volta. Può utilizzare molta rete, CPU e spazio temporaneo.",
-          "database_integrity_check": "Estrae temporaneamente il database SQLite ed esegue PRAGMA integrity_check. La verifica richiede più tempo e spazio temporaneo aggiuntivo."
+          "database_integrity_check": "Estrae temporaneamente il database SQLite ed esegue PRAGMA integrity_check. La verifica richiede più tempo e spazio temporaneo aggiuntivo.",
+          "max_verification_size_gb": "Stops verification before or during download when this limit is exceeded.",
+          "max_expanded_size_gb": "Limits the total amount of uncompressed archive data that may be read.",
+          "verification_timeout_minutes": "Stops download and archive processing after this overall duration.",
+          "database_timeout_minutes": "Stops SQLite PRAGMA integrity_check after this duration.",
+          "manual_verification_cooldown_minutes": "Prevents repeated manual checks. Set to 0 to disable the cooldown.",
+          "expose_backup_metadata": "Disabled by default. When enabled, the latest-backup result entity exposes the user-defined backup name and raw backup ID."
         }
       }
     },
@@ -89,7 +101,13 @@
           "repair_issues_enabled": "Mostra avvisi di riparazione",
           "analytics_window_days": "Periodo di analisi in giorni",
           "auto_verify_new_backups": "Verifica automaticamente ogni nuovo backup",
-          "database_integrity_check": "Esegui controllo integrità database (esperto)"
+          "database_integrity_check": "Esegui controllo integrità database (esperto)",
+          "max_verification_size_gb": "Maximum downloaded backup size in GB",
+          "max_expanded_size_gb": "Maximum expanded archive size in GB",
+          "verification_timeout_minutes": "Maximum verification duration in minutes",
+          "database_timeout_minutes": "Maximum database check duration in minutes",
+          "manual_verification_cooldown_minutes": "Manual verification cooldown in minutes",
+          "expose_backup_metadata": "Expose backup names and IDs (expert)"
         },
         "data_description": {
           "max_age_days": "Viene mostrato un avviso dopo questo numero di giorni completi.",
@@ -101,7 +119,13 @@
           "repair_issues_enabled": "Crea avvisi Riparazioni di Home Assistant per i problemi di backup attivi. Gli avvisi scompaiono automaticamente quando il problema è risolto.",
           "analytics_window_days": "Le statistiche dei backup e la percentuale di successo osservata dei backup automatici usano questo periodo. La registrazione storica inizia con la versione 1.5.0.",
           "auto_verify_new_backups": "Quando viene rilevato un nuovo backup più recente, viene scaricato e verificato completamente una volta. Può utilizzare molta rete, CPU e spazio temporaneo.",
-          "database_integrity_check": "Estrae temporaneamente il database SQLite ed esegue PRAGMA integrity_check. La verifica richiede più tempo e spazio temporaneo aggiuntivo."
+          "database_integrity_check": "Estrae temporaneamente il database SQLite ed esegue PRAGMA integrity_check. La verifica richiede più tempo e spazio temporaneo aggiuntivo.",
+          "max_verification_size_gb": "Stops verification before or during download when this limit is exceeded.",
+          "max_expanded_size_gb": "Limits the total amount of uncompressed archive data that may be read.",
+          "verification_timeout_minutes": "Stops download and archive processing after this overall duration.",
+          "database_timeout_minutes": "Stops SQLite PRAGMA integrity_check after this duration.",
+          "manual_verification_cooldown_minutes": "Prevents repeated manual checks. Set to 0 to disable the cooldown.",
+          "expose_backup_metadata": "Disabled by default. When enabled, the latest-backup result entity exposes the user-defined backup name and raw backup ID."
         }
       }
     },
@@ -263,7 +287,8 @@
           "valid_with_warnings": "Valido con avvisi",
           "corrupt": "Danneggiato",
           "unreadable": "Illeggibile",
-          "password_required": "Password richiesta"
+          "password_required": "Password richiesta",
+          "aborted": "Aborted by safety limit"
         }
       },
       "last_integrity_check": {
@@ -417,11 +442,27 @@
     "backup_integrity_failed": {
       "title": "Il backup è danneggiato o illeggibile",
       "description": "Il controllo completo di integrità della copia di backup su {location} non è riuscito alle {checked}. Crea e verifica un nuovo backup prima di fare affidamento sulla copia interessata."
+    },
+    "temporary_cleanup_failed": {
+      "title": "Temporary verification data could not be removed",
+      "description": "BackupCheckup could not remove private temporary verification data. Restart Home Assistant and check the temporary filesystem and available disk space."
     }
   },
   "exceptions": {
     "notification_failed": {
       "message": "Non è stato possibile inviare la notifica di prova. Controlla il dispositivo mobile selezionato e il registro di BackupCheckup."
+    },
+    "verification_already_running": {
+      "message": "A backup verification is already running."
+    },
+    "verification_no_backup": {
+      "message": "No backup is available for verification."
+    },
+    "verification_cooldown": {
+      "message": "Manual verification is rate-limited. Wait until the configured {minutes}-minute cooldown has expired."
+    },
+    "integration_not_loaded": {
+      "message": "BackupCheckup is not currently loaded."
     }
   }
 }

@@ -1,0 +1,6 @@
+verify_latest_backup:
+  name: Verify latest backup
+  description: >-
+    Downloads and fully verifies the newest Home Assistant backup while enforcing
+    BackupCheckup's configured resource and privacy safeguards. Administrator access
+    is required.

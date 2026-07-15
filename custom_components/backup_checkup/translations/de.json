@@ -33,7 +33,13 @@
           "repair_issues_enabled": "Reparaturhinweise anzeigen",
           "analytics_window_days": "Analysezeitraum in Tagen",
           "auto_verify_new_backups": "Jedes neue Backup automatisch prüfen",
-          "database_integrity_check": "Datenbank-Integritätsprüfung ausführen (Expertenmodus)"
+          "database_integrity_check": "Datenbank-Integritätsprüfung ausführen (Expertenmodus)",
+          "max_verification_size_gb": "Maximale Downloadgröße des Backups in GB",
+          "max_expanded_size_gb": "Maximale entpackte Archivgröße in GB",
+          "verification_timeout_minutes": "Maximale Prüfdauer in Minuten",
+          "database_timeout_minutes": "Maximale Dauer der Datenbankprüfung in Minuten",
+          "manual_verification_cooldown_minutes": "Sperrzeit für manuelle Prüfungen in Minuten",
+          "expose_backup_metadata": "Backupnamen und IDs anzeigen (Experte)"
         },
         "data_description": {
           "max_age_days": "Nach dieser Anzahl vollständig vergangener Tage wird eine Warnung angezeigt.",
@@ -45,7 +51,13 @@
           "repair_issues_enabled": "Erstellt Home-Assistant-Reparaturhinweise für aktive Backup-Probleme. Die Hinweise verschwinden automatisch, sobald das Problem behoben ist.",
           "analytics_window_days": "Backup-Statistiken und die beobachtete Erfolgsquote automatischer Backups verwenden diesen Zeitraum. Die historische Erfolgsaufzeichnung beginnt mit Version 1.5.0.",
           "auto_verify_new_backups": "Wenn ein neues neuestes Backup erkannt wird, wird es einmal vollständig heruntergeladen und geprüft. Dies kann Netzwerk, CPU und temporären Speicher deutlich belasten.",
-          "database_integrity_check": "Extrahiert vorübergehend die enthaltene SQLite-Datenbank und führt PRAGMA integrity_check aus. Die Prüfung dauert dadurch länger und benötigt zusätzlichen temporären Speicher."
+          "database_integrity_check": "Extrahiert vorübergehend die enthaltene SQLite-Datenbank und führt PRAGMA integrity_check aus. Die Prüfung dauert dadurch länger und benötigt zusätzlichen temporären Speicher.",
+          "max_verification_size_gb": "Beendet die Prüfung vor oder während des Downloads, wenn dieser Grenzwert überschritten wird.",
+          "max_expanded_size_gb": "Begrenzt die Gesamtmenge der gelesenen unkomprimierten Archivdaten.",
+          "verification_timeout_minutes": "Beendet Download und Archivprüfung nach dieser Gesamtdauer.",
+          "database_timeout_minutes": "Beendet SQLite PRAGMA integrity_check nach dieser Dauer.",
+          "manual_verification_cooldown_minutes": "Verhindert wiederholte manuelle Prüfungen. Mit 0 wird die Sperrzeit deaktiviert.",
+          "expose_backup_metadata": "Standardmäßig deaktiviert. Bei Aktivierung zeigt die Entität für das letzte Backup den frei vergebenen Backupnamen und die unveränderte Backup-ID an."
         }
       }
     },
@@ -89,7 +101,13 @@
           "repair_issues_enabled": "Reparaturhinweise anzeigen",
           "analytics_window_days": "Analysezeitraum in Tagen",
           "auto_verify_new_backups": "Jedes neue Backup automatisch prüfen",
-          "database_integrity_check": "Datenbank-Integritätsprüfung ausführen (Expertenmodus)"
+          "database_integrity_check": "Datenbank-Integritätsprüfung ausführen (Expertenmodus)",
+          "max_verification_size_gb": "Maximale Downloadgröße des Backups in GB",
+          "max_expanded_size_gb": "Maximale entpackte Archivgröße in GB",
+          "verification_timeout_minutes": "Maximale Prüfdauer in Minuten",
+          "database_timeout_minutes": "Maximale Dauer der Datenbankprüfung in Minuten",
+          "manual_verification_cooldown_minutes": "Sperrzeit für manuelle Prüfungen in Minuten",
+          "expose_backup_metadata": "Backupnamen und IDs anzeigen (Experte)"
         },
         "data_description": {
           "max_age_days": "Nach dieser Anzahl vollständig vergangener Tage wird eine Warnung angezeigt.",
@@ -101,7 +119,13 @@
           "repair_issues_enabled": "Erstellt Home-Assistant-Reparaturhinweise für aktive Backup-Probleme. Die Hinweise verschwinden automatisch, sobald das Problem behoben ist.",
           "analytics_window_days": "Backup-Statistiken und die beobachtete Erfolgsquote automatischer Backups verwenden diesen Zeitraum. Die historische Erfolgsaufzeichnung beginnt mit Version 1.5.0.",
           "auto_verify_new_backups": "Wenn ein neues neuestes Backup erkannt wird, wird es einmal vollständig heruntergeladen und geprüft. Dies kann Netzwerk, CPU und temporären Speicher deutlich belasten.",
-          "database_integrity_check": "Extrahiert vorübergehend die enthaltene SQLite-Datenbank und führt PRAGMA integrity_check aus. Die Prüfung dauert dadurch länger und benötigt zusätzlichen temporären Speicher."
+          "database_integrity_check": "Extrahiert vorübergehend die enthaltene SQLite-Datenbank und führt PRAGMA integrity_check aus. Die Prüfung dauert dadurch länger und benötigt zusätzlichen temporären Speicher.",
+          "max_verification_size_gb": "Beendet die Prüfung vor oder während des Downloads, wenn dieser Grenzwert überschritten wird.",
+          "max_expanded_size_gb": "Begrenzt die Gesamtmenge der gelesenen unkomprimierten Archivdaten.",
+          "verification_timeout_minutes": "Beendet Download und Archivprüfung nach dieser Gesamtdauer.",
+          "database_timeout_minutes": "Beendet SQLite PRAGMA integrity_check nach dieser Dauer.",
+          "manual_verification_cooldown_minutes": "Verhindert wiederholte manuelle Prüfungen. Mit 0 wird die Sperrzeit deaktiviert.",
+          "expose_backup_metadata": "Standardmäßig deaktiviert. Bei Aktivierung zeigt die Entität für das letzte Backup den frei vergebenen Backupnamen und die unveränderte Backup-ID an."
         }
       }
     },
@@ -263,7 +287,8 @@
           "valid_with_warnings": "Gültig mit Warnungen",
           "corrupt": "Beschädigt",
           "unreadable": "Nicht lesbar",
-          "password_required": "Passwort erforderlich"
+          "password_required": "Passwort erforderlich",
+          "aborted": "Durch Sicherheitsgrenze abgebrochen"
         }
       },
       "last_integrity_check": {
@@ -417,11 +442,27 @@
     "backup_integrity_failed": {
       "title": "Backup ist beschädigt oder nicht lesbar",
       "description": "Die vollständige Integritätsprüfung der Backup-Kopie auf {location} ist am {checked} fehlgeschlagen. Erstelle ein neues Backup und prüfe es, bevor du dich auf die betroffene Kopie verlässt."
+    },
+    "temporary_cleanup_failed": {
+      "title": "Temporäre Prüfdaten konnten nicht gelöscht werden",
+      "description": "BackupCheckup konnte private temporäre Prüfdaten nicht entfernen. Starte Home Assistant neu und prüfe das temporäre Dateisystem sowie den freien Speicherplatz."
     }
   },
   "exceptions": {
     "notification_failed": {
       "message": "Die Testbenachrichtigung konnte nicht gesendet werden. Prüfe das ausgewählte Mobilgerät und das BackupCheckup-Protokoll."
+    },
+    "verification_already_running": {
+      "message": "Eine Backupprüfung läuft bereits."
+    },
+    "verification_no_backup": {
+      "message": "Für die Prüfung ist kein Backup vorhanden."
+    },
+    "verification_cooldown": {
+      "message": "Die manuelle Prüfung ist vorübergehend gesperrt. Warte, bis die konfigurierte Sperrzeit von {minutes} Minuten abgelaufen ist."
+    },
+    "integration_not_loaded": {
+      "message": "BackupCheckup ist derzeit nicht geladen."
     }
   }
 }

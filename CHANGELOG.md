@@ -1,5 +1,38 @@
 # Changelog
 
+## 2.2.0 – Security Hardening
+
+### Security
+- Added configurable limits for downloaded backup size, expanded archive size, archive-member count, metadata size, overall verification duration, and SQLite integrity-check duration.
+- Added free-space validation before and during verification so temporary data cannot silently exhaust Home Assistant's filesystem.
+- Reworked archive verification to stream TAR members instead of retaining the complete member list in memory.
+- Added cooperative deadline checks throughout download, archive reading, decompression, database extraction, and SQLite verification.
+- Added an administrator-only `backup_checkup.verify_latest_backup` action and a configurable cooldown for manual checks.
+- Replaced raw third-party exception messages with stable privacy-safe error codes in entities, diagnostics, notifications, and logs.
+- Sanitized untrusted identifiers before including them in logs.
+- Removed user-defined backup names and raw backup IDs from normal entity attributes by default.
+- Added an explicit expert option for exposing detailed backup metadata.
+- Restricted temporary verification directories and files to owner-only filesystem permissions.
+- Added startup cleanup for stale BackupCheckup temporary directories and a persistent Repair issue when sensitive temporary data may remain.
+
+### Added
+- New `aborted` integrity state for checks stopped by a configured safety limit.
+- New privacy-safe integrity error codes for size limits, insufficient disk space, timeouts, excessive archive members, oversized metadata, and other controlled failures.
+- Stable installation-local backup references for correlating results without exposing native backup IDs.
+- Advanced options for verification size limits, timeouts, manual cooldown, and metadata exposure.
+- Regression tests for resource budgets, private temporary-file permissions, metadata privacy, path validation, and archive limits.
+
+### Changed
+- A check stopped by a safety limit is no longer classified as a corrupt backup.
+- SQLite verification now uses a progress handler so its configured deadline can stop the actual database operation cooperatively.
+- The latest-backup result sensor and diagnostics use privacy-safe backup serialization by default.
+- Config-entry schema updated to version 6 with automatic migration from previous releases.
+
+### Notes
+- Existing backup monitoring and automatic-backup detection continue to operate normally.
+- Automatic verification and the SQLite database check remain disabled by default.
+- An `aborted` result means the check could not complete within its configured safety budget; it does not prove that the backup is corrupt.
+
 ## 2.1.2
 
 ### Fixed

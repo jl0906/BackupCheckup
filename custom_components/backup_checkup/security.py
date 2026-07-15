@@ -1,0 +1,251 @@
+"""Security helpers for BackupCheckup."""
+
+from __future__ import annotations
+
+import hashlib
+import os
+import shutil
+import tempfile
+import threading
+import time
+import unicodedata
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import BinaryIO
+
+from .const import (
+    MAX_ARCHIVE_MEMBERS,
+    MAX_BACKUP_METADATA_BYTES,
+    MIN_FREE_SPACE_RESERVE_BYTES,
+    STALE_TEMP_DIRECTORY_AGE_HOURS,
+)
+
+_TEMP_PREFIX = "backup_checkup_"
+_GB = 1_000_000_000
+
+
+@dataclass(frozen=True, slots=True)
+class TempCleanupResult:
+    """Summarize startup cleanup without exposing temporary paths."""
+
+    failures: int = 0
+    remaining: int = 0
+
+    @property
+    def issue_active(self) -> bool:
+        """Return whether sensitive temporary data may still remain."""
+        return self.failures > 0 or self.remaining > 0
+
+
+class VerificationLimitError(Exception):
+    """Raised when a verification safety limit is reached."""
+
+    def __init__(self, code: str) -> None:
+        """Initialize the error with a stable privacy-safe code."""
+        super().__init__(code)
+        self.code = code
+
+
+@dataclass(slots=True)
+class VerificationBudget:
+    """Track resource use and deadlines during one integrity check."""
+
+    deadline: float
+    max_download_bytes: int
+    max_expanded_bytes: int
+    max_members: int = MAX_ARCHIVE_MEMBERS
+    max_metadata_bytes: int = MAX_BACKUP_METADATA_BYTES
+    free_space_reserve_bytes: int = MIN_FREE_SPACE_RESERVE_BYTES
+    downloaded_bytes: int = 0
+    expanded_bytes: int = 0
+    members: int = 0
+    cancellation_event: threading.Event = field(
+        default_factory=threading.Event,
+        repr=False,
+    )
+
+    @classmethod
+    def from_options(
+        cls,
+        *,
+        max_download_gb: int,
+        max_expanded_gb: int,
+        timeout_minutes: int,
+    ) -> VerificationBudget:
+        """Create a budget from validated integration options."""
+        return cls(
+            deadline=time.monotonic() + timeout_minutes * 60,
+            max_download_bytes=max_download_gb * _GB,
+            max_expanded_bytes=max_expanded_gb * _GB,
+        )
+
+    def cancel(self) -> None:
+        """Ask cooperative worker code to stop at its next safety check."""
+        self.cancellation_event.set()
+
+    def remaining_seconds(self) -> float:
+        """Return the remaining overall verification time."""
+        if self.cancellation_event.is_set():
+            raise VerificationLimitError("verification_cancelled")
+        remaining = self.deadline - time.monotonic()
+        if remaining <= 0:
+            raise VerificationLimitError("verification_timeout")
+        return remaining
+
+    def check_deadline(self) -> None:
+        """Raise when the overall verification deadline has expired."""
+        self.remaining_seconds()
+
+    def validate_expected_download(self, expected_size: int | None) -> None:
+        """Reject a known backup size above the configured download limit."""
+        if expected_size is not None and expected_size > self.max_download_bytes:
+            raise VerificationLimitError("download_size_limit")
+
+    def add_downloaded(self, size: int) -> None:
+        """Account for downloaded bytes and enforce the limit."""
+        self.check_deadline()
+        self.downloaded_bytes += size
+        if self.downloaded_bytes > self.max_download_bytes:
+            raise VerificationLimitError("download_size_limit")
+
+    def add_expanded(self, size: int) -> None:
+        """Account for bytes read from expanded archive members."""
+        self.check_deadline()
+        self.expanded_bytes += size
+        if self.expanded_bytes > self.max_expanded_bytes:
+            raise VerificationLimitError("expanded_size_limit")
+
+    def ensure_expanded_capacity(self, size: int) -> None:
+        """Reject a declared member size that cannot fit in the remaining budget."""
+        self.check_deadline()
+        if size < 0 or self.expanded_bytes + size > self.max_expanded_bytes:
+            raise VerificationLimitError("expanded_size_limit")
+
+    def add_member(self) -> None:
+        """Account for an archive member and enforce the member-count limit."""
+        self.check_deadline()
+        self.members += 1
+        if self.members > self.max_members:
+            raise VerificationLimitError("archive_member_limit")
+
+    def check_metadata_size(self, size: int) -> None:
+        """Reject oversized backup metadata."""
+        self.check_deadline()
+        if size < 0 or size > self.max_metadata_bytes:
+            raise VerificationLimitError("metadata_size_limit")
+
+    def check_free_space(self, path: Path, required_bytes: int = 0) -> None:
+        """Ensure the temporary filesystem keeps a safety reserve."""
+        self.check_deadline()
+        usage = shutil.disk_usage(path)
+        dynamic_reserve = max(self.free_space_reserve_bytes, usage.total // 10)
+        if usage.free - required_bytes < dynamic_reserve:
+            raise VerificationLimitError("insufficient_free_space")
+
+
+def classify_exception(error: BaseException) -> str:
+    """Map an arbitrary exception to a stable privacy-safe error code."""
+    if isinstance(error, TimeoutError):
+        return "timeout"
+    if isinstance(error, PermissionError):
+        return "permission_denied"
+    if isinstance(error, ConnectionError):
+        return "connection_error"
+    if isinstance(error, FileNotFoundError):
+        return "not_found"
+    if isinstance(error, OSError):
+        return "io_error"
+
+    name = type(error).__name__.lower()
+    if "auth" in name or "credential" in name or "login" in name:
+        return "authentication_error"
+    if "timeout" in name:
+        return "timeout"
+    if "connect" in name or "network" in name:
+        return "connection_error"
+    return "unknown_error"
+
+
+def safe_log_value(value: object, *, max_length: int = 160) -> str:
+    """Return a single-line bounded representation for untrusted log values."""
+    text = str(value)
+    cleaned = "".join(
+        character
+        if character == " "
+        or unicodedata.category(character) not in {"Cc", "Cf", "Zl", "Zp"}
+        else "?"
+        for character in text
+    )
+    return cleaned[:max_length]
+
+
+def safe_error_type(error: BaseException) -> str:
+    """Return a bounded log-safe exception class name."""
+    return safe_log_value(type(error).__name__, max_length=80)
+
+
+def anonymous_backup_reference(entry_id: str, backup_id: str) -> str:
+    """Return a stable installation-local reference without exposing the backup ID."""
+    digest = hashlib.sha256(f"{entry_id}:{backup_id}".encode()).hexdigest()
+    return digest[:12]
+
+
+def create_private_temp_directory() -> Path:
+    """Create a private temporary directory for verification data."""
+    path = Path(tempfile.mkdtemp(prefix=_TEMP_PREFIX))
+    path.chmod(0o700)
+    return path
+
+
+def open_private_binary_writer(path: Path) -> BinaryIO:
+    """Create a new private binary file and return an open writer."""
+    descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    return os.fdopen(descriptor, "wb")
+
+
+def cleanup_temp_directory(path: Path) -> bool:
+    """Remove one verification directory without following a symlink."""
+    try:
+        if path.is_symlink():
+            return False
+        shutil.rmtree(path)
+    except OSError:
+        return False
+    return True
+
+
+def cleanup_stale_temp_directories() -> TempCleanupResult:
+    """Remove stale BackupCheckup directories and report any data left behind."""
+    root = Path(tempfile.gettempdir()).resolve()
+    cutoff = time.time() - STALE_TEMP_DIRECTORY_AGE_HOURS * 3600
+    failures = 0
+    remaining = 0
+    current_uid = os.getuid() if hasattr(os, "getuid") else None
+
+    try:
+        candidates = list(root.iterdir())
+    except OSError:
+        return TempCleanupResult(failures=1)
+
+    for candidate in candidates:
+        if not candidate.name.startswith(_TEMP_PREFIX):
+            continue
+        try:
+            stat_result = candidate.lstat()
+            if candidate.is_symlink() or not candidate.is_dir():
+                continue
+            if current_uid is not None and stat_result.st_uid != current_uid:
+                continue
+            if candidate.parent.resolve() != root:
+                continue
+            if stat_result.st_mtime > cutoff:
+                remaining += 1
+                continue
+        except OSError:
+            failures += 1
+            continue
+        if not cleanup_temp_directory(candidate):
+            failures += 1
+            remaining += 1
+
+    return TempCleanupResult(failures=failures, remaining=remaining)

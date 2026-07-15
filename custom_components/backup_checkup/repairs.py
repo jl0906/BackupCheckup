@@ -136,6 +136,28 @@ def async_remove_issues(hass: HomeAssistant) -> None:
         ir.async_delete_issue(hass, DOMAIN, issue_id)
 
 
+@callback
+def async_set_temporary_cleanup_issue(
+    hass: HomeAssistant,
+    *,
+    active: bool,
+) -> None:
+    """Create or remove the temporary-data cleanup repair issue."""
+    if active:
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            "temporary_cleanup_failed",
+            is_fixable=False,
+            is_persistent=True,
+            learn_more_url=TROUBLESHOOTING_URL,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key="temporary_cleanup_failed",
+        )
+    else:
+        ir.async_delete_issue(hass, DOMAIN, "temporary_cleanup_failed")
+
+
 def _format_datetime(value: datetime | None) -> str:
     """Format a datetime for use in a repair translation."""
     return value.isoformat() if value else "unknown"

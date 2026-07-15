@@ -13,6 +13,7 @@ from homeassistant.helpers.translation import async_get_translations
 
 from .const import DOMAIN
 from .models import BackupCheckupData
+from .security import classify_exception, safe_error_type
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -226,8 +227,11 @@ class BackupCheckupNotificationManager:
                 "entity",
                 integrations={DOMAIN},
             )
-        except Exception:
-            _LOGGER.exception("Unable to load localized notification states")
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning(
+                "Unable to load localized notification states: error_type=%s",
+                safe_error_type(err),
+            )
             translations = {}
         status = translations.get(
             f"component.{DOMAIN}.entity.sensor.status.state.{data.status}",
@@ -275,23 +279,25 @@ class BackupCheckupNotificationManager:
                 blocking=True,
             )
         except (HomeAssistantError, ValueError) as err:
-            self.last_error = self._sanitized_error(err, targets)
-            _LOGGER.warning("Unable to send BackupCheckup notification: %s", err)
+            self.last_error = classify_exception(err)
+            _LOGGER.warning(
+                "Unable to send BackupCheckup notification: error_type=%s "
+                "error_code=%s",
+                safe_error_type(err),
+                self.last_error,
+            )
             return False
-        except Exception as err:
-            self.last_error = self._sanitized_error(err, targets)
-            _LOGGER.exception("Unexpected BackupCheckup notification error")
+        except Exception as err:  # noqa: BLE001
+            self.last_error = classify_exception(err)
+            _LOGGER.error(
+                "Unexpected BackupCheckup notification error: error_type=%s "
+                "error_code=%s",
+                safe_error_type(err),
+                self.last_error,
+            )
             return False
         self.last_error = None
         return True
-
-    @staticmethod
-    def _sanitized_error(err: Exception, targets: tuple[str, ...]) -> str:
-        """Return an error string without configured notification entity IDs."""
-        message = f"{type(err).__name__}: {err}"
-        for target in targets:
-            message = message.replace(target, "<mobile_notify_target>")
-        return message
 
     async def _async_load(self) -> None:
         """Load the last notification state once."""
