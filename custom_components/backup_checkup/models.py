@@ -100,6 +100,7 @@ class BackupAgentSummary:
 
     agent_id: str
     agent_reference: str
+    storage_name: str
     backup_count: int
     inventory_backup_count: int
     ignored_update_backup_count: int
@@ -115,6 +116,7 @@ class BackupAgentSummary:
         """Return a privacy-safe storage summary."""
         result: dict[str, Any] = {
             "storage_reference": self.agent_reference,
+            "storage_name": self.storage_name,
             "backup_count": self.backup_count,
             "inventory_backup_count": self.inventory_backup_count,
             "ignored_update_backup_count": self.ignored_update_backup_count,
@@ -397,6 +399,7 @@ class BackupCheckupData:
     backup_not_redundant: bool
     required_location_missing: bool
     backup_checksum_changed: bool
+    backup_integrity_warning: bool
     problem: bool
     status: str
     recommendation: str

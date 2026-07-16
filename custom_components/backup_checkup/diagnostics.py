@@ -86,6 +86,7 @@ async def async_get_config_entry_diagnostics(
                 "backup_not_redundant": data.backup_not_redundant,
                 "required_location_missing": data.required_location_missing,
                 "backup_checksum_changed": data.backup_checksum_changed,
+                "backup_integrity_warning": data.backup_integrity_warning,
             },
         },
         "inventory": {

@@ -81,6 +81,7 @@ from .const import (
     DOMAIN,
     INTEGRITY_DATABASE_NOT_CHECKED,
     INTEGRITY_STATUS_INTERNAL_ERROR,
+    INTEGRITY_STATUS_VALID_WITH_WARNINGS,
     MAX_ANALYTICS_WINDOW_DAYS,
     MAX_DATABASE_TIMEOUT_MINUTES,
     MAX_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
@@ -120,6 +121,7 @@ from .const import (
     STATUS_BACKUP_CHECKSUM_CHANGED,
     STATUS_BACKUP_INCOMPLETE,
     STATUS_BACKUP_INTEGRITY_FAILED,
+    STATUS_BACKUP_INTEGRITY_WARNING,
     STATUS_BACKUP_NOT_REDUNDANT,
     STATUS_BACKUP_SIZE_SUSPICIOUS,
     STATUS_BACKUP_STALE,
@@ -145,6 +147,7 @@ from .security import (
     anonymous_backup_reference,
     backup_scope_fingerprint,
     classify_exception,
+    safe_display_name,
     safe_error_type,
 )
 from .task_control import release_current_task_reference
@@ -633,11 +636,30 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             if isinstance(manager_agents, Mapping)
             else set()
         )
+        agent_names = (
+            {
+                str(agent_id): safe_display_name(
+                    getattr(agent, "name", None),
+                    fallback=(
+                        "Backup storage "
+                        f"{
+                            anonymous_agent_reference(
+                                self.config_entry.entry_id, str(agent_id)
+                            )
+                        }"
+                    ),
+                )
+                for agent_id, agent in manager_agents.items()
+            }
+            if isinstance(manager_agents, Mapping)
+            else {}
+        )
         agent_summaries = self._build_agent_summaries(
             records,
             monitoring_records,
             agent_errors,
             configured_agent_ids,
+            agent_names,
             now,
         )
         required_location_missing = bool(
@@ -659,11 +681,17 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             and self.integrity_result.backup_id == latest_record.backup_id
             and self.integrity_result.checksum_changed
         )
+        backup_integrity_warning = bool(
+            latest_record
+            and self.integrity_result.backup_id == latest_record.backup_id
+            and self.integrity_result.status == INTEGRITY_STATUS_VALID_WITH_WARNINGS
+        )
 
         status = self._status(
             no_backup=no_backup,
             backup_integrity_failed=backup_integrity_failed,
             backup_checksum_changed=backup_checksum_changed,
+            backup_integrity_warning=backup_integrity_warning,
             manager_unavailable=manager_unavailable,
             automatic_schedule_missing=automatic_schedule_missing,
             storage_error=storage_error,
@@ -682,6 +710,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 ("no_backup", no_backup),
                 ("backup_integrity_failed", backup_integrity_failed),
                 ("backup_checksum_changed", backup_checksum_changed),
+                ("backup_integrity_warning", backup_integrity_warning),
                 ("backup_stale", backup_stale),
                 ("automatic_backup_overdue", automatic_backup_overdue),
                 ("automatic_backup_failed", automatic_backup_failed),
@@ -701,6 +730,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             "no_backup": no_backup,
             "backup_integrity_failed": backup_integrity_failed,
             "backup_checksum_changed": backup_checksum_changed,
+            "backup_integrity_warning": backup_integrity_warning,
             "backup_stale": backup_stale,
             "automatic_backup_overdue": automatic_backup_overdue,
             "automatic_backup_failed": automatic_backup_failed,
@@ -725,6 +755,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             STATUS_NO_BACKUPS: RECOMMENDATION_CREATE_BACKUP,
             STATUS_BACKUP_INTEGRITY_FAILED: RECOMMENDATION_REPLACE_BACKUP,
             STATUS_BACKUP_CHECKSUM_CHANGED: RECOMMENDATION_CHECK_STORAGE,
+            STATUS_BACKUP_INTEGRITY_WARNING: RECOMMENDATION_CHECK_BACKUP_CONTENTS,
             STATUS_BACKUP_STALE: RECOMMENDATION_CREATE_BACKUP,
             STATUS_AUTOMATIC_BACKUP_OVERDUE: RECOMMENDATION_CHECK_SCHEDULE,
             STATUS_AUTOMATIC_BACKUP_FAILED: RECOMMENDATION_CHECK_SCHEDULE,
@@ -802,6 +833,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             backup_not_redundant=backup_not_redundant,
             required_location_missing=required_location_missing,
             backup_checksum_changed=backup_checksum_changed,
+            backup_integrity_warning=backup_integrity_warning,
             problem=bool(active_problems),
             status=status,
             recommendation=recommendation,
@@ -1268,6 +1300,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         monitoring_records: tuple[BackupRecord, ...],
         agent_errors: dict[str, str],
         configured_agent_ids: set[str],
+        agent_names: Mapping[str, str],
         now: datetime,
     ) -> tuple[BackupAgentSummary, ...]:
         """Build one health summary per detected backup storage agent."""
@@ -1309,6 +1342,17 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                     agent_reference=anonymous_agent_reference(
                         self.config_entry.entry_id, agent_id
                     ),
+                    storage_name=agent_names.get(
+                        agent_id,
+                        (
+                            "Backup storage "
+                            f"{
+                                anonymous_agent_reference(
+                                    self.config_entry.entry_id, agent_id
+                                )
+                            }"
+                        ),
+                    ),
                     backup_count=len(agent_records),
                     inventory_backup_count=len(inventory_agent_records),
                     ignored_update_backup_count=(
@@ -1332,6 +1376,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         priority = (
             ("backup_integrity_failed", STATUS_BACKUP_INTEGRITY_FAILED),
             ("backup_checksum_changed", STATUS_BACKUP_CHECKSUM_CHANGED),
+            ("backup_integrity_warning", STATUS_BACKUP_INTEGRITY_WARNING),
             ("no_backup", STATUS_NO_BACKUPS),
             ("manager_unavailable", STATUS_MANAGER_UNAVAILABLE),
             ("storage_error", STATUS_STORAGE_ERROR),

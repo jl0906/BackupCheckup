@@ -46,9 +46,22 @@ class BackupCheckupAgentEntity(BackupCheckupEntity):
         super().__init__(coordinator, entry)
         self.agent_id = agent_id
         self.agent_reference = anonymous_agent_reference(entry.entry_id, agent_id)
+        summary = next(
+            (
+                item
+                for item in coordinator.data.agent_summaries
+                if item.agent_id == agent_id
+            ),
+            None,
+        )
+        storage_name = (
+            summary.storage_name
+            if summary is not None
+            else f"Backup storage {self.agent_reference}"
+        )
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{entry.entry_id}:{agent_id}")},
-            name=f"Backup storage {self.agent_reference}",
+            name=storage_name,
             manufacturer="Home Assistant",
             model="Backup storage location",
             via_device=(DOMAIN, entry.entry_id),

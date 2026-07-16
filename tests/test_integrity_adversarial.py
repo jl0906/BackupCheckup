@@ -322,3 +322,26 @@ def test_corrupt_canonical_database_fails_integrity_check(tmp_path: Path) -> Non
     result = _verify(backup, tmp_path / "work", database_check=True)
 
     assert result["database_status"] == "failed"
+
+
+def test_supervisor_archive_is_allowed_without_warning(tmp_path: Path) -> None:
+    """Allow the conditional HAOS supervisor archive without a false warning."""
+    homeassistant = _tar_bytes([("data/configuration.yaml", b"homeassistant:")])
+    supervisor = _tar_bytes([("mounts.json", b"{}"), ("docker.json", b"{}")])
+    backup = tmp_path / "backup.tar"
+    _write_outer(
+        backup,
+        [
+            (
+                "backup.json",
+                _metadata_bytes(homeassistant={"exclude_database": True}),
+            ),
+            ("homeassistant.tar", homeassistant),
+            ("supervisor.tar", supervisor),
+        ],
+    )
+
+    result = _verify(backup, tmp_path / "work")
+
+    assert result["warnings"] == []
+    assert result["archive_count"] == 2

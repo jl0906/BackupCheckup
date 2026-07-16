@@ -57,6 +57,7 @@ _STORAGE_VERSION = 1
 _BUFFER_SIZE = 1024 * 1024
 _FREE_SPACE_CHECK_INTERVAL = 64 * 1024 * 1024
 _INNER_SUFFIXES = (".tar", ".tgz", ".tar.gz")
+_KNOWN_OPTIONAL_INNER_ARCHIVES = frozenset({"supervisor"})
 _DATABASE_FILENAME = "home-assistant_v2.db"
 _DATABASE_PATH = PurePosixPath("data/home-assistant_v2.db")
 _METADATA_PATH = PurePosixPath("backup.json")
@@ -717,7 +718,7 @@ class BackupIntegrityVerifier:
             raise KeyError(f"missing_expected_archives_count_{len(missing)}")
         if archive_count == 0:
             raise tarfile.ReadError("no_inner_backup_archives")
-        unexpected = inner_names - expected
+        unexpected = inner_names - expected - _KNOWN_OPTIONAL_INNER_ARCHIVES
         if unexpected:
             warnings.append(f"unexpected_inner_archives_{len(unexpected)}")
 

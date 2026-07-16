@@ -152,6 +152,7 @@
           "backup_incomplete": "Unvollständiges Backup",
           "backup_not_redundant": "Backup nicht redundant",
           "backup_integrity_failed": "Backup-Integritätsprüfung fehlgeschlagen",
+          "backup_integrity_warning": "Backup-Integritätsprüfung mit Warnungen",
           "backup_checksum_changed": "Backup-Prüfsumme geändert"
         }
       },
@@ -361,6 +362,9 @@
       },
       "backup_integrity_problem": {
         "name": "Backup beschädigt oder nicht lesbar"
+      },
+      "backup_integrity_warning": {
+        "name": "Backup-Integritätswarnung"
       },
       "backup_checksum_changed": {
         "name": "Backup-Prüfsumme geändert"

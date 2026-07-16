@@ -78,3 +78,19 @@ def test_missing_new_integrity_fields_remain_backward_compatible() -> None:
     assert parsed.status == "valid"
     assert parsed.archive_count == 1
     assert parsed.checksum_changed is False
+
+
+def test_integrity_warning_reduces_health_rating() -> None:
+    """A valid backup with actionable warnings cannot remain excellent."""
+    from custom_components.backup_checkup.analytics import calculate_health_score
+
+    result = calculate_health_score(
+        {"backup_integrity_warning": True},
+        automatic_success_rate=None,
+        consecutive_automatic_failures=0,
+        resolved_attempts=0,
+    )
+
+    assert result.score == 89
+    assert result.rating == "good"
+    assert result.deductions == {"backup_integrity_warning": 11}

@@ -45,6 +45,14 @@ BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
         ),
     ),
     BackupCheckupBinarySensorDescription(
+        key="backup_integrity_warning",
+        translation_key="backup_integrity_warning",
+        entity_registry_enabled_default=False,
+        icon="mdi:archive-alert-outline",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda data: data.backup_integrity_warning,
+    ),
+    BackupCheckupBinarySensorDescription(
         key="backup_checksum_changed",
         translation_key="backup_checksum_changed",
         entity_registry_enabled_default=False,

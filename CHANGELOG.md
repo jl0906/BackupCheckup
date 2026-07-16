@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.2.0-beta5
+
+### Fixed
+- Backup storage devices now use the friendly names supplied by Home Assistant instead of anonymous references, even when backup names and IDs remain hidden.
+- Per-storage **Latest backup size** and **Stored backup size** sensors now expose decimal megabytes instead of raw bytes, including automatic migration of existing entity display units.
+- HAOS backups containing the legitimate conditional `supervisor.tar` or `supervisor.tar.gz` archive no longer receive a false `unexpected_inner_archives_1` warning.
+- The integrity sensor now shows the friendly storage location name without exposing the raw backup-agent ID.
+- A genuine `valid_with_warnings` result now affects the overall status, recommendation, problem flag, and health score instead of being shown alongside an excellent/no-action assessment.
+
+### Added
+- Friendly storage location names in storage summaries and latest-location attributes.
+- A dedicated `backup_integrity_warning` problem signal for actionable integrity warnings.
+
 ## 2.2.0-beta4
 
 ### Security

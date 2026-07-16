@@ -186,6 +186,15 @@ def safe_error_type(error: BaseException) -> str:
     return safe_log_value(type(error).__name__, max_length=80)
 
 
+def safe_display_name(value: object, *, fallback: str) -> str:
+    """Return a bounded single-line user-facing name."""
+    if isinstance(value, str):
+        cleaned = safe_log_value(value, max_length=128).strip()
+        if cleaned:
+            return cleaned
+    return fallback
+
+
 def anonymous_backup_reference(entry_id: str, backup_id: str) -> str:
     """Return a stable installation-local reference without exposing the backup ID."""
     digest = hashlib.sha256(f"{entry_id}:{backup_id}".encode()).hexdigest()

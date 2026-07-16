@@ -4,7 +4,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "backup_checkup"
 NAME = "BackupCheckup"
-VERSION = "2.2.0-beta4"
+VERSION = "2.2.0-beta5"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -128,6 +128,7 @@ STATUS_BACKUP_SIZE_SUSPICIOUS = "backup_size_suspicious"
 STATUS_BACKUP_INCOMPLETE = "backup_incomplete"
 STATUS_BACKUP_NOT_REDUNDANT = "backup_not_redundant"
 STATUS_BACKUP_INTEGRITY_FAILED = "backup_integrity_failed"
+STATUS_BACKUP_INTEGRITY_WARNING = "backup_integrity_warning"
 STATUS_BACKUP_CHECKSUM_CHANGED = "backup_checksum_changed"
 
 STATUS_OPTIONS = [
@@ -144,6 +145,7 @@ STATUS_OPTIONS = [
     STATUS_BACKUP_INCOMPLETE,
     STATUS_BACKUP_NOT_REDUNDANT,
     STATUS_BACKUP_INTEGRITY_FAILED,
+    STATUS_BACKUP_INTEGRITY_WARNING,
     STATUS_BACKUP_CHECKSUM_CHANGED,
 ]
 

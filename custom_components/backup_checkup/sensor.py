@@ -52,6 +52,33 @@ class BackupCheckupSensorDescription(SensorEntityDescription):
     attributes_fn: Callable[[BackupCheckupData], dict[str, Any]] | None = None
 
 
+def _storage_name(data: BackupCheckupData, agent_id: str | None) -> str | None:
+    """Return the friendly Home Assistant backup-agent name."""
+    if not agent_id:
+        return None
+    return next(
+        (
+            item.storage_name
+            for item in data.agent_summaries
+            if item.agent_id == agent_id
+        ),
+        None,
+    )
+
+
+def _latest_storage_names(data: BackupCheckupData) -> list[str]:
+    """Return friendly names for storage locations holding the latest backup."""
+    record = data.latest_monitored_backup_record
+    if record is None:
+        return []
+    names = [
+        name
+        for agent_id in record.agents
+        if (name := _storage_name(data, agent_id)) is not None
+    ]
+    return sorted(dict.fromkeys(names))
+
+
 SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="integrity_status",
@@ -87,7 +114,8 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
                 else None
             ),
             "backup_reference": data.integrity.backup_reference,
-            "storage_location": (
+            "storage_location": _storage_name(data, data.integrity.agent_id),
+            "storage_agent_id": (
                 data.integrity.agent_id if data.expose_backup_metadata else None
             ),
             "archive_count": data.integrity.archive_count,
@@ -486,6 +514,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         icon="mdi:server-network",
         value_fn=lambda data: data.latest_backup_locations,
         attributes_fn=lambda data: {
+            "locations": _latest_storage_names(data),
             "location_ids": list(data.latest_backup_location_ids),
             "minimum_required": data.minimum_redundant_locations,
         },
@@ -567,18 +596,16 @@ def _migrate_enum_translation_keys(hass: HomeAssistant, entry: ConfigEntry) -> N
 def _migrate_size_sensor_units(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Ensure existing backup-size sensors are displayed in megabytes."""
     registry = er.async_get(hass)
-    for key in (
-        "average_backup_size",
-        "latest_backup_size",
-        "latest_automatic_backup_size",
-    ):
-        unique_id = f"{entry.entry_id}_{key}"
-        entity_id = registry.async_get_entity_id("sensor", DOMAIN, unique_id)
-        if entity_id is None:
-            continue
-
-        registry_entry = registry.async_get(entity_id)
-        if registry_entry is None:
+    for registry_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
+        unique_id = str(registry_entry.unique_id)
+        if not unique_id.endswith(
+            (
+                "_average_backup_size",
+                "_latest_backup_size",
+                "_latest_automatic_backup_size",
+                "_stored_bytes",
+            )
+        ):
             continue
 
         sensor_options = dict(registry_entry.options.get("sensor", {}))
@@ -586,7 +613,9 @@ def _migrate_size_sensor_units(hass: HomeAssistant, entry: ConfigEntry) -> None:
             continue
 
         sensor_options[CONF_UNIT_OF_MEASUREMENT] = UnitOfInformation.MEGABYTES
-        registry.async_update_entity_options(entity_id, "sensor", sensor_options)
+        registry.async_update_entity_options(
+            registry_entry.entity_id, "sensor", sensor_options
+        )
 
 
 async def async_setup_entry(
@@ -731,7 +760,8 @@ class BackupCheckupAgentSensor(BackupCheckupAgentEntity, SensorEntity):
             self._attr_icon = "mdi:timer-sand"
         elif metric in {"latest_backup_size", "stored_bytes"}:
             self._attr_device_class = SensorDeviceClass.DATA_SIZE
-            self._attr_native_unit_of_measurement = UnitOfInformation.BYTES
+            self._attr_native_unit_of_measurement = UnitOfInformation.MEGABYTES
+            self._attr_suggested_display_precision = 2
             self._attr_state_class = SensorStateClass.MEASUREMENT
             self._attr_icon = "mdi:database"
         else:
@@ -754,20 +784,34 @@ class BackupCheckupAgentSensor(BackupCheckupAgentEntity, SensorEntity):
         summary = self._summary()
         if summary is None:
             return None
-        return {
+        values = {
             "backups": summary.backup_count,
             "latest_backup": summary.latest_backup,
             "latest_backup_age": summary.latest_backup_age_days,
-            "latest_backup_size": summary.latest_backup_size,
-            "stored_bytes": summary.stored_bytes,
-        }[self.metric]
+            "latest_backup_size": (
+                round(summary.latest_backup_size / 1_000_000, 2)
+                if summary.latest_backup_size is not None
+                else None
+            ),
+            "stored_bytes": (
+                round(summary.stored_bytes / 1_000_000, 2)
+                if summary.stored_bytes is not None
+                else None
+            ),
+        }
+        return values[self.metric]
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return storage location details."""
         summary = self._summary()
-        return (
-            summary.as_dict(expose_metadata=self.coordinator.expose_backup_metadata)
-            if summary
-            else {"storage_reference": self.agent_reference}
+        if summary is None:
+            return {"storage_reference": self.agent_reference}
+        attributes = summary.as_dict(
+            expose_metadata=self.coordinator.expose_backup_metadata
         )
+        if self.metric == "latest_backup_size":
+            attributes["size_bytes"] = summary.latest_backup_size
+        elif self.metric == "stored_bytes":
+            attributes["size_bytes"] = summary.stored_bytes
+        return attributes

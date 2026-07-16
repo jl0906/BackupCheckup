@@ -15,7 +15,7 @@
 
 <p align="center">
   <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-orange.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-2.2.0--beta4-blue.svg">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.2.0--beta5-blue.svg">
   <img alt="AI-coded and maintained" src="https://img.shields.io/badge/AI--coded%20%26%20AI--maintained-8A2BE2.svg">
   <img alt="License" src="https://img.shields.io/github/license/jl0906/BackupCheckup">
 </p>
@@ -23,7 +23,7 @@
 BackupCheckup checks whether Home Assistant backups are available, recent,
 complete, plausible in size, redundant, and structurally readable.
 
-Version: **2.2.0-beta4**
+Version: **2.2.0-beta5**
 
 **Requirements:** Home Assistant **2026.3.0 or newer**. Full encrypted-backup
 verification depends on the SecureTar archive API bundled with Home Assistant 2026.3+.
@@ -69,7 +69,7 @@ BackupCheckup can detect:
 - Redundancy checks across multiple storage locations
 - Deterministic health score from `0` to `100`
 - Size trend, average size, longest gap, observed success rate, and consecutive failures
-- Backup-size sensors displayed in megabytes instead of raw bytes
+- Backup-size sensors
 
 ### Full backup integrity verification
 
