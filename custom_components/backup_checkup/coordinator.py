@@ -117,6 +117,7 @@ from .security import (
     classify_exception,
     safe_error_type,
 )
+from .task_control import release_current_task_reference
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -820,6 +821,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             raise
         finally:
             self.integrity_check_running = False
+            self._integrity_task = release_current_task_reference(self._integrity_task)
             if not cancelled:
                 await self.async_request_refresh()
 

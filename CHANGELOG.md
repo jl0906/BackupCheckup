@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.2.0-beta3
+
+### Fixed
+- Fixed the manual **Verify latest backup** button remaining unavailable after a completed verification when the configured cooldown was `0` minutes.
+- The active verification task reference is now released before the final coordinator refresh, so Home Assistant immediately publishes the button as available again after a completed or failed run.
+
+### Changed
+- Added the BackupCheckup brand image to the top of the README.
+- Added a prominent disclosure that the complete integration and its ongoing maintenance are AI-coded and AI-maintained under human direction, testing, and release control.
+
 ## 2.2.0-beta2
 
 ### Fixed

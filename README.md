@@ -1,15 +1,29 @@
-# BackupCheckup
+<p align="center">
+  <img src="custom_components/backup_checkup/brand/icon@2x.png" alt="BackupCheckup brand icon" width="180">
+</p>
 
-> **Backup health, integrity, and mobile alerting for Home Assistant**
->
-> BackupCheckup checks whether Home Assistant backups are available, recent,
-> complete, plausible in size, redundant, and structurally readable.
+<h1 align="center">BackupCheckup</h1>
 
-![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)
-![Version](https://img.shields.io/badge/version-2.2.0--beta2-blue.svg)
-![License](https://img.shields.io/github/license/jl0906/BackupCheckup)
+<p align="center">
+  <strong>Backup health, integrity, and mobile alerting for Home Assistant</strong>
+</p>
 
-Version: **2.2.0-beta2**
+<p align="center">
+  <strong>🤖 Entirely AI-coded &amp; AI-maintained</strong><br>
+  <sub>The complete integration, documentation, and ongoing maintenance are produced with AI under human direction, testing, and release control.</sub>
+</p>
+
+<p align="center">
+  <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-orange.svg">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.2.0--beta3-blue.svg">
+  <img alt="AI-coded and maintained" src="https://img.shields.io/badge/AI--coded%20%26%20AI--maintained-8A2BE2.svg">
+  <img alt="License" src="https://img.shields.io/github/license/jl0906/BackupCheckup">
+</p>
+
+BackupCheckup checks whether Home Assistant backups are available, recent,
+complete, plausible in size, redundant, and structurally readable.
+
+Version: **2.2.0-beta3**
 
 **Requirements:** Home Assistant **2026.3.0 or newer**. Full encrypted-backup
 verification depends on the SecureTar archive API bundled with Home Assistant 2026.3+.
