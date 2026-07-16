@@ -21,6 +21,9 @@ from homeassistant.util import dt as dt_util
 
 from .analytics import calculate_health_score, calculate_inventory_analytics
 from .classification import (
+    automatic_backup_failed as evaluate_automatic_backup_failed,
+)
+from .classification import (
     automatic_size_drop_is_suspicious,
     classify_backup_purpose,
     comparable_size_backups,
@@ -50,6 +53,7 @@ from .const import (
     CONF_SIZE_CHECK_MODE,
     CONF_UPDATE_INTERVAL_MINUTES,
     CONF_VERIFICATION_TIMEOUT_MINUTES,
+    CORE_AUTOMATIC_BACKUP_EVENT,
     CORE_BACKUP_MANAGER_STATE,
     CORE_LAST_AUTOMATIC_ATTEMPT,
     CORE_LAST_SUCCESSFUL_AUTOMATIC_BACKUP,
@@ -75,6 +79,30 @@ from .const import (
     DEFAULT_UPDATE_INTERVAL_MINUTES,
     DEFAULT_VERIFICATION_TIMEOUT_MINUTES,
     DOMAIN,
+    INTEGRITY_DATABASE_NOT_CHECKED,
+    INTEGRITY_STATUS_INTERNAL_ERROR,
+    MAX_ANALYTICS_WINDOW_DAYS,
+    MAX_DATABASE_TIMEOUT_MINUTES,
+    MAX_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
+    MAX_MAX_AGE_DAYS,
+    MAX_MAX_EXPANDED_SIZE_GB,
+    MAX_MAX_VERIFICATION_SIZE_GB,
+    MAX_MAXIMUM_SIZE_DROP_PERCENT,
+    MAX_MINIMUM_BACKUP_SIZE_MB,
+    MAX_REDUNDANT_LOCATIONS,
+    MAX_UPDATE_INTERVAL_MINUTES,
+    MAX_VERIFICATION_TIMEOUT_MINUTES,
+    MIN_ANALYTICS_WINDOW_DAYS,
+    MIN_DATABASE_TIMEOUT_MINUTES,
+    MIN_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
+    MIN_MAX_AGE_DAYS,
+    MIN_MAX_EXPANDED_SIZE_GB,
+    MIN_MAX_VERIFICATION_SIZE_GB,
+    MIN_MAXIMUM_SIZE_DROP_PERCENT,
+    MIN_MINIMUM_BACKUP_SIZE_MB,
+    MIN_REDUNDANT_LOCATIONS,
+    MIN_UPDATE_INTERVAL_MINUTES,
+    MIN_VERIFICATION_TIMEOUT_MINUTES,
     RECOMMENDATION_ADD_STORAGE_LOCATION,
     RECOMMENDATION_CHECK_BACKUP_CONTENTS,
     RECOMMENDATION_CHECK_BACKUP_SIZE,
@@ -89,6 +117,7 @@ from .const import (
     SIZE_CHECK_OFF,
     STATUS_AUTOMATIC_BACKUP_FAILED,
     STATUS_AUTOMATIC_BACKUP_OVERDUE,
+    STATUS_BACKUP_CHECKSUM_CHANGED,
     STATUS_BACKUP_INCOMPLETE,
     STATUS_BACKUP_INTEGRITY_FAILED,
     STATUS_BACKUP_NOT_REDUNDANT,
@@ -112,6 +141,7 @@ from .models import (
 )
 from .notifications import BackupCheckupNotificationManager
 from .security import (
+    anonymous_agent_reference,
     anonymous_backup_reference,
     backup_scope_fingerprint,
     classify_exception,
@@ -120,6 +150,30 @@ from .security import (
 from .task_control import release_current_task_reference
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _bounded_int_option(
+    options: Mapping[str, Any],
+    key: str,
+    default: int,
+    minimum: int,
+    maximum: int,
+) -> int:
+    """Return one validated integer option or its safe default."""
+    value = options.get(key, default)
+    if isinstance(value, bool):
+        return default
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError, OverflowError):
+        return default
+    return parsed if minimum <= parsed <= maximum else default
+
+
+def _boolean_option(options: Mapping[str, Any], key: str, default: bool) -> bool:
+    """Return one strict boolean option or its safe default."""
+    value = options.get(key, default)
+    return value if isinstance(value, bool) else default
 
 
 class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
@@ -132,97 +186,107 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self.config_entry = entry
         options = {**entry.data, **entry.options}
 
-        self.entity_mode = str(options.get(CONF_ENTITY_MODE, DEFAULT_ENTITY_MODE))
-        self.max_age_days = int(options.get(CONF_MAX_AGE_DAYS, DEFAULT_MAX_AGE_DAYS))
+        entity_mode = options.get(CONF_ENTITY_MODE, DEFAULT_ENTITY_MODE)
+        self.entity_mode = (
+            entity_mode
+            if entity_mode in {"standard", "expert"}
+            else DEFAULT_ENTITY_MODE
+        )
+        self.max_age_days = _bounded_int_option(
+            options,
+            CONF_MAX_AGE_DAYS,
+            DEFAULT_MAX_AGE_DAYS,
+            MIN_MAX_AGE_DAYS,
+            MAX_MAX_AGE_DAYS,
+        )
         self.minimum_backup_size_bytes = (
-            int(
-                options.get(
-                    CONF_MINIMUM_BACKUP_SIZE_MB,
-                    DEFAULT_MINIMUM_BACKUP_SIZE_MB,
-                )
+            _bounded_int_option(
+                options,
+                CONF_MINIMUM_BACKUP_SIZE_MB,
+                DEFAULT_MINIMUM_BACKUP_SIZE_MB,
+                MIN_MINIMUM_BACKUP_SIZE_MB,
+                MAX_MINIMUM_BACKUP_SIZE_MB,
             )
             * 1_000_000
         )
-        self.maximum_size_drop_percent = int(
-            options.get(
-                CONF_MAXIMUM_SIZE_DROP_PERCENT,
-                DEFAULT_MAXIMUM_SIZE_DROP_PERCENT,
-            )
+        self.maximum_size_drop_percent = _bounded_int_option(
+            options,
+            CONF_MAXIMUM_SIZE_DROP_PERCENT,
+            DEFAULT_MAXIMUM_SIZE_DROP_PERCENT,
+            MIN_MAXIMUM_SIZE_DROP_PERCENT,
+            MAX_MAXIMUM_SIZE_DROP_PERCENT,
         )
-        self.size_check_mode = str(
-            options.get(CONF_SIZE_CHECK_MODE, DEFAULT_SIZE_CHECK_MODE)
+        size_check_mode = options.get(CONF_SIZE_CHECK_MODE, DEFAULT_SIZE_CHECK_MODE)
+        self.size_check_mode = (
+            size_check_mode
+            if size_check_mode in {SIZE_CHECK_AUTO, SIZE_CHECK_FIXED, SIZE_CHECK_OFF}
+            else DEFAULT_SIZE_CHECK_MODE
         )
-        self.minimum_redundant_locations = int(
-            options.get(
-                CONF_MINIMUM_REDUNDANT_LOCATIONS,
-                DEFAULT_MINIMUM_REDUNDANT_LOCATIONS,
-            )
+        self.minimum_redundant_locations = _bounded_int_option(
+            options,
+            CONF_MINIMUM_REDUNDANT_LOCATIONS,
+            DEFAULT_MINIMUM_REDUNDANT_LOCATIONS,
+            MIN_REDUNDANT_LOCATIONS,
+            MAX_REDUNDANT_LOCATIONS,
         )
-        self.repair_issues_enabled = bool(
-            options.get(
-                CONF_REPAIR_ISSUES_ENABLED,
-                DEFAULT_REPAIR_ISSUES_ENABLED,
-            )
+        self.repair_issues_enabled = _boolean_option(
+            options, CONF_REPAIR_ISSUES_ENABLED, DEFAULT_REPAIR_ISSUES_ENABLED
         )
-        self.analytics_window_days = int(
-            options.get(
-                CONF_ANALYTICS_WINDOW_DAYS,
-                DEFAULT_ANALYTICS_WINDOW_DAYS,
-            )
+        self.analytics_window_days = _bounded_int_option(
+            options,
+            CONF_ANALYTICS_WINDOW_DAYS,
+            DEFAULT_ANALYTICS_WINDOW_DAYS,
+            MIN_ANALYTICS_WINDOW_DAYS,
+            MAX_ANALYTICS_WINDOW_DAYS,
         )
-        self.auto_verify_new_backups = bool(
-            options.get(
-                CONF_AUTO_VERIFY_NEW_BACKUPS,
-                DEFAULT_AUTO_VERIFY_NEW_BACKUPS,
-            )
+        self.auto_verify_new_backups = _boolean_option(
+            options, CONF_AUTO_VERIFY_NEW_BACKUPS, DEFAULT_AUTO_VERIFY_NEW_BACKUPS
         )
-        self.database_integrity_check = bool(
-            options.get(
-                CONF_DATABASE_INTEGRITY_CHECK,
-                DEFAULT_DATABASE_INTEGRITY_CHECK,
-            )
+        self.database_integrity_check = _boolean_option(
+            options,
+            CONF_DATABASE_INTEGRITY_CHECK,
+            DEFAULT_DATABASE_INTEGRITY_CHECK,
         )
-        self.max_verification_size_gb = int(
-            options.get(
-                CONF_MAX_VERIFICATION_SIZE_GB,
-                DEFAULT_MAX_VERIFICATION_SIZE_GB,
-            )
+        self.max_verification_size_gb = _bounded_int_option(
+            options,
+            CONF_MAX_VERIFICATION_SIZE_GB,
+            DEFAULT_MAX_VERIFICATION_SIZE_GB,
+            MIN_MAX_VERIFICATION_SIZE_GB,
+            MAX_MAX_VERIFICATION_SIZE_GB,
         )
-        self.max_expanded_size_gb = int(
-            options.get(
-                CONF_MAX_EXPANDED_SIZE_GB,
-                DEFAULT_MAX_EXPANDED_SIZE_GB,
-            )
+        self.max_expanded_size_gb = _bounded_int_option(
+            options,
+            CONF_MAX_EXPANDED_SIZE_GB,
+            DEFAULT_MAX_EXPANDED_SIZE_GB,
+            MIN_MAX_EXPANDED_SIZE_GB,
+            MAX_MAX_EXPANDED_SIZE_GB,
         )
-        self.verification_timeout_minutes = int(
-            options.get(
-                CONF_VERIFICATION_TIMEOUT_MINUTES,
-                DEFAULT_VERIFICATION_TIMEOUT_MINUTES,
-            )
+        self.verification_timeout_minutes = _bounded_int_option(
+            options,
+            CONF_VERIFICATION_TIMEOUT_MINUTES,
+            DEFAULT_VERIFICATION_TIMEOUT_MINUTES,
+            MIN_VERIFICATION_TIMEOUT_MINUTES,
+            MAX_VERIFICATION_TIMEOUT_MINUTES,
         )
-        self.database_timeout_minutes = int(
-            options.get(
-                CONF_DATABASE_TIMEOUT_MINUTES,
-                DEFAULT_DATABASE_TIMEOUT_MINUTES,
-            )
+        self.database_timeout_minutes = _bounded_int_option(
+            options,
+            CONF_DATABASE_TIMEOUT_MINUTES,
+            DEFAULT_DATABASE_TIMEOUT_MINUTES,
+            MIN_DATABASE_TIMEOUT_MINUTES,
+            MAX_DATABASE_TIMEOUT_MINUTES,
         )
-        self.manual_verification_cooldown_minutes = int(
-            options.get(
-                CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
-                DEFAULT_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
-            )
+        self.manual_verification_cooldown_minutes = _bounded_int_option(
+            options,
+            CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
+            DEFAULT_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
+            MIN_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
+            MAX_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
         )
-        self.expose_backup_metadata = bool(
-            options.get(
-                CONF_EXPOSE_BACKUP_METADATA,
-                DEFAULT_EXPOSE_BACKUP_METADATA,
-            )
+        self.expose_backup_metadata = _boolean_option(
+            options, CONF_EXPOSE_BACKUP_METADATA, DEFAULT_EXPOSE_BACKUP_METADATA
         )
-        self.notifications_enabled = bool(
-            options.get(
-                CONF_NOTIFICATIONS_ENABLED,
-                DEFAULT_NOTIFICATIONS_ENABLED,
-            )
+        self.notifications_enabled = _boolean_option(
+            options, CONF_NOTIFICATIONS_ENABLED, DEFAULT_NOTIFICATIONS_ENABLED
         )
         notification_targets = options.get(
             CONF_NOTIFICATION_TARGETS,
@@ -230,14 +294,17 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         )
         if isinstance(notification_targets, str):
             notification_targets = [notification_targets]
+        if not isinstance(notification_targets, (list, tuple, set, frozenset)):
+            notification_targets = []
         self.notification_targets = tuple(
-            str(entity_id) for entity_id in notification_targets or []
+            entity_id
+            for entity_id in notification_targets
+            if isinstance(entity_id, str)
+            and entity_id.startswith("notify.")
+            and len(entity_id) <= 255
         )
-        self.notify_on_recovery = bool(
-            options.get(
-                CONF_NOTIFY_ON_RECOVERY,
-                DEFAULT_NOTIFY_ON_RECOVERY,
-            )
+        self.notify_on_recovery = _boolean_option(
+            options, CONF_NOTIFY_ON_RECOVERY, DEFAULT_NOTIFY_ON_RECOVERY
         )
         self.history = BackupCheckupHistory(hass, entry.entry_id)
         self.integrity_verifier = BackupIntegrityVerifier(hass, entry.entry_id)
@@ -248,11 +315,14 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self.integrity_check_running = False
         self._integrity_loaded = False
         self._integrity_task: asyncio.Task[None] | None = None
-        update_minutes = int(
-            options.get(
-                CONF_UPDATE_INTERVAL_MINUTES,
-                DEFAULT_UPDATE_INTERVAL_MINUTES,
-            )
+        self._integrity_retry_not_before: datetime | None = None
+        self._invalid_backup_count = 0
+        update_minutes = _bounded_int_option(
+            options,
+            CONF_UPDATE_INTERVAL_MINUTES,
+            DEFAULT_UPDATE_INTERVAL_MINUTES,
+            MIN_UPDATE_INTERVAL_MINUTES,
+            MAX_UPDATE_INTERVAL_MINUTES,
         )
 
         super().__init__(
@@ -369,8 +439,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             return None
         return normalized if normalized >= 0 else None
 
-    @staticmethod
-    def _agent_copy(agent_id: Any, details: Any) -> BackupAgentRecord:
+    def _agent_copy(self, agent_id: Any, details: Any) -> BackupAgentRecord:
         """Normalize one backup-agent copy record across HA model versions."""
         size_raw = getattr(details, "size", None)
         if size_raw is None and isinstance(details, Mapping):
@@ -383,7 +452,13 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         if protected_raw is None and isinstance(details, Mapping):
             protected_raw = details.get("protected", details.get("is_protected"))
         protected = protected_raw if isinstance(protected_raw, bool) else None
-        return BackupAgentRecord(str(agent_id), size, protected)
+        normalized_agent_id = str(agent_id)
+        return BackupAgentRecord(
+            normalized_agent_id,
+            anonymous_agent_reference(self.config_entry.entry_id, normalized_agent_id),
+            size,
+            protected,
+        )
 
     async def _async_update_data(self) -> BackupCheckupData:
         """Read and evaluate the backup inventory."""
@@ -398,6 +473,10 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 safe_error_type(err),
                 error_code,
             )
+            if self.data is not None:
+                snapshot = self._manager_error_snapshot(error_code)
+                await self._async_process_notifications(snapshot)
+                return snapshot
             raise UpdateFailed(
                 f"Home Assistant backup manager is not ready ({error_code})"
             ) from None
@@ -408,9 +487,18 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 safe_error_type(err),
                 error_code,
             )
+            if self.data is not None:
+                snapshot = self._manager_error_snapshot(error_code)
+                await self._async_process_notifications(snapshot)
+                return snapshot
             raise UpdateFailed(
                 f"Unable to read Home Assistant backups ({error_code})"
             ) from None
+
+        if not isinstance(backups, Mapping):
+            raise UpdateFailed("Backup manager returned an invalid inventory")
+        if not isinstance(agent_errors_raw, Mapping):
+            agent_errors_raw = {}
 
         now = dt_util.utcnow()
         if not self._integrity_loaded:
@@ -470,11 +558,29 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         )
         next_automatic = self._entity_datetime(CORE_NEXT_AUTOMATIC_BACKUP)
         manager_state = self._entity_state(CORE_BACKUP_MANAGER_STATE)
+        automatic_event = self.hass.states.get(CORE_AUTOMATIC_BACKUP_EVENT)
+        automatic_event_type = (
+            str(automatic_event.attributes.get("event_type", "")).lower()
+            if automatic_event is not None
+            else ""
+        )
+        automatic_backup_in_progress = automatic_event_type in {
+            "in_progress",
+            "in progress",
+        } or manager_state in {
+            "create_backup",
+            "creating_a_backup",
+            "creating a backup",
+            "receive_backup",
+            "receiving_a_backup",
+            "receiving a backup",
+        }
         history_metrics = await self.history.async_observe(
             last_attempt=last_automatic_attempt,
             last_success=last_successful_automatic_event,
             now=now,
             window_days=self.analytics_window_days,
+            in_progress=automatic_backup_in_progress,
         )
         inventory_analytics = calculate_inventory_analytics(
             monitoring_records,
@@ -500,31 +606,38 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 and not manual_covers_automatic
             )
 
-        automatic_backup_failed = last_automatic_attempt is not None and (
-            last_successful_automatic_event is None
-            or last_automatic_attempt
-            > last_successful_automatic_event + timedelta(seconds=60)
+        automatic_backup_failed = evaluate_automatic_backup_failed(
+            event_type=automatic_event_type,
+            in_progress=automatic_backup_in_progress,
+            last_attempt=last_automatic_attempt,
+            last_success=last_successful_automatic_event,
         )
         automatic_schedule_missing = next_automatic is None
         automatic_schedule_overdue = (
             next_automatic is not None and next_automatic < now - timedelta(hours=6)
         )
-        manager_unavailable = manager_state in {
-            STATE_UNKNOWN,
-            STATE_UNAVAILABLE,
-            "none",
-            "",
-        }
+        # A successful manager API response proves availability. The optional
+        # state entity is supplemental and may be disabled or not loaded yet.
+        manager_unavailable = False
         agent_errors = {
-            str(agent_id): classify_exception(error)
+            normalized_agent_id: classify_exception(error)
             for agent_id, error in agent_errors_raw.items()
+            if (normalized_agent_id := str(agent_id).strip())
+            and len(normalized_agent_id) <= 512
         }
         storage_error = bool(agent_errors)
 
+        manager_agents = getattr(manager, "backup_agents", {})
+        configured_agent_ids = (
+            {str(agent_id) for agent_id in manager_agents}
+            if isinstance(manager_agents, Mapping)
+            else set()
+        )
         agent_summaries = self._build_agent_summaries(
             records,
             monitoring_records,
             agent_errors,
+            configured_agent_ids,
             now,
         )
         required_location_missing = bool(
@@ -538,12 +651,19 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         backup_integrity_failed = bool(
             latest_record
             and self.integrity_result.backup_id == latest_record.backup_id
-            and self.integrity_result.status in {"corrupt", "unreadable"}
+            and self.integrity_result.status
+            in {"corrupt", "unreadable", "internal_error"}
+        )
+        backup_checksum_changed = bool(
+            latest_record
+            and self.integrity_result.backup_id == latest_record.backup_id
+            and self.integrity_result.checksum_changed
         )
 
         status = self._status(
             no_backup=no_backup,
             backup_integrity_failed=backup_integrity_failed,
+            backup_checksum_changed=backup_checksum_changed,
             manager_unavailable=manager_unavailable,
             automatic_schedule_missing=automatic_schedule_missing,
             storage_error=storage_error,
@@ -561,6 +681,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             for key, active in (
                 ("no_backup", no_backup),
                 ("backup_integrity_failed", backup_integrity_failed),
+                ("backup_checksum_changed", backup_checksum_changed),
                 ("backup_stale", backup_stale),
                 ("automatic_backup_overdue", automatic_backup_overdue),
                 ("automatic_backup_failed", automatic_backup_failed),
@@ -579,6 +700,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         score_flags = {
             "no_backup": no_backup,
             "backup_integrity_failed": backup_integrity_failed,
+            "backup_checksum_changed": backup_checksum_changed,
             "backup_stale": backup_stale,
             "automatic_backup_overdue": automatic_backup_overdue,
             "automatic_backup_failed": automatic_backup_failed,
@@ -602,6 +724,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             STATUS_OK: RECOMMENDATION_NONE,
             STATUS_NO_BACKUPS: RECOMMENDATION_CREATE_BACKUP,
             STATUS_BACKUP_INTEGRITY_FAILED: RECOMMENDATION_REPLACE_BACKUP,
+            STATUS_BACKUP_CHECKSUM_CHANGED: RECOMMENDATION_CHECK_STORAGE,
             STATUS_BACKUP_STALE: RECOMMENDATION_CREATE_BACKUP,
             STATUS_AUTOMATIC_BACKUP_OVERDUE: RECOMMENDATION_CHECK_SCHEDULE,
             STATUS_AUTOMATIC_BACKUP_FAILED: RECOMMENDATION_CHECK_SCHEDULE,
@@ -613,6 +736,23 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             STATUS_BACKUP_SIZE_SUSPICIOUS: RECOMMENDATION_CHECK_BACKUP_SIZE,
             STATUS_BACKUP_NOT_REDUNDANT: RECOMMENDATION_ADD_STORAGE_LOCATION,
         }.get(status, RECOMMENDATION_CHECK_BACKUP_SYSTEM)
+
+        public_agent_errors = (
+            agent_errors
+            if self.expose_backup_metadata
+            else {
+                anonymous_agent_reference(self.config_entry.entry_id, agent_id): code
+                for agent_id, code in agent_errors.items()
+            }
+        )
+        public_location_ids = (
+            latest_location_ids
+            if self.expose_backup_metadata
+            else tuple(
+                anonymous_agent_reference(self.config_entry.entry_id, agent_id)
+                for agent_id in latest_location_ids
+            )
+        )
 
         data = BackupCheckupData(
             checked_at=now,
@@ -640,12 +780,12 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             comparable_backup_count=comparable_backup_count,
             latest_backup_result=latest_backup_result,
             latest_backup_locations=latest_locations,
-            latest_backup_location_ids=latest_location_ids,
+            latest_backup_location_ids=public_location_ids,
             last_automatic_attempt=last_automatic_attempt,
             last_successful_automatic_event=last_successful_automatic_event,
             next_automatic_backup=next_automatic,
             manager_state=manager_state,
-            agent_errors=agent_errors,
+            agent_errors=public_agent_errors,
             agent_summaries=agent_summaries,
             backups=records,
             monitored_backups=monitoring_records,
@@ -661,6 +801,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             latest_backup_incomplete=latest_backup_incomplete,
             backup_not_redundant=backup_not_redundant,
             required_location_missing=required_location_missing,
+            backup_checksum_changed=backup_checksum_changed,
             problem=bool(active_problems),
             status=status,
             recommendation=recommendation,
@@ -686,8 +827,35 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             integrity=self.integrity_result,
             integrity_check_running=self.integrity_check_running,
             expose_backup_metadata=self.expose_backup_metadata,
+            invalid_backup_count=self._invalid_backup_count,
         )
 
+        await self._async_process_notifications(data)
+
+        if (
+            self.auto_verify_new_backups
+            and latest_record is not None
+            and (
+                self.integrity_result.backup_id != latest_record.backup_id
+                or self.integrity_result.status == INTEGRITY_STATUS_INTERNAL_ERROR
+            )
+            and not self.integrity_check_running
+            and (self._integrity_task is None or self._integrity_task.done())
+            and (
+                self._integrity_retry_not_before is None
+                or now >= self._integrity_retry_not_before
+            )
+        ):
+            self._set_integrity_task(
+                self.hass.async_create_task(
+                    self._async_run_integrity_check(latest_record, source="automatic"),
+                    name=f"{DOMAIN}_automatic_integrity_check",
+                )
+            )
+        return data
+
+    async def _async_process_notifications(self, data: BackupCheckupData) -> None:
+        """Process notifications without allowing third-party failures to escape."""
         try:
             await self.notification_manager.async_process(
                 data,
@@ -702,18 +870,44 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 safe_error_type(err),
             )
 
-        if (
-            self.auto_verify_new_backups
-            and latest_record is not None
-            and self.integrity_result.backup_id != latest_record.backup_id
-            and not self.integrity_check_running
-            and (self._integrity_task is None or self._integrity_task.done())
-        ):
-            self._integrity_task = self.hass.async_create_task(
-                self._async_run_integrity_check(latest_record, source="automatic"),
-                name=f"{DOMAIN}_automatic_integrity_check",
-            )
-        return data
+    def _manager_error_snapshot(self, error_code: str) -> BackupCheckupData:
+        """Return the last snapshot marked unavailable after a manager API error."""
+        now = dt_util.utcnow()
+        active = tuple(
+            dict.fromkeys(("manager_unavailable", *self.data.active_problems))
+        )
+        deductions = dict(self.data.health_score_deductions)
+        deductions["manager_unavailable"] = max(
+            deductions.get("manager_unavailable", 0), 50
+        )
+        return replace(
+            self.data,
+            checked_at=now,
+            manager_state=STATE_UNAVAILABLE,
+            manager_unavailable=True,
+            problem=True,
+            status=STATUS_MANAGER_UNAVAILABLE,
+            recommendation=RECOMMENDATION_CHECK_BACKUP_SYSTEM,
+            problem_count=len(active),
+            active_problems=active,
+            health_score=min(self.data.health_score, 50),
+            health_rating="critical",
+            health_score_deductions=deductions,
+            agent_errors={**self.data.agent_errors, "manager": error_code},
+        )
+
+    def _set_integrity_task(self, task: asyncio.Task[None]) -> None:
+        """Track a verification task and always retrieve its final exception."""
+        self._integrity_task = task
+        task.add_done_callback(self._consume_integrity_task_result)
+
+    @staticmethod
+    def _consume_integrity_task_result(task: asyncio.Task[None]) -> None:
+        """Consume a background task result so asyncio never reports it unhandled."""
+        try:
+            task.exception()
+        except asyncio.CancelledError:
+            return
 
     @property
     def integrity_check_pending_or_running(self) -> bool:
@@ -755,9 +949,11 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                     "minutes": str(self.manual_verification_cooldown_minutes)
                 },
             )
-        self._integrity_task = self.hass.async_create_task(
-            self._async_run_integrity_check(latest_record, source=source),
-            name=f"{DOMAIN}_{source}_integrity_check",
+        self._set_integrity_task(
+            self.hass.async_create_task(
+                self._async_run_integrity_check(latest_record, source=source),
+                name=f"{DOMAIN}_{source}_integrity_check",
+            )
         )
         return True
 
@@ -767,7 +963,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         *,
         source: str,
     ) -> None:
-        """Run and persist one full integrity check."""
+        """Run and persist one full integrity check without leaking task errors."""
         if self.integrity_check_running:
             return
         cancelled = False
@@ -792,7 +988,21 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 repair_issues_enabled=self.repair_issues_enabled,
             )
             self.integrity_result = result
-            await self.integrity_verifier.store.async_save(result)
+            try:
+                await self.integrity_verifier.store.async_save(result)
+            except Exception as err:  # noqa: BLE001
+                self._integrity_retry_not_before = dt_util.utcnow() + timedelta(
+                    minutes=30
+                )
+                _LOGGER.error(
+                    "Unable to persist backup verification result: source=%s "
+                    "error_type=%s backup_reference=%s",
+                    source,
+                    safe_error_type(err),
+                    record.backup_reference,
+                )
+            else:
+                self._integrity_retry_not_before = None
             _LOGGER.info(
                 "Backup verification completed: source=%s status=%s "
                 "duration_seconds=%s warnings=%s backup_reference=%s",
@@ -810,49 +1020,120 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 record.backup_reference,
             )
             raise
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001
+            self._integrity_retry_not_before = dt_util.utcnow() + timedelta(minutes=30)
+            result = BackupIntegrityResult(
+                status=INTEGRITY_STATUS_INTERNAL_ERROR,
+                checked_at=dt_util.utcnow(),
+                backup_id=record.backup_id,
+                backup_reference=record.backup_reference,
+                backup_date=record.date,
+                agent_id=None,
+                sha256=None,
+                verified_size=None,
+                duration_seconds=None,
+                archive_count=0,
+                file_count=0,
+                protected=None,
+                database_status=INTEGRITY_DATABASE_NOT_CHECKED,
+                warnings=(),
+                error_code="internal_error",
+                checksum_changed=False,
+            )
+            self.integrity_result = result
             _LOGGER.error(
-                "Backup verification failed unexpectedly: source=%s "
+                "Backup verification failed internally: source=%s "
                 "error_type=%s backup_reference=%s",
                 source,
                 safe_error_type(err),
                 record.backup_reference,
             )
-            raise
+            try:
+                await self.integrity_verifier.store.async_save(result)
+            except Exception as save_err:  # noqa: BLE001
+                _LOGGER.error(
+                    "Unable to persist internal verification failure: error_type=%s",
+                    safe_error_type(save_err),
+                )
         finally:
             self.integrity_check_running = False
             self._integrity_task = release_current_task_reference(self._integrity_task)
             if not cancelled:
-                await self.async_request_refresh()
+                try:
+                    await self.async_request_refresh()
+                except Exception as err:  # noqa: BLE001
+                    _LOGGER.warning(
+                        "Unable to refresh BackupCheckup after verification: "
+                        "error_type=%s",
+                        safe_error_type(err),
+                    )
 
     def _normalize_backups(
         self, backups: Mapping[str, Any]
     ) -> tuple[BackupRecord, ...]:
         """Normalize Home Assistant backup models into stable local records."""
         records: list[BackupRecord] = []
+        invalid_backup_count = 0
+        seen_backup_ids: set[str] = set()
 
         for backup in backups.values():
+            backup_id_raw = getattr(backup, "backup_id", None)
+            if (
+                not isinstance(backup_id_raw, str)
+                or not backup_id_raw.strip()
+                or len(backup_id_raw) > 1024
+            ):
+                invalid_backup_count += 1
+                _LOGGER.warning("Ignoring one backup because its ID is invalid")
+                continue
+            backup_id = backup_id_raw.strip()
+            if backup_id in seen_backup_ids:
+                invalid_backup_count += 1
+                _LOGGER.warning("Ignoring one backup because its ID is duplicated")
+                continue
             backup_date = self._as_datetime(getattr(backup, "date", None))
             if backup_date is None:
+                invalid_backup_count += 1
                 _LOGGER.warning("Ignoring one backup because its date is invalid")
                 continue
+            seen_backup_ids.add(backup_id)
 
             agents_raw = getattr(backup, "agents", {}) or {}
             if isinstance(agents_raw, Mapping):
+                normalized_agent_items = [
+                    (str(agent_id).strip(), details)
+                    for agent_id, details in agents_raw.items()
+                    if str(agent_id).strip() and len(str(agent_id)) <= 512
+                ]
                 agent_copies = tuple(
                     sorted(
                         (
                             self._agent_copy(agent_id, details)
-                            for agent_id, details in agents_raw.items()
+                            for agent_id, details in normalized_agent_items
                         ),
                         key=lambda item: item.agent_id,
                     )
                 )
-            else:
-                agent_copies = tuple(
-                    BackupAgentRecord(str(agent_id), None, None)
-                    for agent_id in sorted(agents_raw, key=str)
+            elif isinstance(agents_raw, (list, tuple, set, frozenset)):
+                normalized_agent_ids = sorted(
+                    {
+                        str(agent_id).strip()
+                        for agent_id in agents_raw
+                        if str(agent_id).strip() and len(str(agent_id)) <= 512
+                    }
                 )
+                agent_copies = tuple(
+                    BackupAgentRecord(
+                        agent_id,
+                        anonymous_agent_reference(self.config_entry.entry_id, agent_id),
+                        None,
+                        None,
+                    )
+                    for agent_id in normalized_agent_ids
+                )
+            else:
+                invalid_backup_count += 1
+                agent_copies = ()
             agents = tuple(copy.agent_id for copy in agent_copies)
 
             failed_agents = self._as_string_tuple(
@@ -892,12 +1173,12 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
 
             records.append(
                 BackupRecord(
-                    backup_id=str(getattr(backup, "backup_id", "")),
+                    backup_id=backup_id,
                     backup_reference=anonymous_backup_reference(
                         self.config_entry.entry_id,
-                        str(getattr(backup, "backup_id", "")),
+                        backup_id,
                     ),
-                    name=str(getattr(backup, "name", "")),
+                    name=str(getattr(backup, "name", ""))[:512],
                     date=backup_date,
                     automatic=automatic,
                     purpose=purpose,
@@ -923,6 +1204,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             )
 
         records.sort(key=lambda item: item.date, reverse=True)
+        self._invalid_backup_count = invalid_backup_count
         return tuple(records)
 
     def _size_changes(
@@ -985,12 +1267,14 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         inventory_records: tuple[BackupRecord, ...],
         monitoring_records: tuple[BackupRecord, ...],
         agent_errors: dict[str, str],
+        configured_agent_ids: set[str],
         now: datetime,
     ) -> tuple[BackupAgentSummary, ...]:
         """Build one health summary per detected backup storage agent."""
         all_agent_ids = sorted(
             {agent for item in inventory_records for agent in item.agents}
             | set(agent_errors)
+            | configured_agent_ids
         )
         summaries: list[BackupAgentSummary] = []
 
@@ -1022,6 +1306,9 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             summaries.append(
                 BackupAgentSummary(
                     agent_id=agent_id,
+                    agent_reference=anonymous_agent_reference(
+                        self.config_entry.entry_id, agent_id
+                    ),
                     backup_count=len(agent_records),
                     inventory_backup_count=len(inventory_agent_records),
                     ignored_update_backup_count=(
@@ -1043,17 +1330,18 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
     def _status(**flags: bool) -> str:
         """Return the highest-priority status from the active flags."""
         priority = (
-            ("no_backup", STATUS_NO_BACKUPS),
             ("backup_integrity_failed", STATUS_BACKUP_INTEGRITY_FAILED),
+            ("backup_checksum_changed", STATUS_BACKUP_CHECKSUM_CHANGED),
+            ("no_backup", STATUS_NO_BACKUPS),
             ("manager_unavailable", STATUS_MANAGER_UNAVAILABLE),
-            ("automatic_schedule_missing", STATUS_SCHEDULE_MISSING),
             ("storage_error", STATUS_STORAGE_ERROR),
             ("latest_backup_incomplete", STATUS_BACKUP_INCOMPLETE),
-            ("backup_size_suspicious", STATUS_BACKUP_SIZE_SUSPICIOUS),
-            ("backup_not_redundant", STATUS_BACKUP_NOT_REDUNDANT),
             ("automatic_backup_failed", STATUS_AUTOMATIC_BACKUP_FAILED),
             ("automatic_backup_overdue", STATUS_AUTOMATIC_BACKUP_OVERDUE),
             ("backup_stale", STATUS_BACKUP_STALE),
+            ("backup_not_redundant", STATUS_BACKUP_NOT_REDUNDANT),
+            ("backup_size_suspicious", STATUS_BACKUP_SIZE_SUSPICIOUS),
+            ("automatic_schedule_missing", STATUS_SCHEDULE_MISSING),
             ("automatic_schedule_overdue", STATUS_SCHEDULE_OVERDUE),
         )
         return next((status for key, status in priority if flags[key]), STATUS_OK)

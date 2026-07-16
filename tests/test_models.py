@@ -45,3 +45,36 @@ def test_backup_record_is_private_by_default() -> None:
     assert private["name"] == "My private backup name"
     assert private["failed_addons"] == ["private-addon"]
     assert private["included_addons"] == ["private-addon"]
+
+
+def test_corrupt_integrity_store_values_are_rejected() -> None:
+    """Malformed private-store values are detected before deserialization."""
+    from custom_components.backup_checkup.models import BackupIntegrityResult
+
+    assert not BackupIntegrityResult.storage_dict_is_valid(
+        {"status": "valid", "archive_count": "not-an-int"}
+    )
+    assert not BackupIntegrityResult.storage_dict_is_valid(
+        {"status": "unknown-future-status"}
+    )
+    assert not BackupIntegrityResult.storage_dict_is_valid(
+        {"status": "valid", "checked_at": "not-a-date"}
+    )
+
+
+def test_missing_new_integrity_fields_remain_backward_compatible() -> None:
+    """Older beta store records can load without every newer optional field."""
+    from custom_components.backup_checkup.models import BackupIntegrityResult
+
+    stored = {
+        "status": "valid",
+        "archive_count": 1,
+        "file_count": 2,
+        "database_status": "not_checked",
+    }
+
+    assert BackupIntegrityResult.storage_dict_is_valid(stored)
+    parsed = BackupIntegrityResult.from_dict(stored)
+    assert parsed.status == "valid"
+    assert parsed.archive_count == 1
+    assert parsed.checksum_changed is False

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from datetime import datetime, timedelta
 from typing import Any
 
 from .const import (
@@ -64,3 +65,25 @@ def automatic_size_drop_is_suspicious(
         else previous_change_percent
     )
     return bool(effective_drop is not None and effective_drop <= -maximum_drop_percent)
+
+
+def automatic_backup_failed(
+    *,
+    event_type: str,
+    in_progress: bool,
+    last_attempt: datetime | None,
+    last_success: datetime | None,
+) -> bool:
+    """Evaluate automatic backup failure with native events as authority."""
+    normalized_event = event_type.strip().lower()
+    if normalized_event == "failed":
+        return True
+    if normalized_event in {"completed", "in_progress", "in progress"}:
+        return False
+    return bool(
+        not in_progress
+        and last_attempt is not None
+        and (
+            last_success is None or last_attempt > last_success + timedelta(seconds=60)
+        )
+    )

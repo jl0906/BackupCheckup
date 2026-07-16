@@ -13,6 +13,7 @@ from homeassistant.helpers.translation import async_get_translations
 
 from .const import DOMAIN
 from .models import BackupCheckupData
+from .repairs import async_set_storage_data_issue
 from .security import classify_exception, safe_error_type
 
 _LOGGER = logging.getLogger(__name__)
@@ -140,6 +141,7 @@ class BackupCheckupNotificationManager:
     def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
         """Initialize notification state storage."""
         self.hass = hass
+        self._hass = hass
         self._store: Store[dict[str, Any]] = Store(
             hass,
             _STORAGE_VERSION,
@@ -303,9 +305,36 @@ class BackupCheckupNotificationManager:
         """Load the last notification state once."""
         if self._loaded:
             return
-        stored = await self._store.async_load() or {}
-        self._last_signature = str(stored.get("last_signature", ""))
-        self._was_enabled = bool(stored.get("was_enabled", False))
+        try:
+            stored = await self._store.async_load()
+            if stored is None:
+                stored = {}
+            if not isinstance(stored, dict):
+                raise ValueError("invalid_store_root")
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning(
+                "Invalid notification store data was reset: error_type=%s",
+                safe_error_type(err),
+            )
+            stored = {}
+            async_set_storage_data_issue(
+                self._hass, store_name="notifications", active=True
+            )
+        else:
+            async_set_storage_data_issue(
+                self._hass, store_name="notifications", active=False
+            )
+        signature = stored.get("last_signature", "")
+        was_enabled = stored.get("was_enabled", False)
+        invalid_content = not isinstance(signature, str) or not isinstance(
+            was_enabled, bool
+        )
+        self._last_signature = signature[:512] if isinstance(signature, str) else ""
+        self._was_enabled = was_enabled is True
+        if invalid_content:
+            async_set_storage_data_issue(
+                self._hass, store_name="notifications", active=True
+            )
         self._loaded = True
 
     async def _async_save(self) -> None:

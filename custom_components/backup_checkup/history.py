@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
@@ -11,6 +12,10 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
+from .repairs import async_set_storage_data_issue
+from .security import safe_error_type
+
+_LOGGER = logging.getLogger(__name__)
 
 _STORAGE_VERSION = 1
 _HISTORY_RETENTION_DAYS = 400
@@ -39,6 +44,7 @@ class BackupCheckupHistory:
 
     def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
         """Initialize the history store."""
+        self._hass = hass
         self._store: Store[dict[str, Any]] = Store(
             hass,
             _STORAGE_VERSION,
@@ -54,20 +60,60 @@ class BackupCheckupHistory:
         """Load persisted history once."""
         if self._loaded:
             return
-        stored = await self._store.async_load() or {}
-        self._tracking_started_at = self._parse_datetime(
-            stored.get("tracking_started_at")
-        )
+        try:
+            stored = await self._store.async_load()
+            if stored is None:
+                stored = {}
+            if not isinstance(stored, dict):
+                raise ValueError("invalid_store_root")
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning(
+                "Invalid history store data was reset: error_type=%s",
+                safe_error_type(err),
+            )
+            stored = {}
+            async_set_storage_data_issue(self._hass, store_name="history", active=True)
+        else:
+            async_set_storage_data_issue(self._hass, store_name="history", active=False)
+        invalid_content = False
+        tracking_raw = stored.get("tracking_started_at")
+        self._tracking_started_at = self._parse_datetime(tracking_raw)
+        if tracking_raw is not None and self._tracking_started_at is None:
+            invalid_content = True
+
         attempts = stored.get("attempts", [])
-        if isinstance(attempts, list):
-            self._attempts = [
-                dict(item)
-                for item in attempts
-                if isinstance(item, dict)
-                and isinstance(item.get("attempt_at"), str)
-                and item.get("status")
-                in {_STATUS_PENDING, _STATUS_SUCCESS, _STATUS_FAILED}
-            ]
+        if not isinstance(attempts, list):
+            attempts = []
+            invalid_content = True
+        sanitized_attempts: list[dict[str, str]] = []
+        for item in attempts[:5000]:
+            if not isinstance(item, dict):
+                invalid_content = True
+                continue
+            attempt_at = item.get("attempt_at")
+            status = item.get("status")
+            if (
+                not isinstance(attempt_at, str)
+                or self._parse_datetime(attempt_at) is None
+                or status not in {_STATUS_PENDING, _STATUS_SUCCESS, _STATUS_FAILED}
+            ):
+                invalid_content = True
+                continue
+            sanitized: dict[str, str] = {
+                "attempt_at": attempt_at,
+                "status": status,
+            }
+            resolved_at = item.get("resolved_at")
+            if isinstance(resolved_at, str) and self._parse_datetime(resolved_at):
+                sanitized["resolved_at"] = resolved_at
+            elif resolved_at is not None:
+                invalid_content = True
+            sanitized_attempts.append(sanitized)
+        if len(attempts) > 5000:
+            invalid_content = True
+        self._attempts = sanitized_attempts
+        if invalid_content:
+            async_set_storage_data_issue(self._hass, store_name="history", active=True)
         self._loaded = True
 
     async def async_observe(
@@ -77,6 +123,7 @@ class BackupCheckupHistory:
         last_success: datetime | None,
         now: datetime,
         window_days: int,
+        in_progress: bool = False,
     ) -> AutomaticHistoryMetrics:
         """Observe the native automatic-backup timestamps and update history."""
         await self.async_load()
@@ -121,7 +168,9 @@ class BackupCheckupHistory:
                 later_attempt is not None and later_attempt > attempt
                 for _, later_attempt in attempt_datetimes[index + 1 :]
             )
-            if has_newer_attempt or now - attempt > _FAILURE_GRACE_PERIOD:
+            if not in_progress and (
+                has_newer_attempt or now - attempt > _FAILURE_GRACE_PERIOD
+            ):
                 item["status"] = _STATUS_FAILED
                 item["resolved_at"] = now.isoformat()
                 changed = True

@@ -5,6 +5,7 @@ from __future__ import annotations
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.service import async_register_admin_service
 from homeassistant.helpers.typing import ConfigType
 
@@ -47,6 +48,8 @@ from .const import (
     DOMAIN,
     PLATFORMS,
     PROFILE_CUSTOM,
+    SERVICE_REFRESH,
+    SERVICE_TEST_NOTIFICATION,
     SERVICE_VERIFY_LATEST_BACKUP,
 )
 from .coordinator import BackupCheckupCoordinator
@@ -65,7 +68,7 @@ from .security import cleanup_stale_temp_directories
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Register BackupCheckup actions independently of config-entry loading."""
 
-    async def _async_verify_latest_backup(_call: ServiceCall) -> None:
+    def _coordinator() -> BackupCheckupCoordinator:
         coordinator = next(
             (
                 runtime
@@ -82,20 +85,46 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 translation_domain=DOMAIN,
                 translation_key="integration_not_loaded",
             )
-        await coordinator.async_start_integrity_check(source="manual")
+        return coordinator
 
-    async_register_admin_service(
-        hass,
-        DOMAIN,
-        SERVICE_VERIFY_LATEST_BACKUP,
-        _async_verify_latest_backup,
-    )
+    async def _async_verify_latest_backup(_call: ServiceCall) -> None:
+        await _coordinator().async_start_integrity_check(source="manual")
+
+    async def _async_refresh(_call: ServiceCall) -> None:
+        await _coordinator().async_request_refresh()
+
+    async def _async_test_notification(_call: ServiceCall) -> None:
+        coordinator = _coordinator()
+        if (
+            not coordinator.notifications_enabled
+            or not coordinator.notification_targets
+        ):
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="notification_not_configured",
+            )
+        if not await coordinator.notification_manager.async_send_test(
+            coordinator.notification_targets
+        ):
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="notification_failed",
+            )
+
+    for service, handler in (
+        (SERVICE_VERIFY_LATEST_BACKUP, _async_verify_latest_backup),
+        (SERVICE_REFRESH, _async_refresh),
+        (SERVICE_TEST_NOTIFICATION, _async_test_notification),
+    ):
+        async_register_admin_service(hass, DOMAIN, service, handler)
     return True
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate older BackupCheckup configuration entries."""
-    if entry.version >= 6:
+    if entry.version > 6:
+        return False
+    if entry.version == 6:
         return True
 
     migrated_data = dict(entry.data)
@@ -202,3 +231,23 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await history.async_remove()
     await BackupIntegrityStore(hass, entry.entry_id).async_remove()
     await BackupCheckupNotificationManager(hass, entry.entry_id).async_remove()
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    device_entry: dr.DeviceEntry,
+) -> bool:
+    """Allow removal of a storage device only after its agent disappeared."""
+    coordinator = getattr(entry, "runtime_data", None)
+    if not isinstance(coordinator, BackupCheckupCoordinator):
+        return False
+    current_agent_ids = {
+        summary.agent_id for summary in coordinator.data.agent_summaries
+    }
+    for domain, identifier in device_entry.identifiers:
+        if domain != DOMAIN or not identifier.startswith(f"{entry.entry_id}:"):
+            continue
+        agent_id = identifier.split(":", 1)[1]
+        return agent_id not in current_agent_ids
+    return False

@@ -50,6 +50,7 @@ STANDARD_BINARY_SENSOR_KEYS = frozenset(
         "latest_backup_incomplete",
         "backup_not_redundant",
         "backup_integrity_problem",
+        "backup_checksum_changed",
     }
 )
 

@@ -11,7 +11,11 @@ from homeassistant.core import HomeAssistant
 from .const import CONF_NOTIFICATION_TARGETS, VERSION
 from .coordinator import BackupCheckupCoordinator
 from .models import BackupRecord
-from .security import classify_exception, safe_error_type
+from .security import (
+    anonymous_agent_reference,
+    classify_exception,
+    safe_error_type,
+)
 
 
 async def async_get_config_entry_diagnostics(
@@ -81,6 +85,7 @@ async def async_get_config_entry_diagnostics(
                 "latest_backup_incomplete": data.latest_backup_incomplete,
                 "backup_not_redundant": data.backup_not_redundant,
                 "required_location_missing": data.required_location_missing,
+                "backup_checksum_changed": data.backup_checksum_changed,
             },
         },
         "inventory": {
@@ -123,6 +128,7 @@ async def async_get_config_entry_diagnostics(
                 else None
             ),
             "manager_state": data.manager_state,
+            "invalid_backup_count": data.invalid_backup_count,
         },
         "integrity": {
             "status": data.integrity.status,
@@ -138,8 +144,20 @@ async def async_get_config_entry_diagnostics(
                 else None
             ),
             "backup_reference": data.integrity.backup_reference,
-            "storage_location": data.integrity.agent_id,
-            "sha256": data.integrity.sha256,
+            "storage_location": (
+                data.integrity.agent_id
+                if data.expose_backup_metadata
+                else (
+                    anonymous_agent_reference(entry.entry_id, data.integrity.agent_id)
+                    if data.integrity.agent_id
+                    else None
+                )
+            ),
+            "sha256": (
+                data.integrity.sha256
+                if data.expose_backup_metadata
+                else (data.integrity.sha256[:16] if data.integrity.sha256 else None)
+            ),
             "verified_size": data.integrity.verified_size,
             "duration_seconds": data.integrity.duration_seconds,
             "archive_count": data.integrity.archive_count,
@@ -190,7 +208,10 @@ async def async_get_config_entry_diagnostics(
         "storage": {
             "minimum_required_locations": data.minimum_redundant_locations,
             "agent_errors": data.agent_errors,
-            "agents": [item.as_dict() for item in data.agent_summaries],
+            "agents": [
+                item.as_dict(expose_metadata=data.expose_backup_metadata)
+                for item in data.agent_summaries
+            ],
         },
         "recent_inventory_backups": [
             _serialize_backup(record) for record in data.backups[:20]

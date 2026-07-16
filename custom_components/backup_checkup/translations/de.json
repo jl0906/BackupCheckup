@@ -151,7 +151,8 @@
           "backup_size_suspicious": "Verdächtige Backup-Größe",
           "backup_incomplete": "Unvollständiges Backup",
           "backup_not_redundant": "Backup nicht redundant",
-          "backup_integrity_failed": "Backup-Integritätsprüfung fehlgeschlagen"
+          "backup_integrity_failed": "Backup-Integritätsprüfung fehlgeschlagen",
+          "backup_checksum_changed": "Backup-Prüfsumme geändert"
         }
       },
       "stored_backups": {
@@ -288,7 +289,8 @@
           "corrupt": "Beschädigt",
           "unreadable": "Nicht lesbar",
           "password_required": "Passwort erforderlich",
-          "aborted": "Durch Sicherheitsgrenze abgebrochen"
+          "aborted": "Durch Sicherheitsgrenze abgebrochen",
+          "internal_error": "Interner Prüffehler"
         }
       },
       "last_integrity_check": {
@@ -309,7 +311,8 @@
           "not_checked": "Nicht geprüft",
           "passed": "Bestanden",
           "failed": "Fehlgeschlagen",
-          "not_found": "Nicht gefunden"
+          "not_found": "Nicht gefunden",
+          "not_applicable": "Nicht zutreffend"
         }
       }
     },
@@ -358,6 +361,9 @@
       },
       "backup_integrity_problem": {
         "name": "Backup beschädigt oder nicht lesbar"
+      },
+      "backup_checksum_changed": {
+        "name": "Backup-Prüfsumme geändert"
       }
     },
     "button": {
@@ -433,7 +439,7 @@
     },
     "latest_backup_incomplete": {
       "title": "Das neueste Backup ist unvollständig",
-      "description": "Beim neuesten Backup sind Bestandteile fehlgeschlagen. Add-ons: {addons}. Ordner: {folders}. Speicherorte: {locations}. Prüfe das Backup-Protokoll und erstelle ein neues Backup."
+      "description": "Das neueste Backup enthält fehlgeschlagene Bestandteile. Fehlgeschlagene Apps: {addons}. Ordner: {folders}. Speicherorte: {locations}. Prüfe das Backup-Protokoll und erstelle ein neues Backup."
     },
     "backup_not_redundant": {
       "title": "Backup ist nicht redundant gespeichert",
@@ -446,6 +452,14 @@
     "temporary_cleanup_failed": {
       "title": "Temporäre Prüfdaten konnten nicht gelöscht werden",
       "description": "BackupCheckup konnte private temporäre Prüfdaten nicht entfernen. Starte Home Assistant neu und prüfe das temporäre Dateisystem sowie den freien Speicherplatz."
+    },
+    "backup_checksum_changed": {
+      "title": "Backup-Prüfsumme hat sich geändert",
+      "description": "Die gespeicherte Prüfsumme derselben Backup-Kopie hat sich seit der letzten Prüfung geändert. Prüfe den Speicherort und führe die Prüfung erneut aus. Letzte Prüfung: {checked}."
+    },
+    "storage_data_invalid": {
+      "title": "Interne BackupCheckup-Daten wurden zurückgesetzt",
+      "description": "Die privaten Speicherdaten für „{store}“ waren ungültig oder beschädigt und wurden sicher zurückgesetzt. Prüfe die BackupCheckup-Einstellungen und führe bei Bedarf eine neue Prüfung aus."
     }
   },
   "exceptions": {
@@ -463,6 +477,9 @@
     },
     "integration_not_loaded": {
       "message": "BackupCheckup ist derzeit nicht geladen."
+    },
+    "notification_not_configured": {
+      "message": "Für BackupCheckup sind keine Benachrichtigungsziele konfiguriert."
     }
   }
 }

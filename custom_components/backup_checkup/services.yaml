@@ -4,3 +4,15 @@ verify_latest_backup:
     Downloads and fully verifies the newest Home Assistant backup while enforcing
     BackupCheckup's configured resource and privacy safeguards. Administrator access
     is required.
+
+refresh:
+  name: Refresh BackupCheckup
+  description: >-
+    Refreshes BackupCheckup's inventory and health evaluation immediately.
+    Administrator access is required.
+
+test_notification:
+  name: Send test notification
+  description: >-
+    Sends one localized test notification to the configured notification targets.
+    Administrator access is required.

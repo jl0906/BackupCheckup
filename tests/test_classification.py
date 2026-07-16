@@ -138,3 +138,53 @@ def test_automatic_size_drop_needs_two_comparable_backups() -> None:
         baseline_change_percent=-80.0,
         comparable_backup_count=2,
     )
+
+
+def test_native_automatic_event_is_authoritative() -> None:
+    """Native events suppress timestamp lag and report explicit failures."""
+    from datetime import UTC, datetime, timedelta
+
+    from custom_components.backup_checkup.classification import automatic_backup_failed
+
+    attempt = datetime(2026, 7, 16, 12, tzinfo=UTC)
+    old_success = attempt - timedelta(hours=1)
+    assert not automatic_backup_failed(
+        event_type="completed",
+        in_progress=False,
+        last_attempt=attempt,
+        last_success=old_success,
+    )
+    assert automatic_backup_failed(
+        event_type="failed",
+        in_progress=False,
+        last_attempt=None,
+        last_success=None,
+    )
+    assert not automatic_backup_failed(
+        event_type="in_progress",
+        in_progress=True,
+        last_attempt=attempt,
+        last_success=old_success,
+    )
+
+
+def test_automatic_failure_timestamp_fallback() -> None:
+    """Older Home Assistant versions still use the guarded timestamp fallback."""
+    from datetime import UTC, datetime, timedelta
+
+    from custom_components.backup_checkup.classification import automatic_backup_failed
+
+    attempt = datetime(2026, 7, 16, 12, tzinfo=UTC)
+    success = attempt - timedelta(minutes=10)
+    assert automatic_backup_failed(
+        event_type="",
+        in_progress=False,
+        last_attempt=attempt,
+        last_success=success,
+    )
+    assert not automatic_backup_failed(
+        event_type="",
+        in_progress=True,
+        last_attempt=attempt,
+        last_success=success,
+    )

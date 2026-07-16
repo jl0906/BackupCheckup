@@ -25,6 +25,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
 
+from .agent_cleanup import async_remove_agent_entities
 from .const import (
     BACKUP_RESULT_OPTIONS,
     DOMAIN,
@@ -86,7 +87,9 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
                 else None
             ),
             "backup_reference": data.integrity.backup_reference,
-            "storage_location": data.integrity.agent_id,
+            "storage_location": (
+                data.integrity.agent_id if data.expose_backup_metadata else None
+            ),
             "archive_count": data.integrity.archive_count,
             "file_count": data.integrity.file_count,
             "protected": data.integrity.protected,
@@ -110,7 +113,11 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:fingerprint",
-        value_fn=lambda data: data.integrity.sha256,
+        value_fn=lambda data: (
+            data.integrity.sha256
+            if data.expose_backup_metadata
+            else (data.integrity.sha256[:16] if data.integrity.sha256 else None)
+        ),
         attributes_fn=lambda data: {
             "algorithm": "SHA-256",
             "checksum_changed": data.integrity.checksum_changed,
@@ -325,7 +332,10 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
             "inventory_backup_count": data.inventory_backup_count,
             "ignored_update_backup_count": data.ignored_update_backup_count,
             "agent_errors": data.agent_errors,
-            "agents": [item.as_dict() for item in data.agent_summaries],
+            "agents": [
+                item.as_dict(expose_metadata=data.expose_backup_metadata)
+                for item in data.agent_summaries
+            ],
             "checked_at": data.checked_at.isoformat(),
         },
     ),
@@ -593,28 +603,57 @@ async def async_setup_entry(
     ]
 
     known_agents = {summary.agent_id for summary in coordinator.data.agent_summaries}
-    entities.extend(
-        BackupCheckupAgentSensor(coordinator, entry, agent_id, metric)
+    agent_entities = {
+        agent_id: [
+            BackupCheckupAgentSensor(coordinator, entry, agent_id, metric)
+            for metric in AGENT_METRICS
+        ]
         for agent_id in sorted(known_agents)
-        for metric in AGENT_METRICS
-    )
+    }
+    entities.extend(entity for group in agent_entities.values() for entity in group)
     async_add_entities(entities)
+    missing_counts: dict[str, int] = {}
 
-    def _add_new_agents() -> None:
+    def _sync_agents() -> None:
         current_agents = {
             summary.agent_id for summary in coordinator.data.agent_summaries
         }
         new_agents = current_agents - known_agents
-        if not new_agents:
-            return
-        known_agents.update(new_agents)
-        async_add_entities(
-            BackupCheckupAgentSensor(coordinator, entry, agent_id, metric)
-            for agent_id in sorted(new_agents)
-            for metric in AGENT_METRICS
-        )
+        if new_agents:
+            new_entities = {
+                agent_id: [
+                    BackupCheckupAgentSensor(coordinator, entry, agent_id, metric)
+                    for metric in AGENT_METRICS
+                ]
+                for agent_id in sorted(new_agents)
+            }
+            agent_entities.update(new_entities)
+            known_agents.update(new_agents)
+            async_add_entities(
+                entity for group in new_entities.values() for entity in group
+            )
 
-    entry.async_on_unload(coordinator.async_add_listener(_add_new_agents))
+        for agent_id in current_agents:
+            missing_counts.pop(agent_id, None)
+        for agent_id in tuple(known_agents - current_agents):
+            missing_counts[agent_id] = missing_counts.get(agent_id, 0) + 1
+            if missing_counts[agent_id] < 3:
+                continue
+            removed = agent_entities.pop(agent_id, [])
+            known_agents.discard(agent_id)
+            missing_counts.pop(agent_id, None)
+            if removed:
+                hass.async_create_task(
+                    async_remove_agent_entities(
+                        hass,
+                        entry_id=entry.entry_id,
+                        platform="sensor",
+                        agent_id=agent_id,
+                        entities=removed,
+                    )
+                )
+
+    entry.async_on_unload(coordinator.async_add_listener(_sync_agents))
 
 
 class BackupCheckupSensor(BackupCheckupEntity, SensorEntity):
@@ -727,4 +766,8 @@ class BackupCheckupAgentSensor(BackupCheckupAgentEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return storage location details."""
         summary = self._summary()
-        return summary.as_dict() if summary else {"agent_id": self.agent_id}
+        return (
+            summary.as_dict(expose_metadata=self.coordinator.expose_backup_metadata)
+            if summary
+            else {"storage_reference": self.agent_reference}
+        )

@@ -15,7 +15,7 @@
 
 <p align="center">
   <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-orange.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-2.2.0--beta3-blue.svg">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.2.0--beta4-blue.svg">
   <img alt="AI-coded and maintained" src="https://img.shields.io/badge/AI--coded%20%26%20AI--maintained-8A2BE2.svg">
   <img alt="License" src="https://img.shields.io/github/license/jl0906/BackupCheckup">
 </p>
@@ -23,7 +23,7 @@
 BackupCheckup checks whether Home Assistant backups are available, recent,
 complete, plausible in size, redundant, and structurally readable.
 
-Version: **2.2.0-beta3**
+Version: **2.2.0-beta4**
 
 **Requirements:** Home Assistant **2026.3.0 or newer**. Full encrypted-backup
 verification depends on the SecureTar archive API bundled with Home Assistant 2026.3+.
@@ -47,11 +47,12 @@ BackupCheckup can detect:
 - The newest regular backup is too old.
 - An automatic backup failed or is overdue.
 - A backup is incomplete or unexpectedly small.
-- A storage location is unavailable.
+- A storage location is unavailable, stale, removed, or returns an error.
 - The newest regular backup is not stored on enough locations.
 - A backup cannot be downloaded or fully read.
 - An encrypted backup cannot be decrypted with Home Assistant's configured password.
 - An included SQLite database fails its optional expert integrity check.
+- The same stored backup copy changes its checksum between verifications.
 
 ## Main features
 
@@ -63,6 +64,8 @@ BackupCheckup can detect:
 - Automatic or fixed backup-size plausibility checks
 - Technical app-update backups are kept in inventory but excluded from health and size analytics
 - Scope-aware size comparisons that only compare backups with equivalent contents
+- Native automatic-backup event handling for `in_progress`, `completed`, and `failed` states
+- Defensive recovery from corrupted private history, notification, and integrity-state files
 - Redundancy checks across multiple storage locations
 - Deterministic health score from `0` to `100`
 - Size trend, average size, longest gap, observed success rate, and consecutive failures
@@ -74,15 +77,17 @@ Use **Verify latest backup** to start a complete, non-destructive verification.
 The manual action is administrator-only and protected by a configurable cooldown.
 BackupCheckup then:
 
-1. Downloads one available copy through Home Assistant's native backup agent.
-2. Calculates and stores a SHA-256 checksum.
+1. Downloads an available copy through Home Assistant's native backup agent and falls back to another storage location if the first download fails.
+2. Calculates and stores a SHA-256 checksum and reports a changed checksum as an active problem.
 3. Opens and reads the complete outer backup archive.
-4. Validates `backup.json` and the expected contained archives.
-5. Reads every file in every inner archive to the end.
-6. Decrypts protected archives using Home Assistant's configured backup password.
-7. Optionally runs SQLite `PRAGMA integrity_check` on the included database.
-8. Enforces configured download, expansion, member-count, disk-space, and time limits.
-9. Deletes all temporary files when the check finishes.
+4. Requires one canonical root `backup.json`, rejects duplicate JSON keys, and validates security-relevant metadata types.
+5. Rejects duplicate, nested, missing, or logically colliding inner archives.
+6. Reads every file in every inner archive to the end.
+7. Accepts the Home Assistant database only at its canonical archive path and rejects duplicate or decoy database files.
+8. Decrypts protected archives using Home Assistant's configured backup password.
+9. Optionally runs SQLite `PRAGMA integrity_check` on the included database.
+10. Enforces configured download, expansion, member-count, disk-space, and time limits.
+11. Deletes all temporary files when the check finishes and reports cleanup failures through Repairs.
 
 The result is available through `sensor.backup_checkup_integrity_status`. A native
 Home Assistant Repair issue is created if the newest regular backup is corrupt or unreadable.

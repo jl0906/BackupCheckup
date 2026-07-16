@@ -6,10 +6,14 @@ from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, SERVICE_VERIFY_LATEST_BACKUP
+from .const import (
+    DOMAIN,
+    SERVICE_REFRESH,
+    SERVICE_TEST_NOTIFICATION,
+    SERVICE_VERIFY_LATEST_BACKUP,
+)
 from .coordinator import BackupCheckupCoordinator
 from .entity import BackupCheckupEntity
 
@@ -50,7 +54,8 @@ class BackupCheckupVerifyButton(BackupCheckupEntity, ButtonEntity):
     def available(self) -> bool:
         """Only allow a check when a backup exists and no check is running."""
         return (
-            bool(self.coordinator.data.monitored_backups)
+            super().available
+            and bool(self.coordinator.data.monitored_backups)
             and not self.coordinator.integrity_check_pending_or_running
             and not self.coordinator.manual_verification_cooldown_active
         )
@@ -84,7 +89,12 @@ class BackupCheckupRefreshButton(BackupCheckupEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         """Refresh BackupCheckup data immediately."""
-        await self.coordinator.async_request_refresh()
+        await self.hass.services.async_call(
+            DOMAIN,
+            SERVICE_REFRESH,
+            blocking=True,
+            context=self._context,
+        )
 
 
 class BackupCheckupTestNotificationButton(BackupCheckupEntity, ButtonEntity):
@@ -108,16 +118,16 @@ class BackupCheckupTestNotificationButton(BackupCheckupEntity, ButtonEntity):
     def available(self) -> bool:
         """Only allow testing when mobile notifications are configured."""
         return bool(
-            self.coordinator.notifications_enabled
+            super().available
+            and self.coordinator.notifications_enabled
             and self.coordinator.notification_targets
         )
 
     async def async_press(self) -> None:
         """Send a localized test message."""
-        if not await self.coordinator.notification_manager.async_send_test(
-            self.coordinator.notification_targets
-        ):
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="notification_failed",
-            )
+        await self.hass.services.async_call(
+            DOMAIN,
+            SERVICE_TEST_NOTIFICATION,
+            blocking=True,
+            context=self._context,
+        )

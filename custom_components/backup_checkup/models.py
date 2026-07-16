@@ -12,16 +12,20 @@ class BackupAgentRecord:
     """One stored copy of a backup on a backup agent."""
 
     agent_id: str
+    agent_reference: str
     size: int | None
     protected: bool | None
 
-    def as_dict(self) -> dict[str, Any]:
-        """Return a Home Assistant state-attribute-safe representation."""
-        return {
-            "agent_id": self.agent_id,
+    def as_dict(self, *, expose_metadata: bool = False) -> dict[str, Any]:
+        """Return a privacy-safe storage-copy representation."""
+        result: dict[str, Any] = {
+            "storage_reference": self.agent_reference,
             "size": self.size,
             "protected": self.protected,
         }
+        if expose_metadata:
+            result["agent_id"] = self.agent_id
+        return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,7 +61,7 @@ class BackupRecord:
             "included_addon_count": len(self.included_addons),
             "included_folder_count": len(self.included_folders),
             "scope_fingerprint": self.scope_fingerprint,
-            "agents": list(self.agents),
+            "storage_references": [copy.agent_reference for copy in self.agent_copies],
             "agent_copies": [copy.as_dict() for copy in self.agent_copies],
             "failed_agent_count": len(self.failed_agents),
             "failed_addon_count": len(self.failed_addons),
@@ -74,6 +78,10 @@ class BackupRecord:
             **self.as_public_dict(),
             "backup_id": self.backup_id,
             "name": self.name,
+            "agents": list(self.agents),
+            "agent_copies": [
+                copy.as_dict(expose_metadata=True) for copy in self.agent_copies
+            ],
             "included_addons": list(self.included_addons),
             "included_folders": list(self.included_folders),
             "failed_agents": list(self.failed_agents),
@@ -91,6 +99,7 @@ class BackupAgentSummary:
     """Current summary for one backup storage agent."""
 
     agent_id: str
+    agent_reference: str
     backup_count: int
     inventory_backup_count: int
     ignored_update_backup_count: int
@@ -102,10 +111,10 @@ class BackupAgentSummary:
     stale: bool
     problem: bool
 
-    def as_dict(self) -> dict[str, Any]:
-        """Return a Home Assistant state-attribute-safe representation."""
-        return {
-            "agent_id": self.agent_id,
+    def as_dict(self, *, expose_metadata: bool = False) -> dict[str, Any]:
+        """Return a privacy-safe storage summary."""
+        result: dict[str, Any] = {
+            "storage_reference": self.agent_reference,
             "backup_count": self.backup_count,
             "inventory_backup_count": self.inventory_backup_count,
             "ignored_update_backup_count": self.ignored_update_backup_count,
@@ -119,6 +128,9 @@ class BackupAgentSummary:
             "stale": self.stale,
             "problem": self.problem,
         }
+        if expose_metadata:
+            result["agent_id"] = self.agent_id
+        return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -191,13 +203,77 @@ class BackupIntegrityResult:
         }
 
     @classmethod
+    def storage_dict_is_valid(cls, data: dict[str, Any]) -> bool:
+        """Return whether persisted integrity data has safe expected field types."""
+        from homeassistant.util import dt as dt_util
+
+        from .const import INTEGRITY_DATABASE_OPTIONS, INTEGRITY_STATUS_OPTIONS
+
+        if not isinstance(data, dict):
+            return False
+        status = data.get("status")
+        if status is not None and status not in INTEGRITY_STATUS_OPTIONS:
+            return False
+        database_status = data.get("database_status")
+        if (
+            database_status is not None
+            and database_status not in INTEGRITY_DATABASE_OPTIONS
+        ):
+            return False
+        for key in ("checked_at", "backup_date"):
+            value = data.get(key)
+            if value is not None and (
+                not isinstance(value, str) or dt_util.parse_datetime(value) is None
+            ):
+                return False
+        for key in (
+            "backup_id",
+            "backup_reference",
+            "agent_id",
+            "sha256",
+            "error_code",
+        ):
+            value = data.get(key)
+            if value is not None and not isinstance(value, str):
+                return False
+        for key in ("archive_count", "file_count", "verified_size"):
+            value = data.get(key)
+            if value is not None and (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or value < 0
+            ):
+                return False
+        duration = data.get("duration_seconds")
+        if duration is not None and (
+            isinstance(duration, bool)
+            or not isinstance(duration, (int, float))
+            or duration < 0
+        ):
+            return False
+        protected = data.get("protected")
+        if protected is not None and not isinstance(protected, bool):
+            return False
+        checksum_changed = data.get("checksum_changed")
+        if checksum_changed is not None and not isinstance(checksum_changed, bool):
+            return False
+        warnings = data.get("warnings")
+        return warnings is None or (
+            isinstance(warnings, list)
+            and len(warnings) <= 1000
+            and all(isinstance(item, str) for item in warnings)
+        )
+
+    @classmethod
     def from_dict(cls, data: dict[str, Any]) -> BackupIntegrityResult:
-        """Deserialize a stored integrity result."""
+        """Deserialize a stored integrity result defensively."""
         from homeassistant.util import dt as dt_util
 
         from .const import (
             INTEGRITY_DATABASE_NOT_CHECKED,
+            INTEGRITY_DATABASE_OPTIONS,
             INTEGRITY_STATUS_NOT_CHECKED,
+            INTEGRITY_STATUS_OPTIONS,
         )
 
         def parse(value: Any) -> datetime | None:
@@ -205,42 +281,70 @@ class BackupIntegrityResult:
                 return None
             return dt_util.parse_datetime(value)
 
-        backup_id = data.get("backup_id")
-        backup_reference = data.get("backup_reference")
-        agent_id = data.get("agent_id")
-        sha256 = data.get("sha256")
-        verified_size = data.get("verified_size")
-        duration_seconds = data.get("duration_seconds")
+        def text(value: Any, *, maximum: int = 256) -> str | None:
+            return value[:maximum] if isinstance(value, str) and value else None
+
+        def integer(value: Any, *, maximum: int = 10_000_000) -> int:
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                return 0
+            try:
+                parsed = int(value)
+            except (OverflowError, ValueError):
+                return 0
+            return parsed if 0 <= parsed <= maximum else 0
+
+        def optional_integer(value: Any) -> int | None:
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                return None
+            try:
+                parsed = int(value)
+            except (OverflowError, ValueError):
+                return None
+            return parsed if 0 <= parsed <= 10**15 else None
+
+        def optional_float(value: Any) -> float | None:
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                return None
+            parsed = float(value)
+            return parsed if 0 <= parsed <= 365 * 86400 else None
+
+        status_raw = data.get("status")
+        status = (
+            status_raw
+            if isinstance(status_raw, str) and status_raw in INTEGRITY_STATUS_OPTIONS
+            else INTEGRITY_STATUS_NOT_CHECKED
+        )
+        database_raw = data.get("database_status")
+        database_status = (
+            database_raw
+            if isinstance(database_raw, str)
+            and database_raw in INTEGRITY_DATABASE_OPTIONS
+            else INTEGRITY_DATABASE_NOT_CHECKED
+        )
+        warnings_raw = data.get("warnings", [])
+        warnings = (
+            tuple(item[:128] for item in warnings_raw if isinstance(item, str))[:50]
+            if isinstance(warnings_raw, list)
+            else ()
+        )
         protected = data.get("protected")
-        error_code = data.get("error_code")
-        warnings = data.get("warnings", [])
         return cls(
-            status=str(data.get("status", INTEGRITY_STATUS_NOT_CHECKED)),
+            status=status,
             checked_at=parse(data.get("checked_at")),
-            backup_id=backup_id if isinstance(backup_id, str) else None,
-            backup_reference=(
-                backup_reference if isinstance(backup_reference, str) else None
-            ),
+            backup_id=text(data.get("backup_id")),
+            backup_reference=text(data.get("backup_reference"), maximum=64),
             backup_date=parse(data.get("backup_date")),
-            agent_id=agent_id if isinstance(agent_id, str) else None,
-            sha256=sha256 if isinstance(sha256, str) else None,
-            verified_size=(
-                int(verified_size) if isinstance(verified_size, (int, float)) else None
-            ),
-            duration_seconds=(
-                float(duration_seconds)
-                if isinstance(duration_seconds, (int, float))
-                else None
-            ),
-            archive_count=int(data.get("archive_count", 0)),
-            file_count=int(data.get("file_count", 0)),
+            agent_id=text(data.get("agent_id")),
+            sha256=text(data.get("sha256"), maximum=128),
+            verified_size=optional_integer(data.get("verified_size")),
+            duration_seconds=optional_float(data.get("duration_seconds")),
+            archive_count=integer(data.get("archive_count", 0)),
+            file_count=integer(data.get("file_count", 0)),
             protected=protected if isinstance(protected, bool) else None,
-            database_status=str(
-                data.get("database_status", INTEGRITY_DATABASE_NOT_CHECKED)
-            ),
-            warnings=tuple(str(item) for item in warnings if isinstance(item, str)),
-            error_code=error_code if isinstance(error_code, str) else None,
-            checksum_changed=bool(data.get("checksum_changed", False)),
+            database_status=database_status,
+            warnings=warnings,
+            error_code=text(data.get("error_code"), maximum=128),
+            checksum_changed=data.get("checksum_changed") is True,
         )
 
 
@@ -292,6 +396,7 @@ class BackupCheckupData:
     latest_backup_incomplete: bool
     backup_not_redundant: bool
     required_location_missing: bool
+    backup_checksum_changed: bool
     problem: bool
     status: str
     recommendation: str
@@ -317,6 +422,7 @@ class BackupCheckupData:
     integrity: BackupIntegrityResult
     integrity_check_running: bool
     expose_backup_metadata: bool
+    invalid_backup_count: int
 
     @property
     def latest_monitored_backup_record(self) -> BackupRecord | None:

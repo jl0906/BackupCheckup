@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import shutil
+import stat
 import tempfile
 import threading
 import time
@@ -191,6 +192,12 @@ def anonymous_backup_reference(entry_id: str, backup_id: str) -> str:
     return digest[:12]
 
 
+def anonymous_agent_reference(entry_id: str, agent_id: str) -> str:
+    """Return a stable installation-local storage reference."""
+    digest = hashlib.sha256(f"{entry_id}:agent:{agent_id}".encode()).hexdigest()
+    return digest[:10]
+
+
 def backup_scope_fingerprint(
     *,
     entry_id: str,
@@ -216,14 +223,23 @@ def backup_scope_fingerprint(
 def create_private_temp_directory() -> Path:
     """Create a private temporary directory for verification data."""
     path = Path(tempfile.mkdtemp(prefix=_TEMP_PREFIX))
-    path.chmod(0o700)
+    try:
+        path.chmod(0o700)
+    except OSError:
+        shutil.rmtree(path, ignore_errors=True)
+        raise
     return path
 
 
 def open_private_binary_writer(path: Path) -> BinaryIO:
     """Create a new private binary file and return an open writer."""
     descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    return os.fdopen(descriptor, "wb")
+    try:
+        return os.fdopen(descriptor, "wb")
+    except Exception:
+        os.close(descriptor)
+        path.unlink(missing_ok=True)
+        raise
 
 
 def cleanup_temp_directory(path: Path) -> bool:
@@ -232,6 +248,8 @@ def cleanup_temp_directory(path: Path) -> bool:
         if path.is_symlink():
             return False
         shutil.rmtree(path)
+    except FileNotFoundError:
+        return True
     except OSError:
         return False
     return True
@@ -255,7 +273,9 @@ def cleanup_stale_temp_directories() -> TempCleanupResult:
             continue
         try:
             stat_result = candidate.lstat()
-            if candidate.is_symlink() or not candidate.is_dir():
+            if stat.S_ISLNK(stat_result.st_mode) or not stat.S_ISDIR(
+                stat_result.st_mode
+            ):
                 continue
             if current_uid is not None and stat_result.st_uid != current_uid:
                 continue

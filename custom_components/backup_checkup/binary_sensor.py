@@ -16,6 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
 
+from .agent_cleanup import async_remove_agent_entities
 from .coordinator import BackupCheckupCoordinator
 from .entity import BackupCheckupAgentEntity, BackupCheckupEntity
 from .entity_mode import entity_enabled_by_default
@@ -40,8 +41,16 @@ BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
             data.latest_monitored_backup_record
             and data.integrity.backup_id
             == data.latest_monitored_backup_record.backup_id
-            and data.integrity.status in {"corrupt", "unreadable"}
+            and data.integrity.status in {"corrupt", "unreadable", "internal_error"}
         ),
+    ),
+    BackupCheckupBinarySensorDescription(
+        key="backup_checksum_changed",
+        translation_key="backup_checksum_changed",
+        entity_registry_enabled_default=False,
+        icon="mdi:file-alert-outline",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda data: data.backup_checksum_changed,
     ),
     BackupCheckupBinarySensorDescription(
         key="problem",
@@ -168,26 +177,51 @@ async def async_setup_entry(
     ]
 
     known_agents = {summary.agent_id for summary in coordinator.data.agent_summaries}
-    entities.extend(
-        BackupCheckupAgentProblemBinarySensor(coordinator, entry, agent_id)
+    agent_entities = {
+        agent_id: BackupCheckupAgentProblemBinarySensor(coordinator, entry, agent_id)
         for agent_id in sorted(known_agents)
-    )
+    }
+    entities.extend(agent_entities.values())
     async_add_entities(entities)
+    missing_counts: dict[str, int] = {}
 
-    def _add_new_agents() -> None:
+    def _sync_agents() -> None:
         current_agents = {
             summary.agent_id for summary in coordinator.data.agent_summaries
         }
         new_agents = current_agents - known_agents
-        if not new_agents:
-            return
-        known_agents.update(new_agents)
-        async_add_entities(
-            BackupCheckupAgentProblemBinarySensor(coordinator, entry, agent_id)
-            for agent_id in sorted(new_agents)
-        )
+        if new_agents:
+            new_entities = {
+                agent_id: BackupCheckupAgentProblemBinarySensor(
+                    coordinator, entry, agent_id
+                )
+                for agent_id in sorted(new_agents)
+            }
+            agent_entities.update(new_entities)
+            known_agents.update(new_agents)
+            async_add_entities(new_entities.values())
 
-    entry.async_on_unload(coordinator.async_add_listener(_add_new_agents))
+        for agent_id in current_agents:
+            missing_counts.pop(agent_id, None)
+        for agent_id in tuple(known_agents - current_agents):
+            missing_counts[agent_id] = missing_counts.get(agent_id, 0) + 1
+            if missing_counts[agent_id] < 3:
+                continue
+            entity = agent_entities.pop(agent_id, None)
+            known_agents.discard(agent_id)
+            missing_counts.pop(agent_id, None)
+            if entity is not None:
+                hass.async_create_task(
+                    async_remove_agent_entities(
+                        hass,
+                        entry_id=entry.entry_id,
+                        platform="binary_sensor",
+                        agent_id=agent_id,
+                        entities=(entity,),
+                    )
+                )
+
+    entry.async_on_unload(coordinator.async_add_listener(_sync_agents))
 
 
 class BackupCheckupBinarySensor(BackupCheckupEntity, BinarySensorEntity):
@@ -262,10 +296,14 @@ class BackupCheckupAgentProblemBinarySensor(
     def is_on(self) -> bool:
         """Return whether this storage location has a problem."""
         summary = self._summary()
-        return True if summary is None else summary.problem
+        return False if summary is None else summary.problem
 
     @property
     def extra_state_attributes(self) -> dict[str, object]:
         """Return storage location details."""
         summary = self._summary()
-        return summary.as_dict() if summary else {"agent_id": self.agent_id}
+        return (
+            summary.as_dict(expose_metadata=self.coordinator.expose_backup_metadata)
+            if summary
+            else {"storage_reference": self.agent_reference}
+        )

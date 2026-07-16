@@ -4,7 +4,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "backup_checkup"
 NAME = "BackupCheckup"
-VERSION = "2.2.0-beta3"
+VERSION = "2.2.0-beta4"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -112,6 +112,8 @@ MAX_BACKUP_METADATA_BYTES = 2 * 1024 * 1024
 MIN_FREE_SPACE_RESERVE_BYTES = 1024 * 1024 * 1024
 STALE_TEMP_DIRECTORY_AGE_HOURS = 24
 SERVICE_VERIFY_LATEST_BACKUP = "verify_latest_backup"
+SERVICE_REFRESH = "refresh"
+SERVICE_TEST_NOTIFICATION = "test_notification"
 
 STATUS_OK = "ok"
 STATUS_NO_BACKUPS = "no_backups"
@@ -126,6 +128,7 @@ STATUS_BACKUP_SIZE_SUSPICIOUS = "backup_size_suspicious"
 STATUS_BACKUP_INCOMPLETE = "backup_incomplete"
 STATUS_BACKUP_NOT_REDUNDANT = "backup_not_redundant"
 STATUS_BACKUP_INTEGRITY_FAILED = "backup_integrity_failed"
+STATUS_BACKUP_CHECKSUM_CHANGED = "backup_checksum_changed"
 
 STATUS_OPTIONS = [
     STATUS_OK,
@@ -141,6 +144,7 @@ STATUS_OPTIONS = [
     STATUS_BACKUP_INCOMPLETE,
     STATUS_BACKUP_NOT_REDUNDANT,
     STATUS_BACKUP_INTEGRITY_FAILED,
+    STATUS_BACKUP_CHECKSUM_CHANGED,
 ]
 
 BACKUP_RESULT_COMPLETE = "complete"
@@ -204,6 +208,7 @@ INTEGRITY_STATUS_CORRUPT = "corrupt"
 INTEGRITY_STATUS_UNREADABLE = "unreadable"
 INTEGRITY_STATUS_PASSWORD_REQUIRED = "password_required"  # nosec B105
 INTEGRITY_STATUS_ABORTED = "aborted"
+INTEGRITY_STATUS_INTERNAL_ERROR = "internal_error"
 INTEGRITY_STATUS_OPTIONS = [
     INTEGRITY_STATUS_NOT_CHECKED,
     INTEGRITY_STATUS_CHECKING,
@@ -213,23 +218,27 @@ INTEGRITY_STATUS_OPTIONS = [
     INTEGRITY_STATUS_UNREADABLE,
     INTEGRITY_STATUS_PASSWORD_REQUIRED,
     INTEGRITY_STATUS_ABORTED,
+    INTEGRITY_STATUS_INTERNAL_ERROR,
 ]
 
 INTEGRITY_DATABASE_NOT_CHECKED = "not_checked"
 INTEGRITY_DATABASE_PASSED = "passed"
 INTEGRITY_DATABASE_FAILED = "failed"
 INTEGRITY_DATABASE_NOT_FOUND = "not_found"
+INTEGRITY_DATABASE_NOT_APPLICABLE = "not_applicable"
 INTEGRITY_DATABASE_OPTIONS = [
     INTEGRITY_DATABASE_NOT_CHECKED,
     INTEGRITY_DATABASE_PASSED,
     INTEGRITY_DATABASE_FAILED,
     INTEGRITY_DATABASE_NOT_FOUND,
+    INTEGRITY_DATABASE_NOT_APPLICABLE,
 ]
 
 CORE_BACKUP_MANAGER_STATE = "sensor.backup_backup_manager_state"
 CORE_LAST_AUTOMATIC_ATTEMPT = "sensor.backup_last_attempted_automatic_backup"
 CORE_LAST_SUCCESSFUL_AUTOMATIC_BACKUP = "sensor.backup_last_successful_automatic_backup"
 CORE_NEXT_AUTOMATIC_BACKUP = "sensor.backup_next_scheduled_automatic_backup"
+CORE_AUTOMATIC_BACKUP_EVENT = "event.backup_automatic_backup"
 
 REPAIR_ISSUE_IDS = (
     "no_backup",
@@ -244,5 +253,9 @@ REPAIR_ISSUE_IDS = (
     "latest_backup_incomplete",
     "backup_not_redundant",
     "backup_integrity_failed",
+    "backup_checksum_changed",
     "temporary_cleanup_failed",
+    "storage_data_invalid_integrity",
+    "storage_data_invalid_history",
+    "storage_data_invalid_notifications",
 )

@@ -23,6 +23,7 @@ SIZE_TREND_INSUFFICIENT_DATA = "insufficient_data"
 CURRENT_PROBLEM_DEDUCTIONS: dict[str, int] = {
     "no_backup": 100,
     "backup_integrity_failed": 60,
+    "backup_checksum_changed": 40,
     "manager_unavailable": 50,
     "backup_stale": 25,
     "automatic_backup_overdue": 15,

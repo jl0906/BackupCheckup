@@ -60,8 +60,7 @@ re-download the same backup.
 
 Expected result for a backup containing the database: `Passed`.
 
-Expected result when the database was intentionally excluded: `Not found` without a
-corruption Repair issue.
+Expected result when Home Assistant or the database was intentionally excluded: `Not applicable` without a corruption Repair issue.
 
 
 ## 6. Safety-limit and authorization test
@@ -133,3 +132,14 @@ Expected results:
 - It does not trigger a size warning or automatic integrity check.
 - `comparable_backup_count` includes only older backups with the same scope and
   automatic/manual origin.
+
+## 10. Redundant-copy fallback
+
+When the newest regular backup exists on more than one storage location, a download or
+archive-validation failure on the preferred copy should cause BackupCheckup to try another
+available copy within the configured global download, expansion, and time limits.
+
+Expected result when a secondary copy is valid: `Valid with warnings` with
+`alternate_storage_copy_used` and `storage_copy_verification_failed`. If every copy
+fails, the result remains `Corrupt`, `Unreadable`, or `Internal error` and includes
+`all_storage_copies_failed`.

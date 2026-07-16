@@ -151,7 +151,8 @@
           "backup_size_suspicious": "Misstänkt säkerhetskopieringsstorlek",
           "backup_incomplete": "Ofullständig säkerhetskopia",
           "backup_not_redundant": "Säkerhetskopian saknar redundans",
-          "backup_integrity_failed": "Integritetskontrollen misslyckades"
+          "backup_integrity_failed": "Integritetskontrollen misslyckades",
+          "backup_checksum_changed": "Backup checksum changed"
         }
       },
       "stored_backups": {
@@ -288,7 +289,8 @@
           "corrupt": "Skadad",
           "unreadable": "Oläsbar",
           "password_required": "Lösenord krävs",
-          "aborted": "Aborted by safety limit"
+          "aborted": "Aborted by safety limit",
+          "internal_error": "Internal verification error"
         }
       },
       "last_integrity_check": {
@@ -309,7 +311,8 @@
           "not_checked": "Inte kontrollerad",
           "passed": "Godkänd",
           "failed": "Misslyckad",
-          "not_found": "Hittades inte"
+          "not_found": "Hittades inte",
+          "not_applicable": "Not applicable"
         }
       }
     },
@@ -358,6 +361,9 @@
       },
       "backup_integrity_problem": {
         "name": "Säkerhetskopian är skadad eller oläsbar"
+      },
+      "backup_checksum_changed": {
+        "name": "Backup checksum changed"
       }
     },
     "button": {
@@ -433,7 +439,7 @@
     },
     "latest_backup_incomplete": {
       "title": "Senaste säkerhetskopian är ofullständig",
-      "description": "Delar av den senaste kopian misslyckades. Tillägg: {addons}. Mappar: {folders}. Lagringsplatser: {locations}. Kontrollera loggen och skapa en ny kopia."
+      "description": "The latest backup contains failed components. Failed apps: {addons}. Folders: {folders}. Storage locations: {locations}. Check the backup log and create a new backup."
     },
     "backup_not_redundant": {
       "title": "Säkerhetskopian lagras inte redundant",
@@ -446,6 +452,14 @@
     "temporary_cleanup_failed": {
       "title": "Temporary verification data could not be removed",
       "description": "BackupCheckup could not remove private temporary verification data. Restart Home Assistant and check the temporary filesystem and available disk space."
+    },
+    "backup_checksum_changed": {
+      "title": "Backup checksum changed",
+      "description": "The stored checksum of the same backup copy changed since the previous verification. Check the storage location and verify the backup again. Last check: {checked}."
+    },
+    "storage_data_invalid": {
+      "title": "BackupCheckup internal data was reset",
+      "description": "The private storage data for “{store}” was invalid or damaged and was safely reset. Review BackupCheckup settings and run a new verification if needed."
     }
   },
   "exceptions": {
@@ -463,6 +477,9 @@
     },
     "integration_not_loaded": {
       "message": "BackupCheckup is not currently loaded."
+    },
+    "notification_not_configured": {
+      "message": "No notification targets are configured for BackupCheckup."
     }
   }
 }

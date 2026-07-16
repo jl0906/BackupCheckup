@@ -1,5 +1,46 @@
 # Changelog
 
+## 2.2.0-beta4
+
+### Security
+- Enforced a single canonical root `backup.json` and rejected nested or duplicate metadata files.
+- Rejected duplicate JSON keys, unsafe metadata archive identifiers, duplicate declared add-ons or folders, and logical archive-name collisions.
+- Rejected nested or duplicate inner archives and surfaced undeclared archives as bounded warnings.
+- Restricted database verification to the canonical `data/home-assistant_v2.db` path and rejected duplicate or decoy database files.
+- Added strict validation and safe fallback defaults for corrupted integration options and persisted private state.
+- Explicitly closes third-party backup-agent streams after successful, aborted, or failed downloads.
+- Added an SQLite quick check before the full integrity check, disabled trusted schemas for read-only verification, and tightened metadata/path validation for control characters and database flags.
+- Protected refresh and test-notification actions with Home Assistant's administrator-only service registration, matching manual verification.
+- Further redacted storage identifiers and checksums from diagnostics unless detailed metadata exposure is explicitly enabled.
+
+### Fixed
+- Fixed app-only and folder-only backups receiving a false `database_not_found` warning; these now use `not_applicable`.
+- Fixed background integrity-task failures potentially becoming unobserved asyncio exceptions.
+- Fixed result-store and final-refresh failures destabilizing or repeatedly restarting automatic verification; controlled internal errors now use a retry backoff.
+- Fixed automatic backups being marked failed while Home Assistant reports them as `in_progress`. Native `completed` and `failed` events are now authoritative, with timestamp comparison retained as a compatibility fallback.
+- Fixed backup-manager availability being inferred from a possibly disabled entity instead of the successful manager API response.
+- Fixed invalid or duplicate backup IDs, malformed dates, invalid agent collections, and corrupted private store data causing setup or refresh failures.
+- Fixed fallback-copy size reporting including bytes downloaded during an earlier failed attempt.
+- Fixed a corrupt or unreadable preferred storage copy preventing verification of an intact redundant copy; archive verification now falls back across available locations within the configured global safety budget.
+- Fixed configured backup storage locations with no backups disappearing from storage monitoring.
+- Fixed removed backup storage agents leaving permanently stale entities and devices; disappearance is confirmed across three refreshes before registry cleanup.
+- Fixed action buttons ignoring the base coordinator availability state.
+- Fixed temporary-data Repair issues remaining active after a later successful cleanup.
+- Fixed downgrades accepting config entries created by a newer, unsupported schema version.
+- Fixed less important configuration warnings taking precedence over integrity, manager, storage, incomplete-backup, or automatic-backup failures.
+
+### Added
+- Active checksum-change status, binary sensor, health-score deduction, Repair issue, diagnostics, and localized text.
+- Download and archive-verification fallback to another available backup storage location when one copy cannot be retrieved or validated.
+- Privacy-safe storage references for normal entities, diagnostics, and Repair issue details.
+- Defensive validation of integrity, automatic-history, and notification stores with dedicated Repair issues when invalid data is reset.
+- Diagnostics for discarded invalid backup inventory records.
+- Adversarial tests for duplicate metadata, duplicate JSON keys, nested archives, archive collisions, decoy databases, app-only backups, explicit stream closure, event-state handling, and corrupted stores.
+
+### Changed
+- Config-entry schema remains version 6; no user migration is required from beta1, beta2, or beta3.
+- The standard entity preset now enables the checksum-change problem sensor.
+
 ## 2.2.0-beta3
 
 ### Fixed

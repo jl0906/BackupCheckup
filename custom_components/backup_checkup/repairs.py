@@ -33,8 +33,21 @@ def async_update_issues(hass: HomeAssistant, data: BackupCheckupData) -> None:
             ir.IssueSeverity.ERROR,
             {
                 "checked": _format_datetime(data.integrity.checked_at),
-                "location": data.integrity.agent_id or "unknown",
+                "location": (
+                    data.integrity.agent_id
+                    if data.expose_backup_metadata and data.integrity.agent_id
+                    else "storage copy"
+                ),
             },
+        ),
+        "backup_checksum_changed": (
+            bool(
+                latest
+                and data.integrity.backup_id == latest.backup_id
+                and data.integrity.checksum_changed
+            ),
+            ir.IssueSeverity.ERROR,
+            {"checked": _format_datetime(data.integrity.checked_at)},
         ),
         "backup_stale": (
             data.backup_stale,
@@ -97,9 +110,9 @@ def async_update_issues(hass: HomeAssistant, data: BackupCheckupData) -> None:
             data.latest_backup_incomplete,
             ir.IssueSeverity.ERROR,
             {
-                "addons": _join_or_none(latest.failed_addons if latest else ()),
-                "folders": _join_or_none(latest.failed_folders if latest else ()),
-                "locations": _join_or_none(latest.failed_agents if latest else ()),
+                "addons": str(len(latest.failed_addons) if latest else 0),
+                "folders": str(len(latest.failed_folders) if latest else 0),
+                "locations": str(len(latest.failed_agents) if latest else 0),
             },
         ),
         "backup_not_redundant": (
@@ -190,3 +203,28 @@ def _format_bytes(value: int | None) -> str:
 def _join_or_none(values: tuple[str, ...]) -> str:
     """Join a tuple for display in a repair message."""
     return ", ".join(values) if values else "none"
+
+
+@callback
+def async_set_storage_data_issue(
+    hass: HomeAssistant,
+    *,
+    store_name: str,
+    active: bool,
+) -> None:
+    """Create or remove a repair issue for invalid private store data."""
+    issue_id = f"storage_data_invalid_{store_name}"
+    if active:
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            issue_id,
+            is_fixable=False,
+            is_persistent=True,
+            learn_more_url=TROUBLESHOOTING_URL,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key="storage_data_invalid",
+            translation_placeholders={"store": store_name},
+        )
+    else:
+        ir.async_delete_issue(hass, DOMAIN, issue_id)

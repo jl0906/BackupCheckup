@@ -64,6 +64,21 @@ const.Platform = Platform
 core.HomeAssistant = HomeAssistant
 storage.Store = Store
 dt.utcnow = lambda: datetime.now(UTC)
+
+
+def _parse_datetime(value: Any) -> datetime | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+dt.parse_datetime = _parse_datetime
+dt.as_utc = lambda value: (
+    value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+)
 util.dt = dt
 
 sys.modules.setdefault("homeassistant", homeassistant)
@@ -78,6 +93,7 @@ sys.modules.setdefault("homeassistant.util.dt", dt)
 
 repairs = types.ModuleType("custom_components.backup_checkup.repairs")
 repairs.async_set_temporary_cleanup_issue = lambda *_args, **_kwargs: None
+repairs.async_set_storage_data_issue = lambda *_args, **_kwargs: None
 sys.modules.setdefault("custom_components.backup_checkup.repairs", repairs)
 
 securetar = types.ModuleType("securetar")
