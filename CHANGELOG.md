@@ -17,11 +17,6 @@
 - Explicit privacy-safe log messages when integrity verification starts, completes, is cancelled, or fails unexpectedly.
 - Regression tests for app-update filtering and scope-aware size comparison.
 
-### HACS
-- The integration continues to use the normal HACS repository structure.
-- Releases are installed directly from the repository; no ZIP release asset or `zip_release` setting is required.
-- This beta is published as `v2.2.0-beta2` with `2.2.0-beta2` in `manifest.json`.
-
 ## 2.2.0-beta1 – Security Hardening
 
 ### Security
