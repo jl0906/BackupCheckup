@@ -33,6 +33,10 @@ class BackupRecord:
     name: str
     date: datetime
     automatic: bool
+    purpose: str
+    included_addons: tuple[str, ...]
+    included_folders: tuple[str, ...]
+    scope_fingerprint: str
     agents: tuple[str, ...]
     agent_copies: tuple[BackupAgentRecord, ...]
     failed_agents: tuple[str, ...]
@@ -49,6 +53,10 @@ class BackupRecord:
             "backup_reference": self.backup_reference,
             "date": self.date.isoformat(),
             "automatic": self.automatic,
+            "purpose": self.purpose,
+            "included_addon_count": len(self.included_addons),
+            "included_folder_count": len(self.included_folders),
+            "scope_fingerprint": self.scope_fingerprint,
             "agents": list(self.agents),
             "agent_copies": [copy.as_dict() for copy in self.agent_copies],
             "failed_agent_count": len(self.failed_agents),
@@ -66,6 +74,8 @@ class BackupRecord:
             **self.as_public_dict(),
             "backup_id": self.backup_id,
             "name": self.name,
+            "included_addons": list(self.included_addons),
+            "included_folders": list(self.included_folders),
             "failed_agents": list(self.failed_agents),
             "failed_addons": list(self.failed_addons),
             "failed_folders": list(self.failed_folders),
@@ -82,6 +92,8 @@ class BackupAgentSummary:
 
     agent_id: str
     backup_count: int
+    inventory_backup_count: int
+    ignored_update_backup_count: int
     latest_backup: datetime | None
     latest_backup_age_days: float | None
     latest_backup_size: int | None
@@ -95,6 +107,8 @@ class BackupAgentSummary:
         return {
             "agent_id": self.agent_id,
             "backup_count": self.backup_count,
+            "inventory_backup_count": self.inventory_backup_count,
+            "ignored_update_backup_count": self.ignored_update_backup_count,
             "latest_backup": (
                 self.latest_backup.isoformat() if self.latest_backup else None
             ),
@@ -240,6 +254,8 @@ class BackupCheckupData:
     maximum_size_drop_percent: int
     minimum_redundant_locations: int
     total_backups: int
+    inventory_backup_count: int
+    ignored_update_backup_count: int
     automatic_backups: int
     manual_backups: int
     latest_backup: datetime | None
@@ -252,6 +268,7 @@ class BackupCheckupData:
     latest_backup_size: int | None
     latest_automatic_backup_size: int | None
     latest_backup_size_change_percent: float | None
+    comparable_backup_count: int
     latest_backup_result: str
     latest_backup_locations: int
     latest_backup_location_ids: tuple[str, ...]
@@ -262,6 +279,7 @@ class BackupCheckupData:
     agent_errors: dict[str, str]
     agent_summaries: tuple[BackupAgentSummary, ...]
     backups: tuple[BackupRecord, ...]
+    monitored_backups: tuple[BackupRecord, ...]
     no_backup: bool
     backup_stale: bool
     automatic_backup_overdue: bool
@@ -289,6 +307,7 @@ class BackupCheckupData:
     size_trend: str
     size_trend_percent: float | None
     analyzed_backup_count: int
+    analyzed_backup_scope: str | None
     automatic_success_rate: float | None
     automatic_attempts_observed: int
     automatic_successes_observed: int
@@ -298,3 +317,8 @@ class BackupCheckupData:
     integrity: BackupIntegrityResult
     integrity_check_running: bool
     expose_backup_metadata: bool
+
+    @property
+    def latest_monitored_backup_record(self) -> BackupRecord | None:
+        """Return the newest regular backup used for health monitoring."""
+        return self.monitored_backups[0] if self.monitored_backups else None

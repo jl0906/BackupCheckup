@@ -1,6 +1,28 @@
 # Changelog
 
-## 2.2.0 – Security Hardening
+## 2.2.0-beta2
+
+### Fixed
+- Technical backups created before Home Assistant app updates are no longer treated as regular backups.
+- App-update backups no longer replace the newest monitored backup or reset its age.
+- App-update backups no longer trigger backup-size warnings, affect size averages or trends, influence redundancy checks, or start automatic integrity verification.
+- Automatic backup-size checks now compare only backups with the same automatic/manual origin and the same content scope.
+- Automatic size-drop warnings now require at least two older comparable backups, avoiding alerts from an unreliable single-backup baseline.
+- Storage-agent freshness now uses the latest regular backup while stored-byte totals still include technical update backups.
+
+### Added
+- Backup-purpose classification using Home Assistant Supervisor's `supervisor.addon_update` metadata marker.
+- Privacy-safe content-scope fingerprints based on included Home Assistant data, database, apps, and folders.
+- Inventory, monitored-backup, ignored-update, comparison-count, and analysis-scope diagnostics.
+- Explicit privacy-safe log messages when integrity verification starts, completes, is cancelled, or fails unexpectedly.
+- Regression tests for app-update filtering and scope-aware size comparison.
+
+### HACS
+- The integration continues to use the normal HACS repository structure.
+- Releases are installed directly from the repository; no ZIP release asset or `zip_release` setting is required.
+- This beta is published as `v2.2.0-beta2` with `2.2.0-beta2` in `manifest.json`.
+
+## 2.2.0-beta1 – Security Hardening
 
 ### Security
 - Added configurable limits for downloaded backup size, expanded archive size, archive-member count, metadata size, overall verification duration, and SQLite integrity-check duration.

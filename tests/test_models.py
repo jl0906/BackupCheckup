@@ -15,6 +15,10 @@ def test_backup_record_is_private_by_default() -> None:
         name="My private backup name",
         date=datetime(2026, 7, 15, tzinfo=UTC),
         automatic=True,
+        purpose="automatic",
+        included_addons=("private-addon",),
+        included_folders=("share",),
+        scope_fingerprint="scope1234",
         agents=("backup.local",),
         agent_copies=(),
         failed_agents=("private-agent",),
@@ -29,6 +33,9 @@ def test_backup_record_is_private_by_default() -> None:
     public = record.as_dict()
     assert public["backup_reference"] == "aabbccddeeff"
     assert public["failed_addon_count"] == 1
+    assert public["included_addon_count"] == 1
+    assert public["purpose"] == "automatic"
+    assert "included_addons" not in public
     assert "backup_id" not in public
     assert "name" not in public
     assert "failed_addons" not in public
@@ -37,3 +44,4 @@ def test_backup_record_is_private_by_default() -> None:
     assert private["backup_id"] == "raw-secret-id"
     assert private["name"] == "My private backup name"
     assert private["failed_addons"] == ["private-addon"]
+    assert private["included_addons"] == ["private-addon"]

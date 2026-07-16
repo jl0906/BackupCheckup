@@ -63,14 +63,17 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
             if data.integrity_check_running
             else (
                 data.integrity.status
-                if data.backups
-                and data.integrity.backup_id == data.backups[0].backup_id
+                if data.latest_monitored_backup_record
+                and data.integrity.backup_id
+                == data.latest_monitored_backup_record.backup_id
                 else INTEGRITY_STATUS_NOT_CHECKED
             )
         ),
         attributes_fn=lambda data: {
             "applies_to_latest_backup": bool(
-                data.backups and data.integrity.backup_id == data.backups[0].backup_id
+                data.latest_monitored_backup_record
+                and data.integrity.backup_id
+                == data.latest_monitored_backup_record.backup_id
             ),
             "checked_at": (
                 data.integrity.checked_at.isoformat()
@@ -112,7 +115,9 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
             "algorithm": "SHA-256",
             "checksum_changed": data.integrity.checksum_changed,
             "applies_to_latest_backup": bool(
-                data.backups and data.integrity.backup_id == data.backups[0].backup_id
+                data.latest_monitored_backup_record
+                and data.integrity.backup_id
+                == data.latest_monitored_backup_record.backup_id
             ),
         },
     ),
@@ -190,6 +195,8 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         attributes_fn=lambda data: {
             "change_percent": data.size_trend_percent,
             "analyzed_backup_count": data.analyzed_backup_count,
+            "analyzed_backup_scope": data.analyzed_backup_scope,
+            "ignored_update_backup_count": data.ignored_update_backup_count,
             "analysis_window_days": data.analytics_window_days,
         },
     ),
@@ -210,6 +217,8 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         attributes_fn=lambda data: {
             "average_backup_size_bytes": data.average_backup_size,
             "analyzed_backup_count": data.analyzed_backup_count,
+            "analyzed_backup_scope": data.analyzed_backup_scope,
+            "ignored_update_backup_count": data.ignored_update_backup_count,
             "analysis_window_days": data.analytics_window_days,
         },
     ),
@@ -224,6 +233,8 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         value_fn=lambda data: data.longest_backup_gap_days,
         attributes_fn=lambda data: {
             "analyzed_backup_count": data.analyzed_backup_count,
+            "analyzed_backup_scope": data.analyzed_backup_scope,
+            "ignored_update_backup_count": data.ignored_update_backup_count,
             "analysis_window_days": data.analytics_window_days,
         },
     ),
@@ -311,6 +322,8 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         attributes_fn=lambda data: {
             "automatic_backups": data.automatic_backups,
             "manual_or_other_backups": data.manual_backups,
+            "inventory_backup_count": data.inventory_backup_count,
+            "ignored_update_backup_count": data.ignored_update_backup_count,
             "agent_errors": data.agent_errors,
             "agents": [item.as_dict() for item in data.agent_summaries],
             "checked_at": data.checked_at.isoformat(),
@@ -408,6 +421,8 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
             "minimum_backup_size_bytes": data.minimum_backup_size_bytes,
             "size_change_percent": data.latest_backup_size_change_percent,
             "maximum_size_drop_percent": data.maximum_size_drop_percent,
+            "comparable_backup_count": data.comparable_backup_count,
+            "analyzed_backup_scope": data.analyzed_backup_scope,
         },
     ),
     BackupCheckupSensorDescription(
@@ -447,10 +462,10 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         options=BACKUP_RESULT_OPTIONS,
         value_fn=lambda data: data.latest_backup_result,
         attributes_fn=lambda data: (
-            data.backups[0].as_dict(
+            data.latest_monitored_backup_record.as_dict(
                 expose_metadata=data.expose_backup_metadata,
             )
-            if data.backups
+            if data.latest_monitored_backup_record
             else {}
         ),
     ),

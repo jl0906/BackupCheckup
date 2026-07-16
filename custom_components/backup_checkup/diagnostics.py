@@ -84,7 +84,9 @@ async def async_get_config_entry_diagnostics(
             },
         },
         "inventory": {
-            "total_backups": data.total_backups,
+            "monitored_backup_count": data.total_backups,
+            "inventory_backup_count": data.inventory_backup_count,
+            "ignored_update_backup_count": data.ignored_update_backup_count,
             "automatic_backups": data.automatic_backups,
             "manual_or_other_backups": data.manual_backups,
             "latest_backup": (
@@ -96,7 +98,16 @@ async def async_get_config_entry_diagnostics(
                 data.latest_backup_size_change_percent
             ),
             "latest_backup_result": data.latest_backup_result,
+            "latest_backup_purpose": (
+                data.latest_monitored_backup_record.purpose
+                if data.latest_monitored_backup_record
+                else None
+            ),
+            "latest_inventory_backup_purpose": (
+                data.backups[0].purpose if data.backups else None
+            ),
             "latest_backup_locations": list(data.latest_backup_location_ids),
+            "comparable_backup_count": data.comparable_backup_count,
             "latest_automatic_backup": (
                 data.latest_automatic_backup.isoformat()
                 if data.latest_automatic_backup
@@ -142,6 +153,8 @@ async def async_get_config_entry_diagnostics(
         "analytics": {
             "window_days": data.analytics_window_days,
             "analyzed_backup_count": data.analyzed_backup_count,
+            "analyzed_backup_scope": data.analyzed_backup_scope,
+            "ignored_update_backup_count": data.ignored_update_backup_count,
             "average_backup_size": data.average_backup_size,
             "longest_backup_gap_days": data.longest_backup_gap_days,
             "size_trend": data.size_trend,
@@ -179,7 +192,12 @@ async def async_get_config_entry_diagnostics(
             "agent_errors": data.agent_errors,
             "agents": [item.as_dict() for item in data.agent_summaries],
         },
-        "recent_backups": [_serialize_backup(record) for record in data.backups[:20]],
+        "recent_inventory_backups": [
+            _serialize_backup(record) for record in data.backups[:20]
+        ],
+        "recent_monitored_backups": [
+            _serialize_backup(record) for record in data.monitored_backups[:20]
+        ],
     }
 
 

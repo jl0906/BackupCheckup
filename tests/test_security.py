@@ -13,6 +13,7 @@ from custom_components.backup_checkup.security import (
     VerificationBudget,
     VerificationLimitError,
     anonymous_backup_reference,
+    backup_scope_fingerprint,
     cleanup_stale_temp_directories,
     create_private_temp_directory,
     open_private_binary_writer,
@@ -117,3 +118,15 @@ def test_stale_cleanup_only_removes_owned_prefixed_directories(
     assert not stale.exists()
     assert fresh.exists()
     assert unrelated.exists()
+
+
+def test_scope_fingerprint_is_stable_and_installation_local() -> None:
+    kwargs = {
+        "homeassistant_included": True,
+        "database_included": True,
+        "addons": ("addon-a",),
+        "folders": ("share",),
+    }
+    first = backup_scope_fingerprint(entry_id="entry-a", **kwargs)
+    assert first == backup_scope_fingerprint(entry_id="entry-a", **kwargs)
+    assert first != backup_scope_fingerprint(entry_id="entry-b", **kwargs)

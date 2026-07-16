@@ -14,7 +14,7 @@ from .models import BackupCheckupData
 @callback
 def async_update_issues(hass: HomeAssistant, data: BackupCheckupData) -> None:
     """Create active repair issues and remove resolved issues."""
-    latest = data.backups[0] if data.backups else None
+    latest = data.latest_monitored_backup_record
     issue_definitions: dict[
         str,
         tuple[bool, ir.IssueSeverity, dict[str, str]],

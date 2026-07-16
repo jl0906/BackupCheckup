@@ -46,7 +46,7 @@ Correct:
 Incorrect:
 
 ```text
-/config/custom_components/BackupCheckup-2.2.0/custom_components/backup_checkup/
+/config/custom_components/backup_checkup/
 ```
 
 ### Remove old parallel copies
@@ -269,8 +269,8 @@ backup page opens. Restart Home Assistant when the backup manager remains unavai
 
 ### Redundancy warning despite existing backups
 
-Redundancy is evaluated for the **newest backup**, not merely for any old file on
-each storage location. Confirm that the same newest backup has been copied to the
+Redundancy is evaluated for the **newest regular backup**, not merely for any old file on
+each storage location. Confirm that the same newest regular backup has been copied to the
 required number of locations.
 
 ## Unexpected health score or status

@@ -37,8 +37,9 @@ BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
         icon="mdi:archive-cancel-outline",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda data: bool(
-            data.backups
-            and data.integrity.backup_id == data.backups[0].backup_id
+            data.latest_monitored_backup_record
+            and data.integrity.backup_id
+            == data.latest_monitored_backup_record.backup_id
             and data.integrity.status in {"corrupt", "unreadable"}
         ),
     ),

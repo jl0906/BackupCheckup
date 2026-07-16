@@ -6,16 +6,16 @@
 > complete, plausible in size, redundant, and structurally readable.
 
 ![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)
-![Version](https://img.shields.io/badge/version-2.2.0-blue.svg)
+![Version](https://img.shields.io/badge/version-2.2.0--beta2-blue.svg)
 ![License](https://img.shields.io/github/license/jl0906/BackupCheckup)
 
-Version: **2.2.0**
+Version: **2.2.0-beta2**
 
 **Requirements:** Home Assistant **2026.3.0 or newer**. Full encrypted-backup
 verification depends on the SecureTar archive API bundled with Home Assistant 2026.3+.
 
 BackupCheckup reads the **actual backup inventory** from Home Assistant's native
-backup manager. It can download the newest backup, verify its complete archive
+backup manager. It can download the newest regular backup, verify its complete archive
 structure, and notify selected Companion App devices when backup problems change.
 
 Everything runs locally inside Home Assistant. BackupCheckup does not modify, delete,
@@ -30,11 +30,11 @@ location, or damaged after creation.
 BackupCheckup can detect:
 
 - No backup is available.
-- The newest backup is too old.
+- The newest regular backup is too old.
 - An automatic backup failed or is overdue.
 - A backup is incomplete or unexpectedly small.
 - A storage location is unavailable.
-- The newest backup is not stored on enough locations.
+- The newest regular backup is not stored on enough locations.
 - A backup cannot be downloaded or fully read.
 - An encrypted backup cannot be decrypted with Home Assistant's configured password.
 - An included SQLite database fails its optional expert integrity check.
@@ -47,6 +47,8 @@ BackupCheckup can detect:
 - Automatic and manual backup distinction
 - Empty, stale, failed, overdue, and incomplete backup detection
 - Automatic or fixed backup-size plausibility checks
+- Technical app-update backups are kept in inventory but excluded from health and size analytics
+- Scope-aware size comparisons that only compare backups with equivalent contents
 - Redundancy checks across multiple storage locations
 - Deterministic health score from `0` to `100`
 - Size trend, average size, longest gap, observed success rate, and consecutive failures
@@ -69,7 +71,7 @@ BackupCheckup then:
 9. Deletes all temporary files when the check finishes.
 
 The result is available through `sensor.backup_checkup_integrity_status`. A native
-Home Assistant Repair issue is created if the newest backup is corrupt or unreadable.
+Home Assistant Repair issue is created if the newest regular backup is corrupt or unreadable.
 
 > [!IMPORTANT]
 > A successful integrity check proves that the downloaded backup is structurally
@@ -79,7 +81,7 @@ Home Assistant Repair issue is created if the newest backup is corrupt or unread
 
 ### Optional automatic verification
 
-The Custom profile can automatically verify each newly detected newest backup.
+The Custom profile can automatically verify each newly detected newest regular backup.
 Automatic verification is disabled by default because a full check can transfer and
 read several gigabytes and may temporarily increase disk, network, and CPU usage.
 
@@ -133,10 +135,15 @@ included. Belgian users are covered by Dutch, French, and German.
 1. Open HACS.
 2. Add this repository as a custom repository of type **Integration**.
 3. Install **BackupCheckup**.
-4. Restart Home Assistant.
-5. Open **Settings → Devices & services → Add integration**.
-6. Search for **BackupCheckup**.
-7. Choose a monitoring profile and, independently, Standard or Expert entity mode.
+4. To receive beta releases, enable the beta/pre-release switch for the BackupCheckup repository in HACS.
+5. Restart Home Assistant.
+6. Open **Settings → Devices & services → Add integration**.
+7. Search for **BackupCheckup**.
+8. Choose a monitoring profile and, independently, Standard or Expert entity mode.
+
+BackupCheckup uses HACS's normal repository installation. GitHub releases need a matching
+version in `manifest.json`, but no release ZIP asset is required. Release notes are shown
+through HACS's update entity.
 
 ### Manual installation
 
@@ -185,10 +192,10 @@ missing from the selector.
 | Update interval | Controls how often the lightweight backup inventory is read. |
 | Size check mode | Automatic comparison, fixed minimum size, or disabled. |
 | Maximum size drop | Allowed reduction compared with comparable backups. |
-| Required backup locations | Minimum number of locations containing the newest backup. |
+| Required backup locations | Minimum number of locations containing the newest regular backup. |
 | Repair issues | Shows active backup problems in Home Assistant Repairs. |
 | Analysis period | Window used for analytics and observed automatic outcomes. |
-| Automatically verify new backups | Starts one full check when a new newest backup is detected. |
+| Automatically verify new backups | Starts one full check when a new regular backup is detected. |
 | Database integrity check | Expert option that runs SQLite `PRAGMA integrity_check`. |
 | Maximum verification download | Stops a check before the downloaded backup exceeds the configured GB limit. |
 | Maximum expanded archive size | Limits the total number of bytes read from expanded archive members. |

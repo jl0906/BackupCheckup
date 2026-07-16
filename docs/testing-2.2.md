@@ -30,7 +30,7 @@ be interpreted as corruption.
 
 ## 3. Encryption test
 
-If the newest backup is protected, repeat the manual check and confirm:
+If the newest regular backup is protected, repeat the manual check and confirm:
 
 - `protected: true` appears in the integrity-status attributes;
 - the result becomes `Valid` or `Valid with warnings`;
@@ -93,8 +93,8 @@ normal run.
 
 Do not corrupt a production backup merely to test Repairs. A corrupt or unreadable
 result will automatically create an issue under **Settings → System → Repairs**. The
-issue is removed after the newest backup has a successful integrity result or when
-the failed result no longer applies to the current newest backup.
+issue is removed after the newest regular backup has a successful integrity result or when
+the failed result no longer applies to the current newest regular backup.
 
 For destructive corruption testing, use only a separate Home Assistant test instance
 and a disposable backup copy.
@@ -116,3 +116,20 @@ The integrity-status sensor provides:
 
 The full SHA-256 value is available through the disabled diagnostic entity
 `sensor.backup_checkup_integrity_checksum`.
+
+## 9. App-update backup classification
+
+1. Note the current value of the latest regular backup, its age, and its size.
+2. Update a Home Assistant app with the Supervisor backup-before-update option enabled.
+3. Refresh BackupCheckup after the technical app backup appears.
+4. Inspect the stored-backups and latest-backup-size sensor attributes.
+
+Expected results:
+
+- The app-update backup increases `inventory_backup_count` and
+  `ignored_update_backup_count`.
+- It does not increase the monitored backup state.
+- It does not replace the latest regular backup or reset its age.
+- It does not trigger a size warning or automatic integrity check.
+- `comparable_backup_count` includes only older backups with the same scope and
+  automatic/manual origin.

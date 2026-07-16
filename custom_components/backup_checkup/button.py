@@ -50,7 +50,7 @@ class BackupCheckupVerifyButton(BackupCheckupEntity, ButtonEntity):
     def available(self) -> bool:
         """Only allow a check when a backup exists and no check is running."""
         return (
-            bool(self.coordinator.data.backups)
+            bool(self.coordinator.data.monitored_backups)
             and not self.coordinator.integrity_check_pending_or_running
             and not self.coordinator.manual_verification_cooldown_active
         )

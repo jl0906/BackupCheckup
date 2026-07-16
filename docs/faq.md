@@ -16,12 +16,12 @@ restore process and runtime behavior.
 
 ## Which backup is verified?
 
-The newest backup is checked. BackupCheckup prefers an available local copy and
+The newest regular backup is checked. BackupCheckup prefers an available local copy and
 otherwise chooses another available native backup storage agent.
 
 ## Does automatic verification run at every polling interval?
 
-No. When enabled, it runs once when BackupCheckup detects a new newest backup. The
+No. When enabled, it runs once when BackupCheckup detects a new regular backup. The
 normal inventory polling remains lightweight.
 
 ## Why is automatic verification disabled by default?

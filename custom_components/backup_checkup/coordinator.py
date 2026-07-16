@@ -20,6 +20,12 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.util import dt as dt_util
 
 from .analytics import calculate_health_score, calculate_inventory_analytics
+from .classification import (
+    automatic_size_drop_is_suspicious,
+    classify_backup_purpose,
+    comparable_size_backups,
+    monitoring_backups,
+)
 from .const import (
     BACKUP_RESULT_COMPLETE,
     BACKUP_RESULT_PARTIAL,
@@ -107,6 +113,7 @@ from .models import (
 from .notifications import BackupCheckupNotificationManager
 from .security import (
     anonymous_backup_reference,
+    backup_scope_fingerprint,
     classify_exception,
     safe_error_type,
 )
@@ -330,6 +337,27 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             return ()
 
     @staticmethod
+    def _addon_slugs(value: Any) -> tuple[str, ...]:
+        """Normalize Home Assistant add-on metadata to sorted slugs."""
+        if value is None:
+            return ()
+        if isinstance(value, Mapping):
+            value = value.values()
+        if isinstance(value, str):
+            return (value,)
+        slugs: set[str] = set()
+        try:
+            for addon in value:
+                slug = getattr(addon, "slug", None)
+                if slug is None and isinstance(addon, Mapping):
+                    slug = addon.get("slug")
+                if isinstance(slug, str) and slug:
+                    slugs.add(slug)
+        except TypeError:
+            return ()
+        return tuple(sorted(slugs))
+
+    @staticmethod
     def _as_nonnegative_int(value: Any) -> int | None:
         """Return a finite non-negative integer or None for invalid agent data."""
         if not isinstance(value, (int, float)) or isinstance(value, bool):
@@ -388,9 +416,11 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             self.integrity_result = await self.integrity_verifier.store.async_load()
             self._integrity_loaded = True
         records = self._normalize_backups(backups)
-        automatic_records = [item for item in records if item.automatic]
-        manual_records = [item for item in records if not item.automatic]
-        latest_record = records[0] if records else None
+        monitoring_records = monitoring_backups(records)
+        ignored_update_backup_count = len(records) - len(monitoring_records)
+        automatic_records = [item for item in monitoring_records if item.automatic]
+        manual_records = [item for item in monitoring_records if not item.automatic]
+        latest_record = monitoring_records[0] if monitoring_records else None
         latest_automatic_record = automatic_records[0] if automatic_records else None
 
         latest_backup = latest_record.date if latest_record else None
@@ -404,14 +434,19 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         automatic_age = self._completed_days(automatic_age_precise)
         manual_age = self._age_days(now, latest_manual)
 
-        size_change_percent, automatic_drop_percent = self._size_changes(
+        (
+            size_change_percent,
+            automatic_drop_percent,
+            comparable_backup_count,
+        ) = self._size_changes(
             latest_record,
-            records,
+            monitoring_records,
         )
         backup_size_suspicious = self._is_size_suspicious(
             latest_record,
             size_change_percent,
             automatic_drop_percent,
+            comparable_backup_count,
         )
 
         latest_backup_incomplete = bool(latest_record and latest_record.incomplete)
@@ -441,12 +476,12 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             window_days=self.analytics_window_days,
         )
         inventory_analytics = calculate_inventory_analytics(
-            records,
+            monitoring_records,
             now=now,
             window_days=self.analytics_window_days,
         )
 
-        no_backup = not records
+        no_backup = not monitoring_records
         backup_stale = latest_age is not None and latest_age > self.max_age_days
         manual_covers_automatic = latest_manual is not None and (
             latest_automatic is None or latest_manual > latest_automatic
@@ -487,6 +522,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
 
         agent_summaries = self._build_agent_summaries(
             records,
+            monitoring_records,
             agent_errors,
             now,
         )
@@ -583,7 +619,9 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             minimum_backup_size_bytes=self.minimum_backup_size_bytes,
             maximum_size_drop_percent=self.maximum_size_drop_percent,
             minimum_redundant_locations=self.minimum_redundant_locations,
-            total_backups=len(records),
+            total_backups=len(monitoring_records),
+            inventory_backup_count=len(records),
+            ignored_update_backup_count=ignored_update_backup_count,
             automatic_backups=len(automatic_records),
             manual_backups=len(manual_records),
             latest_backup=latest_backup,
@@ -598,6 +636,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 latest_automatic_record.size if latest_automatic_record else None
             ),
             latest_backup_size_change_percent=size_change_percent,
+            comparable_backup_count=comparable_backup_count,
             latest_backup_result=latest_backup_result,
             latest_backup_locations=latest_locations,
             latest_backup_location_ids=latest_location_ids,
@@ -608,6 +647,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             agent_errors=agent_errors,
             agent_summaries=agent_summaries,
             backups=records,
+            monitored_backups=monitoring_records,
             no_backup=no_backup,
             backup_stale=backup_stale,
             automatic_backup_overdue=automatic_backup_overdue,
@@ -635,6 +675,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             size_trend=inventory_analytics.size_trend,
             size_trend_percent=inventory_analytics.size_trend_percent,
             analyzed_backup_count=inventory_analytics.analyzed_backup_count,
+            analyzed_backup_scope=inventory_analytics.analyzed_backup_scope,
             automatic_success_rate=history_metrics.success_rate,
             automatic_attempts_observed=history_metrics.resolved_attempts,
             automatic_successes_observed=history_metrics.successful_attempts,
@@ -668,7 +709,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             and (self._integrity_task is None or self._integrity_task.done())
         ):
             self._integrity_task = self.hass.async_create_task(
-                self._async_run_integrity_check(latest_record),
+                self._async_run_integrity_check(latest_record, source="automatic"),
                 name=f"{DOMAIN}_automatic_integrity_check",
             )
         return data
@@ -693,13 +734,14 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         )
 
     async def async_start_integrity_check(self, *, source: str = "manual") -> bool:
-        """Start an integrity check of the latest backup."""
+        """Start an integrity check of the latest monitored backup."""
         if self.integrity_check_pending_or_running:
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="verification_already_running",
             )
-        if not self.data.backups:
+        latest_record = self.data.latest_monitored_backup_record
+        if latest_record is None:
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="verification_no_backup",
@@ -713,17 +755,27 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 },
             )
         self._integrity_task = self.hass.async_create_task(
-            self._async_run_integrity_check(self.data.backups[0]),
+            self._async_run_integrity_check(latest_record, source=source),
             name=f"{DOMAIN}_{source}_integrity_check",
         )
         return True
 
-    async def _async_run_integrity_check(self, record: BackupRecord) -> None:
+    async def _async_run_integrity_check(
+        self,
+        record: BackupRecord,
+        *,
+        source: str,
+    ) -> None:
         """Run and persist one full integrity check."""
         if self.integrity_check_running:
             return
         cancelled = False
         self.integrity_check_running = True
+        _LOGGER.info(
+            "Backup verification started: source=%s backup_reference=%s",
+            source,
+            record.backup_reference,
+        )
         if self.data is not None:
             self.async_set_updated_data(
                 replace(self.data, integrity_check_running=True)
@@ -740,8 +792,31 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             )
             self.integrity_result = result
             await self.integrity_verifier.store.async_save(result)
+            _LOGGER.info(
+                "Backup verification completed: source=%s status=%s "
+                "duration_seconds=%s warnings=%s backup_reference=%s",
+                source,
+                result.status,
+                result.duration_seconds,
+                len(result.warnings),
+                record.backup_reference,
+            )
         except asyncio.CancelledError:
             cancelled = True
+            _LOGGER.info(
+                "Backup verification cancelled: source=%s backup_reference=%s",
+                source,
+                record.backup_reference,
+            )
+            raise
+        except Exception as err:
+            _LOGGER.error(
+                "Backup verification failed unexpectedly: source=%s "
+                "error_type=%s backup_reference=%s",
+                source,
+                safe_error_type(err),
+                record.backup_reference,
+            )
             raise
         finally:
             self.integrity_check_running = False
@@ -798,6 +873,20 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 else (self._as_nonnegative_int(legacy_size))
             )
             incomplete = bool(failed_agents or failed_addons or failed_folders)
+            automatic = getattr(backup, "with_automatic_settings", None) is True
+            extra_metadata = getattr(backup, "extra_metadata", None)
+            included_addons = self._addon_slugs(getattr(backup, "addons", None))
+            included_folders = self._as_string_tuple(getattr(backup, "folders", None))
+            database_included = self._as_bool(
+                getattr(backup, "database_included", None)
+            )
+            homeassistant_included = self._as_bool(
+                getattr(backup, "homeassistant_included", None)
+            )
+            purpose = classify_backup_purpose(
+                automatic=automatic,
+                extra_metadata=extra_metadata,
+            )
 
             records.append(
                 BackupRecord(
@@ -808,20 +897,24 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                     ),
                     name=str(getattr(backup, "name", "")),
                     date=backup_date,
-                    automatic=(
-                        getattr(backup, "with_automatic_settings", None) is True
+                    automatic=automatic,
+                    purpose=purpose,
+                    included_addons=included_addons,
+                    included_folders=included_folders,
+                    scope_fingerprint=backup_scope_fingerprint(
+                        entry_id=self.config_entry.entry_id,
+                        homeassistant_included=homeassistant_included,
+                        database_included=database_included,
+                        addons=included_addons,
+                        folders=included_folders,
                     ),
                     agents=agents,
                     agent_copies=agent_copies,
                     failed_agents=failed_agents,
                     failed_addons=failed_addons,
                     failed_folders=failed_folders,
-                    database_included=self._as_bool(
-                        getattr(backup, "database_included", None)
-                    ),
-                    homeassistant_included=self._as_bool(
-                        getattr(backup, "homeassistant_included", None)
-                    ),
+                    database_included=database_included,
+                    homeassistant_included=homeassistant_included,
                     size=size,
                     incomplete=incomplete,
                 )
@@ -834,18 +927,12 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self,
         latest_record: BackupRecord | None,
         records: tuple[BackupRecord, ...],
-    ) -> tuple[float | None, float | None]:
-        """Return previous-backup and automatic-baseline size changes."""
+    ) -> tuple[float | None, float | None, int]:
+        """Return comparable previous and baseline size changes."""
         if latest_record is None or latest_record.size is None:
-            return None, None
+            return None, None, 0
 
-        comparable = [
-            item
-            for item in records[1:]
-            if item.automatic == latest_record.automatic
-            and item.size is not None
-            and item.size > 0
-        ]
+        comparable = list(comparable_size_backups(latest_record, records))
         previous = comparable[0] if comparable else None
         size_change_percent = None
         if previous is not None and previous.size:
@@ -861,13 +948,14 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             if baseline
             else None
         )
-        return size_change_percent, baseline_change
+        return size_change_percent, baseline_change, len(comparable)
 
     def _is_size_suspicious(
         self,
         latest_record: BackupRecord | None,
         size_change_percent: float | None,
         baseline_change_percent: float | None,
+        comparable_backup_count: int,
     ) -> bool:
         """Evaluate the configured backup-size rule."""
         if self.size_check_mode == SIZE_CHECK_OFF or latest_record is None:
@@ -883,35 +971,38 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         if self.size_check_mode != SIZE_CHECK_AUTO:
             return False
 
-        effective_drop = (
-            baseline_change_percent
-            if baseline_change_percent is not None
-            else size_change_percent
-        )
-        return bool(
-            self.maximum_size_drop_percent > 0
-            and effective_drop is not None
-            and effective_drop <= -self.maximum_size_drop_percent
+        return automatic_size_drop_is_suspicious(
+            maximum_drop_percent=self.maximum_size_drop_percent,
+            previous_change_percent=size_change_percent,
+            baseline_change_percent=baseline_change_percent,
+            comparable_backup_count=comparable_backup_count,
         )
 
     def _build_agent_summaries(
         self,
-        records: tuple[BackupRecord, ...],
+        inventory_records: tuple[BackupRecord, ...],
+        monitoring_records: tuple[BackupRecord, ...],
         agent_errors: dict[str, str],
         now: datetime,
     ) -> tuple[BackupAgentSummary, ...]:
         """Build one health summary per detected backup storage agent."""
         all_agent_ids = sorted(
-            {agent for item in records for agent in item.agents} | set(agent_errors)
+            {agent for item in inventory_records for agent in item.agents}
+            | set(agent_errors)
         )
         summaries: list[BackupAgentSummary] = []
 
         for agent_id in all_agent_ids:
-            agent_records = [item for item in records if agent_id in item.agents]
+            inventory_agent_records = [
+                item for item in inventory_records if agent_id in item.agents
+            ]
+            agent_records = [
+                item for item in monitoring_records if agent_id in item.agents
+            ]
             newest = agent_records[0] if agent_records else None
             sizes = [
                 copy.size
-                for item in agent_records
+                for item in inventory_agent_records
                 for copy in item.agent_copies
                 if copy.agent_id == agent_id and copy.size is not None
             ]
@@ -930,6 +1021,10 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 BackupAgentSummary(
                     agent_id=agent_id,
                     backup_count=len(agent_records),
+                    inventory_backup_count=len(inventory_agent_records),
+                    ignored_update_backup_count=(
+                        len(inventory_agent_records) - len(agent_records)
+                    ),
                     latest_backup=newest.date if newest else None,
                     latest_backup_age_days=age,
                     latest_backup_size=newest_size,

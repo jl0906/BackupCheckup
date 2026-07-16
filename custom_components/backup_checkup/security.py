@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import shutil
 import tempfile
@@ -188,6 +189,28 @@ def anonymous_backup_reference(entry_id: str, backup_id: str) -> str:
     """Return a stable installation-local reference without exposing the backup ID."""
     digest = hashlib.sha256(f"{entry_id}:{backup_id}".encode()).hexdigest()
     return digest[:12]
+
+
+def backup_scope_fingerprint(
+    *,
+    entry_id: str,
+    homeassistant_included: bool | None,
+    database_included: bool | None,
+    addons: tuple[str, ...],
+    folders: tuple[str, ...],
+) -> str:
+    """Return a stable content-scope fingerprint for size comparisons."""
+    payload = json.dumps(
+        {
+            "homeassistant": homeassistant_included,
+            "database": database_included,
+            "addons": addons,
+            "folders": folders,
+        },
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    return hashlib.sha256(f"{entry_id}:{payload}".encode()).hexdigest()[:16]
 
 
 def create_private_temp_directory() -> Path:

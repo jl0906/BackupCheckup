@@ -46,6 +46,7 @@ class InventoryAnalytics:
     size_trend: str
     size_trend_percent: float | None
     analyzed_backup_count: int
+    analyzed_backup_scope: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,8 +70,15 @@ def calculate_inventory_analytics(
     window_records = tuple(record for record in records if record.date >= window_start)
     analysis_records = window_records or records
 
+    analyzed_scope = records[0].scope_fingerprint if records else None
+    size_analysis_records = tuple(
+        record
+        for record in analysis_records
+        if analyzed_scope is not None and record.scope_fingerprint == analyzed_scope
+    )
+
     known_sizes = [
-        record.size for record in analysis_records if record.size is not None
+        record.size for record in size_analysis_records if record.size is not None
     ]
     average_size = round(mean(known_sizes)) if known_sizes else None
 
@@ -83,12 +91,12 @@ def calculate_inventory_analytics(
 
     automatic_with_sizes = [
         record
-        for record in analysis_records
+        for record in size_analysis_records
         if record.automatic and record.size is not None and record.size > 0
     ]
     all_with_sizes = [
         record
-        for record in analysis_records
+        for record in size_analysis_records
         if record.size is not None and record.size > 0
     ]
     trend_records = (
@@ -125,7 +133,8 @@ def calculate_inventory_analytics(
         longest_backup_gap_days=longest_gap,
         size_trend=trend,
         size_trend_percent=trend_percent,
-        analyzed_backup_count=len(analysis_records),
+        analyzed_backup_count=len(size_analysis_records),
+        analyzed_backup_scope=analyzed_scope,
     )
 
 
