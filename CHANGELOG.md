@@ -2,18 +2,111 @@
 
 ## 2.2.0
 
-Stable release consolidating the security hardening, integrity verification, backup classification, storage monitoring, privacy, and entity-mode improvements developed throughout the 2.2.0 pre-release cycle.
+**Recommended update!**
 
-### Fixed
-- Mobile notification configuration now uses an explicit multi-select list, allowing any number of Home Assistant Companion App phones and tablets to be selected at the same time. Existing single-target settings remain compatible.
-- Deleting the BackupCheckup config entry now performs a second exact-path cleanup for all three private `Store` files. On startup, BackupCheckup also removes orphaned history, integrity, and notification stores belonging to config entries that no longer exist.
-- Fixed Expert entity mode still leaving the three exact backup timestamp sensors and every per-storage latest-backup timestamp disabled.
-- Re-applies the enabling side of the selected entity preset after platform setup and during schema migration, while preserving entities disabled by the user or by Home Assistant's config-entry system option.
-- Added entity-registry diagnostics showing enabled and disabled counts; exact disabled entity IDs are included only when detailed metadata exposure is enabled.
+Version 2.2.0 is a major reliability, security, privacy, integrity-verification, backup-classification, storage-monitoring, and entity-management release.
+
+It consolidates all improvements developed during the 2.2.0 beta cycle and includes automatic migration from BackupCheckup 2.1.2.
+
+### Security
+
+- Added configurable safety limits for maximum downloaded backup size, expanded archive size, archive-member count, metadata size, overall verification duration, and SQLite integrity-check duration.
+- Added free-space validation before and during verification to prevent temporary backup data from exhausting the Home Assistant filesystem.
+- Reworked TAR verification so archive members are processed as a stream instead of retaining the complete archive-member list in memory.
+- Added cooperative deadline checks throughout backup download, archive reading, decompression, database extraction, and SQLite verification.
+- Added an SQLite `quick_check` before the full integrity check, disabled trusted schemas during read-only verification, and restricted database verification to the canonical `data/home-assistant_v2.db` path.
+- Duplicate, nested, or decoy database files are now rejected.
+- Enforced exactly one canonical root-level `backup.json` and rejected nested or duplicate metadata files.
+- Rejected duplicate JSON keys, unsafe archive identifiers, control characters, invalid database flags, duplicate declared apps or folders, logical archive-name collisions, and nested or duplicate inner archives.
+- Undeclared inner archives are reported as bounded integrity warnings instead of being processed without limits.
+- Temporary verification directories and files now use owner-only filesystem permissions.
+- Added startup cleanup for stale BackupCheckup temporary directories and a persistent Home Assistant Repair issue when sensitive temporary verification data cannot be removed.
+- Third-party backup-agent streams are explicitly closed after successful, cancelled, aborted, or failed downloads.
+- Added strict validation and safe fallback defaults for corrupted integration options and persisted private state.
+- Replaced raw third-party exception messages with stable privacy-safe error codes in entities, diagnostics, notifications, and logs.
+- Sanitized untrusted identifiers before writing them to logs.
+- Backup names, native backup IDs, storage-agent IDs, and checksums are hidden from normal entities and diagnostics by default.
+- Added an advanced option for explicitly exposing detailed backup metadata.
+- Refresh, manual verification, and test-notification actions are registered as administrator-only Home Assistant actions.
+
+### Added
+
+- Added an `aborted` integrity state for verification runs stopped by a configured resource or time limit.
+- Added privacy-safe integrity error codes for download-size limits, expanded-size limits, insufficient free disk space, verification timeouts, excessive archive members, oversized metadata, and other controlled verification failures.
+- Added stable installation-local backup references for correlating results without exposing native Home Assistant backup IDs.
+- Added advanced configuration options for verification size limits, verification timeouts, SQLite timeout, manual verification cooldown, and detailed metadata exposure.
+- Added backup-purpose classification using Home Assistant Supervisor's `supervisor.addon_update` metadata marker.
+- Added privacy-safe content-scope fingerprints based on included Home Assistant data, database, apps, and folders.
+- Added inventory, monitored-backup, ignored-update, comparison-count, analysis-scope, and discarded-record diagnostics.
+- Added privacy-safe log messages when integrity verification starts, completes, is cancelled, or fails unexpectedly.
+- Added active checksum-change monitoring with status information, a binary sensor, health-score deduction, Repair issue, diagnostics, and localized text.
+- Added automatic download and archive-verification fallback to another available backup storage location when one copy cannot be retrieved or validated.
+- Added privacy-safe storage references for entities, diagnostics, and Repair issue details.
+- Added defensive validation of integrity results, automatic-backup history, and notification state, with dedicated Repair issues when invalid private data must be reset.
+- Added a dedicated `backup_integrity_warning` problem signal for actionable integrity warnings.
+- Added friendly storage-location names to storage summaries and latest-location attributes.
+- Added precise age attributes for the newest regular, automatic, manual/other, and per-storage backups.
+- Added extensive regression and adversarial tests covering resource limits, temporary-file permissions, metadata privacy, path validation, archive limits, duplicate metadata, duplicate JSON keys, nested archives, archive collisions, decoy databases, app-only backups, stream closure, event-state handling, corrupted stores, app-update filtering, scope-aware size comparison, and completed-day boundaries.
+- Added entity-registry diagnostics showing enabled and disabled entity counts. Exact disabled entity IDs are included only when detailed metadata exposure is enabled.
 
 ### Changed
-- Config-entry schema updated to version 8 so existing schema-version-7 installations receive the corrected Expert preset once.
-- Clarified that detailed backup metadata exposure controls names and raw IDs, while the entity mode controls whether diagnostic entities are enabled.
+
+- Technical backups created before Home Assistant app updates are now classified separately from regular monitored backups.
+- App-update backups no longer replace the newest monitored backup, reset its age, trigger backup-size warnings, affect averages or trends, influence redundancy checks, or start automatic integrity verification.
+- Storage-agent freshness now uses the latest regular backup, while stored-byte totals continue to include technical app-update backups.
+- Automatic backup-size checks now compare only backups with the same automatic/manual origin and the same content scope.
+- Size-drop warnings now require at least two older comparable backups instead of relying on a single previous backup.
+- Verification stopped by a configured safety limit is no longer classified as a corrupt backup.
+- SQLite verification now uses a progress handler so the configured deadline can stop the database operation cooperatively.
+- Backup integrity results and diagnostics now use privacy-safe backup serialization by default.
+- All user-facing backup-age sensors now report fully completed 24-hour days as integers. Values remain at `0 d` until 24 complete hours have elapsed and then change to `1 d`.
+- Precise age values in hours and decimal days remain available as entity attributes and in diagnostics.
+- Standard entity mode now focuses on the two primary age sensors for the newest regular and newest automatic backup.
+- Exact backup timestamp entities remain available in Expert mode for advanced automations and templates.
+- Timestamp entity names now explicitly contain “timestamp” to distinguish them from backup-age entities.
+- Per-storage backup-age sensors use the same completed-day presentation as the main device.
+- The selected entity preset is re-applied after platform setup and during schema migration while preserving entities manually disabled by the user or disabled through Home Assistant's config-entry system option.
+- The Standard entity preset now enables the checksum-change problem sensor.
+- Detailed metadata exposure now clearly controls the visibility of backup names and raw identifiers, while entity mode independently controls which diagnostic entities are enabled.
+- Per-storage **Latest backup size** and **Stored backup size** sensors now use decimal megabytes instead of raw bytes, including automatic migration of existing entity display units.
+- Backup storage devices now use the friendly names supplied by Home Assistant.
+- Added the BackupCheckup brand image to the README.
+- Added a prominent disclosure that the integration and its ongoing maintenance are AI-coded and AI-maintained under human direction, testing, and release control.
+- Config-entry schema updated to version 8 with automatic migration from previous releases.
+- Mobile notification configuration now uses an explicit multi-select list, allowing any number of Home Assistant Companion App phones and tablets to be selected at the same time. Existing single-target settings remain compatible.
+
+### Fixed
+
+- Fixed technical app-update backups being treated as regular monitored backups and influencing backup-age, size, trend, redundancy, and integrity calculations.
+- Fixed the manual **Verify latest backup** button remaining unavailable after verification when the configured cooldown was `0` minutes.
+- The active verification task is now released before the final coordinator refresh so the button becomes available immediately after a completed or failed verification.
+- Fixed app-only and folder-only backups receiving a false `database_not_found` warning; these now report `not_applicable`.
+- Fixed HAOS backups containing the legitimate conditional `supervisor.tar` or `supervisor.tar.gz` archive receiving a false `unexpected_inner_archives_1` warning.
+- Fixed background integrity-task failures potentially becoming unobserved asyncio exceptions.
+- Fixed result-store and final-refresh failures destabilizing or repeatedly restarting automatic verification; controlled internal failures now use a retry backoff.
+- Fixed automatic backups being marked failed while Home Assistant still reported them as `in_progress`. Native `completed` and `failed` events are now authoritative, with timestamp comparison retained as a compatibility fallback.
+- Fixed backup-manager availability being inferred from a potentially disabled entity instead of the successful manager API response.
+- Fixed invalid or duplicate backup IDs, malformed dates, invalid agent collections, and corrupted private state causing setup or refresh failures.
+- Fixed fallback-copy size reporting including bytes downloaded during a previous failed attempt.
+- Fixed a corrupt or unreadable preferred backup copy preventing verification of an intact redundant copy. Archive verification now tries available storage copies within the configured global safety budget.
+- Fixed configured storage locations with no backups disappearing from storage monitoring.
+- Fixed removed backup storage agents leaving permanently stale entities and devices. A missing storage agent must now remain absent for three consecutive refreshes before registry cleanup occurs.
+- Fixed action buttons ignoring the coordinator's base availability state.
+- Fixed temporary-data Repair issues remaining active after a later successful cleanup.
+- Fixed downgrades accepting config entries created by a newer and unsupported schema version.
+- Fixed less important configuration warnings taking precedence over integrity, backup-manager, storage, incomplete-backup, or automatic-backup failures.
+- Fixed the integrity sensor exposing a raw backup-agent ID instead of the friendly storage-location name.
+- Fixed genuine `valid_with_warnings` integrity results being displayed together with an excellent status and no-action recommendation. Integrity warnings now affect the overall status, recommendation, active problem state, and health score.
+- Deleting the BackupCheckup config entry now performs a second exact-path cleanup for all three private `Store` files.
+- On startup, BackupCheckup removes orphaned history, integrity, and notification stores belonging to config entries that no longer exist.
+- Fixed Expert entity mode still leaving the three exact backup timestamp sensors and all per-storage latest-backup timestamp sensors disabled.
+
+### Notes
+
+- Existing backup monitoring and automatic-backup detection continue to operate normally after migration.
+- Automatic integrity verification remains disabled by default.
+- The optional SQLite database integrity check remains disabled by default.
+- An `aborted` result means verification could not finish within its configured safety budget. It does not prove that the backup is corrupt.
 
 ## 2.2.0-beta6
 
