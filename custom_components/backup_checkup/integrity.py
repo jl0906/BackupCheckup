@@ -11,7 +11,8 @@ import tarfile
 import time
 import unicodedata
 from collections.abc import Mapping
-from dataclasses import replace
+from dataclasses import dataclass, replace
+from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -79,12 +80,33 @@ class _BackupPasswordRequiredError(Exception):
     """Raised when archive metadata requires a password that is unavailable."""
 
 
+@dataclass(frozen=True, slots=True)
+class IntegrityStoreState:
+    """Persisted integrity result plus automatic retry and manual cooldown state."""
+
+    result: BackupIntegrityResult
+    retry_backup_id: str | None = None
+    retry_error_key: str | None = None
+    retry_attempts: int = 0
+    retry_not_before: datetime | None = None
+    password_marker: str | None = None
+    last_manual_verification_at: datetime | None = None
+
+    @property
+    def retry_key(self) -> tuple[str, str] | None:
+        """Return the runtime retry key when both persisted parts exist."""
+        if self.retry_backup_id and self.retry_error_key:
+            return (self.retry_backup_id, self.retry_error_key)
+        return None
+
+
 class BackupIntegrityStore:
-    """Persist the last completed integrity result."""
+    """Persist the last result and bounded retry metadata in one private Store."""
 
     def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
         """Initialize the store."""
         self._hass = hass
+        self._entry_id = entry_id
         self._store: Store[dict[str, Any]] = Store(
             hass,
             _STORAGE_VERSION,
@@ -93,12 +115,101 @@ class BackupIntegrityStore:
             atomic_writes=True,
         )
         self._loaded = False
-        self._result = BackupIntegrityResult.not_checked()
+        self._state = IntegrityStoreState(BackupIntegrityResult.not_checked())
+        self._result = self._state.result
 
-    async def async_load(self) -> BackupIntegrityResult:
-        """Load the last result once and recover from invalid private data."""
+    @staticmethod
+    def _parse_datetime(value: Any) -> datetime | None:
+        """Parse one persisted timestamp and normalize it to aware UTC."""
+        if not isinstance(value, str):
+            return None
+        parsed = dt_util.parse_datetime(value)
+        if parsed is None:
+            return None
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=UTC)
+        return dt_util.as_utc(parsed)
+
+    @classmethod
+    def _state_from_stored(cls, stored: dict[str, Any]) -> IntegrityStoreState:
+        """Read both the legacy result shape and the 2.2.4 envelope."""
+        result_data = stored.get("result")
+        if result_data is None:
+            result_data = stored
+            retry_data: Any = {}
+            password_marker = None
+            last_manual = None
+        else:
+            retry_data = stored.get("retry", {})
+            password_marker = stored.get("password_marker")
+            last_manual = cls._parse_datetime(stored.get("last_manual_verification_at"))
+
+        if not isinstance(
+            result_data, dict
+        ) or not BackupIntegrityResult.storage_dict_is_valid(result_data):
+            raise ValueError("invalid_store_content")
+        result = BackupIntegrityResult.from_dict(result_data)
+
+        retry_backup_id = None
+        retry_error_key = None
+        retry_attempts = 0
+        retry_not_before = None
+        if isinstance(retry_data, dict):
+            candidate_backup = retry_data.get("backup_id")
+            candidate_error = retry_data.get("error_key")
+            candidate_attempts = retry_data.get("attempts")
+            if isinstance(candidate_backup, str) and candidate_backup:
+                retry_backup_id = candidate_backup[:256]
+            if isinstance(candidate_error, str) and candidate_error:
+                retry_error_key = candidate_error[:128]
+            if (
+                isinstance(candidate_attempts, int)
+                and not isinstance(candidate_attempts, bool)
+                and 0 <= candidate_attempts <= 100
+            ):
+                retry_attempts = candidate_attempts
+            retry_not_before = cls._parse_datetime(retry_data.get("not_before"))
+        if not isinstance(password_marker, str) or not password_marker:
+            password_marker = None
+        else:
+            password_marker = password_marker[:128]
+        return IntegrityStoreState(
+            result=result,
+            retry_backup_id=retry_backup_id,
+            retry_error_key=retry_error_key,
+            retry_attempts=retry_attempts,
+            retry_not_before=retry_not_before,
+            password_marker=password_marker,
+            last_manual_verification_at=last_manual,
+        )
+
+    @staticmethod
+    def _state_as_dict(state: IntegrityStoreState) -> dict[str, Any]:
+        """Serialize the current envelope without exposing the backup password."""
+        return {
+            "result": state.result.as_dict(),
+            "retry": {
+                "backup_id": state.retry_backup_id,
+                "error_key": state.retry_error_key,
+                "attempts": state.retry_attempts,
+                "not_before": (
+                    state.retry_not_before.isoformat()
+                    if state.retry_not_before
+                    else None
+                ),
+            },
+            "password_marker": state.password_marker,
+            "last_manual_verification_at": (
+                state.last_manual_verification_at.isoformat()
+                if state.last_manual_verification_at
+                else None
+            ),
+        }
+
+    async def async_load_state(self) -> IntegrityStoreState:
+        """Load persistent state once and recover from invalid private data."""
         if self._loaded:
-            return self._result
+            return self._state
         self._loaded = True
         try:
             stored = await self._store.async_load()
@@ -106,35 +217,101 @@ class BackupIntegrityStore:
                 async_set_storage_data_issue(
                     self._hass, store_name="integrity", active=False
                 )
-                return self._result
+                return self._state
             if not isinstance(stored, dict):
                 raise ValueError("invalid_store_root")
-            if not BackupIntegrityResult.storage_dict_is_valid(stored):
-                raise ValueError("invalid_store_content")
-            self._result = BackupIntegrityResult.from_dict(stored)
-        except Exception as err:  # noqa: BLE001
+            self._state = self._state_from_stored(stored)
+            self._result = self._state.result
+        except Exception as err:  # noqa: BLE001 - private store boundary
             _LOGGER.warning(
                 "Invalid integrity store data was reset: error_type=%s",
                 safe_error_type(err),
             )
-            self._result = BackupIntegrityResult.not_checked()
+            self._state = IntegrityStoreState(BackupIntegrityResult.not_checked())
+            self._result = self._state.result
             async_set_storage_data_issue(
                 self._hass, store_name="integrity", active=True
             )
+            try:
+                await self._store.async_save(self._state_as_dict(self._state))
+            except Exception as save_err:  # noqa: BLE001 - storage boundary
+                _LOGGER.warning(
+                    "Unable to persist repaired integrity state: error_type=%s",
+                    safe_error_type(save_err),
+                )
         else:
             async_set_storage_data_issue(
                 self._hass, store_name="integrity", active=False
             )
-        return self._result
+        return self._state
 
-    async def async_save(self, result: BackupIntegrityResult) -> None:
-        """Persist one completed result."""
+    async def async_load(self) -> BackupIntegrityResult:
+        """Load and return the last integrity result."""
+        return (await self.async_load_state()).result
+
+    async def async_save_state(self, state: IntegrityStoreState) -> None:
+        """Persist a complete normalized state envelope."""
         self._loaded = True
-        self._result = result
-        await self._store.async_save(result.as_dict())
+        self._state = state
+        self._result = state.result
+        await self._store.async_save(self._state_as_dict(state))
+
+    async def async_save(
+        self,
+        result: BackupIntegrityResult,
+        *,
+        retry_key: tuple[str, str] | None = None,
+        retry_attempts: int = 0,
+        retry_not_before: datetime | None = None,
+        password_marker: str | None = None,
+        last_manual_verification_at: datetime | None = None,
+    ) -> None:
+        """Persist one completed result with its runtime control metadata."""
+        current = await self.async_load_state()
+        state = IntegrityStoreState(
+            result=result,
+            retry_backup_id=retry_key[0] if retry_key else None,
+            retry_error_key=retry_key[1] if retry_key else None,
+            retry_attempts=max(0, retry_attempts),
+            retry_not_before=retry_not_before,
+            password_marker=(
+                password_marker
+                if password_marker is not None
+                else current.password_marker
+            ),
+            last_manual_verification_at=(
+                last_manual_verification_at
+                if last_manual_verification_at is not None
+                else current.last_manual_verification_at
+            ),
+        )
+        await self.async_save_state(state)
+
+    async def async_update_runtime(
+        self,
+        *,
+        password_marker: str | None,
+        retry_key: tuple[str, str] | None,
+        retry_attempts: int,
+        retry_not_before: datetime | None,
+        last_manual_verification_at: datetime | None,
+    ) -> None:
+        """Persist control metadata without changing the last result."""
+        current = await self.async_load_state()
+        await self.async_save_state(
+            IntegrityStoreState(
+                result=current.result,
+                retry_backup_id=retry_key[0] if retry_key else None,
+                retry_error_key=retry_key[1] if retry_key else None,
+                retry_attempts=max(0, retry_attempts),
+                retry_not_before=retry_not_before,
+                password_marker=password_marker,
+                last_manual_verification_at=last_manual_verification_at,
+            )
+        )
 
     async def async_remove(self) -> None:
-        """Remove the stored integrity result."""
+        """Remove the stored integrity state."""
         await self._store.async_remove()
 
 
@@ -159,11 +336,19 @@ class BackupIntegrityVerifier:
     ) -> BackupIntegrityResult:
         """Verify an available backup copy and fall back to another agent if needed."""
         started = time.monotonic()
-        overall_budget = VerificationBudget.from_options(
-            max_download_gb=max_download_gb,
-            max_expanded_gb=max_expanded_gb,
-            timeout_minutes=timeout_minutes,
-        )
+        try:
+            overall_budget = VerificationBudget.from_options(
+                max_download_gb=max_download_gb,
+                max_expanded_gb=max_expanded_gb,
+                timeout_minutes=timeout_minutes,
+            )
+        except VerificationLimitError as err:
+            return self._failure(
+                INTEGRITY_STATUS_ABORTED,
+                record,
+                started,
+                error_code=err.code,
+            )
         manager = async_get_manager(self.hass)
         manager_agents = getattr(manager, "backup_agents", None)
         if not isinstance(manager_agents, Mapping):

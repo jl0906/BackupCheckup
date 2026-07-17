@@ -30,9 +30,12 @@ const = types.ModuleType("homeassistant.const")
 core = types.ModuleType("homeassistant.core")
 exceptions = types.ModuleType("homeassistant.exceptions")
 helpers = types.ModuleType("homeassistant.helpers")
+device_registry = types.ModuleType("homeassistant.helpers.device_registry")
 entity_registry = types.ModuleType("homeassistant.helpers.entity_registry")
 issue_registry = types.ModuleType("homeassistant.helpers.issue_registry")
+service = types.ModuleType("homeassistant.helpers.service")
 storage = types.ModuleType("homeassistant.helpers.storage")
+typing_module = types.ModuleType("homeassistant.helpers.typing")
 translation = types.ModuleType("homeassistant.helpers.translation")
 update_coordinator = types.ModuleType("homeassistant.helpers.update_coordinator")
 util = types.ModuleType("homeassistant.util")
@@ -53,6 +56,14 @@ class Platform(StrEnum):
 
 class HomeAssistant:
     """Type-only Home Assistant test double."""
+
+
+class ServiceCall:
+    """Type-only service-call test double."""
+
+
+class DeviceEntry:
+    """Type-only device-registry test double."""
 
 
 class ConfigEntry:
@@ -137,8 +148,11 @@ const.STATE_UNAVAILABLE = "unavailable"
 const.STATE_UNKNOWN = "unknown"
 const.__version__ = "2026.7.2"
 core.HomeAssistant = HomeAssistant
+core.ServiceCall = ServiceCall
 core.callback = lambda function: function
 exceptions.HomeAssistantError = HomeAssistantError
+device_registry.DeviceEntry = DeviceEntry
+helpers.device_registry = device_registry
 entity_registry.RegistryEntryDisabler = RegistryEntryDisabler
 entity_registry.async_get = lambda _hass: None
 helpers.entity_registry = entity_registry
@@ -146,6 +160,8 @@ issue_registry.IssueSeverity = IssueSeverity
 issue_registry.async_create_issue = lambda *_args, **_kwargs: None
 issue_registry.async_delete_issue = lambda *_args, **_kwargs: None
 helpers.issue_registry = issue_registry
+service.async_register_admin_service = lambda *_args, **_kwargs: None
+typing_module.ConfigType = dict
 storage.Store = Store
 translation.async_get_translations = lambda *_args, **_kwargs: {}
 update_coordinator.DataUpdateCoordinator = DataUpdateCoordinator
@@ -176,9 +192,12 @@ sys.modules.setdefault("homeassistant.const", const)
 sys.modules.setdefault("homeassistant.core", core)
 sys.modules.setdefault("homeassistant.exceptions", exceptions)
 sys.modules.setdefault("homeassistant.helpers", helpers)
+sys.modules.setdefault("homeassistant.helpers.device_registry", device_registry)
 sys.modules.setdefault("homeassistant.helpers.entity_registry", entity_registry)
 sys.modules.setdefault("homeassistant.helpers.issue_registry", issue_registry)
+sys.modules.setdefault("homeassistant.helpers.service", service)
 sys.modules.setdefault("homeassistant.helpers.storage", storage)
+sys.modules.setdefault("homeassistant.helpers.typing", typing_module)
 sys.modules.setdefault("homeassistant.helpers.translation", translation)
 sys.modules.setdefault("homeassistant.helpers.update_coordinator", update_coordinator)
 sys.modules.setdefault("homeassistant.util", util)

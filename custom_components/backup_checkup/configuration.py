@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
+from dataclasses import asdict, dataclass
 from typing import Any
 
 from .const import (
@@ -165,15 +167,32 @@ def _strict_bool(value: Any, default: bool) -> bool:
     return default
 
 
+def _integer_value(value: Any) -> int | None:
+    """Return a strict finite integer without silently truncating fractions."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value) if math.isfinite(value) and value.is_integer() else None
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return None
+        signless = stripped[1:] if stripped[:1] in {"+", "-"} else stripped
+        if not signless.isdecimal():
+            return None
+        try:
+            return int(stripped, 10)
+        except ValueError:
+            return None
+    return None
+
+
 def _bounded_int(value: Any, default: int, minimum: int, maximum: int) -> int:
     """Normalize one integer and enforce its supported range."""
-    if isinstance(value, bool):
-        return default
-    try:
-        parsed = int(value)
-    except (TypeError, ValueError, OverflowError):
-        return default
-    return parsed if minimum <= parsed <= maximum else default
+    parsed = _integer_value(value)
+    return parsed if parsed is not None and minimum <= parsed <= maximum else default
 
 
 def _enum(value: Any, default: str, allowed: tuple[str, ...]) -> str:
@@ -184,8 +203,8 @@ def _enum(value: Any, default: str, allowed: tuple[str, ...]) -> str:
 def normalize_configuration(*sources: Mapping[str, Any] | None) -> dict[str, Any]:
     """Return one complete canonical configuration snapshot.
 
-    Sources are merged from left to right. This lets persisted options override the
-    original config-entry data while ensuring every returned value has a stable type.
+    Sources are merged from left to right. Persisted options therefore override the
+    original config-entry data while every returned value receives a stable type.
     Unknown legacy keys are deliberately discarded.
     """
     merged: dict[str, Any] = {}
@@ -204,3 +223,92 @@ def normalize_configuration(*sources: Mapping[str, Any] | None) -> dict[str, Any
         merged.get(CONF_NOTIFICATION_TARGETS, DEFAULT_NOTIFICATION_TARGETS)
     )
     return normalized
+
+
+@dataclass(frozen=True, slots=True)
+class BackupCheckupSettings:
+    """Canonical immutable settings consumed by the runtime coordinator."""
+
+    max_age_days: int
+    update_interval_minutes: int
+    minimum_backup_size_mb: int
+    maximum_size_drop_percent: int
+    minimum_redundant_locations: int
+    analytics_window_days: int
+    max_verification_size_gb: int
+    max_expanded_size_gb: int
+    verification_timeout_minutes: int
+    database_timeout_minutes: int
+    manual_verification_cooldown_minutes: int
+    repair_issues_enabled: bool
+    auto_verify_new_backups: bool
+    database_integrity_check: bool
+    notifications_enabled: bool
+    notify_on_recovery: bool
+    expose_backup_metadata: bool
+    monitoring_profile: str
+    entity_mode: str
+    size_check_mode: str
+    notification_targets: tuple[str, ...]
+
+    @classmethod
+    def from_sources(cls, *sources: Mapping[str, Any] | None) -> BackupCheckupSettings:
+        """Create settings from config-entry data and options."""
+        values = normalize_configuration(*sources)
+        return cls(
+            max_age_days=values[CONF_MAX_AGE_DAYS],
+            update_interval_minutes=values[CONF_UPDATE_INTERVAL_MINUTES],
+            minimum_backup_size_mb=values[CONF_MINIMUM_BACKUP_SIZE_MB],
+            maximum_size_drop_percent=values[CONF_MAXIMUM_SIZE_DROP_PERCENT],
+            minimum_redundant_locations=values[CONF_MINIMUM_REDUNDANT_LOCATIONS],
+            analytics_window_days=values[CONF_ANALYTICS_WINDOW_DAYS],
+            max_verification_size_gb=values[CONF_MAX_VERIFICATION_SIZE_GB],
+            max_expanded_size_gb=values[CONF_MAX_EXPANDED_SIZE_GB],
+            verification_timeout_minutes=values[CONF_VERIFICATION_TIMEOUT_MINUTES],
+            database_timeout_minutes=values[CONF_DATABASE_TIMEOUT_MINUTES],
+            manual_verification_cooldown_minutes=values[
+                CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES
+            ],
+            repair_issues_enabled=values[CONF_REPAIR_ISSUES_ENABLED],
+            auto_verify_new_backups=values[CONF_AUTO_VERIFY_NEW_BACKUPS],
+            database_integrity_check=values[CONF_DATABASE_INTEGRITY_CHECK],
+            notifications_enabled=values[CONF_NOTIFICATIONS_ENABLED],
+            notify_on_recovery=values[CONF_NOTIFY_ON_RECOVERY],
+            expose_backup_metadata=values[CONF_EXPOSE_BACKUP_METADATA],
+            monitoring_profile=values[CONF_MONITORING_PROFILE],
+            entity_mode=values[CONF_ENTITY_MODE],
+            size_check_mode=values[CONF_SIZE_CHECK_MODE],
+            notification_targets=tuple(values[CONF_NOTIFICATION_TARGETS]),
+        )
+
+    def as_dict(self) -> dict[str, Any]:
+        """Return the canonical config-entry representation."""
+        result = asdict(self)
+        result[CONF_NOTIFICATION_TARGETS] = list(self.notification_targets)
+        result[CONF_MAX_AGE_DAYS] = result.pop("max_age_days")
+        result[CONF_UPDATE_INTERVAL_MINUTES] = result.pop("update_interval_minutes")
+        result[CONF_MINIMUM_BACKUP_SIZE_MB] = result.pop("minimum_backup_size_mb")
+        result[CONF_MAXIMUM_SIZE_DROP_PERCENT] = result.pop("maximum_size_drop_percent")
+        result[CONF_MINIMUM_REDUNDANT_LOCATIONS] = result.pop(
+            "minimum_redundant_locations"
+        )
+        result[CONF_ANALYTICS_WINDOW_DAYS] = result.pop("analytics_window_days")
+        result[CONF_MAX_VERIFICATION_SIZE_GB] = result.pop("max_verification_size_gb")
+        result[CONF_MAX_EXPANDED_SIZE_GB] = result.pop("max_expanded_size_gb")
+        result[CONF_VERIFICATION_TIMEOUT_MINUTES] = result.pop(
+            "verification_timeout_minutes"
+        )
+        result[CONF_DATABASE_TIMEOUT_MINUTES] = result.pop("database_timeout_minutes")
+        result[CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES] = result.pop(
+            "manual_verification_cooldown_minutes"
+        )
+        result[CONF_REPAIR_ISSUES_ENABLED] = result.pop("repair_issues_enabled")
+        result[CONF_AUTO_VERIFY_NEW_BACKUPS] = result.pop("auto_verify_new_backups")
+        result[CONF_DATABASE_INTEGRITY_CHECK] = result.pop("database_integrity_check")
+        result[CONF_NOTIFICATIONS_ENABLED] = result.pop("notifications_enabled")
+        result[CONF_NOTIFY_ON_RECOVERY] = result.pop("notify_on_recovery")
+        result[CONF_EXPOSE_BACKUP_METADATA] = result.pop("expose_backup_metadata")
+        result[CONF_MONITORING_PROFILE] = result.pop("monitoring_profile")
+        result[CONF_ENTITY_MODE] = result.pop("entity_mode")
+        result[CONF_SIZE_CHECK_MODE] = result.pop("size_check_mode")
+        return result

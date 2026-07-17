@@ -248,7 +248,7 @@ def test_password_marker_only_changes_for_new_password() -> None:
             )
         )
 
-    assert coordinator._update_backup_password_marker(manager("secret"))
+    assert not coordinator._update_backup_password_marker(manager("secret"))
     assert not coordinator._update_backup_password_marker(manager("secret"))
     assert coordinator._update_backup_password_marker(manager("different"))
 

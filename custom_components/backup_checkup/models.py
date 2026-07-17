@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
 from .age import completed_age_days
@@ -250,13 +251,16 @@ class BackupIntegrityResult:
             if value is not None and (
                 isinstance(value, bool)
                 or not isinstance(value, (int, float))
-                or value < 0
+                or not math.isfinite(float(value))
+                or float(value) < 0
+                or not float(value).is_integer()
             ):
                 return False
         duration = data.get("duration_seconds")
         if duration is not None and (
             isinstance(duration, bool)
             or not isinstance(duration, (int, float))
+            or not math.isfinite(float(duration))
             or duration < 0
         ):
             return False
@@ -288,7 +292,12 @@ class BackupIntegrityResult:
         def parse(value: Any) -> datetime | None:
             if not isinstance(value, str):
                 return None
-            return dt_util.parse_datetime(value)
+            parsed = dt_util.parse_datetime(value)
+            if parsed is None:
+                return None
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=UTC)
+            return dt_util.as_utc(parsed)
 
         def text(value: Any, *, maximum: int = 256) -> str | None:
             return value[:maximum] if isinstance(value, str) and value else None
@@ -296,26 +305,28 @@ class BackupIntegrityResult:
         def integer(value: Any, *, maximum: int = 10_000_000) -> int:
             if isinstance(value, bool) or not isinstance(value, (int, float)):
                 return 0
-            try:
-                parsed = int(value)
-            except (OverflowError, ValueError):
+            numeric = float(value)
+            if not math.isfinite(numeric) or not numeric.is_integer():
                 return 0
+            parsed = int(numeric)
             return parsed if 0 <= parsed <= maximum else 0
 
         def optional_integer(value: Any) -> int | None:
             if isinstance(value, bool) or not isinstance(value, (int, float)):
                 return None
-            try:
-                parsed = int(value)
-            except (OverflowError, ValueError):
+            numeric = float(value)
+            if not math.isfinite(numeric) or not numeric.is_integer():
                 return None
+            parsed = int(numeric)
             return parsed if 0 <= parsed <= 10**15 else None
 
         def optional_float(value: Any) -> float | None:
             if isinstance(value, bool) or not isinstance(value, (int, float)):
                 return None
             parsed = float(value)
-            return parsed if 0 <= parsed <= 365 * 86400 else None
+            return (
+                parsed if math.isfinite(parsed) and 0 <= parsed <= 365 * 86400 else None
+            )
 
         status_raw = data.get("status")
         status = (

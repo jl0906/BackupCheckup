@@ -615,8 +615,8 @@ def test_integrity_result_defensive_deserialization() -> None:
     )
     assert valid.status == "valid"
     assert valid.database_status == "passed"
-    assert valid.archive_count == 2
-    assert valid.verified_size == 4
+    assert valid.archive_count == 0
+    assert valid.verified_size is None
     assert valid.warnings == ("w" * 128,)
     assert valid.checksum_changed is True
 

@@ -32,6 +32,7 @@ from .const import (
     CONF_REPAIR_ISSUES_ENABLED,
     CONF_SIZE_CHECK_MODE,
     CONF_VERIFICATION_TIMEOUT_MINUTES,
+    CONFIG_ENTRY_VERSION,
     DEFAULT_AUTO_VERIFY_NEW_BACKUPS,
     DEFAULT_DATABASE_INTEGRITY_CHECK,
     DEFAULT_DATABASE_TIMEOUT_MINUTES,
@@ -66,63 +67,78 @@ from .repairs import (
     async_set_temporary_cleanup_issue,
     async_update_issues,
 )
-from .security import cleanup_stale_temp_directories
-from .storage_cleanup import (
-    cleanup_entry_store_files,
-    cleanup_orphaned_store_files,
+from .security import (
+    TempCleanupResult,
+    cleanup_stale_temp_directories,
+    safe_error_type,
 )
+from .storage_cleanup import cleanup_entry_store_files, cleanup_orphaned_store_files
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Register actions and remove stores left by deleted config entries."""
+def _loaded_coordinator(hass: HomeAssistant) -> BackupCheckupCoordinator:
+    """Return the loaded coordinator or raise a translated service error."""
+    coordinator = next(
+        (
+            runtime
+            for entry in hass.config_entries.async_entries(DOMAIN)
+            if isinstance(
+                (runtime := getattr(entry, "runtime_data", None)),
+                BackupCheckupCoordinator,
+            )
+        ),
+        None,
+    )
+    if coordinator is None:
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="integration_not_loaded",
+        )
+    return coordinator
+
+
+async def _async_cleanup_orphaned_stores(hass: HomeAssistant) -> None:
+    """Best-effort cleanup that must never block integration startup."""
     active_entry_ids = {
         entry.entry_id for entry in hass.config_entries.async_entries(DOMAIN)
     }
-    cleanup_result = await hass.async_add_executor_job(
-        cleanup_orphaned_store_files,
-        Path(hass.config.path(".storage")),
-        active_entry_ids,
-    )
-    if cleanup_result.removed:
+    try:
+        result = await hass.async_add_executor_job(
+            cleanup_orphaned_store_files,
+            Path(hass.config.path(".storage")),
+            active_entry_ids,
+        )
+    except Exception as err:  # noqa: BLE001 - filesystem executor boundary
+        _LOGGER.warning(
+            "Unable to inspect orphaned BackupCheckup stores: error_type=%s",
+            safe_error_type(err),
+        )
+        return
+    if result.removed:
         _LOGGER.info(
             "Removed orphaned BackupCheckup storage files: count=%s",
-            cleanup_result.removed,
+            result.removed,
         )
-    if cleanup_result.failed:
+    if result.failed:
         _LOGGER.warning(
             "Unable to remove some orphaned BackupCheckup storage files: count=%s",
-            cleanup_result.failed,
+            result.failed,
         )
 
-    def _coordinator() -> BackupCheckupCoordinator:
-        coordinator = next(
-            (
-                runtime
-                for entry in hass.config_entries.async_entries(DOMAIN)
-                if isinstance(
-                    (runtime := getattr(entry, "runtime_data", None)),
-                    BackupCheckupCoordinator,
-                )
-            ),
-            None,
-        )
-        if coordinator is None:
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="integration_not_loaded",
-            )
-        return coordinator
+
+async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
+    """Register actions and remove stores left by deleted config entries."""
+    await _async_cleanup_orphaned_stores(hass)
 
     async def _async_verify_latest_backup(_call: ServiceCall) -> None:
-        await _coordinator().async_start_integrity_check(source="manual")
+        await _loaded_coordinator(hass).async_start_integrity_check(source="manual")
 
     async def _async_refresh(_call: ServiceCall) -> None:
-        await _coordinator().async_request_refresh()
+        await _loaded_coordinator(hass).async_request_refresh()
 
     async def _async_test_notification(_call: ServiceCall) -> None:
-        coordinator = _coordinator()
+        coordinator = _loaded_coordinator(hass)
         if (
             not coordinator.notifications_enabled
             or not coordinator.notification_targets
@@ -148,102 +164,82 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 
+def _legacy_schema_defaults(version: int) -> dict[str, object]:
+    """Return defaults introduced after one historic config-entry version."""
+    defaults: dict[str, object] = {}
+    if version < 5:
+        defaults.update(
+            {
+                CONF_MONITORING_PROFILE: PROFILE_CUSTOM,
+                CONF_MINIMUM_BACKUP_SIZE_MB: DEFAULT_MINIMUM_BACKUP_SIZE_MB,
+                CONF_MAXIMUM_SIZE_DROP_PERCENT: DEFAULT_MAXIMUM_SIZE_DROP_PERCENT,
+                CONF_MINIMUM_REDUNDANT_LOCATIONS: DEFAULT_MINIMUM_REDUNDANT_LOCATIONS,
+                CONF_SIZE_CHECK_MODE: DEFAULT_SIZE_CHECK_MODE,
+                CONF_REPAIR_ISSUES_ENABLED: DEFAULT_REPAIR_ISSUES_ENABLED,
+                CONF_AUTO_VERIFY_NEW_BACKUPS: DEFAULT_AUTO_VERIFY_NEW_BACKUPS,
+                CONF_DATABASE_INTEGRITY_CHECK: DEFAULT_DATABASE_INTEGRITY_CHECK,
+                CONF_ENTITY_MODE: DEFAULT_ENTITY_MODE,
+                CONF_NOTIFICATIONS_ENABLED: DEFAULT_NOTIFICATIONS_ENABLED,
+                CONF_NOTIFICATION_TARGETS: list(DEFAULT_NOTIFICATION_TARGETS),
+                CONF_NOTIFY_ON_RECOVERY: DEFAULT_NOTIFY_ON_RECOVERY,
+            }
+        )
+    if version < 6:
+        defaults.update(
+            {
+                CONF_MAX_VERIFICATION_SIZE_GB: DEFAULT_MAX_VERIFICATION_SIZE_GB,
+                CONF_MAX_EXPANDED_SIZE_GB: DEFAULT_MAX_EXPANDED_SIZE_GB,
+                CONF_VERIFICATION_TIMEOUT_MINUTES: DEFAULT_VERIFICATION_TIMEOUT_MINUTES,
+                CONF_DATABASE_TIMEOUT_MINUTES: DEFAULT_DATABASE_TIMEOUT_MINUTES,
+                CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES: (
+                    DEFAULT_MANUAL_VERIFICATION_COOLDOWN_MINUTES
+                ),
+                CONF_EXPOSE_BACKUP_METADATA: DEFAULT_EXPOSE_BACKUP_METADATA,
+            }
+        )
+    return defaults
+
+
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate older BackupCheckup configuration entries."""
-    if entry.version > 9:
+    """Migrate data atomically without changing the entity registry."""
+    if entry.version > CONFIG_ENTRY_VERSION:
         return False
-    if entry.version == 9:
+    if entry.version == CONFIG_ENTRY_VERSION:
         return True
 
-    migrated_data = dict(entry.data)
-    version = entry.version
-
-    if version < 5:
-        migrated_data = {
-            CONF_MONITORING_PROFILE: PROFILE_CUSTOM,
-            CONF_MINIMUM_BACKUP_SIZE_MB: DEFAULT_MINIMUM_BACKUP_SIZE_MB,
-            CONF_MAXIMUM_SIZE_DROP_PERCENT: DEFAULT_MAXIMUM_SIZE_DROP_PERCENT,
-            CONF_MINIMUM_REDUNDANT_LOCATIONS: DEFAULT_MINIMUM_REDUNDANT_LOCATIONS,
-            CONF_SIZE_CHECK_MODE: DEFAULT_SIZE_CHECK_MODE,
-            CONF_REPAIR_ISSUES_ENABLED: DEFAULT_REPAIR_ISSUES_ENABLED,
-            CONF_AUTO_VERIFY_NEW_BACKUPS: DEFAULT_AUTO_VERIFY_NEW_BACKUPS,
-            CONF_DATABASE_INTEGRITY_CHECK: DEFAULT_DATABASE_INTEGRITY_CHECK,
-            CONF_ENTITY_MODE: DEFAULT_ENTITY_MODE,
-            CONF_NOTIFICATIONS_ENABLED: DEFAULT_NOTIFICATIONS_ENABLED,
-            CONF_NOTIFICATION_TARGETS: list(DEFAULT_NOTIFICATION_TARGETS),
-            CONF_NOTIFY_ON_RECOVERY: DEFAULT_NOTIFY_ON_RECOVERY,
-            **migrated_data,
-        }
-        async_apply_entity_mode(
-            hass,
-            entry,
-            DEFAULT_ENTITY_MODE,
-            disable_others=False,
-        )
-        version = 5
-
-    if version < 6:
-        security_defaults = {
-            CONF_MAX_VERIFICATION_SIZE_GB: DEFAULT_MAX_VERIFICATION_SIZE_GB,
-            CONF_MAX_EXPANDED_SIZE_GB: DEFAULT_MAX_EXPANDED_SIZE_GB,
-            CONF_VERIFICATION_TIMEOUT_MINUTES: DEFAULT_VERIFICATION_TIMEOUT_MINUTES,
-            CONF_DATABASE_TIMEOUT_MINUTES: DEFAULT_DATABASE_TIMEOUT_MINUTES,
-            CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES: (
-                DEFAULT_MANUAL_VERIFICATION_COOLDOWN_MINUTES
-            ),
-            CONF_EXPOSE_BACKUP_METADATA: DEFAULT_EXPOSE_BACKUP_METADATA,
-        }
-        migrated_data = {**security_defaults, **migrated_data}
-        version = 6
-
-    if version < 7:
-        async_apply_entity_mode(
-            hass,
-            entry,
-            str(migrated_data.get(CONF_ENTITY_MODE, DEFAULT_ENTITY_MODE)),
-            disable_others=True,
-        )
-        version = 7
-
-    if version < 8:
-        # Re-apply the selected preset so Expert mode also enables the exact
-        # timestamp entities that beta6 intentionally left disabled. Only
-        # integration-disabled entries are changed; user and config-entry
-        # choices remain untouched.
-        async_apply_entity_mode(
-            hass,
-            entry,
-            str(migrated_data.get(CONF_ENTITY_MODE, DEFAULT_ENTITY_MODE)),
-            disable_others=False,
-        )
-        version = 8
-
-    # Schema 9 canonicalizes both persistence layers. Home Assistant keeps the
-    # original data and later options separately; stale 2.1.x options otherwise
-    # override newly migrated values during the first form render.
-    normalized = normalize_configuration(migrated_data, entry.options)
-    version = 9
+    migrated = {
+        **_legacy_schema_defaults(entry.version),
+        **dict(entry.data),
+    }
+    normalized = normalize_configuration(migrated, entry.options)
     hass.config_entries.async_update_entry(
         entry,
         data=normalized,
         options=normalized,
-        version=version,
-    )
-    async_apply_entity_mode(
-        hass,
-        entry,
-        str(normalized.get(CONF_ENTITY_MODE, DEFAULT_ENTITY_MODE)),
-        disable_others=False,
+        version=CONFIG_ENTRY_VERSION,
     )
     return True
+
+
+async def _async_cleanup_stale_temporary_data(
+    hass: HomeAssistant,
+) -> TempCleanupResult:
+    """Run best-effort stale temporary-data cleanup."""
+    try:
+        return await hass.async_add_executor_job(cleanup_stale_temp_directories)
+    except Exception as err:  # noqa: BLE001 - filesystem executor boundary
+        _LOGGER.warning(
+            "Unable to inspect stale BackupCheckup temporary data: error_type=%s",
+            safe_error_type(err),
+        )
+        return TempCleanupResult(failures=1)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up BackupCheckup from a config entry."""
     coordinator = BackupCheckupCoordinator(hass, entry)
 
-    # Repair integration-disabled registry entries before the platforms decide
-    # which entities to instantiate. User and config-entry disables are kept.
+    # Registry changes are setup concerns, not config-entry migration side effects.
     async_apply_entity_mode(
         hass,
         entry,
@@ -251,12 +247,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         disable_others=False,
     )
 
-    stale_cleanup = await hass.async_add_executor_job(cleanup_stale_temp_directories)
+    stale_cleanup = await _async_cleanup_stale_temporary_data(hass)
     if coordinator.repair_issues_enabled:
-        async_set_temporary_cleanup_issue(
-            hass,
-            active=stale_cleanup.issue_active,
-        )
+        async_set_temporary_cleanup_issue(hass, active=stale_cleanup.issue_active)
 
     await coordinator.async_config_entry_first_refresh()
 
@@ -272,13 +265,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _sync_repair_issues()
     entry.async_on_unload(coordinator.async_add_listener(_sync_repair_issues))
-
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    # Apply the enabling side of the selected preset after all platforms have
-    # registered their entities. This repairs integration-disabled entities
-    # after upgrades without overriding entities disabled by the user or by
-    # the config-entry system option.
     async_apply_entity_mode(
         hass,
         entry,
@@ -320,19 +308,24 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     for remove in removers:
         try:
             await remove()
-        except Exception as err:  # noqa: BLE001
+        except Exception as err:  # noqa: BLE001 - Home Assistant Store boundary
             _LOGGER.warning(
                 "Unable to remove a BackupCheckup private store: error_type=%s",
-                type(err).__name__,
+                safe_error_type(err),
             )
 
-    # Store.async_remove() is the primary cleanup. The exact-path fallback also
-    # covers interrupted or partially completed removal without using wildcards.
-    cleanup_result = await hass.async_add_executor_job(
-        cleanup_entry_store_files,
-        Path(hass.config.path(".storage")),
-        entry.entry_id,
-    )
+    try:
+        cleanup_result = await hass.async_add_executor_job(
+            cleanup_entry_store_files,
+            Path(hass.config.path(".storage")),
+            entry.entry_id,
+        )
+    except Exception as err:  # noqa: BLE001 - filesystem executor boundary
+        _LOGGER.warning(
+            "Unable to perform exact-path BackupCheckup store cleanup: error_type=%s",
+            safe_error_type(err),
+        )
+        return
     if cleanup_result.failed:
         _LOGGER.warning(
             "Unable to remove all BackupCheckup private stores: count=%s",
@@ -346,6 +339,7 @@ async def async_remove_config_entry_device(
     device_entry: dr.DeviceEntry,
 ) -> bool:
     """Allow removal of a storage device only after its agent disappeared."""
+    del hass
     coordinator = getattr(entry, "runtime_data", None)
     if not isinstance(coordinator, BackupCheckupCoordinator):
         return False

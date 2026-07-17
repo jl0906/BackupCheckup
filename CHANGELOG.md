@@ -1,5 +1,47 @@
 # Changelog
 
+## 2.2.4
+
+**Recommended reliability update!**
+
+Version 2.2.4 resolves the reliability defects found during the SonarQube review and restructures the most complex runtime paths without changing the config-entry schema.
+
+### Fixed
+
+- Fixed a missing required storage location being counted as a problem while the main status could still remain `ok`; it now consistently uses the storage-error status and recommendation.
+- Fixed an exception while publishing the initial `checking` state potentially leaving integrity verification permanently marked as running.
+- Fixed the existing backup password being treated as newly changed on every Home Assistant restart.
+- Persisted automatic integrity retry attempts, backoff deadlines, password markers, and the last manual verification time in the existing private integrity store.
+- Fixed automatic checks incorrectly activating the cooldown for a later manual integrity check.
+- Fixed an incomplete manual backup masking an overdue or missing automatic backup.
+- Fixed an invalid duplicate inventory record being able to hide a later valid record with the same backup ID.
+- Rejected fractional, non-finite, and malformed integer values instead of silently truncating them.
+- Sorted analytics input internally, ignored future-dated records, and kept scope/origin selection deterministic.
+- Rejected negative resource-accounting values and invalid verification budgets before they could weaken safety limits.
+- Preserved the original file-open exception when descriptor or path cleanup also fails.
+- Made orphaned-store and stale-temporary-data cleanup best effort so filesystem errors cannot prevent the integration from loading.
+- Removed entity-registry side effects from config-entry migration; entity presets are now applied only during normal setup.
+- Defensively normalized invalid health-history percentages and negative counters.
+- Sanitized fallback storage display names as strictly as native agent names.
+- Logged unexpected background verification task failures instead of merely consuming them.
+
+### Changed
+
+- Added a canonical immutable `BackupCheckupSettings` model so configuration is normalized once and consumed consistently by the coordinator.
+- Split the coordinator refresh into dedicated inventory, freshness, storage, integrity, problem-state, notification, and scheduling stages.
+- Moved third-party backup model normalization into a dedicated defensive normalizer with named results and isolated object boundaries.
+- Centralized problem priority, status, recommendation, and health-score deductions in one definition table.
+- Split analytics into small pure helpers for window selection, average size, gap analysis, trend evaluation, history deductions, and rating selection.
+- Reworked storage-agent aggregation to index records in linear passes instead of repeatedly scanning the full inventory for every agent.
+- Replaced ambiguous tuple results for size analysis with named dataclasses.
+- Reduced and documented broad exception handling so it remains only at explicit Home Assistant, filesystem, Store, notify, and third-party object boundaries.
+
+### Compatibility
+
+- Config-entry schema remains version 9.
+- Existing 2.2.3 configuration, entity IDs, dashboards, notification selections, and private stores remain compatible.
+- The integrity store automatically reads the legacy result-only format and writes the extended 2.2.4 state envelope on the next update.
+
 ## 2.2.3
 
 **Recommended reliability update!**
@@ -31,8 +73,6 @@ Version 2.2.3 fixes automatic verification retry handling, redundant-copy fallba
 - The config-entry schema remains version 9; no migration is required.
 
 ## 2.2.2
-
-**Recommended patch update!**
 
 Version 2.2.2 contains a focused configuration-flow usability fix.
 

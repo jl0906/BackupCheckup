@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import math
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from itertools import pairwise
 from statistics import mean, median
 
 from .models import BackupRecord
+from .problem_state import CURRENT_PROBLEM_DEDUCTIONS
 
 HEALTH_RATING_EXCELLENT = "excellent"
 HEALTH_RATING_GOOD = "good"
@@ -20,23 +22,14 @@ SIZE_TREND_STABLE = "stable"
 SIZE_TREND_DECREASING = "decreasing"
 SIZE_TREND_INSUFFICIENT_DATA = "insufficient_data"
 
-CURRENT_PROBLEM_DEDUCTIONS: dict[str, int] = {
-    "no_backup": 100,
-    "backup_integrity_failed": 60,
-    "backup_integrity_warning": 11,
-    "backup_checksum_changed": 40,
-    "manager_unavailable": 50,
-    "backup_stale": 25,
-    "automatic_backup_overdue": 15,
-    "automatic_backup_failed": 20,
-    "automatic_schedule_missing": 10,
-    "automatic_schedule_overdue": 10,
-    "storage_error": 20,
-    "backup_size_suspicious": 15,
-    "latest_backup_incomplete": 25,
-    "backup_not_redundant": 15,
-    "required_location_missing": 10,
-}
+_MIN_TREND_RECORDS = 4
+_MAX_TREND_RECORDS = 6
+_EXCELLENT_SCORE_MIN = 90
+_GOOD_SCORE_MIN = 75
+_WARNING_SCORE_MIN = 50
+_LOW_SUCCESS_RATE = 60.0
+_REDUCED_SUCCESS_RATE = 80.0
+_IMPERFECT_SUCCESS_RATE = 95.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,6 +54,72 @@ class HealthScore:
     deductions: dict[str, int]
 
 
+def _window_records(
+    records: Iterable[BackupRecord], *, now: datetime, window_days: int
+) -> tuple[BackupRecord, ...]:
+    """Return newest-first records inside the selected window and not in future."""
+    window_start = now - timedelta(days=window_days)
+    return tuple(
+        sorted(
+            (record for record in records if window_start <= record.date <= now),
+            key=lambda record: record.date,
+            reverse=True,
+        )
+    )
+
+
+def _size_analysis_records(
+    records: tuple[BackupRecord, ...], newest: BackupRecord
+) -> tuple[BackupRecord, ...]:
+    """Return records comparable to the newest scope and origin."""
+    return tuple(
+        record
+        for record in records
+        if record.scope_fingerprint == newest.scope_fingerprint
+        and record.automatic == newest.automatic
+    )
+
+
+def _average_known_size(records: Iterable[BackupRecord]) -> int | None:
+    """Return the rounded mean of known non-negative sizes."""
+    sizes = [record.size for record in records if record.size is not None]
+    return round(mean(sizes)) if sizes else None
+
+
+def _longest_gap_days(records: Iterable[BackupRecord]) -> float | None:
+    """Return the longest chronological gap in days."""
+    chronological = sorted(record.date for record in records)
+    gaps = [
+        (newer - older).total_seconds() / 86400
+        for older, newer in pairwise(chronological)
+    ]
+    return round(max(gaps), 2) if gaps else None
+
+
+def _size_trend(
+    records: tuple[BackupRecord, ...], *, stable_threshold_percent: float
+) -> tuple[str, float | None]:
+    """Return a robust recent-versus-older median size trend."""
+    trend_records = [
+        record for record in records if record.size is not None and record.size > 0
+    ][:_MAX_TREND_RECORDS]
+    if len(trend_records) < _MIN_TREND_RECORDS:
+        return SIZE_TREND_INSUFFICIENT_DATA, None
+
+    split = len(trend_records) // 2
+    recent_baseline = median(record.size for record in trend_records[:split])
+    older_baseline = median(record.size for record in trend_records[split:])
+    if older_baseline <= 0:
+        return SIZE_TREND_INSUFFICIENT_DATA, None
+
+    percent = round(((recent_baseline - older_baseline) / older_baseline) * 100, 1)
+    if percent > stable_threshold_percent:
+        return SIZE_TREND_INCREASING, percent
+    if percent < -stable_threshold_percent:
+        return SIZE_TREND_DECREASING, percent
+    return SIZE_TREND_STABLE, percent
+
+
 def calculate_inventory_analytics(
     records: tuple[BackupRecord, ...],
     *,
@@ -69,9 +128,8 @@ def calculate_inventory_analytics(
     stable_threshold_percent: float = 5.0,
 ) -> InventoryAnalytics:
     """Calculate size and interval analytics strictly inside the selected window."""
-    window_start = now - timedelta(days=window_days)
-    window_records = tuple(record for record in records if record.date >= window_start)
-    if not window_records:
+    selected = _window_records(records, now=now, window_days=window_days)
+    if not selected:
         return InventoryAnalytics(
             average_backup_size=None,
             longest_backup_gap_days=None,
@@ -82,69 +140,75 @@ def calculate_inventory_analytics(
             analyzed_backup_origin=None,
         )
 
-    newest = window_records[0]
-    analyzed_scope = newest.scope_fingerprint
-    analyzed_automatic = newest.automatic
-    analyzed_origin = "automatic" if analyzed_automatic else "manual"
-    size_analysis_records = tuple(
-        record
-        for record in window_records
-        if record.scope_fingerprint == analyzed_scope
-        and record.automatic == analyzed_automatic
+    newest = selected[0]
+    comparable = _size_analysis_records(selected, newest)
+    trend, trend_percent = _size_trend(
+        comparable,
+        stable_threshold_percent=stable_threshold_percent,
     )
-
-    known_sizes = [
-        record.size for record in size_analysis_records if record.size is not None
-    ]
-    average_size = round(mean(known_sizes)) if known_sizes else None
-
-    chronological = sorted(record.date for record in window_records)
-    gaps = [
-        (newer - older).total_seconds() / 86400
-        for older, newer in pairwise(chronological)
-    ]
-    longest_gap = round(max(gaps), 2) if gaps else None
-
-    trend_records = [
-        record
-        for record in size_analysis_records
-        if record.size is not None and record.size > 0
-    ][:6]
-
-    if len(trend_records) < 4:
-        trend = SIZE_TREND_INSUFFICIENT_DATA
-        trend_percent = None
-    else:
-        split = len(trend_records) // 2
-        recent_baseline = median(
-            record.size for record in trend_records[:split] if record.size is not None
-        )
-        older_baseline = median(
-            record.size for record in trend_records[split:] if record.size is not None
-        )
-        trend_percent = (
-            round(((recent_baseline - older_baseline) / older_baseline) * 100, 1)
-            if older_baseline
-            else None
-        )
-        if trend_percent is None:
-            trend = SIZE_TREND_INSUFFICIENT_DATA
-        elif trend_percent > stable_threshold_percent:
-            trend = SIZE_TREND_INCREASING
-        elif trend_percent < -stable_threshold_percent:
-            trend = SIZE_TREND_DECREASING
-        else:
-            trend = SIZE_TREND_STABLE
-
     return InventoryAnalytics(
-        average_backup_size=average_size,
-        longest_backup_gap_days=longest_gap,
+        average_backup_size=_average_known_size(comparable),
+        longest_backup_gap_days=_longest_gap_days(selected),
         size_trend=trend,
         size_trend_percent=trend_percent,
-        analyzed_backup_count=len(size_analysis_records),
-        analyzed_backup_scope=analyzed_scope,
-        analyzed_backup_origin=analyzed_origin,
+        analyzed_backup_count=len(comparable),
+        analyzed_backup_scope=newest.scope_fingerprint,
+        analyzed_backup_origin="automatic" if newest.automatic else "manual",
     )
+
+
+def _valid_success_rate(value: float | None) -> float | None:
+    """Return a finite percentage in the supported 0-100 range."""
+    if value is None or isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    parsed = float(value)
+    return parsed if math.isfinite(parsed) and 0.0 <= parsed <= 100.0 else None
+
+
+def _history_deductions(
+    *,
+    automatic_success_rate: float | None,
+    consecutive_automatic_failures: int,
+    resolved_attempts: int,
+) -> dict[str, int]:
+    """Return deductions from normalized automatic-backup history metrics."""
+    deductions: dict[str, int] = {}
+    resolved = (
+        max(0, resolved_attempts)
+        if isinstance(resolved_attempts, int)
+        and not isinstance(resolved_attempts, bool)
+        else 0
+    )
+    failures = (
+        max(0, consecutive_automatic_failures)
+        if isinstance(consecutive_automatic_failures, int)
+        and not isinstance(consecutive_automatic_failures, bool)
+        else 0
+    )
+    success_rate = _valid_success_rate(automatic_success_rate)
+
+    if resolved >= 3 and success_rate is not None:
+        if success_rate < _LOW_SUCCESS_RATE:
+            deductions["low_automatic_success_rate"] = 20
+        elif success_rate < _REDUCED_SUCCESS_RATE:
+            deductions["reduced_automatic_success_rate"] = 12
+        elif success_rate < _IMPERFECT_SUCCESS_RATE:
+            deductions["imperfect_automatic_success_rate"] = 5
+
+    if failures:
+        deductions["consecutive_automatic_failures"] = min(15, failures * 5)
+    return deductions
+
+
+def _rating_for_score(score: int) -> str:
+    """Return the localized enum key for one normalized score."""
+    if score >= _EXCELLENT_SCORE_MIN:
+        return HEALTH_RATING_EXCELLENT
+    if score >= _GOOD_SCORE_MIN:
+        return HEALTH_RATING_GOOD
+    if score >= _WARNING_SCORE_MIN:
+        return HEALTH_RATING_WARNING
+    return HEALTH_RATING_CRITICAL
 
 
 def calculate_health_score(
@@ -154,34 +218,22 @@ def calculate_health_score(
     consecutive_automatic_failures: int,
     resolved_attempts: int,
 ) -> HealthScore:
-    """Calculate a transparent 0-100 backup health score."""
+    """Calculate a transparent, defensively normalized 0-100 health score."""
     deductions = {
         key: deduction
         for key, deduction in CURRENT_PROBLEM_DEDUCTIONS.items()
-        if flags.get(key, False)
+        if flags.get(key, False) is True
     }
-
-    if resolved_attempts >= 3 and automatic_success_rate is not None:
-        if automatic_success_rate < 60:
-            deductions["low_automatic_success_rate"] = 20
-        elif automatic_success_rate < 80:
-            deductions["reduced_automatic_success_rate"] = 12
-        elif automatic_success_rate < 95:
-            deductions["imperfect_automatic_success_rate"] = 5
-
-    if consecutive_automatic_failures > 0:
-        deductions["consecutive_automatic_failures"] = min(
-            15, consecutive_automatic_failures * 5
+    deductions.update(
+        _history_deductions(
+            automatic_success_rate=automatic_success_rate,
+            consecutive_automatic_failures=consecutive_automatic_failures,
+            resolved_attempts=resolved_attempts,
         )
-
+    )
     score = max(0, 100 - sum(deductions.values()))
-    if score >= 90:
-        rating = HEALTH_RATING_EXCELLENT
-    elif score >= 75:
-        rating = HEALTH_RATING_GOOD
-    elif score >= 50:
-        rating = HEALTH_RATING_WARNING
-    else:
-        rating = HEALTH_RATING_CRITICAL
-
-    return HealthScore(score=score, rating=rating, deductions=deductions)
+    return HealthScore(
+        score=score,
+        rating=_rating_for_score(score),
+        deductions=deductions,
+    )

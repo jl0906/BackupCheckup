@@ -109,7 +109,9 @@ def test_integrity_store_loads_saves_and_removes_valid_result() -> None:
 
     replacement = BackupIntegrityResult.not_checked()
     asyncio.run(store.async_save(replacement))
-    assert fake.saved == replacement.as_dict()
+    assert fake.saved is not None
+    assert fake.saved["result"] == replacement.as_dict()
+    assert fake.saved["retry"]["attempts"] == 0
     assert store._result is replacement
 
     asyncio.run(store.async_remove())

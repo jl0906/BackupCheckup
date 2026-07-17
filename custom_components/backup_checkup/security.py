@@ -11,6 +11,7 @@ import tempfile
 import threading
 import time
 import unicodedata
+from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import BinaryIO
@@ -24,6 +25,9 @@ from .const import (
 
 _TEMP_PREFIX = "backup_checkup_"
 _GB = 1_000_000_000
+_MAX_LOG_VALUE_LENGTH = 160
+_MAX_ERROR_TYPE_LENGTH = 80
+_MAX_DISPLAY_NAME_LENGTH = 128
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,6 +79,12 @@ class VerificationBudget:
         timeout_minutes: int,
     ) -> VerificationBudget:
         """Create a budget from validated integration options."""
+        values = (max_download_gb, max_expanded_gb, timeout_minutes)
+        if any(
+            isinstance(value, bool) or not isinstance(value, int) or value <= 0
+            for value in values
+        ):
+            raise VerificationLimitError("invalid_verification_budget")
         return cls(
             deadline=time.monotonic() + timeout_minutes * 60,
             max_download_bytes=max_download_gb * _GB,
@@ -111,13 +121,23 @@ class VerificationBudget:
         """Raise when the overall verification deadline has expired."""
         self.remaining_seconds()
 
+    @staticmethod
+    def _require_nonnegative(size: int, *, code: str) -> None:
+        """Reject invalid negative accounting values."""
+        if isinstance(size, bool) or not isinstance(size, int) or size < 0:
+            raise VerificationLimitError(code)
+
     def validate_expected_download(self, expected_size: int | None) -> None:
         """Reject a known backup size above the configured download limit."""
-        if expected_size is not None and expected_size > self.max_download_bytes:
+        if expected_size is None:
+            return
+        self._require_nonnegative(expected_size, code="download_size_limit")
+        if expected_size > self.max_download_bytes:
             raise VerificationLimitError("download_size_limit")
 
     def add_downloaded(self, size: int) -> None:
         """Account for downloaded bytes and enforce the limit."""
+        self._require_nonnegative(size, code="download_size_limit")
         self.check_deadline()
         self.downloaded_bytes += size
         if self.downloaded_bytes > self.max_download_bytes:
@@ -125,6 +145,7 @@ class VerificationBudget:
 
     def add_expanded(self, size: int) -> None:
         """Account for bytes read from expanded archive members."""
+        self._require_nonnegative(size, code="expanded_size_limit")
         self.check_deadline()
         self.expanded_bytes += size
         if self.expanded_bytes > self.max_expanded_bytes:
@@ -132,8 +153,9 @@ class VerificationBudget:
 
     def ensure_expanded_capacity(self, size: int) -> None:
         """Reject a declared member size that cannot fit in the remaining budget."""
+        self._require_nonnegative(size, code="expanded_size_limit")
         self.check_deadline()
-        if size < 0 or self.expanded_bytes + size > self.max_expanded_bytes:
+        if self.expanded_bytes + size > self.max_expanded_bytes:
             raise VerificationLimitError("expanded_size_limit")
 
     def add_member(self) -> None:
@@ -145,12 +167,14 @@ class VerificationBudget:
 
     def check_metadata_size(self, size: int) -> None:
         """Reject oversized backup metadata."""
+        self._require_nonnegative(size, code="metadata_size_limit")
         self.check_deadline()
-        if size < 0 or size > self.max_metadata_bytes:
+        if size > self.max_metadata_bytes:
             raise VerificationLimitError("metadata_size_limit")
 
     def check_free_space(self, path: Path, required_bytes: int = 0) -> None:
         """Ensure the temporary filesystem keeps a safety reserve."""
+        self._require_nonnegative(required_bytes, code="insufficient_free_space")
         self.check_deadline()
         usage = shutil.disk_usage(path)
         dynamic_reserve = max(self.free_space_reserve_bytes, usage.total // 10)
@@ -181,13 +205,11 @@ def classify_exception(error: BaseException) -> str:
     return "unknown_error"
 
 
-def safe_log_value(value: object, *, max_length: int = 160) -> str:
+def safe_log_value(value: object, *, max_length: int = _MAX_LOG_VALUE_LENGTH) -> str:
     """Return a single-line bounded representation for untrusted log values."""
     try:
         text = str(value)
-    except Exception:  # noqa: BLE001
-        # A third-party object may implement a broken ``__str__`` method. Logging
-        # such an object must never hide the original integration error.
+    except Exception:  # noqa: BLE001 - third-party boundary by design
         text = f"<unprintable:{type(value).__name__}>"
     cleaned = "".join(
         character
@@ -196,21 +218,25 @@ def safe_log_value(value: object, *, max_length: int = 160) -> str:
         else "?"
         for character in text
     )
-    return cleaned[:max_length]
+    return cleaned[: max(0, max_length)]
 
 
 def safe_error_type(error: BaseException) -> str:
     """Return a bounded log-safe exception class name."""
-    return safe_log_value(type(error).__name__, max_length=80)
+    return safe_log_value(type(error).__name__, max_length=_MAX_ERROR_TYPE_LENGTH)
 
 
 def safe_display_name(value: object, *, fallback: str) -> str:
     """Return a bounded single-line user-facing name."""
     if isinstance(value, str):
-        cleaned = safe_log_value(value, max_length=128).strip()
+        cleaned = safe_log_value(value, max_length=_MAX_DISPLAY_NAME_LENGTH).strip()
         if cleaned:
             return cleaned
-    return fallback
+    cleaned_fallback = safe_log_value(
+        fallback,
+        max_length=_MAX_DISPLAY_NAME_LENGTH,
+    ).strip()
+    return cleaned_fallback or "Backup storage"
 
 
 def anonymous_backup_reference(entry_id: str, backup_id: str) -> str:
@@ -264,8 +290,11 @@ def open_private_binary_writer(path: Path) -> BinaryIO:
     try:
         return os.fdopen(descriptor, "wb")
     except Exception:
-        os.close(descriptor)
-        path.unlink(missing_ok=True)
+        # Cleanup errors must never hide the original fdopen failure.
+        with suppress(OSError):
+            os.close(descriptor)
+        with suppress(OSError):
+            path.unlink(missing_ok=True)
         raise
 
 
