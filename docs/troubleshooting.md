@@ -58,7 +58,7 @@ when it still contains a valid manifest with the same domain. Move backups outsi
 ### Check the log traceback
 
 Copy the complete traceback beginning with the first `custom_components.backup_checkup`
-line. Errors from Hue, Petlibro, Petkit, Apple TV, or another integration do not
+line. Errors from other integrations do not
 necessarily indicate a BackupCheckup problem.
 
 ## Mobile notification configuration
