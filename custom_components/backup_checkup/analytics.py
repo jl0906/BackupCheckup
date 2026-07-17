@@ -49,6 +49,7 @@ class InventoryAnalytics:
     size_trend_percent: float | None
     analyzed_backup_count: int
     analyzed_backup_scope: str | None
+    analyzed_backup_origin: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,16 +68,29 @@ def calculate_inventory_analytics(
     window_days: int,
     stable_threshold_percent: float = 5.0,
 ) -> InventoryAnalytics:
-    """Calculate size and interval analytics from retained backups."""
+    """Calculate size and interval analytics strictly inside the selected window."""
     window_start = now - timedelta(days=window_days)
     window_records = tuple(record for record in records if record.date >= window_start)
-    analysis_records = window_records or records
+    if not window_records:
+        return InventoryAnalytics(
+            average_backup_size=None,
+            longest_backup_gap_days=None,
+            size_trend=SIZE_TREND_INSUFFICIENT_DATA,
+            size_trend_percent=None,
+            analyzed_backup_count=0,
+            analyzed_backup_scope=None,
+            analyzed_backup_origin=None,
+        )
 
-    analyzed_scope = records[0].scope_fingerprint if records else None
+    newest = window_records[0]
+    analyzed_scope = newest.scope_fingerprint
+    analyzed_automatic = newest.automatic
+    analyzed_origin = "automatic" if analyzed_automatic else "manual"
     size_analysis_records = tuple(
         record
-        for record in analysis_records
-        if analyzed_scope is not None and record.scope_fingerprint == analyzed_scope
+        for record in window_records
+        if record.scope_fingerprint == analyzed_scope
+        and record.automatic == analyzed_automatic
     )
 
     known_sizes = [
@@ -84,26 +98,18 @@ def calculate_inventory_analytics(
     ]
     average_size = round(mean(known_sizes)) if known_sizes else None
 
-    chronological = sorted(record.date for record in analysis_records)
+    chronological = sorted(record.date for record in window_records)
     gaps = [
         (newer - older).total_seconds() / 86400
         for older, newer in pairwise(chronological)
     ]
     longest_gap = round(max(gaps), 2) if gaps else None
 
-    automatic_with_sizes = [
-        record
-        for record in size_analysis_records
-        if record.automatic and record.size is not None and record.size > 0
-    ]
-    all_with_sizes = [
+    trend_records = [
         record
         for record in size_analysis_records
         if record.size is not None and record.size > 0
-    ]
-    trend_records = (
-        automatic_with_sizes if len(automatic_with_sizes) >= 4 else all_with_sizes
-    )[:6]
+    ][:6]
 
     if len(trend_records) < 4:
         trend = SIZE_TREND_INSUFFICIENT_DATA
@@ -137,6 +143,7 @@ def calculate_inventory_analytics(
         size_trend_percent=trend_percent,
         analyzed_backup_count=len(size_analysis_records),
         analyzed_backup_scope=analyzed_scope,
+        analyzed_backup_origin=analyzed_origin,
     )
 
 

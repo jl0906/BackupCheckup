@@ -148,7 +148,7 @@ class BackupCheckupHistory:
             candidates = [
                 item
                 for item in self._attempts
-                if item["status"] == _STATUS_PENDING
+                if item["status"] in {_STATUS_PENDING, _STATUS_FAILED}
                 and (attempt := self._parse_datetime(item["attempt_at"])) is not None
                 and attempt <= success + _SUCCESS_MATCH_TOLERANCE
             ]

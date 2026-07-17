@@ -151,7 +151,7 @@ class BackupIntegrityVerifier:
     ) -> BackupIntegrityResult:
         """Verify an available backup copy and fall back to another agent if needed."""
         started = time.monotonic()
-        budget = VerificationBudget.from_options(
+        overall_budget = VerificationBudget.from_options(
             max_download_gb=max_download_gb,
             max_expanded_gb=max_expanded_gb,
             timeout_minutes=timeout_minutes,
@@ -211,6 +211,7 @@ class BackupIntegrityVerifier:
         try:
             previous = await self.store.async_load()
             for index, candidate_id in enumerate(candidate_agents):
+                copy_budget = overall_budget.for_copy()
                 copy = next(
                     (
                         item
@@ -222,9 +223,9 @@ class BackupIntegrityVerifier:
                 candidate_expected = copy.size if copy else None
                 candidate_protected = bool(copy and copy.protected)
                 try:
-                    budget.validate_expected_download(candidate_expected)
+                    copy_budget.validate_expected_download(candidate_expected)
                     await self.hass.async_add_executor_job(
-                        budget.check_free_space,
+                        copy_budget.check_free_space,
                         temp_dir,
                         candidate_expected or 0,
                     )
@@ -243,7 +244,7 @@ class BackupIntegrityVerifier:
                         manager_agents[candidate_id],
                         record.backup_id,
                         candidate_path,
-                        budget,
+                        copy_budget,
                     )
                 except VerificationLimitError as err:
                     _LOGGER.warning(
@@ -313,6 +314,7 @@ class BackupIntegrityVerifier:
                         )
                     )
                     copy_failures += 1
+                    candidate_path.unlink(missing_ok=True)
                     continue
 
                 database_path = temp_dir / _DATABASE_FILENAME
@@ -340,13 +342,13 @@ class BackupIntegrityVerifier:
                     candidate_protected,
                     database_check,
                     database_timeout_minutes,
-                    budget,
+                    copy_budget,
                 )
                 candidate_failure: BackupIntegrityResult | None = None
                 try:
                     details = await asyncio.shield(archive_future)
                 except asyncio.CancelledError:
-                    budget.cancel()
+                    copy_budget.cancel()
                     try:
                         await archive_future
                     except Exception as worker_err:  # noqa: BLE001
@@ -455,6 +457,10 @@ class BackupIntegrityVerifier:
                 if candidate_failure is not None:
                     remember_failure(candidate_failure)
                     copy_failures += 1
+                    try:
+                        candidate_path.unlink(missing_ok=True)
+                    except OSError:
+                        pass
                     continue
 
                 warnings.extend(details["warnings"])
@@ -729,7 +735,7 @@ class BackupIntegrityVerifier:
                 budget=budget,
             )
         elif database_check and database_expected:
-            warnings.append("database_not_found")
+            raise KeyError("expected_database_missing")
 
         return {
             "archive_count": archive_count,

@@ -214,6 +214,7 @@ async def async_get_config_entry_diagnostics(
             "window_days": data.analytics_window_days,
             "analyzed_backup_count": data.analyzed_backup_count,
             "analyzed_backup_scope": data.analyzed_backup_scope,
+            "analyzed_backup_origin": data.analyzed_backup_origin,
             "ignored_update_backup_count": data.ignored_update_backup_count,
             "average_backup_size": data.average_backup_size,
             "longest_backup_gap_days": data.longest_backup_gap_days,

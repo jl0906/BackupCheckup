@@ -29,6 +29,7 @@ from .classification import (
     comparable_size_backups,
     monitoring_backups,
 )
+from .configuration import normalize_configuration
 from .const import (
     BACKUP_RESULT_COMPLETE,
     BACKUP_RESULT_PARTIAL,
@@ -53,11 +54,6 @@ from .const import (
     CONF_SIZE_CHECK_MODE,
     CONF_UPDATE_INTERVAL_MINUTES,
     CONF_VERIFICATION_TIMEOUT_MINUTES,
-    CORE_AUTOMATIC_BACKUP_EVENT,
-    CORE_BACKUP_MANAGER_STATE,
-    CORE_LAST_AUTOMATIC_ATTEMPT,
-    CORE_LAST_SUCCESSFUL_AUTOMATIC_BACKUP,
-    CORE_NEXT_AUTOMATIC_BACKUP,
     DEFAULT_ANALYTICS_WINDOW_DAYS,
     DEFAULT_AUTO_VERIFY_NEW_BACKUPS,
     DEFAULT_DATABASE_INTEGRITY_CHECK,
@@ -141,6 +137,7 @@ from .models import (
     BackupIntegrityResult,
     BackupRecord,
 )
+from .native_backup import read_native_backup_state
 from .notifications import BackupCheckupNotificationManager
 from .security import (
     anonymous_agent_reference,
@@ -187,7 +184,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize the coordinator."""
         self.config_entry = entry
-        options = {**entry.data, **entry.options}
+        options = normalize_configuration(entry.data, entry.options)
 
         entity_mode = options.get(CONF_ENTITY_MODE, DEFAULT_ENTITY_MODE)
         self.entity_mode = (
@@ -543,29 +540,13 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             latest_record and latest_locations < self.minimum_redundant_locations
         )
 
-        last_automatic_attempt = self._entity_datetime(CORE_LAST_AUTOMATIC_ATTEMPT)
-        last_successful_automatic_event = self._entity_datetime(
-            CORE_LAST_SUCCESSFUL_AUTOMATIC_BACKUP
-        )
-        next_automatic = self._entity_datetime(CORE_NEXT_AUTOMATIC_BACKUP)
-        manager_state = self._entity_state(CORE_BACKUP_MANAGER_STATE)
-        automatic_event = self.hass.states.get(CORE_AUTOMATIC_BACKUP_EVENT)
-        automatic_event_type = (
-            str(automatic_event.attributes.get("event_type", "")).lower()
-            if automatic_event is not None
-            else ""
-        )
-        automatic_backup_in_progress = automatic_event_type in {
-            "in_progress",
-            "in progress",
-        } or manager_state in {
-            "create_backup",
-            "creating_a_backup",
-            "creating a backup",
-            "receive_backup",
-            "receiving_a_backup",
-            "receiving a backup",
-        }
+        native_backup = read_native_backup_state(self.hass, manager, now=now)
+        last_automatic_attempt = native_backup.last_attempt
+        last_successful_automatic_event = native_backup.last_success
+        next_automatic = native_backup.next_scheduled
+        manager_state = native_backup.manager_state
+        automatic_event_type = native_backup.event_type
+        automatic_backup_in_progress = native_backup.in_progress
         history_metrics = await self.history.async_observe(
             last_attempt=last_automatic_attempt,
             last_success=last_successful_automatic_event,
@@ -674,7 +655,12 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         backup_integrity_warning = bool(
             latest_record
             and self.integrity_result.backup_id == latest_record.backup_id
-            and self.integrity_result.status == INTEGRITY_STATUS_VALID_WITH_WARNINGS
+            and self.integrity_result.status
+            in {
+                INTEGRITY_STATUS_VALID_WITH_WARNINGS,
+                "aborted",
+                "password_required",
+            }
         )
 
         status = self._status(
@@ -842,6 +828,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             size_trend_percent=inventory_analytics.size_trend_percent,
             analyzed_backup_count=inventory_analytics.analyzed_backup_count,
             analyzed_backup_scope=inventory_analytics.analyzed_backup_scope,
+            analyzed_backup_origin=inventory_analytics.analyzed_backup_origin,
             automatic_success_rate=history_metrics.success_rate,
             automatic_attempts_observed=history_metrics.resolved_attempts,
             automatic_successes_observed=history_metrics.successful_attempts,
@@ -861,7 +848,13 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             and latest_record is not None
             and (
                 self.integrity_result.backup_id != latest_record.backup_id
-                or self.integrity_result.status == INTEGRITY_STATUS_INTERNAL_ERROR
+                or self.integrity_result.status
+                in {
+                    INTEGRITY_STATUS_INTERNAL_ERROR,
+                    "aborted",
+                    "password_required",
+                    "unreadable",
+                }
             )
             and not self.integrity_check_running
             and (self._integrity_task is None or self._integrity_task.done())
@@ -904,9 +897,18 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         deductions["manager_unavailable"] = max(
             deductions.get("manager_unavailable", 0), 50
         )
+        latest_age_precise = precise_age_days(now, self.data.latest_backup)
+        automatic_age_precise = precise_age_days(now, self.data.latest_automatic_backup)
+        manual_age_precise = precise_age_days(now, self.data.latest_manual_backup)
         return replace(
             self.data,
             checked_at=now,
+            latest_backup_age_days=completed_age_days(latest_age_precise),
+            latest_backup_age_days_precise=latest_age_precise,
+            automatic_backup_age_days=completed_age_days(automatic_age_precise),
+            automatic_backup_age_days_precise=automatic_age_precise,
+            manual_backup_age_days=completed_age_days(manual_age_precise),
+            manual_backup_age_days_precise=manual_age_precise,
             manager_state=STATE_UNAVAILABLE,
             manager_unavailable=True,
             problem=True,

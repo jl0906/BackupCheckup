@@ -28,7 +28,7 @@ def async_update_issues(hass: HomeAssistant, data: BackupCheckupData) -> None:
             bool(
                 latest
                 and data.integrity.backup_id == latest.backup_id
-                and data.integrity.status in {"corrupt", "unreadable"}
+                and data.integrity.status in {"corrupt", "unreadable", "internal_error"}
             ),
             ir.IssueSeverity.ERROR,
             {
@@ -39,6 +39,16 @@ def async_update_issues(hass: HomeAssistant, data: BackupCheckupData) -> None:
                     else "storage copy"
                 ),
             },
+        ),
+        "backup_integrity_warning": (
+            bool(
+                latest
+                and data.integrity.backup_id == latest.backup_id
+                and data.integrity.status
+                in {"valid_with_warnings", "aborted", "password_required"}
+            ),
+            ir.IssueSeverity.WARNING,
+            {"checked": _format_datetime(data.integrity.checked_at)},
         ),
         "backup_checksum_changed": (
             bool(

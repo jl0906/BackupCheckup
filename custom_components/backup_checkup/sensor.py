@@ -232,6 +232,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
             "change_percent": data.size_trend_percent,
             "analyzed_backup_count": data.analyzed_backup_count,
             "analyzed_backup_scope": data.analyzed_backup_scope,
+            "analyzed_backup_origin": data.analyzed_backup_origin,
             "ignored_update_backup_count": data.ignored_update_backup_count,
             "analysis_window_days": data.analytics_window_days,
         },
@@ -254,6 +255,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
             "average_backup_size_bytes": data.average_backup_size,
             "analyzed_backup_count": data.analyzed_backup_count,
             "analyzed_backup_scope": data.analyzed_backup_scope,
+            "analyzed_backup_origin": data.analyzed_backup_origin,
             "ignored_update_backup_count": data.ignored_update_backup_count,
             "analysis_window_days": data.analytics_window_days,
         },
@@ -270,6 +272,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         attributes_fn=lambda data: {
             "analyzed_backup_count": data.analyzed_backup_count,
             "analyzed_backup_scope": data.analyzed_backup_scope,
+            "analyzed_backup_origin": data.analyzed_backup_origin,
             "ignored_update_backup_count": data.ignored_update_backup_count,
             "analysis_window_days": data.analytics_window_days,
         },
@@ -502,6 +505,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
             "maximum_size_drop_percent": data.maximum_size_drop_percent,
             "comparable_backup_count": data.comparable_backup_count,
             "analyzed_backup_scope": data.analyzed_backup_scope,
+            "analyzed_backup_origin": data.analyzed_backup_origin,
         },
     ),
     BackupCheckupSensorDescription(

@@ -151,6 +151,7 @@ class BackupCheckupNotificationManager:
         )
         self._loaded = False
         self._last_signature = ""
+        self._last_targets: tuple[str, ...] = ()
         self._was_enabled = False
         self._lock = asyncio.Lock()
         self.last_error: str | None = None
@@ -167,8 +168,9 @@ class BackupCheckupNotificationManager:
         async with self._lock:
             await self._async_load()
             signature = "|".join(sorted(data.active_problems))
+            normalized_targets = tuple(sorted(set(targets)))
 
-            if not enabled or not targets:
+            if not enabled or not normalized_targets:
                 if self._was_enabled:
                     self._was_enabled = False
                     await self._async_save()
@@ -180,24 +182,29 @@ class BackupCheckupNotificationManager:
                     self._last_signature = ""
                     await self._async_save()
                     return
-                if await self._async_send_problem(data, targets):
+                if await self._async_send_problem(data, normalized_targets):
                     self._last_signature = signature
+                    self._last_targets = normalized_targets
                     await self._async_save()
                 return
 
-            if signature == self._last_signature:
+            if (
+                signature == self._last_signature
+                and normalized_targets == self._last_targets
+            ):
                 return
 
             sent = False
             if signature:
-                sent = await self._async_send_problem(data, targets)
+                sent = await self._async_send_problem(data, normalized_targets)
             elif self._last_signature and notify_on_recovery:
-                sent = await self._async_send_recovery(targets)
+                sent = await self._async_send_recovery(normalized_targets)
             else:
                 sent = True
 
             if sent:
                 self._last_signature = signature
+                self._last_targets = normalized_targets
                 await self._async_save()
 
     async def async_send_test(self, targets: tuple[str, ...]) -> bool:
@@ -326,11 +333,18 @@ class BackupCheckupNotificationManager:
             )
         signature = stored.get("last_signature", "")
         was_enabled = stored.get("was_enabled", False)
-        invalid_content = not isinstance(signature, str) or not isinstance(
-            was_enabled, bool
+        targets = stored.get("last_targets", [])
+        invalid_content = (
+            not isinstance(signature, str)
+            or not isinstance(was_enabled, bool)
+            or not isinstance(targets, list)
+            or any(not isinstance(item, str) for item in targets)
         )
         self._last_signature = signature[:512] if isinstance(signature, str) else ""
         self._was_enabled = was_enabled is True
+        self._last_targets = tuple(
+            sorted(set(item for item in targets if isinstance(item, str)))
+        )
         if invalid_content:
             async_set_storage_data_issue(
                 self._hass, store_name="notifications", active=True
@@ -343,6 +357,7 @@ class BackupCheckupNotificationManager:
             {
                 "last_signature": self._last_signature,
                 "was_enabled": self._was_enabled,
+                "last_targets": list(self._last_targets),
             }
         )
 

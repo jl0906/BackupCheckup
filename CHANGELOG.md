@@ -1,5 +1,48 @@
 # Changelog
 
+## 2.2.1
+
+**Recommended patch update!**
+
+Version 2.2.1 fixes upgrade, configuration-display, automatic-backup-state, integrity-verification, analytics, notification, and release-packaging issues discovered after the 2.2.0 release.
+
+### Fixed
+
+- Fixed the options form showing mixed, incorrectly typed, or incorrectly rendered values the first time it was opened after upgrading from BackupCheckup 2.1.2 or another older config-entry schema.
+- Config-entry migration now normalizes both `entry.data` and `entry.options` into one canonical configuration snapshot before the integration and options flow use it. Existing options continue to override original setup data.
+- Legacy configuration values are now normalized defensively: boolean strings are parsed strictly, numeric values are range-checked, invalid enum values fall back safely, unknown legacy keys are discarded, and a single notification target is converted to the supported list format.
+- The coordinator and options flow now use the same centralized configuration normalization, preventing differences between the first and later form renders.
+- Native automatic-backup state no longer depends only on fixed Home Assistant entity IDs. BackupCheckup now prefers Backup Manager data and resolves fallback entities through the entity registry by stable Backup integration unique IDs, so renamed entities remain supported.
+- Stale `completed`, `failed`, or `in_progress` automatic-backup events are ignored unless their timestamps match the current backup attempt or the Backup Manager is actually running.
+- A delayed automatic-backup success can now correct a matching history entry that had already been marked failed after the grace period.
+- If backup metadata declares that the Home Assistant database is included but the canonical `data/home-assistant_v2.db` file is missing, the backup copy is now treated as structurally invalid instead of merely receiving a warning.
+- Downloaded-byte, expanded-byte, and archive-member safety counters are reset for each redundant storage copy while all copy attempts continue to share the same overall verification deadline and cancellation signal.
+- Temporary files from failed storage-copy verification attempts are removed before another copy is tried.
+- Analytics now remain strictly inside the selected analysis window. When no backup exists in that window, results report insufficient data instead of silently analyzing older backups.
+- Backup-size analytics now keep manual and automatic backups separate even when they share the same content-scope fingerprint.
+- Newly added mobile notification targets now receive the currently active problem notification even when the problem signature itself has not changed. The normalized target set is persisted with the notification state.
+- Backup-age values continue to advance from their stored timestamps while the Home Assistant Backup Manager is temporarily unavailable instead of remaining frozen at the previous refresh value.
+- `valid_with_warnings`, `aborted`, and `password_required` verification outcomes now produce a consistent integrity-warning problem and Repair issue for the latest backup. `internal_error` is also represented by the integrity-failure Repair issue.
+- Automatic verification now treats `internal_error`, `aborted`, `password_required`, and `unreadable` outcomes as eligible for a later retry instead of permanently considering the latest backup checked.
+- Removed generated `.ruff_cache`, `.pytest_cache`, `.coverage`, `__pycache__`, and compiled Python files from the repository release package.
+
+### Added
+
+- Added `analyzed_backup_origin` to analytics sensor attributes and diagnostics so users can see whether the current size analysis represents manual or automatic backups.
+- Added regression tests for legacy data/options normalization, analysis-window boundaries, manual-versus-automatic analytics separation, delayed-success correction, and per-copy verification budgets.
+
+### Changed
+
+- Config-entry schema updated to version 9 with automatic migration from all supported earlier BackupCheckup releases.
+- Native backup timestamps read from Backup Manager data or fallback entities are normalized to timezone-aware UTC values before comparison.
+- Integrity-warning Repair handling now covers controlled incomplete checks as well as valid results containing actionable warnings.
+
+### Notes
+
+- No configuration reset is required. Existing user settings and notification targets are migrated automatically.
+- The first opening of the options flow after upgrading should now display the same values as every subsequent opening.
+- An `aborted` or `password_required` result means verification did not complete; it does not by itself prove that the backup is corrupt.
+
 ## 2.2.0
 
 **Recommended update!**

@@ -421,6 +421,7 @@ class BackupCheckupData:
     size_trend_percent: float | None
     analyzed_backup_count: int
     analyzed_backup_scope: str | None
+    analyzed_backup_origin: str | None
     automatic_success_rate: float | None
     automatic_attempts_observed: int
     automatic_successes_observed: int

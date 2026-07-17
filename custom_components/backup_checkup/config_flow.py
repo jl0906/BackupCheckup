@@ -18,6 +18,7 @@ from homeassistant.helpers.selector import (
     SelectSelectorMode,
 )
 
+from .configuration import normalize_configuration
 from .const import (
     CONF_ANALYTICS_WINDOW_DAYS,
     CONF_AUTO_VERIFY_NEW_BACKUPS,
@@ -385,7 +386,7 @@ def _validate_advanced_input(user_input: dict[str, Any]) -> dict[str, str]:
 class BackupCheckupConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle the BackupCheckup configuration flow."""
 
-    VERSION = 8
+    VERSION = 9
 
     def __init__(self) -> None:
         """Initialize the config flow."""
@@ -485,12 +486,16 @@ class BackupCheckupOptionsFlow(config_entries.OptionsFlow):
         self._entity_mode = DEFAULT_ENTITY_MODE
         self._previous_entity_mode = DEFAULT_ENTITY_MODE
 
-    def _current(self, key: str, default: Any) -> Any:
-        """Return an option with config-entry fallback."""
-        return self.config_entry.options.get(
-            key,
-            self.config_entry.data.get(key, default),
+    def _current_snapshot(self) -> dict[str, Any]:
+        """Return a fully normalized snapshot for the first and later form opens."""
+        return normalize_configuration(
+            self.config_entry.data,
+            self.config_entry.options,
         )
+
+    def _current(self, key: str, default: Any) -> Any:
+        """Return one normalized option with a defensive fallback."""
+        return self._current_snapshot().get(key, default)
 
     async def async_step_init(
         self,

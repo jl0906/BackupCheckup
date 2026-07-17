@@ -12,6 +12,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.service import async_register_admin_service
 from homeassistant.helpers.typing import ConfigType
 
+from .configuration import normalize_configuration
 from .const import (
     CONF_AUTO_VERIFY_NEW_BACKUPS,
     CONF_DATABASE_INTEGRITY_CHECK,
@@ -149,9 +150,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate older BackupCheckup configuration entries."""
-    if entry.version > 8:
+    if entry.version > 9:
         return False
-    if entry.version == 8:
+    if entry.version == 9:
         return True
 
     migrated_data = dict(entry.data)
@@ -217,10 +218,22 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         version = 8
 
+    # Schema 9 canonicalizes both persistence layers. Home Assistant keeps the
+    # original data and later options separately; stale 2.1.x options otherwise
+    # override newly migrated values during the first form render.
+    normalized = normalize_configuration(migrated_data, entry.options)
+    version = 9
     hass.config_entries.async_update_entry(
         entry,
-        data=migrated_data,
+        data=normalized,
+        options=normalized,
         version=version,
+    )
+    async_apply_entity_mode(
+        hass,
+        entry,
+        str(normalized.get(CONF_ENTITY_MODE, DEFAULT_ENTITY_MODE)),
+        disable_others=False,
     )
     return True
 

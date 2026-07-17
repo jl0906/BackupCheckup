@@ -45,7 +45,7 @@ the same structure and placeholders as `strings.json`.
 1. Update the version in `custom_components/backup_checkup/manifest.json`,
    `custom_components/backup_checkup/const.py`, the README, and the changelog.
 2. Create a Git tag and GitHub release with the same version, for example
-   `v2.2.0`. Mark beta versions as pre-releases and stable versions as regular releases.
+   `v2.2.1`. Mark beta versions as pre-releases and stable versions as regular releases.
 3. Keep the standard HACS repository layout under
    `custom_components/backup_checkup`.
 4. Do not enable `zip_release` and do not attach a required integration ZIP asset.

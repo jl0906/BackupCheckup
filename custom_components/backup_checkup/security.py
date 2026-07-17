@@ -81,6 +81,19 @@ class VerificationBudget:
             max_expanded_bytes=max_expanded_gb * _GB,
         )
 
+    def for_copy(self) -> VerificationBudget:
+        """Return fresh per-copy counters sharing the deadline and cancel flag."""
+        self.check_deadline()
+        return VerificationBudget(
+            deadline=self.deadline,
+            max_download_bytes=self.max_download_bytes,
+            max_expanded_bytes=self.max_expanded_bytes,
+            max_members=self.max_members,
+            max_metadata_bytes=self.max_metadata_bytes,
+            free_space_reserve_bytes=self.free_space_reserve_bytes,
+            cancellation_event=self.cancellation_event,
+        )
+
     def cancel(self) -> None:
         """Ask cooperative worker code to stop at its next safety check."""
         self.cancellation_event.set()
