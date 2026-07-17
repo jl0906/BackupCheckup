@@ -7,7 +7,7 @@ import sys
 import tarfile
 import types
 from datetime import UTC, datetime
-from enum import StrEnum
+from enum import Enum, StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -25,9 +25,11 @@ sys.modules.setdefault("custom_components.backup_checkup", backup_checkup)
 homeassistant = types.ModuleType("homeassistant")
 components = types.ModuleType("homeassistant.components")
 backup = types.ModuleType("homeassistant.components.backup")
+config_entries = types.ModuleType("homeassistant.config_entries")
 const = types.ModuleType("homeassistant.const")
 core = types.ModuleType("homeassistant.core")
 helpers = types.ModuleType("homeassistant.helpers")
+entity_registry = types.ModuleType("homeassistant.helpers.entity_registry")
 storage = types.ModuleType("homeassistant.helpers.storage")
 util = types.ModuleType("homeassistant.util")
 dt = types.ModuleType("homeassistant.util.dt")
@@ -49,6 +51,18 @@ class HomeAssistant:
     """Type-only Home Assistant test double."""
 
 
+class ConfigEntry:
+    """Type-only config-entry test double."""
+
+
+class RegistryEntryDisabler(Enum):
+    """Subset of Home Assistant entity-registry disablers."""
+
+    INTEGRATION = "integration"
+    USER = "user"
+    CONFIG_ENTRY = "config_entry"
+
+
 class Store:
     """Type-only storage test double."""
 
@@ -60,8 +74,13 @@ class Store:
 
 
 backup.async_get_manager = _async_get_manager
+config_entries.ConfigEntry = ConfigEntry
 const.Platform = Platform
 core.HomeAssistant = HomeAssistant
+core.callback = lambda function: function
+entity_registry.RegistryEntryDisabler = RegistryEntryDisabler
+entity_registry.async_get = lambda _hass: None
+helpers.entity_registry = entity_registry
 storage.Store = Store
 dt.utcnow = lambda: datetime.now(UTC)
 
@@ -84,9 +103,11 @@ util.dt = dt
 sys.modules.setdefault("homeassistant", homeassistant)
 sys.modules.setdefault("homeassistant.components", components)
 sys.modules.setdefault("homeassistant.components.backup", backup)
+sys.modules.setdefault("homeassistant.config_entries", config_entries)
 sys.modules.setdefault("homeassistant.const", const)
 sys.modules.setdefault("homeassistant.core", core)
 sys.modules.setdefault("homeassistant.helpers", helpers)
+sys.modules.setdefault("homeassistant.helpers.entity_registry", entity_registry)
 sys.modules.setdefault("homeassistant.helpers.storage", storage)
 sys.modules.setdefault("homeassistant.util", util)
 sys.modules.setdefault("homeassistant.util.dt", dt)

@@ -82,7 +82,7 @@
           "notify_on_recovery": "Bei behobenen Problemen benachrichtigen"
         },
         "data_description": {
-          "entity_mode": "Lege unabhängig vom Überwachungsprofil fest, wie viele BackupCheckup-Entitäten nach der Einrichtung aktiviert werden. Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert zusätzlich sämtliche Analyse-, Diagnose-, Integritäts-, Zeitplan- und Speicherortentitäten.",
+          "entity_mode": "Lege unabhängig vom Überwachungsprofil fest, wie viele BackupCheckup-Entitäten aktiviert werden. Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert alle Analyse-, Diagnose-, Integritäts-, Zeitplan-, Zeitstempel- und Speicherortentitäten. Entitäten, die du selbst oder über „Neu hinzugefügte Entitäten deaktivieren“ gesperrt hast, bleiben deaktiviert.",
           "notifications_enabled": "Sendet eine mobile Benachrichtigung, wenn sich die aktiven Backup-Probleme ändern. Wiederholte Abfragen erzeugen keine doppelten Meldungen.",
           "notification_targets": "Es werden nur Benachrichtigungsentitäten der Home Assistant Companion App angezeigt. Du kannst ein oder mehrere Smartphones oder Tablets auswählen.",
           "notify_on_recovery": "Sendet eine abschließende Benachrichtigung, sobald alle zuvor gemeldeten Backup-Probleme behoben wurden."

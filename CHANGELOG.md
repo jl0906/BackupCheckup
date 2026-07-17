@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.2.0
+
+Stable release consolidating the security hardening, integrity verification, backup classification, storage monitoring, privacy, and entity-mode improvements developed throughout the 2.2.0 pre-release cycle.
+
+### Fixed
+- Mobile notification configuration now uses an explicit multi-select list, allowing any number of Home Assistant Companion App phones and tablets to be selected at the same time. Existing single-target settings remain compatible.
+- Deleting the BackupCheckup config entry now performs a second exact-path cleanup for all three private `Store` files. On startup, BackupCheckup also removes orphaned history, integrity, and notification stores belonging to config entries that no longer exist.
+- Fixed Expert entity mode still leaving the three exact backup timestamp sensors and every per-storage latest-backup timestamp disabled.
+- Re-applies the enabling side of the selected entity preset after platform setup and during schema migration, while preserving entities disabled by the user or by Home Assistant's config-entry system option.
+- Added entity-registry diagnostics showing enabled and disabled counts; exact disabled entity IDs are included only when detailed metadata exposure is enabled.
+
+### Changed
+- Config-entry schema updated to version 8 so existing schema-version-7 installations receive the corrected Expert preset once.
+- Clarified that detailed backup metadata exposure controls names and raw IDs, while the entity mode controls whether diagnostic entities are enabled.
+
 ## 2.2.0-beta6
 
 ### Changed

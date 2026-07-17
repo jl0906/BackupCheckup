@@ -10,7 +10,10 @@ The monitoring profile and entity mode are separate settings.
   database, manual-backup, and per-storage-location diagnostics.
 
 Changing the mode under **Settings → Devices & services → BackupCheckup → Configure**
-applies the selected preset. Entities explicitly disabled by the user stay disabled.
+applies the selected preset. Expert mode enables all BackupCheckup entities, including
+exact timestamps and every per-storage diagnostic. Entities explicitly disabled by the
+user or by Home Assistant’s **Disable newly added entities** config-entry option stay
+disabled.
 
 ## Default-enabled main entities
 

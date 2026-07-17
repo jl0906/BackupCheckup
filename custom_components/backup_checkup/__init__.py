@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import logging
+from pathlib import Path
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
@@ -63,10 +66,34 @@ from .repairs import (
     async_update_issues,
 )
 from .security import cleanup_stale_temp_directories
+from .storage_cleanup import (
+    cleanup_entry_store_files,
+    cleanup_orphaned_store_files,
+)
+
+_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Register BackupCheckup actions independently of config-entry loading."""
+    """Register actions and remove stores left by deleted config entries."""
+    active_entry_ids = {
+        entry.entry_id for entry in hass.config_entries.async_entries(DOMAIN)
+    }
+    cleanup_result = await hass.async_add_executor_job(
+        cleanup_orphaned_store_files,
+        Path(hass.config.path(".storage")),
+        active_entry_ids,
+    )
+    if cleanup_result.removed:
+        _LOGGER.info(
+            "Removed orphaned BackupCheckup storage files: count=%s",
+            cleanup_result.removed,
+        )
+    if cleanup_result.failed:
+        _LOGGER.warning(
+            "Unable to remove some orphaned BackupCheckup storage files: count=%s",
+            cleanup_result.failed,
+        )
 
     def _coordinator() -> BackupCheckupCoordinator:
         coordinator = next(
@@ -122,9 +149,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate older BackupCheckup configuration entries."""
-    if entry.version > 7:
+    if entry.version > 8:
         return False
-    if entry.version == 7:
+    if entry.version == 8:
         return True
 
     migrated_data = dict(entry.data)
@@ -177,6 +204,19 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         version = 7
 
+    if version < 8:
+        # Re-apply the selected preset so Expert mode also enables the exact
+        # timestamp entities that beta6 intentionally left disabled. Only
+        # integration-disabled entries are changed; user and config-entry
+        # choices remain untouched.
+        async_apply_entity_mode(
+            hass,
+            entry,
+            str(migrated_data.get(CONF_ENTITY_MODE, DEFAULT_ENTITY_MODE)),
+            disable_others=False,
+        )
+        version = 8
+
     hass.config_entries.async_update_entry(
         entry,
         data=migrated_data,
@@ -188,6 +228,15 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up BackupCheckup from a config entry."""
     coordinator = BackupCheckupCoordinator(hass, entry)
+
+    # Repair integration-disabled registry entries before the platforms decide
+    # which entities to instantiate. User and config-entry disables are kept.
+    async_apply_entity_mode(
+        hass,
+        entry,
+        coordinator.entity_mode,
+        disable_others=False,
+    )
 
     stale_cleanup = await hass.async_add_executor_job(cleanup_stale_temp_directories)
     if coordinator.repair_issues_enabled:
@@ -212,6 +261,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(coordinator.async_add_listener(_sync_repair_issues))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Apply the enabling side of the selected preset after all platforms have
+    # registered their entities. This repairs integration-disabled entities
+    # after upgrades without overriding entities disabled by the user or by
+    # the config-entry system option.
+    async_apply_entity_mode(
+        hass,
+        entry,
+        coordinator.entity_mode,
+        disable_others=False,
+    )
     return True
 
 
@@ -229,17 +289,42 @@ async def _async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Remove persistent BackupCheckup history when the entry is deleted."""
+    """Remove every private BackupCheckup store when the entry is deleted."""
     coordinator = getattr(entry, "runtime_data", None)
     if isinstance(coordinator, BackupCheckupCoordinator):
-        await coordinator.history.async_remove()
-        await coordinator.integrity_verifier.store.async_remove()
-        await coordinator.notification_manager.async_remove()
-        return
-    history = BackupCheckupHistory(hass, entry.entry_id)
-    await history.async_remove()
-    await BackupIntegrityStore(hass, entry.entry_id).async_remove()
-    await BackupCheckupNotificationManager(hass, entry.entry_id).async_remove()
+        removers = (
+            coordinator.history.async_remove,
+            coordinator.integrity_verifier.store.async_remove,
+            coordinator.notification_manager.async_remove,
+        )
+    else:
+        removers = (
+            BackupCheckupHistory(hass, entry.entry_id).async_remove,
+            BackupIntegrityStore(hass, entry.entry_id).async_remove,
+            BackupCheckupNotificationManager(hass, entry.entry_id).async_remove,
+        )
+
+    for remove in removers:
+        try:
+            await remove()
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning(
+                "Unable to remove a BackupCheckup private store: error_type=%s",
+                type(err).__name__,
+            )
+
+    # Store.async_remove() is the primary cleanup. The exact-path fallback also
+    # covers interrupted or partially completed removal without using wildcards.
+    cleanup_result = await hass.async_add_executor_job(
+        cleanup_entry_store_files,
+        Path(hass.config.path(".storage")),
+        entry.entry_id,
+    )
+    if cleanup_result.failed:
+        _LOGGER.warning(
+            "Unable to remove all BackupCheckup private stores: count=%s",
+            cleanup_result.failed,
+        )
 
 
 async def async_remove_config_entry_device(

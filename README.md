@@ -15,7 +15,7 @@
 
 <p align="center">
   <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-orange.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-2.2.0--beta6-blue.svg">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.2.0-blue.svg">
   <img alt="AI-coded and maintained" src="https://img.shields.io/badge/AI--coded%20%26%20AI--maintained-8A2BE2.svg">
   <img alt="License" src="https://img.shields.io/github/license/jl0906/BackupCheckup">
 </p>
@@ -23,7 +23,7 @@
 BackupCheckup checks whether Home Assistant backups are available, recent,
 complete, plausible in size, redundant, and structurally readable.
 
-Version: **2.2.0-beta6**
+Version: **2.2.0**
 
 **Requirements:** Home Assistant **2026.3.0 or newer**. Full encrypted-backup
 verification depends on the SecureTar archive API bundled with Home Assistant 2026.3+.
@@ -333,9 +333,13 @@ rollback guidance is maintained on the dedicated
 ## Updating and removal
 
 Install updates through HACS or replace the integration folder manually, then restart
-Home Assistant. Removing the config entry also removes BackupCheckup's locally stored
-automatic-outcome history, integrity result, and notification deduplication state. It
-does not delete any Home Assistant backups.
+Home Assistant. To uninstall, first remove the BackupCheckup config entry under
+**Settings → Devices & services**, and only then remove the repository in HACS. This
+allows Home Assistant to call BackupCheckup's removal hook while the integration code
+is still installed. The hook removes the locally stored automatic-outcome history,
+integrity result, and notification deduplication state; it never deletes Home Assistant
+backups. If an older installation left an orphaned BackupCheckup store behind, the next
+BackupCheckup startup removes stores whose config entry no longer exists.
 
 ## License
 

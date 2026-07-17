@@ -7,6 +7,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import __version__ as home_assistant_version
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 
 from .const import CONF_NOTIFICATION_TARGETS, VERSION
 from .coordinator import BackupCheckupCoordinator
@@ -29,6 +30,30 @@ async def async_get_config_entry_diagnostics(
     configuration = {**entry.data, **entry.options}
     notification_targets = configuration.pop(CONF_NOTIFICATION_TARGETS, [])
 
+    registry = er.async_get(hass)
+    registry_entries = [
+        registry_entry
+        for registry_entry in registry.entities.values()
+        if registry_entry.config_entry_id == entry.entry_id
+        and registry_entry.platform == "backup_checkup"
+    ]
+    disabled_by_counts: dict[str, int] = {}
+    disabled_entities: list[dict[str, str]] = []
+    for registry_entry in registry_entries:
+        reason = (
+            registry_entry.disabled_by.value
+            if registry_entry.disabled_by is not None
+            else "enabled"
+        )
+        disabled_by_counts[reason] = disabled_by_counts.get(reason, 0) + 1
+        if registry_entry.disabled_by is not None and data.expose_backup_metadata:
+            disabled_entities.append(
+                {
+                    "entity_id": registry_entry.entity_id,
+                    "disabled_by": reason,
+                }
+            )
+
     return {
         "integration": {
             "version": VERSION,
@@ -45,6 +70,19 @@ async def async_get_config_entry_diagnostics(
             "target_count": len(coordinator.notification_targets),
             "notify_on_recovery": coordinator.notify_on_recovery,
             "last_error": coordinator.notification_manager.last_error,
+        },
+        "entity_registry": {
+            "total": len(registry_entries),
+            "enabled": disabled_by_counts.get("enabled", 0),
+            "disabled_by": {
+                key: value
+                for key, value in sorted(disabled_by_counts.items())
+                if key != "enabled"
+            },
+            "disabled_entities": sorted(
+                disabled_entities,
+                key=lambda item: item["entity_id"],
+            ),
         },
         "coordinator": {
             "last_update_success": coordinator.last_update_success,

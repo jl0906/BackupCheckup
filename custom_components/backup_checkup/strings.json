@@ -82,7 +82,7 @@
           "notify_on_recovery": "Notify when problems are resolved"
         },
         "data_description": {
-          "entity_mode": "Choose independently how many BackupCheckup entities are enabled after setup. Standard enables the most useful monitoring and problem entities. Expert enables every analytics, diagnostic, integrity, schedule, and storage-location entity.",
+          "entity_mode": "Choose independently how many BackupCheckup entities are enabled. Standard enables the most useful monitoring and problem entities. Expert enables every analytics, diagnostic, integrity, schedule, timestamp, and storage-location entity. Entities disabled by you or by the config-entry system option remain disabled.",
           "notifications_enabled": "Send a mobile notification when the active backup problems change. Repeated polling does not send duplicate messages.",
           "notification_targets": "Only notification entities created by the Home Assistant Companion App are listed. You can select one or more phones or tablets.",
           "notify_on_recovery": "Send one final notification after all previously reported backup problems have been resolved."

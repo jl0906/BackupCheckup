@@ -6,13 +6,10 @@ from typing import Any
 
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.selector import (
     BooleanSelector,
-    EntityFilterSelectorConfig,
-    EntitySelector,
-    EntitySelectorConfig,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -98,6 +95,10 @@ from .const import (
     SIZE_CHECK_OPTIONS,
 )
 from .entity_mode import async_apply_entity_mode
+from .notification_selection import (
+    mobile_notification_options,
+    normalize_notification_targets,
+)
 
 PROFILE_PRESETS: dict[str, dict[str, Any]] = {
     PROFILE_STANDARD: {
@@ -144,6 +145,7 @@ PROFILE_PRESETS: dict[str, dict[str, Any]] = {
 
 
 def _profile_schema(
+    hass: HomeAssistant,
     default: str,
     entity_mode: str,
     notifications: dict[str, Any],
@@ -178,13 +180,15 @@ def _profile_schema(
             vol.Optional(
                 CONF_NOTIFICATION_TARGETS,
                 default=list(notifications[CONF_NOTIFICATION_TARGETS]),
-            ): EntitySelector(
-                EntitySelectorConfig(
-                    multiple=True,
-                    filter=EntityFilterSelectorConfig(
-                        domain="notify",
-                        integration="mobile_app",
+            ): SelectSelector(
+                SelectSelectorConfig(
+                    options=mobile_notification_options(
+                        hass, notifications[CONF_NOTIFICATION_TARGETS]
                     ),
+                    multiple=True,
+                    custom_value=False,
+                    mode=SelectSelectorMode.LIST,
+                    sort=True,
                 )
             ),
             vol.Required(
@@ -348,20 +352,11 @@ def _notification_defaults() -> dict[str, Any]:
     }
 
 
-def _normalize_notification_targets(value: Any) -> list[str]:
-    """Return notification target IDs as a JSON-serializable list."""
-    if isinstance(value, str):
-        return [value]
-    if not value:
-        return []
-    return [str(entity_id) for entity_id in value]
-
-
 def _notification_values(user_input: dict[str, Any]) -> dict[str, Any]:
     """Normalize selected notification settings."""
     return {
         CONF_NOTIFICATIONS_ENABLED: bool(user_input[CONF_NOTIFICATIONS_ENABLED]),
-        CONF_NOTIFICATION_TARGETS: _normalize_notification_targets(
+        CONF_NOTIFICATION_TARGETS: normalize_notification_targets(
             user_input.get(CONF_NOTIFICATION_TARGETS)
         ),
         CONF_NOTIFY_ON_RECOVERY: bool(user_input[CONF_NOTIFY_ON_RECOVERY]),
@@ -390,7 +385,7 @@ def _validate_advanced_input(user_input: dict[str, Any]) -> dict[str, str]:
 class BackupCheckupConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle the BackupCheckup configuration flow."""
 
-    VERSION = 7
+    VERSION = 8
 
     def __init__(self) -> None:
         """Initialize the config flow."""
@@ -431,6 +426,7 @@ class BackupCheckupConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user",
             data_schema=_profile_schema(
+                self.hass,
                 str(
                     user_input.get(CONF_MONITORING_PROFILE, DEFAULT_MONITORING_PROFILE)
                     if user_input
@@ -536,7 +532,7 @@ class BackupCheckupOptionsFlow(config_entries.OptionsFlow):
                 CONF_NOTIFICATIONS_ENABLED,
                 DEFAULT_NOTIFICATIONS_ENABLED,
             ),
-            CONF_NOTIFICATION_TARGETS: _normalize_notification_targets(
+            CONF_NOTIFICATION_TARGETS: normalize_notification_targets(
                 self._current(
                     CONF_NOTIFICATION_TARGETS,
                     DEFAULT_NOTIFICATION_TARGETS,
@@ -553,7 +549,7 @@ class BackupCheckupOptionsFlow(config_entries.OptionsFlow):
             notifications.update(_notification_values(user_input))
         return self.async_show_form(
             step_id="init",
-            data_schema=_profile_schema(profile, entity_mode, notifications),
+            data_schema=_profile_schema(self.hass, profile, entity_mode, notifications),
             errors=errors,
         )
 

@@ -88,6 +88,12 @@ from unrelated integrations are intentionally not shown.
 At least one mobile target must be selected. BackupCheckup rejects the form when
 notifications are enabled without a target.
 
+### Only one mobile device can be selected
+
+BackupCheckup 2.2.0 uses an explicit multi-select list of Companion App notification
+targets. Open the integration options, select every required phone or tablet, and save
+the options. Previously stored single-device values are retained automatically.
+
 ### The test notification button is unavailable
 
 The button becomes available only when:

@@ -78,10 +78,10 @@ def entity_enabled_by_default(
     agent_entity: bool = False,
 ) -> bool:
     """Return whether an entity should initially be enabled."""
-    if entity_domain == "sensor" and key in DEFAULT_DISABLED_SENSOR_KEYS:
-        return False
     if entity_mode == ENTITY_MODE_EXPERT:
         return True
+    if entity_domain == "sensor" and key in DEFAULT_DISABLED_SENSOR_KEYS:
+        return False
     if agent_entity:
         return False
     if entity_domain == "sensor":
@@ -105,8 +105,6 @@ def _registry_entry_should_be_enabled(
         return False
     key = unique_id.removeprefix(prefix)
     if key.startswith("agent_"):
-        if entity_domain == "sensor" and key.endswith("_latest_backup"):
-            return False
         return entity_mode == ENTITY_MODE_EXPERT
     return entity_enabled_by_default(entity_domain, key, entity_mode)
 
