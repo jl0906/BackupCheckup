@@ -9,9 +9,11 @@ from homeassistant.const import __version__ as home_assistant_version
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
+from .configuration import normalize_configuration
 from .const import CONF_NOTIFICATION_TARGETS, VERSION
 from .coordinator import BackupCheckupCoordinator
 from .models import BackupRecord
+from .notification_selection import normalize_notification_targets
 from .security import (
     anonymous_agent_reference,
     classify_exception,
@@ -27,8 +29,10 @@ async def async_get_config_entry_diagnostics(
     coordinator: BackupCheckupCoordinator = entry.runtime_data
     data = coordinator.data
 
-    configuration = {**entry.data, **entry.options}
-    notification_targets = configuration.pop(CONF_NOTIFICATION_TARGETS, [])
+    configuration = normalize_configuration(entry.data, entry.options)
+    notification_targets = normalize_notification_targets(
+        configuration.pop(CONF_NOTIFICATION_TARGETS, [])
+    )
 
     registry = er.async_get(hass)
     registry_entries = [
@@ -100,6 +104,11 @@ async def async_get_config_entry_diagnostics(
                 else None
             ),
             "checked_at": data.checked_at.isoformat(),
+            "last_inventory_success_at": (
+                data.last_inventory_success_at.isoformat()
+                if data.last_inventory_success_at
+                else None
+            ),
         },
         "health": {
             "score": data.health_score,
@@ -171,6 +180,8 @@ async def async_get_config_entry_diagnostics(
             "manual_backup_age_days_precise": (data.manual_backup_age_days_precise),
             "manager_state": data.manager_state,
             "invalid_backup_count": data.invalid_backup_count,
+            "invalid_agent_copy_count": data.invalid_agent_copy_count,
+            "storage_copy_size_mismatch_count": data.copy_size_mismatch_count,
         },
         "integrity": {
             "status": data.integrity.status,

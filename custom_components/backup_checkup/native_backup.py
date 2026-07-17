@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
@@ -47,13 +47,18 @@ def _as_datetime(value: Any) -> datetime | None:
         return None
     if parsed is None:
         return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
     return dt_util.as_utc(parsed)
 
 
 def _enum_value(value: Any) -> str:
     """Return a normalized enum/string value."""
-    raw = getattr(value, "value", value)
-    return str(raw).strip().casefold() if raw is not None else ""
+    try:
+        raw = getattr(value, "value", value)
+        return str(raw).strip().casefold() if raw is not None else ""
+    except Exception:  # noqa: BLE001
+        return ""
 
 
 def _registry_entity_id(
@@ -73,8 +78,8 @@ def _registry_entity_id(
                 entity_id = getattr(entry, "entity_id", None)
                 if isinstance(entity_id, str) and entity_id:
                     return entity_id
-    except (AttributeError, TypeError):
-        pass
+    except Exception:  # noqa: BLE001
+        return fallback
     return fallback
 
 
@@ -90,7 +95,7 @@ def _manager_config_value(manager: Any, *path: str) -> Any:
     try:
         for part in path:
             value = getattr(value, part)
-    except AttributeError:
+    except Exception:  # noqa: BLE001
         return None
     return value
 

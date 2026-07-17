@@ -464,6 +464,14 @@
     "storage_data_invalid": {
       "title": "BackupCheckup internal data was reset",
       "description": "The private storage data for “{store}” was invalid or damaged and was safely reset. Review BackupCheckup settings and run a new verification if needed."
+    },
+    "backup_integrity_warning": {
+      "title": "Back-upintegriteitscontrole heeft waarschuwingen",
+      "description": "De volledige integriteitscontrole is op {checked} met waarschuwingen voltooid of kon niet worden afgerond. Controleer het resultaat en maak of verifieer zo nodig een nieuwe back-up."
+    },
+    "required_location_missing": {
+      "title": "Vereiste back-uplocatie ontbreekt",
+      "description": "{count} opslaglocatie(s) van de nieuwste back-up zijn niet beschikbaar, verouderd of melden een fout. Herstel de locatie of maak een nieuwe redundante back-up."
     }
   },
   "exceptions": {

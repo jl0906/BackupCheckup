@@ -133,6 +133,21 @@ def async_update_issues(hass: HomeAssistant, data: BackupCheckupData) -> None:
                 "required": str(data.minimum_redundant_locations),
             },
         ),
+        "required_location_missing": (
+            data.required_location_missing,
+            ir.IssueSeverity.WARNING,
+            {
+                "count": str(
+                    sum(
+                        1
+                        for summary in data.agent_summaries
+                        if summary.problem
+                        and latest is not None
+                        and summary.agent_id in latest.agents
+                    )
+                )
+            },
+        ),
     }
 
     for issue_id, (active, severity, placeholders) in issue_definitions.items():
@@ -208,11 +223,6 @@ def _format_bytes(value: int | None) -> str:
             break
         size /= 1024
     return f"{size:.1f} {unit}"
-
-
-def _join_or_none(values: tuple[str, ...]) -> str:
-    """Join a tuple for display in a repair message."""
-    return ", ".join(values) if values else "none"
 
 
 @callback

@@ -1,6 +1,38 @@
 # Changelog
 
+## 2.2.3
+
+**Recommended reliability update!**
+
+Version 2.2.3 fixes automatic verification retry handling, redundant-copy fallback, defensive backup-agent normalization, notification deduplication, private-store repair, manager-outage ageing, diagnostics, and Repair issue consistency.
+
+### Fixed
+
+- Prevented immediate or endless automatic integrity-verification retries after controlled failures. Retryable failures now use bounded exponential backoff with a maximum of three attempts per backup and error type.
+- A `password_required` result is no longer retried on every refresh. The same backup is retried only after the native Home Assistant backup password changes or a new backup appears.
+- Copy-local download, expanded-size, archive-member, and metadata limits no longer prevent verification of an intact redundant copy. Global timeout, cancellation, database-timeout, and free-space failures still stop the complete verification run.
+- Failed temporary copy files are removed before another storage location is attempted, and aggregate failures keep the most useful controlled result.
+- Broken properties, iterators, mappings, and `__str__()` implementations from third-party backup agents are isolated so one malformed record cannot abort the complete inventory refresh or hide the original log error.
+- Invalid backup records and invalid agent-copy records are counted separately in diagnostics.
+- Adding a notification target during an active problem now sends the current problem only to the newly added device. Removing a target updates persisted state without sending duplicate notifications to remaining devices.
+- Invalid notification-store data is normalized and persisted immediately, allowing the associated Repair issue to close even when notifications are disabled.
+- During a Backup Manager outage, global and per-storage backup ages, stale flags, required-location state, active problems, and health deductions continue to advance from the last successful inventory.
+- Added a dedicated Repair issue for `required_location_missing` and completed the missing integrity-warning Repair translations.
+- Diagnostics now use the same canonical configuration normalization as setup and options flows, so a legacy single notification target is counted as one device instead of by string length.
+- Naive native backup timestamps are normalized explicitly to UTC, and malformed enum/string values are ignored safely.
+- Material size differences between redundant copies are now recorded per backup, counted in diagnostics, and included as an integrity warning when that backup is verified.
+- Removed the unused repair-formatting helper.
+
+### Testing and CI
+
+- Added regression tests for retry backoff and limits, password-change detection, malformed third-party objects, per-storage ageing during manager outages, notification target changes, immediate Store repair, normalized diagnostics, required-location Repairs, UTC normalization, and copy-local limit fallback.
+- Expanded the suite from 155 to 168 tests.
+- Corrected coverage measurement to include every production module in the repository. The full-source baseline is now enforced honestly at 60% instead of applying a 90% threshold to only imported isolated modules.
+- The config-entry schema remains version 9; no migration is required.
+
 ## 2.2.2
+
+**Recommended patch update!**
 
 Version 2.2.2 contains a focused configuration-flow usability fix.
 
@@ -9,10 +41,17 @@ Version 2.2.2 contains a focused configuration-flow usability fix.
 - Changed the mobile notification target selector from an expanded checkbox list to a compact multi-select dropdown. Any number of Home Assistant Companion App phones and tablets can still be selected, while configurations with many devices no longer produce an excessively long options form.
 - Existing single- and multi-device selections remain compatible and are preserved during the update.
 
+### Testing
+
+- Expanded the unit and adversarial suite from 71 to 155 tests, adding explicit branch coverage for analytics ratings and trends, legacy option normalization, entity-registry presets, private stores, notification target filtering, safety budgets, temporary-data cleanup, archive metadata helpers, and defensive integrity-result parsing.
+- Raised measured statement coverage above 92%, branch coverage above 88%, and combined coverage above 91%.
+- Increased the enforced CI coverage threshold from 70% to 90%.
+
 ### Notes
 
 - No config-entry migration is required; the config-entry schema remains version 9.
 - No monitoring, integrity-verification, notification-delivery, entity, storage, or analytics behavior was changed.
+- The additional changes in this repository package affect tests and CI quality gates only; production integration code remains identical to the original 2.2.2 package.
 
 ## 2.2.1
 

@@ -4,7 +4,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "backup_checkup"
 NAME = "BackupCheckup"
-VERSION = "2.2.2"
+VERSION = "2.2.3"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -254,6 +254,7 @@ REPAIR_ISSUE_IDS = (
     "backup_size_suspicious",
     "latest_backup_incomplete",
     "backup_not_redundant",
+    "required_location_missing",
     "backup_integrity_failed",
     "backup_integrity_warning",
     "backup_checksum_changed",

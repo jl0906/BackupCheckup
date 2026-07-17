@@ -61,6 +61,14 @@ _KNOWN_OPTIONAL_INNER_ARCHIVES = frozenset({"supervisor"})
 _DATABASE_FILENAME = "home-assistant_v2.db"
 _DATABASE_PATH = PurePosixPath("data/home-assistant_v2.db")
 _METADATA_PATH = PurePosixPath("backup.json")
+_GLOBAL_LIMIT_CODES = frozenset(
+    {
+        "verification_cancelled",
+        "verification_timeout",
+        "database_timeout",
+        "insufficient_free_space",
+    }
+)
 
 
 class _DuplicateJsonKeyError(ValueError):
@@ -192,6 +200,7 @@ class BackupIntegrityVerifier:
             )
 
         failure_ranks = {
+            INTEGRITY_STATUS_ABORTED: 1,
             INTEGRITY_STATUS_UNREADABLE: 1,
             INTEGRITY_STATUS_PASSWORD_REQUIRED: 2,
             INTEGRITY_STATUS_INTERNAL_ERROR: 3,
@@ -211,7 +220,16 @@ class BackupIntegrityVerifier:
         try:
             previous = await self.store.async_load()
             for index, candidate_id in enumerate(candidate_agents):
-                copy_budget = overall_budget.for_copy()
+                try:
+                    copy_budget = overall_budget.for_copy()
+                except VerificationLimitError as err:
+                    return self._failure(
+                        INTEGRITY_STATUS_ABORTED,
+                        record,
+                        started,
+                        agent_id=candidate_id,
+                        error_code=err.code,
+                    )
                 copy = next(
                     (
                         item
@@ -230,13 +248,18 @@ class BackupIntegrityVerifier:
                         candidate_expected or 0,
                     )
                 except VerificationLimitError as err:
-                    return self._failure(
+                    failure = self._failure(
                         INTEGRITY_STATUS_ABORTED,
                         record,
                         started,
                         agent_id=candidate_id,
                         error_code=err.code,
                     )
+                    if err.code in _GLOBAL_LIMIT_CODES:
+                        return failure
+                    remember_failure(failure)
+                    copy_failures += 1
+                    continue
 
                 candidate_path = temp_dir / f"backup-{index}.tar"
                 try:
@@ -253,13 +276,22 @@ class BackupIntegrityVerifier:
                         safe_log_value(candidate_id),
                         err.code,
                     )
-                    return self._failure(
+                    failure = self._failure(
                         INTEGRITY_STATUS_ABORTED,
                         record,
                         started,
                         agent_id=candidate_id,
                         error_code=err.code,
                     )
+                    try:
+                        candidate_path.unlink(missing_ok=True)
+                    except OSError:
+                        pass
+                    if err.code in _GLOBAL_LIMIT_CODES:
+                        return failure
+                    remember_failure(failure)
+                    copy_failures += 1
+                    continue
                 except TimeoutError:
                     return self._failure(
                         INTEGRITY_STATUS_ABORTED,
@@ -284,6 +316,8 @@ class BackupIntegrityVerifier:
                     continue
 
                 warnings: list[str] = []
+                if record.copy_size_mismatch:
+                    warnings.append("storage_copy_size_mismatch")
                 if (
                     candidate_expected is not None
                     and downloaded_size != candidate_expected
@@ -314,7 +348,10 @@ class BackupIntegrityVerifier:
                         )
                     )
                     copy_failures += 1
-                    candidate_path.unlink(missing_ok=True)
+                    try:
+                        candidate_path.unlink(missing_ok=True)
+                    except OSError:
+                        pass
                     continue
 
                 database_path = temp_dir / _DATABASE_FILENAME
@@ -378,7 +415,7 @@ class BackupIntegrityVerifier:
                     _LOGGER.warning(
                         "Backup verification stopped by safety limit: code=%s", err.code
                     )
-                    return self._result(
+                    candidate_failure = self._result(
                         INTEGRITY_STATUS_ABORTED,
                         record,
                         started,
@@ -390,6 +427,8 @@ class BackupIntegrityVerifier:
                         error_code=err.code,
                         checksum_changed=checksum_changed,
                     )
+                    if err.code in _GLOBAL_LIMIT_CODES:
+                        return candidate_failure
                 except (
                     tarfile.TarError,
                     SecureTarError,

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 from collections.abc import Mapping
 from dataclasses import replace
@@ -76,7 +77,10 @@ from .const import (
     DEFAULT_VERIFICATION_TIMEOUT_MINUTES,
     DOMAIN,
     INTEGRITY_DATABASE_NOT_CHECKED,
+    INTEGRITY_STATUS_ABORTED,
     INTEGRITY_STATUS_INTERNAL_ERROR,
+    INTEGRITY_STATUS_PASSWORD_REQUIRED,
+    INTEGRITY_STATUS_UNREADABLE,
     INTEGRITY_STATUS_VALID_WITH_WARNINGS,
     MAX_ANALYTICS_WINDOW_DAYS,
     MAX_DATABASE_TIMEOUT_MINUTES,
@@ -150,6 +154,12 @@ from .security import (
 from .task_control import release_current_task_reference
 
 _LOGGER = logging.getLogger(__name__)
+
+_AUTOMATIC_RETRY_BASE = timedelta(minutes=30)
+_AUTOMATIC_RETRY_MAX = timedelta(hours=6)
+_AUTOMATIC_RETRY_LIMIT = 3
+_COPY_SIZE_MISMATCH_MIN_BYTES = 1_000_000
+_COPY_SIZE_MISMATCH_RATIO = 0.01
 
 
 def _bounded_int_option(
@@ -316,7 +326,13 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self._integrity_loaded = False
         self._integrity_task: asyncio.Task[None] | None = None
         self._integrity_retry_not_before: datetime | None = None
+        self._integrity_retry_key: tuple[str, str] | None = None
+        self._integrity_retry_attempts = 0
+        self._backup_password_marker: str | None = None
+        self._backup_password_marker_initialized = False
         self._invalid_backup_count = 0
+        self._invalid_agent_copy_count = 0
+        self._last_inventory_success_at: datetime | None = None
         update_minutes = _bounded_int_option(
             options,
             CONF_UPDATE_INTERVAL_MINUTES,
@@ -339,6 +355,54 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             self._integrity_task.cancel()
             await asyncio.gather(self._integrity_task, return_exceptions=True)
         await super().async_shutdown()
+
+    @staticmethod
+    def _safe_getattr(value: Any, name: str, default: Any = None) -> Any:
+        """Read one third-party property without allowing it to break refresh."""
+        try:
+            return getattr(value, name, default)
+        except Exception:  # noqa: BLE001
+            return default
+
+    @staticmethod
+    def _safe_text(
+        value: Any,
+        *,
+        maximum: int,
+        strip: bool = True,
+    ) -> str | None:
+        """Return bounded text or None when conversion itself is unsafe."""
+        try:
+            text = str(value)
+        except Exception:  # noqa: BLE001
+            return None
+        if strip:
+            text = text.strip()
+        return text[:maximum] if text else None
+
+    @staticmethod
+    def _safe_mapping_items(value: Any) -> tuple[tuple[Any, Any], ...]:
+        """Return mapping items without trusting a third-party iterator."""
+        if not isinstance(value, Mapping):
+            return ()
+        try:
+            return tuple(value.items())
+        except Exception:  # noqa: BLE001
+            return ()
+
+    @staticmethod
+    def _copy_sizes_mismatch(sizes: list[int]) -> tuple[bool, int | None]:
+        """Return whether reported redundant-copy sizes differ materially."""
+        if len(sizes) < 2:
+            return False, None
+        smallest = min(sizes)
+        largest = max(sizes)
+        spread = largest - smallest
+        tolerance = max(
+            _COPY_SIZE_MISMATCH_MIN_BYTES,
+            int(largest * _COPY_SIZE_MISMATCH_RATIO),
+        )
+        return spread > tolerance, spread
 
     @staticmethod
     def _as_datetime(value: Any) -> datetime | None:
@@ -385,12 +449,20 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         if value is None:
             return ()
         if isinstance(value, Mapping):
-            value = value.keys()
+            try:
+                value = value.keys()
+            except Exception:  # noqa: BLE001
+                return ()
         if isinstance(value, str):
             return (value,)
         try:
-            return tuple(sorted(str(item) for item in value))
-        except TypeError:
+            normalized: set[str] = set()
+            for item in value:
+                text = BackupCheckupCoordinator._safe_text(item, maximum=512)
+                if text:
+                    normalized.add(text)
+            return tuple(sorted(normalized))
+        except Exception:  # noqa: BLE001
             return ()
 
     @staticmethod
@@ -399,18 +471,24 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         if value is None:
             return ()
         if isinstance(value, Mapping):
-            value = value.values()
+            try:
+                value = value.values()
+            except Exception:  # noqa: BLE001
+                return ()
         if isinstance(value, str):
             return (value,)
         slugs: set[str] = set()
         try:
             for addon in value:
-                slug = getattr(addon, "slug", None)
+                slug = BackupCheckupCoordinator._safe_getattr(addon, "slug", None)
                 if slug is None and isinstance(addon, Mapping):
-                    slug = addon.get("slug")
+                    try:
+                        slug = addon.get("slug")
+                    except Exception:  # noqa: BLE001
+                        slug = None
                 if isinstance(slug, str) and slug:
                     slugs.add(slug)
-        except TypeError:
+        except Exception:  # noqa: BLE001
             return ()
         return tuple(sorted(slugs))
 
@@ -425,20 +503,28 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             return None
         return normalized if normalized >= 0 else None
 
-    def _agent_copy(self, agent_id: Any, details: Any) -> BackupAgentRecord:
+    def _agent_copy(self, agent_id: Any, details: Any) -> BackupAgentRecord | None:
         """Normalize one backup-agent copy record across HA model versions."""
-        size_raw = getattr(details, "size", None)
+        normalized_agent_id = self._safe_text(agent_id, maximum=512)
+        if normalized_agent_id is None:
+            return None
+        size_raw = self._safe_getattr(details, "size", None)
         if size_raw is None and isinstance(details, Mapping):
-            size_raw = details.get("size")
+            try:
+                size_raw = details.get("size")
+            except Exception:  # noqa: BLE001
+                return None
         size = BackupCheckupCoordinator._as_nonnegative_int(size_raw)
 
-        protected_raw = getattr(details, "protected", None)
+        protected_raw = self._safe_getattr(details, "protected", None)
         if protected_raw is None:
-            protected_raw = getattr(details, "is_protected", None)
+            protected_raw = self._safe_getattr(details, "is_protected", None)
         if protected_raw is None and isinstance(details, Mapping):
-            protected_raw = details.get("protected", details.get("is_protected"))
+            try:
+                protected_raw = details.get("protected", details.get("is_protected"))
+            except Exception:  # noqa: BLE001
+                return None
         protected = protected_raw if isinstance(protected_raw, bool) else None
-        normalized_agent_id = str(agent_id)
         return BackupAgentRecord(
             normalized_agent_id,
             anonymous_agent_reference(self.config_entry.entry_id, normalized_agent_id),
@@ -487,6 +573,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             agent_errors_raw = {}
 
         now = dt_util.utcnow()
+        password_changed = self._update_backup_password_marker(manager)
         if not self._integrity_loaded:
             self.integrity_result = await self.integrity_verifier.store.async_load()
             self._integrity_loaded = True
@@ -593,38 +680,30 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         # A successful manager API response proves availability. The optional
         # state entity is supplemental and may be disabled or not loaded yet.
         manager_unavailable = False
-        agent_errors = {
-            normalized_agent_id: classify_exception(error)
-            for agent_id, error in agent_errors_raw.items()
-            if (normalized_agent_id := str(agent_id).strip())
-            and len(normalized_agent_id) <= 512
-        }
+        agent_errors: dict[str, str] = {}
+        for agent_id, error in self._safe_mapping_items(agent_errors_raw):
+            normalized_agent_id = self._safe_text(agent_id, maximum=512)
+            if normalized_agent_id:
+                agent_errors[normalized_agent_id] = classify_exception(error)
         storage_error = bool(agent_errors)
 
-        manager_agents = getattr(manager, "backup_agents", {})
-        configured_agent_ids = (
-            {str(agent_id) for agent_id in manager_agents}
-            if isinstance(manager_agents, Mapping)
-            else set()
-        )
-        agent_names = (
-            {
-                str(agent_id): safe_display_name(
-                    getattr(agent, "name", None),
-                    fallback=(
-                        "Backup storage "
-                        f"{
-                            anonymous_agent_reference(
-                                self.config_entry.entry_id, str(agent_id)
-                            )
-                        }"
-                    ),
-                )
-                for agent_id, agent in manager_agents.items()
-            }
-            if isinstance(manager_agents, Mapping)
-            else {}
-        )
+        manager_agents = self._safe_getattr(manager, "backup_agents", {})
+        manager_agent_items = self._safe_mapping_items(manager_agents)
+        configured_agent_ids: set[str] = set()
+        agent_names: dict[str, str] = {}
+        for agent_id, agent in manager_agent_items:
+            normalized_agent_id = self._safe_text(agent_id, maximum=512)
+            if normalized_agent_id is None:
+                continue
+            configured_agent_ids.add(normalized_agent_id)
+            agent_reference = anonymous_agent_reference(
+                self.config_entry.entry_id,
+                normalized_agent_id,
+            )
+            agent_names[normalized_agent_id] = safe_display_name(
+                self._safe_getattr(agent, "name", None),
+                fallback=f"Backup storage {agent_reference}",
+            )
         agent_summaries = self._build_agent_summaries(
             records,
             monitoring_records,
@@ -761,6 +840,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             )
         )
 
+        self._last_inventory_success_at = now
         data = BackupCheckupData(
             checked_at=now,
             max_age_days=self.max_age_days,
@@ -839,29 +919,24 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             integrity_check_running=self.integrity_check_running,
             expose_backup_metadata=self.expose_backup_metadata,
             invalid_backup_count=self._invalid_backup_count,
+            invalid_agent_copy_count=self._invalid_agent_copy_count,
+            copy_size_mismatch_count=sum(
+                1 for record in records if record.copy_size_mismatch
+            ),
+            last_inventory_success_at=self._last_inventory_success_at,
         )
 
         await self._async_process_notifications(data)
 
         if (
             self.auto_verify_new_backups
-            and latest_record is not None
-            and (
-                self.integrity_result.backup_id != latest_record.backup_id
-                or self.integrity_result.status
-                in {
-                    INTEGRITY_STATUS_INTERNAL_ERROR,
-                    "aborted",
-                    "password_required",
-                    "unreadable",
-                }
+            and self._automatic_verification_due(
+                latest_record,
+                now=now,
+                password_changed=password_changed,
             )
             and not self.integrity_check_running
             and (self._integrity_task is None or self._integrity_task.done())
-            and (
-                self._integrity_retry_not_before is None
-                or now >= self._integrity_retry_not_before
-            )
         ):
             self._set_integrity_task(
                 self.hass.async_create_task(
@@ -870,6 +945,85 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 )
             )
         return data
+
+    @staticmethod
+    def _integrity_result_is_retryable(result: BackupIntegrityResult) -> bool:
+        """Return whether an automatic check may retry a controlled result."""
+        if result.status in {
+            INTEGRITY_STATUS_INTERNAL_ERROR,
+            INTEGRITY_STATUS_UNREADABLE,
+        }:
+            return True
+        if result.status != INTEGRITY_STATUS_ABORTED:
+            return False
+        return result.error_code in {
+            "verification_timeout",
+            "database_timeout",
+            "insufficient_free_space",
+        }
+
+    def _automatic_verification_due(
+        self,
+        latest_record: BackupRecord | None,
+        *,
+        now: datetime,
+        password_changed: bool = False,
+    ) -> bool:
+        """Return whether the newest backup should be checked automatically."""
+        if latest_record is None:
+            return False
+        result = self.integrity_result
+        if result.backup_id != latest_record.backup_id:
+            return True
+        if result.status == INTEGRITY_STATUS_PASSWORD_REQUIRED:
+            return password_changed and self._backup_password_marker is not None
+        if not self._integrity_result_is_retryable(result):
+            return False
+        if self._integrity_retry_attempts >= _AUTOMATIC_RETRY_LIMIT:
+            return False
+        not_before = self._integrity_retry_not_before
+        if not_before is None and result.checked_at is not None:
+            not_before = result.checked_at + _AUTOMATIC_RETRY_BASE
+        return not_before is None or now >= not_before
+
+    def _update_backup_password_marker(self, manager: Any) -> bool:
+        """Return whether the native backup password changed since last refresh."""
+        password = BackupIntegrityVerifier._backup_password(manager)
+        marker = (
+            hashlib.sha256(password.encode()).hexdigest()
+            if password is not None
+            else None
+        )
+        changed = (
+            self._backup_password_marker_initialized
+            and marker != self._backup_password_marker
+        )
+        if not self._backup_password_marker_initialized:
+            changed = marker is not None
+        self._backup_password_marker = marker
+        self._backup_password_marker_initialized = True
+        return changed
+
+    def _update_integrity_retry_state(
+        self,
+        result: BackupIntegrityResult,
+    ) -> None:
+        """Apply bounded exponential backoff for repeatable automatic failures."""
+        if not self._integrity_result_is_retryable(result) or result.backup_id is None:
+            self._integrity_retry_key = None
+            self._integrity_retry_attempts = 0
+            self._integrity_retry_not_before = None
+            return
+        key = (result.backup_id, result.error_code or result.status)
+        if key == self._integrity_retry_key:
+            self._integrity_retry_attempts += 1
+        else:
+            self._integrity_retry_key = key
+            self._integrity_retry_attempts = 1
+        multiplier = 2 ** max(0, self._integrity_retry_attempts - 1)
+        delay = min(_AUTOMATIC_RETRY_BASE * multiplier, _AUTOMATIC_RETRY_MAX)
+        checked_at = result.checked_at or dt_util.utcnow()
+        self._integrity_retry_not_before = checked_at + delay
 
     async def _async_process_notifications(self, data: BackupCheckupData) -> None:
         """Process notifications without allowing third-party failures to escape."""
@@ -890,16 +1044,91 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
     def _manager_error_snapshot(self, error_code: str) -> BackupCheckupData:
         """Return the last snapshot marked unavailable after a manager API error."""
         now = dt_util.utcnow()
-        active = tuple(
-            dict.fromkeys(("manager_unavailable", *self.data.active_problems))
-        )
-        deductions = dict(self.data.health_score_deductions)
-        deductions["manager_unavailable"] = max(
-            deductions.get("manager_unavailable", 0), 50
-        )
         latest_age_precise = precise_age_days(now, self.data.latest_backup)
         automatic_age_precise = precise_age_days(now, self.data.latest_automatic_backup)
         manual_age_precise = precise_age_days(now, self.data.latest_manual_backup)
+        backup_stale = bool(
+            latest_age_precise is not None and latest_age_precise > self.max_age_days
+        )
+        manual_covers_automatic = self.data.latest_manual_backup is not None and (
+            self.data.latest_automatic_backup is None
+            or self.data.latest_manual_backup > self.data.latest_automatic_backup
+        )
+        if self.data.latest_automatic_backup is None:
+            automatic_backup_overdue = (
+                self.data.latest_manual_backup is None
+                or manual_age_precise is None
+                or manual_age_precise > self.max_age_days
+            )
+        else:
+            automatic_backup_overdue = bool(
+                automatic_age_precise is not None
+                and automatic_age_precise > self.max_age_days
+                and not manual_covers_automatic
+            )
+        agent_summaries = tuple(
+            replace(
+                summary,
+                latest_backup_age_days=(
+                    age := precise_age_days(now, summary.latest_backup)
+                ),
+                stale=age is None or age > self.max_age_days,
+                problem=bool(summary.error or age is None or age > self.max_age_days),
+            )
+            for summary in self.data.agent_summaries
+        )
+        latest = self.data.latest_monitored_backup_record
+        required_location_missing = bool(
+            latest
+            and any(
+                summary.problem
+                for summary in agent_summaries
+                if summary.agent_id in latest.agents
+            )
+        )
+        dynamic_problem_keys = {
+            "backup_stale",
+            "automatic_backup_overdue",
+            "required_location_missing",
+            "manager_unavailable",
+        }
+        active_items = [
+            item
+            for item in self.data.active_problems
+            if item not in dynamic_problem_keys
+        ]
+        for key, is_active in (
+            ("backup_stale", backup_stale),
+            ("automatic_backup_overdue", automatic_backup_overdue),
+            ("required_location_missing", required_location_missing),
+            ("manager_unavailable", True),
+        ):
+            if is_active:
+                active_items.append(key)
+        active = tuple(dict.fromkeys(active_items))
+        score_flags = {
+            "no_backup": self.data.no_backup,
+            "backup_integrity_failed": "backup_integrity_failed" in active,
+            "backup_checksum_changed": self.data.backup_checksum_changed,
+            "backup_integrity_warning": self.data.backup_integrity_warning,
+            "backup_stale": backup_stale,
+            "automatic_backup_overdue": automatic_backup_overdue,
+            "automatic_backup_failed": self.data.automatic_backup_failed,
+            "automatic_schedule_missing": self.data.automatic_schedule_missing,
+            "automatic_schedule_overdue": self.data.automatic_schedule_overdue,
+            "manager_unavailable": True,
+            "storage_error": self.data.storage_error,
+            "backup_size_suspicious": self.data.backup_size_suspicious,
+            "latest_backup_incomplete": self.data.latest_backup_incomplete,
+            "backup_not_redundant": self.data.backup_not_redundant,
+            "required_location_missing": required_location_missing,
+        }
+        health = calculate_health_score(
+            score_flags,
+            automatic_success_rate=self.data.automatic_success_rate,
+            consecutive_automatic_failures=self.data.consecutive_automatic_failures,
+            resolved_attempts=self.data.automatic_attempts_observed,
+        )
         return replace(
             self.data,
             checked_at=now,
@@ -909,6 +1138,10 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             automatic_backup_age_days_precise=automatic_age_precise,
             manual_backup_age_days=completed_age_days(manual_age_precise),
             manual_backup_age_days_precise=manual_age_precise,
+            agent_summaries=agent_summaries,
+            backup_stale=backup_stale,
+            automatic_backup_overdue=automatic_backup_overdue,
+            required_location_missing=required_location_missing,
             manager_state=STATE_UNAVAILABLE,
             manager_unavailable=True,
             problem=True,
@@ -916,9 +1149,9 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             recommendation=RECOMMENDATION_CHECK_BACKUP_SYSTEM,
             problem_count=len(active),
             active_problems=active,
-            health_score=min(self.data.health_score, 50),
-            health_rating="critical",
-            health_score_deductions=deductions,
+            health_score=health.score,
+            health_rating=health.rating,
+            health_score_deductions=health.deductions,
             agent_errors={**self.data.agent_errors, "manager": error_code},
         )
 
@@ -1014,12 +1247,16 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 repair_issues_enabled=self.repair_issues_enabled,
             )
             self.integrity_result = result
+            self._update_integrity_retry_state(result)
             try:
                 await self.integrity_verifier.store.async_save(result)
             except Exception as err:  # noqa: BLE001
-                self._integrity_retry_not_before = dt_util.utcnow() + timedelta(
-                    minutes=30
-                )
+                persist_retry = dt_util.utcnow() + _AUTOMATIC_RETRY_BASE
+                if (
+                    self._integrity_retry_not_before is None
+                    or self._integrity_retry_not_before < persist_retry
+                ):
+                    self._integrity_retry_not_before = persist_retry
                 _LOGGER.error(
                     "Unable to persist backup verification result: source=%s "
                     "error_type=%s backup_reference=%s",
@@ -1027,8 +1264,6 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                     safe_error_type(err),
                     record.backup_reference,
                 )
-            else:
-                self._integrity_retry_not_before = None
             _LOGGER.info(
                 "Backup verification completed: source=%s status=%s "
                 "duration_seconds=%s warnings=%s backup_reference=%s",
@@ -1067,6 +1302,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 checksum_changed=False,
             )
             self.integrity_result = result
+            self._update_integrity_retry_state(result)
             _LOGGER.error(
                 "Backup verification failed internally: source=%s "
                 "error_type=%s backup_reference=%s",
@@ -1100,137 +1336,168 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         """Normalize Home Assistant backup models into stable local records."""
         records: list[BackupRecord] = []
         invalid_backup_count = 0
+        invalid_agent_copy_count = 0
         seen_backup_ids: set[str] = set()
 
-        for backup in backups.values():
-            backup_id_raw = getattr(backup, "backup_id", None)
-            if (
-                not isinstance(backup_id_raw, str)
-                or not backup_id_raw.strip()
-                or len(backup_id_raw) > 1024
-            ):
-                invalid_backup_count += 1
-                _LOGGER.warning("Ignoring one backup because its ID is invalid")
-                continue
-            backup_id = backup_id_raw.strip()
-            if backup_id in seen_backup_ids:
-                invalid_backup_count += 1
-                _LOGGER.warning("Ignoring one backup because its ID is duplicated")
-                continue
-            backup_date = self._as_datetime(getattr(backup, "date", None))
-            if backup_date is None:
-                invalid_backup_count += 1
-                _LOGGER.warning("Ignoring one backup because its date is invalid")
-                continue
-            seen_backup_ids.add(backup_id)
+        backup_items = self._safe_mapping_items(backups)
 
-            agents_raw = getattr(backup, "agents", {}) or {}
-            if isinstance(agents_raw, Mapping):
-                normalized_agent_items = [
-                    (str(agent_id).strip(), details)
-                    for agent_id, details in agents_raw.items()
-                    if str(agent_id).strip() and len(str(agent_id)) <= 512
-                ]
+        for _inventory_key, backup in backup_items:
+            try:
+                backup_id_raw = self._safe_getattr(backup, "backup_id", None)
+                if not isinstance(backup_id_raw, str):
+                    raise ValueError("invalid_backup_id")
+                backup_id = backup_id_raw.strip()
+                if not backup_id or len(backup_id) > 1024:
+                    raise ValueError("invalid_backup_id")
+                if backup_id in seen_backup_ids:
+                    raise ValueError("duplicate_backup_id")
+
+                backup_date = self._as_datetime(
+                    self._safe_getattr(backup, "date", None)
+                )
+                if backup_date is None:
+                    raise ValueError("invalid_backup_date")
+                seen_backup_ids.add(backup_id)
+
+                agents_raw = self._safe_getattr(backup, "agents", {}) or {}
+                copies: list[BackupAgentRecord] = []
+                if isinstance(agents_raw, Mapping):
+                    agent_items = self._safe_mapping_items(agents_raw)
+                    if agents_raw and not agent_items:
+                        invalid_agent_copy_count += 1
+                    for agent_id, details in agent_items:
+                        copy = self._agent_copy(agent_id, details)
+                        if copy is None:
+                            invalid_agent_copy_count += 1
+                            continue
+                        copies.append(copy)
+                elif isinstance(agents_raw, (list, tuple, set, frozenset)):
+                    try:
+                        for agent_id in agents_raw:
+                            normalized_agent_id = self._safe_text(agent_id, maximum=512)
+                            if normalized_agent_id is None:
+                                invalid_agent_copy_count += 1
+                                continue
+                            copies.append(
+                                BackupAgentRecord(
+                                    normalized_agent_id,
+                                    anonymous_agent_reference(
+                                        self.config_entry.entry_id,
+                                        normalized_agent_id,
+                                    ),
+                                    None,
+                                    None,
+                                )
+                            )
+                    except Exception:  # noqa: BLE001
+                        invalid_agent_copy_count += 1
+                else:
+                    invalid_agent_copy_count += 1
+
                 agent_copies = tuple(
                     sorted(
-                        (
-                            self._agent_copy(agent_id, details)
-                            for agent_id, details in normalized_agent_items
-                        ),
+                        {copy.agent_id: copy for copy in copies}.values(),
                         key=lambda item: item.agent_id,
                     )
                 )
-            elif isinstance(agents_raw, (list, tuple, set, frozenset)):
-                normalized_agent_ids = sorted(
-                    {
-                        str(agent_id).strip()
-                        for agent_id in agents_raw
-                        if str(agent_id).strip() and len(str(agent_id)) <= 512
-                    }
-                )
-                agent_copies = tuple(
-                    BackupAgentRecord(
-                        agent_id,
-                        anonymous_agent_reference(self.config_entry.entry_id, agent_id),
-                        None,
-                        None,
-                    )
-                    for agent_id in normalized_agent_ids
-                )
-            else:
-                invalid_backup_count += 1
-                agent_copies = ()
-            agents = tuple(copy.agent_id for copy in agent_copies)
+                agents = tuple(copy.agent_id for copy in agent_copies)
 
-            failed_agents = self._as_string_tuple(
-                getattr(backup, "failed_agent_ids", None)
-                or getattr(backup, "failed_agents", None)
-            )
-            failed_addons = self._as_string_tuple(
-                getattr(backup, "failed_addons", None)
-                or getattr(backup, "failed_addon_ids", None)
-            )
-            failed_folders = self._as_string_tuple(
-                getattr(backup, "failed_folders", None)
-                or getattr(backup, "failed_folder_ids", None)
-            )
-            known_sizes = [copy.size for copy in agent_copies if copy.size is not None]
-            legacy_size = getattr(backup, "size", None)
-            size = (
-                max(known_sizes)
-                if known_sizes
-                else (self._as_nonnegative_int(legacy_size))
-            )
-            incomplete = bool(failed_agents or failed_addons or failed_folders)
-            automatic = getattr(backup, "with_automatic_settings", None) is True
-            extra_metadata = getattr(backup, "extra_metadata", None)
-            included_addons = self._addon_slugs(getattr(backup, "addons", None))
-            included_folders = self._as_string_tuple(getattr(backup, "folders", None))
-            database_included = self._as_bool(
-                getattr(backup, "database_included", None)
-            )
-            homeassistant_included = self._as_bool(
-                getattr(backup, "homeassistant_included", None)
-            )
-            purpose = classify_backup_purpose(
-                automatic=automatic,
-                extra_metadata=extra_metadata,
-            )
-
-            records.append(
-                BackupRecord(
-                    backup_id=backup_id,
-                    backup_reference=anonymous_backup_reference(
-                        self.config_entry.entry_id,
-                        backup_id,
-                    ),
-                    name=str(getattr(backup, "name", ""))[:512],
-                    date=backup_date,
+                failed_agents = self._as_string_tuple(
+                    self._safe_getattr(backup, "failed_agent_ids", None)
+                    or self._safe_getattr(backup, "failed_agents", None)
+                )
+                failed_addons = self._as_string_tuple(
+                    self._safe_getattr(backup, "failed_addons", None)
+                    or self._safe_getattr(backup, "failed_addon_ids", None)
+                )
+                failed_folders = self._as_string_tuple(
+                    self._safe_getattr(backup, "failed_folders", None)
+                    or self._safe_getattr(backup, "failed_folder_ids", None)
+                )
+                known_sizes = [
+                    copy.size for copy in agent_copies if copy.size is not None
+                ]
+                legacy_size = self._safe_getattr(backup, "size", None)
+                size = (
+                    max(known_sizes)
+                    if known_sizes
+                    else self._as_nonnegative_int(legacy_size)
+                )
+                copy_size_mismatch, copy_size_spread = self._copy_sizes_mismatch(
+                    known_sizes
+                )
+                incomplete = bool(failed_agents or failed_addons or failed_folders)
+                automatic = (
+                    self._safe_getattr(backup, "with_automatic_settings", None) is True
+                )
+                extra_metadata = self._safe_getattr(backup, "extra_metadata", None)
+                included_addons = self._addon_slugs(
+                    self._safe_getattr(backup, "addons", None)
+                )
+                included_folders = self._as_string_tuple(
+                    self._safe_getattr(backup, "folders", None)
+                )
+                database_included = self._as_bool(
+                    self._safe_getattr(backup, "database_included", None)
+                )
+                homeassistant_included = self._as_bool(
+                    self._safe_getattr(backup, "homeassistant_included", None)
+                )
+                purpose = classify_backup_purpose(
                     automatic=automatic,
-                    purpose=purpose,
-                    included_addons=included_addons,
-                    included_folders=included_folders,
-                    scope_fingerprint=backup_scope_fingerprint(
-                        entry_id=self.config_entry.entry_id,
-                        homeassistant_included=homeassistant_included,
-                        database_included=database_included,
-                        addons=included_addons,
-                        folders=included_folders,
-                    ),
-                    agents=agents,
-                    agent_copies=agent_copies,
-                    failed_agents=failed_agents,
-                    failed_addons=failed_addons,
-                    failed_folders=failed_folders,
-                    database_included=database_included,
-                    homeassistant_included=homeassistant_included,
-                    size=size,
-                    incomplete=incomplete,
+                    extra_metadata=extra_metadata,
                 )
-            )
+                name = (
+                    self._safe_text(
+                        self._safe_getattr(backup, "name", ""),
+                        maximum=512,
+                        strip=False,
+                    )
+                    or ""
+                )
+
+                records.append(
+                    BackupRecord(
+                        backup_id=backup_id,
+                        backup_reference=anonymous_backup_reference(
+                            self.config_entry.entry_id, backup_id
+                        ),
+                        name=name,
+                        date=backup_date,
+                        automatic=automatic,
+                        purpose=purpose,
+                        included_addons=included_addons,
+                        included_folders=included_folders,
+                        scope_fingerprint=backup_scope_fingerprint(
+                            entry_id=self.config_entry.entry_id,
+                            homeassistant_included=homeassistant_included,
+                            database_included=database_included,
+                            addons=included_addons,
+                            folders=included_folders,
+                        ),
+                        agents=agents,
+                        agent_copies=agent_copies,
+                        failed_agents=failed_agents,
+                        failed_addons=failed_addons,
+                        failed_folders=failed_folders,
+                        database_included=database_included,
+                        homeassistant_included=homeassistant_included,
+                        size=size,
+                        incomplete=incomplete,
+                        copy_size_mismatch=copy_size_mismatch,
+                        copy_size_spread_bytes=copy_size_spread,
+                    )
+                )
+            except Exception as err:  # noqa: BLE001
+                invalid_backup_count += 1
+                _LOGGER.warning(
+                    "Ignoring one invalid backup inventory record: error_type=%s",
+                    safe_error_type(err),
+                )
 
         records.sort(key=lambda item: item.date, reverse=True)
         self._invalid_backup_count = invalid_backup_count
+        self._invalid_agent_copy_count = invalid_agent_copy_count
         return tuple(records)
 
     def _size_changes(

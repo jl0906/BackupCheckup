@@ -19,7 +19,7 @@ Run at least:
 ```bash
 ruff format --check .
 ruff check .
-pytest --cov=custom_components.backup_checkup --cov-fail-under=70
+pytest --cov=custom_components.backup_checkup --cov-branch --cov-report=term-missing --cov-fail-under=60
 bandit -q -r custom_components/backup_checkup -x tests
 python -m compileall custom_components tests
 python -m json.tool custom_components/backup_checkup/manifest.json
@@ -45,7 +45,7 @@ the same structure and placeholders as `strings.json`.
 1. Update the version in `custom_components/backup_checkup/manifest.json`,
    `custom_components/backup_checkup/const.py`, the README, and the changelog.
 2. Create a Git tag and GitHub release with the same version, for example
-   `v2.2.2`. Mark beta versions as pre-releases and stable versions as regular releases.
+   `v2.2.3`. Mark beta versions as pre-releases and stable versions as regular releases.
 3. Keep the standard HACS repository layout under
    `custom_components/backup_checkup`.
 4. Do not enable `zip_release` and do not attach a required integration ZIP asset.

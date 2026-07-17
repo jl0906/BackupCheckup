@@ -183,7 +183,12 @@ def classify_exception(error: BaseException) -> str:
 
 def safe_log_value(value: object, *, max_length: int = 160) -> str:
     """Return a single-line bounded representation for untrusted log values."""
-    text = str(value)
+    try:
+        text = str(value)
+    except Exception:  # noqa: BLE001
+        # A third-party object may implement a broken ``__str__`` method. Logging
+        # such an object must never hide the original integration error.
+        text = f"<unprintable:{type(value).__name__}>"
     cleaned = "".join(
         character
         if character == " "

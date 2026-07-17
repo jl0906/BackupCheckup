@@ -13,6 +13,7 @@ from homeassistant.helpers.translation import async_get_translations
 
 from .const import DOMAIN
 from .models import BackupCheckupData
+from .notification_selection import normalize_notification_targets
 from .repairs import async_set_storage_data_issue
 from .security import classify_exception, safe_error_type
 
@@ -194,6 +195,23 @@ class BackupCheckupNotificationManager:
             ):
                 return
 
+            if signature and signature == self._last_signature:
+                added_targets = tuple(
+                    target
+                    for target in normalized_targets
+                    if target not in self._last_targets
+                )
+                if not added_targets:
+                    # Removing recipients is a state-only change and must not send
+                    # a duplicate problem notification to the remaining devices.
+                    self._last_targets = normalized_targets
+                    await self._async_save()
+                    return
+                if await self._async_send_problem(data, added_targets):
+                    self._last_targets = normalized_targets
+                    await self._async_save()
+                return
+
             sent = False
             if signature:
                 sent = await self._async_send_problem(data, normalized_targets)
@@ -312,6 +330,7 @@ class BackupCheckupNotificationManager:
         """Load the last notification state once."""
         if self._loaded:
             return
+        repair_needed = False
         try:
             stored = await self._store.async_load()
             if stored is None:
@@ -324,6 +343,7 @@ class BackupCheckupNotificationManager:
                 safe_error_type(err),
             )
             stored = {}
+            repair_needed = True
             async_set_storage_data_issue(
                 self._hass, store_name="notifications", active=True
             )
@@ -342,14 +362,28 @@ class BackupCheckupNotificationManager:
         )
         self._last_signature = signature[:512] if isinstance(signature, str) else ""
         self._was_enabled = was_enabled is True
-        self._last_targets = tuple(
-            sorted(set(item for item in targets if isinstance(item, str)))
-        )
+        normalized_stored_targets = normalize_notification_targets(targets)[:100]
+        self._last_targets = tuple(sorted(normalized_stored_targets))
+        if isinstance(targets, list) and targets != normalized_stored_targets:
+            invalid_content = True
         if invalid_content:
+            repair_needed = True
             async_set_storage_data_issue(
                 self._hass, store_name="notifications", active=True
             )
         self._loaded = True
+        if repair_needed:
+            try:
+                await self._async_save()
+            except Exception as err:  # noqa: BLE001
+                _LOGGER.warning(
+                    "Unable to persist repaired notification store data: error_type=%s",
+                    safe_error_type(err),
+                )
+            else:
+                async_set_storage_data_issue(
+                    self._hass, store_name="notifications", active=False
+                )
 
     async def _async_save(self) -> None:
         """Persist notification deduplication state."""

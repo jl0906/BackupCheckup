@@ -464,6 +464,14 @@
     "storage_data_invalid": {
       "title": "Interne BackupCheckup-Daten wurden zurückgesetzt",
       "description": "Die privaten Speicherdaten für „{store}“ waren ungültig oder beschädigt und wurden sicher zurückgesetzt. Prüfe die BackupCheckup-Einstellungen und führe bei Bedarf eine neue Prüfung aus."
+    },
+    "backup_integrity_warning": {
+      "title": "Backup-Integritätsprüfung mit Warnungen",
+      "description": "Die vollständige Integritätsprüfung wurde am {checked} mit Warnungen beendet oder konnte nicht abgeschlossen werden. Prüfe das Ergebnis und erstelle oder teste bei Bedarf ein weiteres Backup."
+    },
+    "required_location_missing": {
+      "title": "Erforderlicher Backup-Speicherort fehlt",
+      "description": "{count} Speicherort(e) des neuesten Backups sind nicht verfügbar, veraltet oder melden einen Fehler. Stelle den betroffenen Speicherort wieder her oder erstelle ein neues redundantes Backup."
     }
   },
   "exceptions": {

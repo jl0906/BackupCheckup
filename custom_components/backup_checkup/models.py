@@ -52,6 +52,8 @@ class BackupRecord:
     homeassistant_included: bool | None
     size: int | None
     incomplete: bool
+    copy_size_mismatch: bool = False
+    copy_size_spread_bytes: int | None = None
 
     def as_public_dict(self) -> dict[str, Any]:
         """Return a privacy-safe state-attribute representation."""
@@ -72,6 +74,7 @@ class BackupRecord:
             "homeassistant_included": self.homeassistant_included,
             "size": self.size,
             "incomplete": self.incomplete,
+            "storage_copy_size_mismatch": self.copy_size_mismatch,
         }
 
     def as_private_dict(self) -> dict[str, Any]:
@@ -89,6 +92,7 @@ class BackupRecord:
             "failed_agents": list(self.failed_agents),
             "failed_addons": list(self.failed_addons),
             "failed_folders": list(self.failed_folders),
+            "storage_copy_size_spread_bytes": self.copy_size_spread_bytes,
         }
 
     def as_dict(self, *, expose_metadata: bool = False) -> dict[str, Any]:
@@ -432,6 +436,9 @@ class BackupCheckupData:
     integrity_check_running: bool
     expose_backup_metadata: bool
     invalid_backup_count: int
+    invalid_agent_copy_count: int = 0
+    copy_size_mismatch_count: int = 0
+    last_inventory_success_at: datetime | None = None
 
     @property
     def latest_monitored_backup_record(self) -> BackupRecord | None:

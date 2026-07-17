@@ -28,9 +28,13 @@ backup = types.ModuleType("homeassistant.components.backup")
 config_entries = types.ModuleType("homeassistant.config_entries")
 const = types.ModuleType("homeassistant.const")
 core = types.ModuleType("homeassistant.core")
+exceptions = types.ModuleType("homeassistant.exceptions")
 helpers = types.ModuleType("homeassistant.helpers")
 entity_registry = types.ModuleType("homeassistant.helpers.entity_registry")
+issue_registry = types.ModuleType("homeassistant.helpers.issue_registry")
 storage = types.ModuleType("homeassistant.helpers.storage")
+translation = types.ModuleType("homeassistant.helpers.translation")
+update_coordinator = types.ModuleType("homeassistant.helpers.update_coordinator")
 util = types.ModuleType("homeassistant.util")
 dt = types.ModuleType("homeassistant.util.dt")
 
@@ -63,25 +67,89 @@ class RegistryEntryDisabler(Enum):
     CONFIG_ENTRY = "config_entry"
 
 
+class HomeAssistantError(Exception):
+    """Minimal Home Assistant service error."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args)
+        self.translation_domain = kwargs.get("translation_domain")
+        self.translation_key = kwargs.get("translation_key")
+
+
+class UpdateFailed(Exception):
+    """Minimal coordinator update error."""
+
+
+class DataUpdateCoordinator:
+    """Small coordinator base used by isolated unit tests."""
+
+    def __class_getitem__(cls, _item: Any) -> type[DataUpdateCoordinator]:
+        return cls
+
+    def __init__(self, hass: Any, _logger: Any, **kwargs: Any) -> None:
+        self.hass = hass
+        self.config_entry = kwargs.get("config_entry")
+        self.update_interval = kwargs.get("update_interval")
+        self.data = None
+        self.last_update_success = True
+        self.last_exception = None
+
+    async def async_shutdown(self) -> None:
+        return None
+
+    async def async_request_refresh(self) -> None:
+        return None
+
+    def async_set_updated_data(self, data: Any) -> None:
+        self.data = data
+
+
 class Store:
-    """Type-only storage test double."""
+    """In-memory private Store test double."""
 
     def __class_getitem__(cls, _item: Any) -> type[Store]:
         return cls
 
     def __init__(self, *_args: Any, **_kwargs: Any) -> None:
-        pass
+        self.data: Any = None
+
+    async def async_load(self) -> Any:
+        return self.data
+
+    async def async_save(self, data: Any) -> None:
+        self.data = data
+
+    async def async_remove(self) -> None:
+        self.data = None
+
+
+class IssueSeverity(StrEnum):
+    """Subset of repair issue severities."""
+
+    WARNING = "warning"
+    ERROR = "error"
 
 
 backup.async_get_manager = _async_get_manager
 config_entries.ConfigEntry = ConfigEntry
 const.Platform = Platform
+const.STATE_UNAVAILABLE = "unavailable"
+const.STATE_UNKNOWN = "unknown"
+const.__version__ = "2026.7.2"
 core.HomeAssistant = HomeAssistant
 core.callback = lambda function: function
+exceptions.HomeAssistantError = HomeAssistantError
 entity_registry.RegistryEntryDisabler = RegistryEntryDisabler
 entity_registry.async_get = lambda _hass: None
 helpers.entity_registry = entity_registry
+issue_registry.IssueSeverity = IssueSeverity
+issue_registry.async_create_issue = lambda *_args, **_kwargs: None
+issue_registry.async_delete_issue = lambda *_args, **_kwargs: None
+helpers.issue_registry = issue_registry
 storage.Store = Store
+translation.async_get_translations = lambda *_args, **_kwargs: {}
+update_coordinator.DataUpdateCoordinator = DataUpdateCoordinator
+update_coordinator.UpdateFailed = UpdateFailed
 dt.utcnow = lambda: datetime.now(UTC)
 
 
@@ -106,16 +174,15 @@ sys.modules.setdefault("homeassistant.components.backup", backup)
 sys.modules.setdefault("homeassistant.config_entries", config_entries)
 sys.modules.setdefault("homeassistant.const", const)
 sys.modules.setdefault("homeassistant.core", core)
+sys.modules.setdefault("homeassistant.exceptions", exceptions)
 sys.modules.setdefault("homeassistant.helpers", helpers)
 sys.modules.setdefault("homeassistant.helpers.entity_registry", entity_registry)
+sys.modules.setdefault("homeassistant.helpers.issue_registry", issue_registry)
 sys.modules.setdefault("homeassistant.helpers.storage", storage)
+sys.modules.setdefault("homeassistant.helpers.translation", translation)
+sys.modules.setdefault("homeassistant.helpers.update_coordinator", update_coordinator)
 sys.modules.setdefault("homeassistant.util", util)
 sys.modules.setdefault("homeassistant.util.dt", dt)
-
-repairs = types.ModuleType("custom_components.backup_checkup.repairs")
-repairs.async_set_temporary_cleanup_issue = lambda *_args, **_kwargs: None
-repairs.async_set_storage_data_issue = lambda *_args, **_kwargs: None
-sys.modules.setdefault("custom_components.backup_checkup.repairs", repairs)
 
 securetar = types.ModuleType("securetar")
 

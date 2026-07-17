@@ -464,6 +464,14 @@
     "storage_data_invalid": {
       "title": "BackupCheckup internal data was reset",
       "description": "The private storage data for “{store}” was invalid or damaged and was safely reset. Review BackupCheckup settings and run a new verification if needed."
+    },
+    "backup_integrity_warning": {
+      "title": "Integritetskontrollen har advarsler",
+      "description": "Den fulde integritetskontrol blev afsluttet med advarsler eller kunne ikke fuldføres kl. {checked}. Gennemgå resultatet og opret eller kontrollér en ny sikkerhedskopi om nødvendigt."
+    },
+    "required_location_missing": {
+      "title": "En påkrævet backuplagerplacering mangler",
+      "description": "{count} lagerplacering(er) for den nyeste sikkerhedskopi er utilgængelige, forældede eller melder fejl. Gendan placeringen eller opret en ny redundant sikkerhedskopi."
     }
   },
   "exceptions": {
