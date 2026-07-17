@@ -7,7 +7,6 @@ import logging
 from collections.abc import Mapping
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
-from math import floor
 from statistics import median
 from typing import Any
 
@@ -19,6 +18,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
+from .age import completed_age_days, precise_age_days
 from .analytics import calculate_health_score, calculate_inventory_analytics
 from .classification import (
     automatic_backup_failed as evaluate_automatic_backup_failed,
@@ -378,20 +378,6 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         return state.state.lower()
 
     @staticmethod
-    def _age_days(now: datetime, value: datetime | None) -> float | None:
-        """Return the precise age in days."""
-        if value is None:
-            return None
-        return max(0.0, (now - value).total_seconds() / 86400)
-
-    @staticmethod
-    def _completed_days(value: float | None) -> int | None:
-        """Return only fully completed days from a precise age value."""
-        if value is None:
-            return None
-        return floor(value)
-
-    @staticmethod
     def _as_bool(value: Any) -> bool | None:
         """Return a boolean value when one is available."""
         return value if isinstance(value, bool) else None
@@ -521,10 +507,12 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         )
         latest_manual = manual_records[0].date if manual_records else None
 
-        latest_age = self._age_days(now, latest_backup)
-        automatic_age_precise = self._age_days(now, latest_automatic)
-        automatic_age = self._completed_days(automatic_age_precise)
-        manual_age = self._age_days(now, latest_manual)
+        latest_age_precise = precise_age_days(now, latest_backup)
+        latest_age = completed_age_days(latest_age_precise)
+        automatic_age_precise = precise_age_days(now, latest_automatic)
+        automatic_age = completed_age_days(automatic_age_precise)
+        manual_age_precise = precise_age_days(now, latest_manual)
+        manual_age = completed_age_days(manual_age_precise)
 
         (
             size_change_percent,
@@ -592,7 +580,9 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         )
 
         no_backup = not monitoring_records
-        backup_stale = latest_age is not None and latest_age > self.max_age_days
+        backup_stale = (
+            latest_age_precise is not None and latest_age_precise > self.max_age_days
+        )
         manual_covers_automatic = latest_manual is not None and (
             latest_automatic is None or latest_manual > latest_automatic
         )
@@ -600,7 +590,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             automatic_backup_overdue = (
                 latest_manual is None
                 or manual_age is None
-                or manual_age > self.max_age_days
+                or manual_age_precise > self.max_age_days
             )
         else:
             automatic_backup_overdue = (
@@ -800,9 +790,11 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             latest_automatic_backup=latest_automatic,
             latest_manual_backup=latest_manual,
             latest_backup_age_days=latest_age,
+            latest_backup_age_days_precise=latest_age_precise,
             automatic_backup_age_days=automatic_age,
             automatic_backup_age_days_precise=automatic_age_precise,
             manual_backup_age_days=manual_age,
+            manual_backup_age_days_precise=manual_age_precise,
             latest_backup_size=latest_record.size if latest_record else None,
             latest_automatic_backup_size=(
                 latest_automatic_record.size if latest_automatic_record else None
@@ -1333,7 +1325,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 ),
                 None,
             )
-            age = self._age_days(now, newest.date if newest else None)
+            age = precise_age_days(now, newest.date if newest else None)
             stale = age is None or age > self.max_age_days
             error = agent_errors.get(agent_id)
             summaries.append(

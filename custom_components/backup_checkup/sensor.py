@@ -25,6 +25,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
 
+from .age import completed_age_days
 from .agent_cleanup import async_remove_agent_entities
 from .const import (
     BACKUP_RESULT_OPTIONS,
@@ -386,6 +387,8 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="latest_backup",
         translation_key="latest_backup",
+        entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:archive-clock",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=lambda data: data.latest_backup,
@@ -394,6 +397,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         key="latest_automatic_backup",
         translation_key="latest_automatic_backup",
         entity_registry_enabled_default=False,
+        entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:calendar-check",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=lambda data: data.latest_automatic_backup,
@@ -413,8 +417,20 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         icon="mdi:timer-sand",
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.DAYS,
+        suggested_display_precision=0,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda data: data.latest_backup_age_days,
+        attributes_fn=lambda data: {
+            "backup_timestamp": (
+                data.latest_backup.isoformat() if data.latest_backup else None
+            ),
+            "precise_age_days": data.latest_backup_age_days_precise,
+            "precise_age_hours": (
+                round(data.latest_backup_age_days_precise * 24, 2)
+                if data.latest_backup_age_days_precise is not None
+                else None
+            ),
+        },
     ),
     BackupCheckupSensorDescription(
         key="automatic_backup_age",
@@ -423,10 +439,21 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         icon="mdi:timer-alert-outline",
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.DAYS,
+        suggested_display_precision=0,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda data: data.automatic_backup_age_days,
         attributes_fn=lambda data: {
+            "backup_timestamp": (
+                data.latest_automatic_backup.isoformat()
+                if data.latest_automatic_backup
+                else None
+            ),
             "precise_age_days": data.automatic_backup_age_days_precise,
+            "precise_age_hours": (
+                round(data.automatic_backup_age_days_precise * 24, 2)
+                if data.automatic_backup_age_days_precise is not None
+                else None
+            ),
         },
     ),
     BackupCheckupSensorDescription(
@@ -437,8 +464,22 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         icon="mdi:timer-outline",
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.DAYS,
+        suggested_display_precision=0,
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda data: data.manual_backup_age_days,
+        attributes_fn=lambda data: {
+            "backup_timestamp": (
+                data.latest_manual_backup.isoformat()
+                if data.latest_manual_backup
+                else None
+            ),
+            "precise_age_days": data.manual_backup_age_days_precise,
+            "precise_age_hours": (
+                round(data.manual_backup_age_days_precise * 24, 2)
+                if data.manual_backup_age_days_precise is not None
+                else None
+            ),
+        },
     ),
     BackupCheckupSensorDescription(
         key="latest_backup_size",
@@ -756,6 +797,7 @@ class BackupCheckupAgentSensor(BackupCheckupAgentEntity, SensorEntity):
         elif metric == "latest_backup_age":
             self._attr_device_class = SensorDeviceClass.DURATION
             self._attr_native_unit_of_measurement = UnitOfTime.DAYS
+            self._attr_suggested_display_precision = 0
             self._attr_state_class = SensorStateClass.MEASUREMENT
             self._attr_icon = "mdi:timer-sand"
         elif metric in {"latest_backup_size", "stored_bytes"}:
@@ -787,7 +829,7 @@ class BackupCheckupAgentSensor(BackupCheckupAgentEntity, SensorEntity):
         values = {
             "backups": summary.backup_count,
             "latest_backup": summary.latest_backup,
-            "latest_backup_age": summary.latest_backup_age_days,
+            "latest_backup_age": completed_age_days(summary.latest_backup_age_days),
             "latest_backup_size": (
                 round(summary.latest_backup_size / 1_000_000, 2)
                 if summary.latest_backup_size is not None
@@ -810,7 +852,14 @@ class BackupCheckupAgentSensor(BackupCheckupAgentEntity, SensorEntity):
         attributes = summary.as_dict(
             expose_metadata=self.coordinator.expose_backup_metadata
         )
-        if self.metric == "latest_backup_size":
+        if self.metric == "latest_backup_age":
+            attributes["precise_age_days"] = summary.latest_backup_age_days
+            attributes["precise_age_hours"] = (
+                round(summary.latest_backup_age_days * 24, 2)
+                if summary.latest_backup_age_days is not None
+                else None
+            )
+        elif self.metric == "latest_backup_size":
             attributes["size_bytes"] = summary.latest_backup_size
         elif self.metric == "stored_bytes":
             attributes["size_bytes"] = summary.stored_bytes

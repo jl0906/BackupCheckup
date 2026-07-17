@@ -166,22 +166,22 @@
         "name": "Manual or other backups"
       },
       "latest_backup": {
-        "name": "Latest backup"
+        "name": "Latest backup timestamp"
       },
       "latest_automatic_backup": {
-        "name": "Latest automatic backup"
+        "name": "Latest automatic backup timestamp"
       },
       "latest_manual_backup": {
-        "name": "Latest manual or other backup"
+        "name": "Latest manual or other backup timestamp"
       },
       "latest_backup_age": {
         "name": "Latest backup age"
       },
       "automatic_backup_age": {
-        "name": "Automatic backup age"
+        "name": "Latest automatic backup age"
       },
       "manual_backup_age": {
-        "name": "Manual or other backup age"
+        "name": "Latest manual or other backup age"
       },
       "last_automatic_attempt": {
         "name": "Last automatic backup attempt"

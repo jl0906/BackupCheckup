@@ -20,14 +20,23 @@ applies the selected preset. Entities explicitly disabled by the user stay disab
 | `sensor.backup_checkup_status` | Highest-priority current backup status |
 | `sensor.backup_checkup_recommendation` | Recommended next action |
 | `sensor.backup_checkup_stored_backups` | Number of retained regular backups used for monitoring |
-| `sensor.backup_checkup_latest_backup` | Timestamp of the newest regular backup |
-| `sensor.backup_checkup_latest_backup_age` | Age of the newest regular backup in days |
+| `sensor.backup_checkup_latest_backup_age` | Age of the newest regular backup in fully completed 24-hour days |
 | `sensor.backup_checkup_latest_backup_size` | Reported size of the newest regular backup in MB |
 | `sensor.backup_checkup_integrity_status` | Result of the full integrity verification |
 | `binary_sensor.backup_checkup_problem` | On when at least one monitored problem is active |
 | `button.backup_checkup_verify_latest_backup` | Starts a full read-only check of the newest regular backup |
 | `button.backup_checkup_refresh` | Immediately refreshes the lightweight backup inventory |
 | `button.backup_checkup_test_notification` | Sends a test message to the configured Companion App devices |
+
+
+### Backup age presentation
+
+All age entities expose whole completed 24-hour periods. They remain at `0 d` until
+24 hours have elapsed, change to `1 d` at 24 hours, and so on. Exact timestamps,
+precise decimal days, and precise hours remain available as entity attributes and in
+diagnostics. Timestamp entities are disabled in Standard mode to avoid duplicating the
+user-facing age sensors; Expert mode can still expose them for templates and advanced
+automations.
 
 ## Mobile notification behavior
 
@@ -83,10 +92,10 @@ users who explicitly need them in automations.
 | `sensor.backup_checkup_problem_count` | Standard | Number of simultaneously active problems |
 | `sensor.backup_checkup_automatic_backups` | Standard | Number of automatic backups |
 | `sensor.backup_checkup_manual_backups` | Disabled | Number of manual or other backups |
-| `sensor.backup_checkup_latest_automatic_backup` | Standard | Timestamp of the newest automatic backup |
-| `sensor.backup_checkup_latest_manual_backup` | Disabled | Timestamp of the newest manual or other backup |
-| `sensor.backup_checkup_automatic_backup_age` | Standard | Automatic-backup age in fully completed days |
-| `sensor.backup_checkup_manual_backup_age` | Disabled | Manual-backup age in days |
+| `sensor.backup_checkup_latest_automatic_backup` | Disabled | Exact timestamp of the newest automatic backup |
+| `sensor.backup_checkup_latest_manual_backup` | Disabled | Exact timestamp of the newest manual or other backup |
+| `sensor.backup_checkup_automatic_backup_age` | Standard | Age of the newest automatic backup in fully completed 24-hour days |
+| `sensor.backup_checkup_manual_backup_age` | Disabled | Age of the newest manual or other backup in fully completed 24-hour days |
 | `sensor.backup_checkup_latest_automatic_backup_size` | Standard | Size of the newest automatic backup in MB |
 | `sensor.backup_checkup_latest_backup_size_change` | Disabled | Change from the previous backup with the same origin and content scope |
 | `sensor.backup_checkup_latest_backup_result` | Standard | `complete`, `partial`, or `unknown` |

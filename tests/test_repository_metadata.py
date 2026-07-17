@@ -28,16 +28,17 @@ def _placeholders(value: str) -> set[str]:
 
 
 def test_release_versions_are_consistent() -> None:
-    """Manifest, constants, README, and changelog advertise beta5 consistently."""
+    """Manifest, constants, README, and changelog advertise beta6 consistently."""
     manifest = json.loads((INTEGRATION / "manifest.json").read_text())
     constants = (INTEGRATION / "const.py").read_text()
     readme = (ROOT / "README.md").read_text()
     changelog = (ROOT / "CHANGELOG.md").read_text()
 
-    assert manifest["version"] == "2.2.0-beta5"
-    assert 'VERSION = "2.2.0-beta5"' in constants
-    assert "2.2.0-beta5" in readme
-    assert "## 2.2.0-beta5" in changelog
+    assert manifest["version"] == "2.2.0-beta6"
+    assert 'VERSION = "2.2.0-beta6"' in constants
+    assert "2.2.0-beta6" in readme
+    assert "## 2.2.0-beta6" in changelog
+    assert "VERSION = 7" in (INTEGRATION / "config_flow.py").read_text()
 
 
 def test_hacs_uses_repository_source_without_zip_release() -> None:

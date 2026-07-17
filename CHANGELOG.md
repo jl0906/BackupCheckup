@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.2.0-beta6
+
+### Changed
+- All user-facing backup-age sensors now report fully completed 24-hour days as integers. Values remain at `0 d` until 24 hours have elapsed, then change to `1 d`.
+- Exact backup timestamps and precise age values in hours and decimal days are retained as entity attributes and diagnostics instead of being mixed into the visible sensor state.
+- Standard entity mode now focuses on the two useful age sensors for the newest regular and newest automatic backup. Exact timestamp entities remain available in Expert mode for templates and advanced automations.
+- Timestamp entity names now explicitly say “timestamp” to distinguish them from backup-age entities.
+- Per-storage backup-age sensors use the same completed-day presentation as the main device.
+- Config-entry schema updated to version 7 so the streamlined entity preset is applied once to existing beta installations.
+
+### Added
+- Precise age attributes for the newest regular, automatic, manual/other, and per-storage backup-age sensors.
+- Regression tests for completed-day boundaries at 0, 24, and 48 hours.
+
 ## 2.2.0-beta5
 
 ### Fixed

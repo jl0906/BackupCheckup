@@ -8,7 +8,6 @@ entities:
     name: Overall status
   - entity: sensor.backup_checkup_recommendation
     name: Recommendation
-  - entity: sensor.backup_checkup_latest_backup
     name: Latest backup
   - entity: sensor.backup_checkup_latest_backup_age
     name: Backup age

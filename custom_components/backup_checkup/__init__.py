@@ -122,9 +122,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate older BackupCheckup configuration entries."""
-    if entry.version > 6:
+    if entry.version > 7:
         return False
-    if entry.version == 6:
+    if entry.version == 7:
         return True
 
     migrated_data = dict(entry.data)
@@ -167,6 +167,15 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         }
         migrated_data = {**security_defaults, **migrated_data}
         version = 6
+
+    if version < 7:
+        async_apply_entity_mode(
+            hass,
+            entry,
+            str(migrated_data.get(CONF_ENTITY_MODE, DEFAULT_ENTITY_MODE)),
+            disable_others=True,
+        )
+        version = 7
 
     hass.config_entries.async_update_entry(
         entry,

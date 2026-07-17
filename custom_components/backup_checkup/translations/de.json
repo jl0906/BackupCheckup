@@ -166,22 +166,22 @@
         "name": "Manuelle oder sonstige Backups"
       },
       "latest_backup": {
-        "name": "Neuestes Backup"
+        "name": "Zeitpunkt des neuesten Backups"
       },
       "latest_automatic_backup": {
-        "name": "Neuestes automatisches Backup"
+        "name": "Zeitpunkt des neuesten automatischen Backups"
       },
       "latest_manual_backup": {
-        "name": "Neuestes manuelles oder sonstiges Backup"
+        "name": "Zeitpunkt des neuesten manuellen oder sonstigen Backups"
       },
       "latest_backup_age": {
         "name": "Alter des neuesten Backups"
       },
       "automatic_backup_age": {
-        "name": "Alter des automatischen Backups"
+        "name": "Alter des neuesten automatischen Backups"
       },
       "manual_backup_age": {
-        "name": "Alter des manuellen oder sonstigen Backups"
+        "name": "Alter des neuesten manuellen oder sonstigen Backups"
       },
       "last_automatic_attempt": {
         "name": "Letzter automatischer Backupversuch"

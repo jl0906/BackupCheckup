@@ -99,6 +99,7 @@ async def async_get_config_entry_diagnostics(
                 data.latest_backup.isoformat() if data.latest_backup else None
             ),
             "latest_backup_age_days": data.latest_backup_age_days,
+            "latest_backup_age_days_precise": (data.latest_backup_age_days_precise),
             "latest_backup_size": data.latest_backup_size,
             "latest_backup_size_change_percent": (
                 data.latest_backup_size_change_percent
@@ -128,6 +129,8 @@ async def async_get_config_entry_diagnostics(
                 if data.latest_manual_backup
                 else None
             ),
+            "manual_backup_age_days": data.manual_backup_age_days,
+            "manual_backup_age_days_precise": (data.manual_backup_age_days_precise),
             "manager_state": data.manager_state,
             "invalid_backup_count": data.invalid_backup_count,
         },

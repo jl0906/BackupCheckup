@@ -53,7 +53,7 @@ def async_update_issues(hass: HomeAssistant, data: BackupCheckupData) -> None:
             data.backup_stale,
             ir.IssueSeverity.WARNING,
             {
-                "age": _format_days(data.latest_backup_age_days),
+                "age": _format_days(data.latest_backup_age_days_precise),
                 "maximum": str(data.max_age_days),
             },
         ),

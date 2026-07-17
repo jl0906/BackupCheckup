@@ -15,7 +15,7 @@
 
 <p align="center">
   <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-orange.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-2.2.0--beta5-blue.svg">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.2.0--beta6-blue.svg">
   <img alt="AI-coded and maintained" src="https://img.shields.io/badge/AI--coded%20%26%20AI--maintained-8A2BE2.svg">
   <img alt="License" src="https://img.shields.io/github/license/jl0906/BackupCheckup">
 </p>
@@ -23,7 +23,7 @@
 BackupCheckup checks whether Home Assistant backups are available, recent,
 complete, plausible in size, redundant, and structurally readable.
 
-Version: **2.2.0-beta5**
+Version: **2.2.0-beta6**
 
 **Requirements:** Home Assistant **2026.3.0 or newer**. Full encrypted-backup
 verification depends on the SecureTar archive API bundled with Home Assistant 2026.3+.
@@ -251,6 +251,14 @@ instead of the native backup ID and user-defined name. Full backup metadata is e
 only after explicitly enabling the expert option. Passwords, backup contents, raw
 third-party exception messages, and selected notification entity IDs are excluded.
 
+## Backup age display
+
+The user-facing backup-age sensors show only fully completed 24-hour periods. A new
+backup therefore remains at `0 d` for its first 24 hours and changes to `1 d` only
+after a complete day. Exact timestamps and precise hour/day values remain available
+in entity attributes and diagnostics. Standard mode keeps the timestamp duplicates
+disabled; Expert mode can expose them for advanced automations.
+
 ## Recommended dashboard
 
 A ready-to-copy example is available in
@@ -263,7 +271,6 @@ entities:
   - entity: sensor.backup_checkup_health_score
   - entity: sensor.backup_checkup_status
   - entity: sensor.backup_checkup_recommendation
-  - entity: sensor.backup_checkup_latest_backup
   - entity: sensor.backup_checkup_latest_backup_age
   - entity: sensor.backup_checkup_latest_backup_size
   - entity: sensor.backup_checkup_integrity_status

@@ -390,7 +390,7 @@ def _validate_advanced_input(user_input: dict[str, Any]) -> dict[str, str]:
 class BackupCheckupConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle the BackupCheckup configuration flow."""
 
-    VERSION = 6
+    VERSION = 7
 
     def __init__(self) -> None:
         """Initialize the config flow."""

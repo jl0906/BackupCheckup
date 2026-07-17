@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from .age import completed_age_days
+
 
 @dataclass(frozen=True, slots=True)
 class BackupAgentRecord:
@@ -123,7 +125,8 @@ class BackupAgentSummary:
             "latest_backup": (
                 self.latest_backup.isoformat() if self.latest_backup else None
             ),
-            "latest_backup_age_days": self.latest_backup_age_days,
+            "latest_backup_age_days": completed_age_days(self.latest_backup_age_days),
+            "latest_backup_age_days_precise": self.latest_backup_age_days,
             "latest_backup_size": self.latest_backup_size,
             "stored_bytes": self.stored_bytes,
             "error": self.error,
@@ -367,10 +370,12 @@ class BackupCheckupData:
     latest_backup: datetime | None
     latest_automatic_backup: datetime | None
     latest_manual_backup: datetime | None
-    latest_backup_age_days: float | None
+    latest_backup_age_days: int | None
+    latest_backup_age_days_precise: float | None
     automatic_backup_age_days: int | None
     automatic_backup_age_days_precise: float | None
-    manual_backup_age_days: float | None
+    manual_backup_age_days: int | None
+    manual_backup_age_days_precise: float | None
     latest_backup_size: int | None
     latest_automatic_backup_size: int | None
     latest_backup_size_change_percent: float | None
