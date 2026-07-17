@@ -188,7 +188,7 @@ def _profile_schema(
                     ),
                     multiple=True,
                     custom_value=False,
-                    mode=SelectSelectorMode.LIST,
+                    mode=SelectSelectorMode.DROPDOWN,
                     sort=True,
                 )
             ),

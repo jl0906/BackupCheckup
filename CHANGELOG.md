@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.2.2
+
+Version 2.2.2 contains a focused configuration-flow usability fix.
+
+### Fixed
+
+- Changed the mobile notification target selector from an expanded checkbox list to a compact multi-select dropdown. Any number of Home Assistant Companion App phones and tablets can still be selected, while configurations with many devices no longer produce an excessively long options form.
+- Existing single- and multi-device selections remain compatible and are preserved during the update.
+
+### Notes
+
+- No config-entry migration is required; the config-entry schema remains version 9.
+- No monitoring, integrity-verification, notification-delivery, entity, storage, or analytics behavior was changed.
+
 ## 2.2.1
 
 **Recommended patch update!**

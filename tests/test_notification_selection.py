@@ -97,8 +97,8 @@ def test_selected_unavailable_target_remains_editable(monkeypatch) -> None:
     ]
 
 
-def test_config_flow_uses_explicit_multiple_select() -> None:
-    """The options flow renders a real multi-select instead of a single entity field."""
+def test_config_flow_uses_dropdown_multiple_select() -> None:
+    """The options flow renders a compact dropdown that supports multiple targets."""
     from pathlib import Path
 
     source = (
@@ -113,4 +113,4 @@ def test_config_flow_uses_explicit_multiple_select() -> None:
 
     assert "mobile_notification_options" in selector_block
     assert "multiple=True" in selector_block
-    assert "mode=SelectSelectorMode.LIST" in selector_block
+    assert "mode=SelectSelectorMode.DROPDOWN" in selector_block
