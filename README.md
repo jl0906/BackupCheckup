@@ -15,7 +15,7 @@
 
 <p align="center">
   <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-orange.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-2.3.0-blue.svg">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.3.1-blue.svg">
   <img alt="AI-coded and maintained" src="https://img.shields.io/badge/AI--coded%20%26%20AI--maintained-8A2BE2.svg">
   <img alt="License" src="https://img.shields.io/github/license/jl0906/BackupCheckup">
 </p>
@@ -23,7 +23,7 @@
 BackupCheckup checks whether Home Assistant backups are available, recent,
 complete, plausible in size, redundant, and structurally readable.
 
-Version: **2.3.0**
+Version: **2.3.1**
 
 **Requirements:** Home Assistant **2026.3.0 or newer**. Full encrypted-backup
 verification depends on the SecureTar archive API bundled with Home Assistant 2026.3+.
@@ -37,7 +37,7 @@ restore, rebuild, or upload backup files.
 
 ## Live activity and structured logging
 
-Version 2.3.0 provides the Expert-mode activity journal for user-relevant
+Version 2.3.1 retains the Expert-mode activity journal for user-relevant
 BackupCheckup workflows. Every entry contains a UTC timestamp, action, outcome, and
 bounded privacy-safe details. The journal is disabled completely in Standard mode.
 
@@ -343,6 +343,7 @@ exception text, backup names, backup IDs, and notification entity IDs are exclud
 - [Troubleshooting](docs/troubleshooting.md)
 - [Logging and live activity](docs/logging.md)
 - [2.3.0 final validation and function coverage](docs/function-coverage-2.3.0.md)
+- [2.3.1 non-administrator refresh hardening](docs/security-hardening-2.3.1.md)
 - [Safe 2.2 integrity test plan](docs/testing-2.2.md)
 - [FAQ](docs/faq.md)
 - [Dashboard example](docs/examples/dashboard.yaml)

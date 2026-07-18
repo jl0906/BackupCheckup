@@ -1,5 +1,45 @@
 # Changelog
 
+## 2.3.1
+
+**Security and maintenance release: close the generic entity-refresh authorization bypass**
+
+This release hardens the manual refresh boundary discovered during explicit
+non-administrator testing of both Standard and Expert entity modes. The config-entry
+schema remains version 9 and no migration is required.
+
+### Fixed
+
+- Fixed a normal Home Assistant user with entity-control permission being able to
+  bypass BackupCheckup's administrator-only refresh action through the generic
+  `homeassistant.update_entity` service.
+- Added an integration-wide `async_update()` override to the shared BackupCheckup
+  entity base class. Generic entity refreshes now perform no action and cannot call
+  `coordinator.async_request_refresh()`.
+- Preserved the intended refresh paths: scheduled coordinator polling, setup refreshes,
+  and the administrator-protected `backup_checkup.refresh` action continue to work.
+
+### Security
+
+- The issue did not allow privilege escalation, administrator-token access, config-entry
+  changes, manual integrity verification, or test-notification execution. It allowed an
+  authorized entity controller to trigger the integration's refresh workflow despite
+  the explicit admin-only service boundary.
+- The hardening applies identically in Standard and Expert mode and is inherited by all
+  current BackupCheckup sensors, binary sensors, and buttons.
+
+### Validation
+
+- 266 tests pass, including separate generic-update regressions for Standard and Expert
+  mode.
+- Production function coverage: 374/374 functions entered (100.00%).
+- Production statement coverage: 95.03%.
+- Production branch coverage: 87.23%.
+- Combined statement-and-branch coverage: 93.53%.
+- Strict warning mode with asyncio debug, Ruff, formatter, Bandit, Python compilation,
+  metadata parsing, and release consistency checks pass.
+- The config-entry schema remains version 9; no migration is required.
+
 ## 2.3.0
 
 **Stable release: Expert-mode activity logging and final runtime hardening**

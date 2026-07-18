@@ -32,6 +32,14 @@ class BackupCheckupEntity(CoordinatorEntity[BackupCheckupCoordinator]):
             sw_version=VERSION,
         )
 
+    async def async_update(self) -> None:
+        """Ignore Home Assistant's generic entity refresh action.
+
+        BackupCheckup refreshes can trigger inventory processing, store updates,
+        notifications, and repair synchronization. They are therefore exposed only
+        through the administrator-protected ``backup_checkup.refresh`` action.
+        """
+
 
 class BackupCheckupAgentEntity(BackupCheckupEntity):
     """Base entity attached to one backup storage location device."""
