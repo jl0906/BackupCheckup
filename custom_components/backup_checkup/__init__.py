@@ -307,6 +307,9 @@ async def _async_cleanup_stale_temporary_data(
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up BackupCheckup from a config entry."""
     coordinator = BackupCheckupCoordinator(hass, entry)
+    # Register shutdown before the first await so Home Assistant can clean up
+    # coordinator-owned tasks even when setup fails partway through.
+    entry.async_on_unload(coordinator.async_shutdown)
     _record_activity(
         coordinator,
         "config_entry_setup",
@@ -344,7 +347,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _record_activity(coordinator, "first_refresh", ACTIVITY_OUTCOME_COMPLETED)
 
     entry.runtime_data = coordinator
-    entry.async_on_unload(coordinator.async_shutdown)
     entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
 
     def _sync_repair_issues() -> None:

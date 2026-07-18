@@ -34,12 +34,12 @@ def test_release_versions_are_consistent() -> None:
     readme = (ROOT / "README.md").read_text()
     changelog = (ROOT / "CHANGELOG.md").read_text()
 
-    assert manifest["version"] == "2.3.0-beta1"
-    assert 'VERSION = "2.3.0-beta1"' in constants
-    assert "2.3.0-beta1" in readme
-    assert "version-2.3.0--beta1-blue.svg" in readme
-    assert "docs/function-coverage-2.3.0-beta1.md" in readme
-    assert "## 2.3.0-beta1" in changelog
+    assert manifest["version"] == "2.3.0"
+    assert 'VERSION = "2.3.0"' in constants
+    assert "2.3.0" in readme
+    assert "version-2.3.0-blue.svg" in readme
+    assert "docs/function-coverage-2.3.0.md" in readme
+    assert "## 2.3.0" in changelog
     assert "VERSION = 9" in (INTEGRATION / "config_flow.py").read_text()
 
 

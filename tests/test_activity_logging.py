@@ -286,3 +286,34 @@ def test_notification_disable_transition_is_logged(
     assert latest.action == "notification_processing"
     assert latest.outcome == ACTIVITY_OUTCOME_CHANGED
     assert dict(latest.details) == {"enabled": "False"}
+
+
+def test_activity_detail_keys_remain_unique_after_sanitizing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Different raw keys must not overwrite each other in diagnostics."""
+    monkeypatch.setattr(activity_module, "async_log_entry", lambda *_args: None)
+    journal = BackupCheckupActivityLog(SimpleNamespace())
+
+    record = journal.record(
+        "refresh",
+        ACTIVITY_OUTCOME_COMPLETED,
+        activity_visible=False,
+        details={
+            "error type": "space",
+            "error-type": "dash",
+            "error_type": "underscore",
+        },
+    )
+
+    assert record is not None
+    assert [key for key, _value in record.details] == [
+        "error_type",
+        "error_type_2",
+        "error_type_3",
+    ]
+    assert set(record.as_dict()["details"].values()) == {
+        "space",
+        "dash",
+        "underscore",
+    }

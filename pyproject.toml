@@ -10,6 +10,7 @@ max-complexity = 15
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.coverage.run]
 branch = true

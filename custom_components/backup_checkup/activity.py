@@ -142,12 +142,20 @@ class BackupCheckupActivityLog:
         if not details:
             return ()
         normalized: list[tuple[str, str]] = []
+        used_keys: set[str] = set()
         for raw_key, raw_value in sorted(
             details.items(), key=lambda item: str(item[0])
         ):
             if len(normalized) >= _MAX_DETAIL_ITEMS:
                 break
-            key = BackupCheckupActivityLog._safe_detail_key(raw_key)
+            base_key = BackupCheckupActivityLog._safe_detail_key(raw_key)
+            key = base_key
+            suffix_number = 2
+            while key in used_keys:
+                suffix = f"_{suffix_number}"
+                key = f"{base_key[: _MAX_DETAIL_KEY_LENGTH - len(suffix)]}{suffix}"
+                suffix_number += 1
+            used_keys.add(key)
             value = safe_log_value(raw_value, max_length=_MAX_DETAIL_VALUE_LENGTH)
             normalized.append((key, value))
         return tuple(normalized)

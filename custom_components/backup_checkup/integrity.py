@@ -11,7 +11,7 @@ import tarfile
 import time
 import unicodedata
 from collections.abc import Iterator, Mapping
-from contextlib import closing, contextmanager, suppress
+from contextlib import closing, contextmanager
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
@@ -212,6 +212,7 @@ class BackupIntegrityStore:
         )
         self._loaded = False
         self._load_lock = asyncio.Lock()
+        self._state_lock = asyncio.Lock()
         self._state = IntegrityStoreState(BackupIntegrityResult.not_checked())
         self._result = self._state.result
 
@@ -348,10 +349,16 @@ class BackupIntegrityStore:
 
     async def async_save_state(self, state: IntegrityStoreState) -> None:
         """Persist a complete normalized state envelope."""
+        async with self._state_lock:
+            await self.async_load_state()
+            await self._async_save_state_locked(state)
+
+    async def _async_save_state_locked(self, state: IntegrityStoreState) -> None:
+        """Persist state while the mutation lock is held."""
+        await self._store.async_save(self._state_as_dict(state))
         self._loaded = True
         self._state = state
         self._result = state.result
-        await self._store.async_save(self._state_as_dict(state))
 
     async def async_save(
         self,
@@ -364,25 +371,27 @@ class BackupIntegrityStore:
         last_manual_verification_at: datetime | None = None,
     ) -> None:
         """Persist one completed result with its runtime control metadata."""
-        current = await self.async_load_state()
-        state = IntegrityStoreState(
-            result=result,
-            retry_backup_id=retry_key[0] if retry_key else None,
-            retry_error_key=retry_key[1] if retry_key else None,
-            retry_attempts=max(0, retry_attempts),
-            retry_not_before=retry_not_before,
-            password_marker=(
-                password_marker
-                if password_marker is not None
-                else current.password_marker
-            ),
-            last_manual_verification_at=(
-                last_manual_verification_at
-                if last_manual_verification_at is not None
-                else current.last_manual_verification_at
-            ),
-        )
-        await self.async_save_state(state)
+        async with self._state_lock:
+            await self.async_load_state()
+            current = self._state
+            state = IntegrityStoreState(
+                result=result,
+                retry_backup_id=retry_key[0] if retry_key else None,
+                retry_error_key=retry_key[1] if retry_key else None,
+                retry_attempts=max(0, retry_attempts),
+                retry_not_before=retry_not_before,
+                password_marker=(
+                    password_marker
+                    if password_marker is not None
+                    else current.password_marker
+                ),
+                last_manual_verification_at=(
+                    last_manual_verification_at
+                    if last_manual_verification_at is not None
+                    else current.last_manual_verification_at
+                ),
+            )
+            await self._async_save_state_locked(state)
 
     async def async_update_runtime(
         self,
@@ -394,22 +403,28 @@ class BackupIntegrityStore:
         last_manual_verification_at: datetime | None,
     ) -> None:
         """Persist control metadata without changing the last result."""
-        current = await self.async_load_state()
-        await self.async_save_state(
-            IntegrityStoreState(
-                result=current.result,
-                retry_backup_id=retry_key[0] if retry_key else None,
-                retry_error_key=retry_key[1] if retry_key else None,
-                retry_attempts=max(0, retry_attempts),
-                retry_not_before=retry_not_before,
-                password_marker=password_marker,
-                last_manual_verification_at=last_manual_verification_at,
+        async with self._state_lock:
+            await self.async_load_state()
+            await self._async_save_state_locked(
+                IntegrityStoreState(
+                    result=self._state.result,
+                    retry_backup_id=retry_key[0] if retry_key else None,
+                    retry_error_key=retry_key[1] if retry_key else None,
+                    retry_attempts=max(0, retry_attempts),
+                    retry_not_before=retry_not_before,
+                    password_marker=password_marker,
+                    last_manual_verification_at=last_manual_verification_at,
+                )
             )
-        )
 
     async def async_remove(self) -> None:
-        """Remove the stored integrity state."""
-        await self._store.async_remove()
+        """Remove the stored integrity state without racing a pending save."""
+        async with self._state_lock:
+            async with self._load_lock:
+                await self._store.async_remove()
+                self._loaded = False
+                self._state = IntegrityStoreState(BackupIntegrityResult.not_checked())
+                self._result = self._state.result
 
 
 class BackupIntegrityVerifier:
@@ -531,7 +546,7 @@ class BackupIntegrityVerifier:
         """Create private verification storage or return a stable failure."""
         try:
             return await self.hass.async_add_executor_job(create_private_temp_directory)
-        except OSError as err:
+        except Exception as err:  # noqa: BLE001 - executor boundary
             _LOGGER.warning(
                 "Unable to create private verification storage: error_type=%s",
                 safe_error_type(err),
@@ -666,7 +681,7 @@ class BackupIntegrityVerifier:
                 anonymous_agent_reference(self._entry_id, prepared.agent_id),
                 err.code,
             )
-            self._remove_candidate_file(prepared.path)
+            await self._async_remove_candidate_file(prepared.path)
             return _CandidateOutcome(
                 self._failure(
                     INTEGRITY_STATUS_ABORTED,
@@ -678,7 +693,7 @@ class BackupIntegrityVerifier:
                 final=err.code in _GLOBAL_LIMIT_CODES,
             )
         except TimeoutError:
-            self._remove_candidate_file(prepared.path)
+            await self._async_remove_candidate_file(prepared.path)
             return _CandidateOutcome(
                 self._failure(
                     INTEGRITY_STATUS_ABORTED,
@@ -696,7 +711,7 @@ class BackupIntegrityVerifier:
                 anonymous_agent_reference(self._entry_id, prepared.agent_id),
                 safe_error_type(err),
             )
-            self._remove_candidate_file(prepared.path)
+            await self._async_remove_candidate_file(prepared.path)
             return _CandidateOutcome(None, download_failed=True)
 
         warnings = self._candidate_warnings(
@@ -747,7 +762,7 @@ class BackupIntegrityVerifier:
         """Inspect a downloaded archive and produce a final or retryable result."""
         prepared = downloaded.prepared
         if prepared.protected and password is None:
-            self._remove_candidate_file(prepared.path)
+            await self._async_remove_candidate_file(prepared.path)
             return _CandidateOutcome(
                 self._downloaded_result(
                     INTEGRITY_STATUS_PASSWORD_REQUIRED,
@@ -760,8 +775,14 @@ class BackupIntegrityVerifier:
 
         database_path = temp_dir / _DATABASE_FILENAME
         try:
-            database_path.unlink(missing_ok=True)
-        except OSError:
+            await self.hass.async_add_executor_job(
+                self._unlink_missing_ok, database_path
+            )
+        except Exception as err:  # noqa: BLE001 - filesystem executor boundary
+            _LOGGER.warning(
+                "Unable to reset the temporary database file: error_type=%s",
+                safe_error_type(err),
+            )
             return _CandidateOutcome(
                 self._downloaded_result(
                     INTEGRITY_STATUS_UNREADABLE,
@@ -784,7 +805,7 @@ class BackupIntegrityVerifier:
         )
         if isinstance(archive_result, _CandidateOutcome):
             if not archive_result.final:
-                self._remove_candidate_file(prepared.path)
+                await self._async_remove_candidate_file(prepared.path)
             return archive_result
 
         return _CandidateOutcome(
@@ -1030,24 +1051,51 @@ class BackupIntegrityVerifier:
     async def _async_cleanup_verification_data(
         self, temp_dir: Path, *, repair_issues_enabled: bool
     ) -> None:
-        """Remove private temporary data and update its optional Repair issue."""
-        cleanup_ok = await self.hass.async_add_executor_job(
-            cleanup_temp_directory, temp_dir
-        )
-        stale_cleanup = await self.hass.async_add_executor_job(
-            cleanup_stale_temp_directories
-        )
-        issue_active = not cleanup_ok or stale_cleanup.issue_active
+        """Remove private temporary data without masking verification results."""
+        issue_active = False
+        try:
+            cleanup_ok = await self.hass.async_add_executor_job(
+                cleanup_temp_directory, temp_dir
+            )
+            issue_active = not cleanup_ok
+        except Exception as err:  # noqa: BLE001 - filesystem executor boundary
+            issue_active = True
+            _LOGGER.warning(
+                "Temporary verification data cleanup failed: error_type=%s",
+                safe_error_type(err),
+            )
+
+        try:
+            stale_cleanup = await self.hass.async_add_executor_job(
+                cleanup_stale_temp_directories
+            )
+            issue_active = issue_active or stale_cleanup.issue_active
+        except Exception as err:  # noqa: BLE001 - filesystem executor boundary
+            issue_active = True
+            _LOGGER.warning(
+                "Stale temporary data cleanup failed: error_type=%s",
+                safe_error_type(err),
+            )
+
         if issue_active:
             _LOGGER.warning("Temporary verification data could not be removed")
         if repair_issues_enabled:
             async_set_temporary_cleanup_issue(self.hass, active=issue_active)
 
     @staticmethod
-    def _remove_candidate_file(path: Path) -> None:
+    def _unlink_missing_ok(path: Path) -> None:
+        """Remove one file from an executor context."""
+        path.unlink(missing_ok=True)
+
+    async def _async_remove_candidate_file(self, path: Path) -> None:
         """Best-effort removal of one failed candidate archive."""
-        with suppress(OSError):
-            path.unlink(missing_ok=True)
+        try:
+            await self.hass.async_add_executor_job(self._unlink_missing_ok, path)
+        except Exception as err:  # noqa: BLE001 - best-effort cleanup boundary
+            _LOGGER.debug(
+                "Unable to remove failed backup candidate: error_type=%s",
+                safe_error_type(err),
+            )
 
     async def _async_download(
         self,

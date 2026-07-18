@@ -1,5 +1,59 @@
 # Changelog
 
+## 2.3.0
+
+**Stable release: Expert-mode activity logging and final runtime hardening**
+
+This stable release promotes the Expert-only activity journal introduced during the
+2.3.0 pre-release cycle and incorporates the final defects found by repeating the
+complete functional, branch, lifecycle, concurrency, cleanup, and event-loop tests.
+The config-entry schema remains version 9 and no migration is required.
+
+### Fixed
+
+- Fixed a race between an in-flight integrity-state save and config-entry removal that
+  could recreate the private integrity store after it had already been deleted. Store
+  mutations and removal are now serialized, and removal resets the in-memory state.
+- Fixed unexpected executor failures during temporary verification cleanup being able
+  to mask an otherwise completed integrity result. Current and stale temporary-data
+  cleanup now run independently as best-effort stages and activate the optional Repair
+  issue on any failure.
+- Fixed failed candidate archives and temporary database files being deleted directly
+  from Home Assistant's event loop. All verification file deletion now runs through
+  executor jobs.
+- Fixed non-`OSError` executor failures while creating private verification storage
+  escaping as unstable internal failures. They now return the controlled
+  `temporary_storage_unavailable` result.
+- Fixed partially initialized coordinators not having their shutdown callback
+  registered when setup failed before the first refresh completed. Shutdown is now
+  registered before the first awaited setup operation.
+- Fixed different activity detail names that sanitize to the same structured-log key
+  overwriting each other in downloaded diagnostics. Colliding keys now receive stable
+  numeric suffixes while retaining every bounded value.
+- Fixed the current pytest-asyncio deprecation warning by explicitly selecting
+  function-scoped fixture event loops.
+
+### Changed
+
+- Promoted 2.3.0 from beta to stable after repeating all repository quality gates and
+  adding dedicated final-release regression coverage.
+- Expert mode continues to enable Home Assistant Activity publication, structured Core
+  logs, and the bounded diagnostics journal. Standard mode continues to keep the
+  activity-journal feature completely disabled.
+- Integrity-store persistence now commits in-memory state only after the corresponding
+  Store save returns and serializes full-state, runtime-state, and removal operations.
+
+### Validation
+
+- 263 tests pass.
+- Production function coverage: 373/373 functions entered (100.00%).
+- Production statement coverage: 95.03%.
+- Production branch coverage: 87.23%.
+- Combined statement-and-branch coverage: 93.52%.
+- Strict warning mode with asyncio debug, Ruff, formatter, Bandit, Python compilation,
+  metadata parsing, and release consistency checks pass.
+- No configuration migration is required; the config-entry schema remains version 9.
+
 ## 2.3.0-beta1
 
 **Pre-release: complete production-function coverage and beta hardening**

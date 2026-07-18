@@ -357,3 +357,32 @@ async def test_remove_entry_isolates_store_and_filesystem_failures(
     await module.async_remove_entry(hass, entry)
     coordinator.integrity_verifier.store.async_remove.assert_awaited_once()
     coordinator.notification_manager.async_remove.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_failed_setup_registers_shutdown_before_first_refresh(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Partially initialized coordinators are cleaned up when setup aborts."""
+    module = _load_entrypoint()
+    coordinator = _Coordinator()
+    coordinator.async_config_entry_first_refresh = AsyncMock(
+        side_effect=RuntimeError("first refresh failed")
+    )
+    entry = ConfigEntry(entry_id="entry")
+    hass = _Hass()
+    monkeypatch.setattr(module, "BackupCheckupCoordinator", lambda *_args: coordinator)
+    monkeypatch.setattr(
+        module, "async_apply_entity_mode", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        module,
+        "_async_cleanup_stale_temporary_data",
+        AsyncMock(return_value=TempCleanupResult()),
+    )
+
+    with pytest.raises(RuntimeError, match="first refresh failed"):
+        await module.async_setup_entry(hass, entry)
+
+    assert entry._unloads == [coordinator.async_shutdown]
+    assert entry.runtime_data is None
