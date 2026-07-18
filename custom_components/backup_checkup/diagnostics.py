@@ -29,6 +29,7 @@ def _activity_diagnostics(coordinator: object) -> dict[str, object]:
     if callable(diagnostics):
         return diagnostics(limit=100)
     return {
+        "enabled": False,
         "runtime_event_count": 0,
         "buffered_event_count": 0,
         "latest": None,

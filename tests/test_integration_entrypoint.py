@@ -14,8 +14,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.exceptions import HomeAssistantError
 
 from custom_components.backup_checkup.const import (
+    CONF_ENTITY_MODE,
     CONFIG_ENTRY_VERSION,
     DOMAIN,
+    ENTITY_MODE_EXPERT,
     SERVICE_REFRESH,
     SERVICE_TEST_NOTIFICATION,
     SERVICE_VERIFY_LATEST_BACKUP,
@@ -199,6 +201,40 @@ async def test_schema_migration_paths() -> None:
     assert hass.config_entries.updated is not None
     assert hass.config_entries.updated["version"] == CONFIG_ENTRY_VERSION
     assert hass.config_entries.updated["data"]["max_age_days"] == 7
+
+
+@pytest.mark.asyncio
+async def test_migration_activity_logging_follows_entity_mode(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Migration activity is silent in Standard and visible in Expert mode."""
+    module = _load_entrypoint()
+    hass = _Hass()
+
+    with caplog.at_level("INFO", logger=module.__name__):
+        assert (
+            await module.async_migrate_entry(
+                hass,
+                ConfigEntry(data={}, options={}, version=CONFIG_ENTRY_VERSION + 1),
+            )
+            is False
+        )
+    assert "config_migration" not in caplog.text
+
+    caplog.clear()
+    with caplog.at_level("INFO", logger=module.__name__):
+        assert (
+            await module.async_migrate_entry(
+                hass,
+                ConfigEntry(
+                    data={},
+                    options={CONF_ENTITY_MODE: ENTITY_MODE_EXPERT},
+                    version=CONFIG_ENTRY_VERSION + 1,
+                ),
+            )
+            is False
+        )
+    assert "activity action=config_migration outcome=failed" in caplog.text
 
 
 @pytest.mark.asyncio

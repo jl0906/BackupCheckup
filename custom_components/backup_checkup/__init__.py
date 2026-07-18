@@ -56,6 +56,7 @@ from .const import (
     DEFAULT_SIZE_CHECK_MODE,
     DEFAULT_VERIFICATION_TIMEOUT_MINUTES,
     DOMAIN,
+    ENTITY_MODE_EXPERT,
     PLATFORMS,
     PROFILE_CUSTOM,
     SERVICE_REFRESH,
@@ -96,6 +97,12 @@ def _record_activity(
     record = getattr(activity, "record", None)
     if callable(record):
         record(action, outcome, level=level, details=details)
+
+
+def _entry_activity_logging_enabled(entry: ConfigEntry) -> bool:
+    """Return whether the config entry selected Expert entity mode."""
+    configuration = normalize_configuration(entry.data, entry.options)
+    return configuration[CONF_ENTITY_MODE] == ENTITY_MODE_EXPERT
 
 
 def _loaded_coordinator(hass: HomeAssistant) -> BackupCheckupCoordinator:
@@ -208,10 +215,6 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
         (SERVICE_TEST_NOTIFICATION, _async_test_notification),
     ):
         async_register_admin_service(hass, DOMAIN, service, handler)
-    _LOGGER.info(
-        "activity action=integration_services outcome=completed service_count=%s",
-        3,
-    )
     return True
 
 
@@ -254,12 +257,13 @@ def _legacy_schema_defaults(version: int) -> dict[str, object]:
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate data atomically without changing the entity registry."""
     if entry.version > CONFIG_ENTRY_VERSION:
-        _LOGGER.warning(
-            "activity action=config_migration outcome=failed reason=newer_schema "
-            "source_version=%s target_version=%s",
-            entry.version,
-            CONFIG_ENTRY_VERSION,
-        )
+        if _entry_activity_logging_enabled(entry):
+            _LOGGER.warning(
+                "activity action=config_migration outcome=failed "
+                "reason=newer_schema source_version=%s target_version=%s",
+                entry.version,
+                CONFIG_ENTRY_VERSION,
+            )
         return False
     if entry.version == CONFIG_ENTRY_VERSION:
         return True
@@ -276,12 +280,13 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         options=normalized,
         version=CONFIG_ENTRY_VERSION,
     )
-    _LOGGER.info(
-        "activity action=config_migration outcome=completed "
-        "source_version=%s target_version=%s",
-        source_version,
-        CONFIG_ENTRY_VERSION,
-    )
+    if normalized[CONF_ENTITY_MODE] == ENTITY_MODE_EXPERT:
+        _LOGGER.info(
+            "activity action=config_migration outcome=completed "
+            "source_version=%s target_version=%s",
+            source_version,
+            CONFIG_ENTRY_VERSION,
+        )
     return True
 
 

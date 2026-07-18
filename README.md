@@ -23,7 +23,7 @@
 BackupCheckup checks whether Home Assistant backups are available, recent,
 complete, plausible in size, redundant, and structurally readable.
 
-Version: **2.3.0-alpha1**
+Version: **2.3.0-alpha2**
 
 **Requirements:** Home Assistant **2026.3.0 or newer**. Full encrypted-backup
 verification depends on the SecureTar archive API bundled with Home Assistant 2026.3+.
@@ -37,10 +37,11 @@ restore, rebuild, or upload backup files.
 
 ## Live activity and structured logging
 
-Version 2.3.0-alpha1 adds a central activity journal for all user-relevant
+Version 2.3.0-alpha2 adds an Expert-mode activity journal for user-relevant
 BackupCheckup workflows. Every entry contains a UTC timestamp, action, outcome, and
-bounded privacy-safe details.
+bounded privacy-safe details. The journal is disabled completely in Standard mode.
 
+- **Expert mode only**: Select Expert entity mode under the BackupCheckup options.
 - **Activity**: Open Home Assistant **Activity** (formerly Logbook) and filter for
   BackupCheckup to follow setup, refreshes, health changes, integrity checks,
   notifications, cleanup, reload, and unload events live.
@@ -48,6 +49,10 @@ bounded privacy-safe details.
   `custom_components.backup_checkup.activity` for structured timestamped entries.
 - **Diagnostics**: Download integration diagnostics to include the latest 100 activity
   records and runtime event counters.
+
+Changing between Standard and Expert mode reloads the integration. Standard mode
+does not publish Activity entries, emit structured activity logs, or retain runtime
+journal records.
 
 The live Activity feed contains only bounded anonymized references. It never writes
 backup names, raw backup IDs, raw storage IDs, paths, passwords, notification target

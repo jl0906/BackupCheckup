@@ -1,5 +1,40 @@
 # Changelog
 
+## 2.3.0-alpha2
+
+**Pre-release: Expert-mode activity logging**
+
+This alpha limits the live and structured activity journal introduced in alpha1 to
+BackupCheckup's Expert entity mode. Standard mode keeps the feature fully disabled.
+The config-entry schema remains version 9.
+
+### Changed
+
+- Activity publication, structured activity records, and the in-memory diagnostics
+  journal are now enabled only when the integration uses Expert entity mode.
+- Standard mode no longer publishes BackupCheckup events to Home Assistant Activity,
+  emits central structured activity records, or retains runtime journal events.
+- Changing between Standard and Expert entity mode reloads the integration and applies
+  the corresponding logging state without a migration or separate logging option.
+- Activity diagnostics now expose an explicit `enabled` flag. Standard mode reports
+  empty counters and no recent records.
+- Config-entry migration activity messages are emitted only for entries configured in
+  Expert mode. Global service registration no longer creates an unconditional activity
+  log entry before an entity mode is available.
+
+### Tests
+
+- Added regression coverage proving that disabled journals perform no timestamping,
+  buffering, Core logging, or Home Assistant Activity publication.
+- Added coordinator coverage verifying that Standard mode creates a disabled journal
+  and Expert mode creates an enabled journal.
+
+### Notes
+
+- No configuration migration is required; the config-entry schema remains version 9.
+- The logging feature follows the existing entity-mode selection and introduces no new
+  configuration field.
+
 ## 2.3.0-alpha1
 
 **Pre-release: live activity and structured integration logging**

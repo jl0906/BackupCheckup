@@ -15,6 +15,9 @@ from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.backup_checkup import coordinator as coordinator_module
 from custom_components.backup_checkup.const import (
+    CONF_ENTITY_MODE,
+    ENTITY_MODE_EXPERT,
+    ENTITY_MODE_STANDARD,
     INTEGRITY_DATABASE_NOT_CHECKED,
     INTEGRITY_STATUS_ABORTED,
     INTEGRITY_STATUS_INTERNAL_ERROR,
@@ -126,6 +129,29 @@ def _history(now: datetime) -> AutomaticHistoryMetrics:
 
 def _coordinator() -> BackupCheckupCoordinator:
     return BackupCheckupCoordinator(_Hass(), ConfigEntry(entry_id="entry"))
+
+
+def test_activity_logging_follows_entity_mode() -> None:
+    """Standard disables the journal while Expert enables it."""
+    standard = BackupCheckupCoordinator(
+        _Hass(),
+        ConfigEntry(
+            entry_id="standard",
+            options={CONF_ENTITY_MODE: ENTITY_MODE_STANDARD},
+        ),
+    )
+    expert = BackupCheckupCoordinator(
+        _Hass(),
+        ConfigEntry(
+            entry_id="expert",
+            options={CONF_ENTITY_MODE: ENTITY_MODE_EXPERT},
+        ),
+    )
+
+    assert standard.entity_mode == ENTITY_MODE_STANDARD
+    assert standard.activity.enabled is False
+    assert expert.entity_mode == ENTITY_MODE_EXPERT
+    assert expert.activity.enabled is True
 
 
 @pytest.mark.asyncio

@@ -64,6 +64,48 @@ def test_record_publishes_bounded_structured_activity(
     assert "outcome=completed" in caplog.text
 
 
+def test_disabled_activity_journal_is_a_complete_noop(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Standard mode performs no timestamping, logging, buffering, or publishing."""
+    published: list[object] = []
+    monkeypatch.setattr(
+        activity_module,
+        "async_log_entry",
+        lambda *args: published.append(args),
+    )
+
+    class _UnexpectedDatetime:
+        @staticmethod
+        def now(_timezone: object) -> object:
+            raise AssertionError("disabled logging must not create a timestamp")
+
+    monkeypatch.setattr(activity_module, "datetime", _UnexpectedDatetime)
+    journal = BackupCheckupActivityLog(SimpleNamespace(), enabled=False)
+
+    with caplog.at_level(logging.DEBUG, logger=activity_module.__name__):
+        record = journal.record(
+            "inventory_refresh",
+            ACTIVITY_OUTCOME_COMPLETED,
+            details={"status": "ok"},
+        )
+
+    assert record is None
+    assert journal.enabled is False
+    assert journal.count == 0
+    assert journal.latest is None
+    assert published == []
+    assert caplog.text == ""
+    assert journal.diagnostics() == {
+        "enabled": False,
+        "runtime_event_count": 0,
+        "buffered_event_count": 0,
+        "latest": None,
+        "recent": [],
+    }
+
+
 def test_activity_visibility_can_be_suppressed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

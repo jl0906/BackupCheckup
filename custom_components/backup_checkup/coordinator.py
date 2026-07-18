@@ -47,6 +47,7 @@ from .const import (
     BACKUP_RESULT_PARTIAL,
     BACKUP_RESULT_UNKNOWN,
     DOMAIN,
+    ENTITY_MODE_EXPERT,
     INTEGRITY_DATABASE_NOT_CHECKED,
     INTEGRITY_STATUS_ABORTED,
     INTEGRITY_STATUS_INTERNAL_ERROR,
@@ -153,7 +154,9 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self.settings = BackupCheckupSettings.from_sources(entry.data, entry.options)
         self._apply_settings_compatibility_attributes()
 
-        self.activity = BackupCheckupActivityLog(hass)
+        self.activity = BackupCheckupActivityLog(
+            hass, enabled=self.entity_mode == ENTITY_MODE_EXPERT
+        )
         self.history = BackupCheckupHistory(hass, entry.entry_id)
         self.integrity_verifier = BackupIntegrityVerifier(hass, entry.entry_id)
         self.notification_manager = BackupCheckupNotificationManager(

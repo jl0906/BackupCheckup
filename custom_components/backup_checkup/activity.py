@@ -52,13 +52,19 @@ class BackupCheckupActivityRecord:
 class BackupCheckupActivityLog:
     """Publish bounded activity records to logs and Home Assistant Activity."""
 
-    def __init__(self, hass: HomeAssistant) -> None:
-        """Initialize an in-memory activity journal."""
+    def __init__(self, hass: HomeAssistant, *, enabled: bool = True) -> None:
+        """Initialize an optional in-memory activity journal."""
         self._hass = hass
+        self._enabled = enabled
         self._records: deque[BackupCheckupActivityRecord] = deque(
             maxlen=_ACTIVITY_BUFFER_SIZE
         )
         self._sequence = 0
+
+    @property
+    def enabled(self) -> bool:
+        """Return whether expert activity logging is enabled."""
+        return self._enabled
 
     @property
     def count(self) -> int:
@@ -79,8 +85,10 @@ class BackupCheckupActivityLog:
         level: int = logging.INFO,
         activity_visible: bool = True,
         details: Mapping[str, object] | None = None,
-    ) -> BackupCheckupActivityRecord:
-        """Record one timestamped action using only bounded safe values."""
+    ) -> BackupCheckupActivityRecord | None:
+        """Record one timestamped action when expert logging is enabled."""
+        if not self._enabled:
+            return None
         record = BackupCheckupActivityRecord(
             timestamp=datetime.now(UTC),
             action=safe_log_value(action, max_length=80),
@@ -119,6 +127,7 @@ class BackupCheckupActivityLog:
         bounded_limit = max(0, min(limit, _ACTIVITY_BUFFER_SIZE))
         records = list(self._records)[-bounded_limit:] if bounded_limit else []
         return {
+            "enabled": self._enabled,
             "runtime_event_count": self._sequence,
             "buffered_event_count": len(self._records),
             "latest": self.latest.as_dict() if self.latest else None,
