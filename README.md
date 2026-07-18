@@ -15,7 +15,7 @@
 
 <p align="center">
   <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-orange.svg">
-  <img alt="Version" src="https://img.shields.io/badge/version-2.2.5-blue.svg">
+  <img alt="Version" src="https://img.shields.io/badge/version-2.3.0--alpha1-blue.svg">
   <img alt="AI-coded and maintained" src="https://img.shields.io/badge/AI--coded%20%26%20AI--maintained-8A2BE2.svg">
   <img alt="License" src="https://img.shields.io/github/license/jl0906/BackupCheckup">
 </p>
@@ -23,7 +23,7 @@
 BackupCheckup checks whether Home Assistant backups are available, recent,
 complete, plausible in size, redundant, and structurally readable.
 
-Version: **2.2.5**
+Version: **2.3.0-alpha1**
 
 **Requirements:** Home Assistant **2026.3.0 or newer**. Full encrypted-backup
 verification depends on the SecureTar archive API bundled with Home Assistant 2026.3+.
@@ -34,6 +34,24 @@ structure, and notify selected Companion App devices when backup problems change
 
 Everything runs locally inside Home Assistant. BackupCheckup does not modify, delete,
 restore, rebuild, or upload backup files.
+
+## Live activity and structured logging
+
+Version 2.3.0-alpha1 adds a central activity journal for all user-relevant
+BackupCheckup workflows. Every entry contains a UTC timestamp, action, outcome, and
+bounded privacy-safe details.
+
+- **Activity**: Open Home Assistant **Activity** (formerly Logbook) and filter for
+  BackupCheckup to follow setup, refreshes, health changes, integrity checks,
+  notifications, cleanup, reload, and unload events live.
+- **System logs**: Open **Settings → System → Logs** and filter for
+  `custom_components.backup_checkup.activity` for structured timestamped entries.
+- **Diagnostics**: Download integration diagnostics to include the latest 100 activity
+  records and runtime event counters.
+
+The live Activity feed contains only bounded anonymized references. It never writes
+backup names, raw backup IDs, raw storage IDs, paths, passwords, notification target
+IDs, exception messages, or archive contents.
 
 ## Why BackupCheckup?
 
@@ -318,6 +336,7 @@ exception text, backup names, backup IDs, and notification entity IDs are exclud
 - [Entity reference](docs/entities.md)
 - [Integrity verification details](docs/integrity.md)
 - [Troubleshooting](docs/troubleshooting.md)
+- [Logging and live activity](docs/logging.md)
 - [Safe 2.2 integrity test plan](docs/testing-2.2.md)
 - [FAQ](docs/faq.md)
 - [Dashboard example](docs/examples/dashboard.yaml)

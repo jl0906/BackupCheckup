@@ -45,12 +45,12 @@ from .repairs import (
 from .security import (
     VerificationBudget,
     VerificationLimitError,
+    anonymous_agent_reference,
     cleanup_stale_temp_directories,
     cleanup_temp_directory,
     create_private_temp_directory,
     open_private_binary_writer,
     safe_error_type,
-    safe_log_value,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -194,8 +194,6 @@ class _VerificationFailures:
             result.status, 0
         ) > _FAILURE_RANKS.get(self.best.status, 0):
             self.best = result
-
-
 
 
 class BackupIntegrityStore:
@@ -416,6 +414,7 @@ class BackupIntegrityVerifier:
     def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
         """Initialize the verifier."""
         self.hass = hass
+        self._entry_id = entry_id
         self.store = BackupIntegrityStore(hass, entry_id)
 
     async def async_verify(
@@ -527,9 +526,7 @@ class BackupIntegrityVerifier:
     ) -> Path | BackupIntegrityResult:
         """Create private verification storage or return a stable failure."""
         try:
-            return await self.hass.async_add_executor_job(
-                create_private_temp_directory
-            )
+            return await self.hass.async_add_executor_job(create_private_temp_directory)
         except OSError as err:
             _LOGGER.warning(
                 "Unable to create private verification storage: error_type=%s",
@@ -635,9 +632,7 @@ class BackupIntegrityVerifier:
                 agent_id=candidate_id,
                 error_code=err.code,
             )
-            return _CandidateOutcome(
-                failure, final=err.code in _GLOBAL_LIMIT_CODES
-            )
+            return _CandidateOutcome(failure, final=err.code in _GLOBAL_LIMIT_CODES)
         return _PreparedCandidate(
             agent_id=candidate_id,
             path=candidate_path,
@@ -664,7 +659,7 @@ class BackupIntegrityVerifier:
             _LOGGER.warning(
                 "Backup verification download stopped by safety limit: "
                 "agent=%s code=%s",
-                safe_log_value(prepared.agent_id),
+                anonymous_agent_reference(self._entry_id, prepared.agent_id),
                 err.code,
             )
             self._remove_candidate_file(prepared.path)
@@ -694,7 +689,7 @@ class BackupIntegrityVerifier:
             _LOGGER.warning(
                 "Unable to download one backup copy; trying another: "
                 "agent=%s error_type=%s",
-                safe_log_value(prepared.agent_id),
+                anonymous_agent_reference(self._entry_id, prepared.agent_id),
                 safe_error_type(err),
             )
             self._remove_candidate_file(prepared.path)
@@ -917,7 +912,7 @@ class BackupIntegrityVerifier:
         logger(
             "%s: agent=%s error_type=%s",
             message,
-            safe_log_value(downloaded.prepared.agent_id),
+            anonymous_agent_reference(self._entry_id, downloaded.prepared.agent_id),
             safe_error_type(error),
         )
         return _CandidateOutcome(
@@ -1164,11 +1159,7 @@ class BackupIntegrityVerifier:
     def _effective_protection(metadata: dict[str, Any], fallback: bool) -> bool:
         """Prefer the validated metadata flag over external copy metadata."""
         metadata_protected = metadata.get("protected")
-        return (
-            metadata_protected
-            if isinstance(metadata_protected, bool)
-            else fallback
-        )
+        return metadata_protected if isinstance(metadata_protected, bool) else fallback
 
     @classmethod
     def _scan_outer_archive(
@@ -1323,11 +1314,7 @@ class BackupIntegrityVerifier:
         if scan.archive_count == 0:
             raise tarfile.ReadError("no_inner_backup_archives")
         unexpected = scan.inner_names - expected - _KNOWN_OPTIONAL_INNER_ARCHIVES
-        return (
-            [f"unexpected_inner_archives_{len(unexpected)}"]
-            if unexpected
-            else []
-        )
+        return [f"unexpected_inner_archives_{len(unexpected)}"] if unexpected else []
 
     @classmethod
     def _database_verification_status(
@@ -1545,9 +1532,7 @@ class BackupIntegrityVerifier:
                                 free_space_path=database_path.parent,
                             )
                     else:
-                        cls._consume_all(
-                            reader, budget=budget, count_expanded=True
-                        )
+                        cls._consume_all(reader, budget=budget, count_expanded=True)
         return file_count
 
     @staticmethod

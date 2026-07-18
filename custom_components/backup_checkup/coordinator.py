@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import logging
+import time
 from collections import defaultdict
 from collections.abc import Mapping
 from dataclasses import dataclass, replace
@@ -20,6 +21,15 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
+from .activity import (
+    ACTIVITY_OUTCOME_CANCELLED,
+    ACTIVITY_OUTCOME_CHANGED,
+    ACTIVITY_OUTCOME_COMPLETED,
+    ACTIVITY_OUTCOME_FAILED,
+    ACTIVITY_OUTCOME_SKIPPED,
+    ACTIVITY_OUTCOME_STARTED,
+    BackupCheckupActivityLog,
+)
 from .age import completed_age_days, precise_age_days
 from .analytics import calculate_health_score, calculate_inventory_analytics
 from .backup_normalizer import BackupRecordNormalizer, ThirdPartyBoundary
@@ -143,10 +153,11 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self.settings = BackupCheckupSettings.from_sources(entry.data, entry.options)
         self._apply_settings_compatibility_attributes()
 
+        self.activity = BackupCheckupActivityLog(hass)
         self.history = BackupCheckupHistory(hass, entry.entry_id)
         self.integrity_verifier = BackupIntegrityVerifier(hass, entry.entry_id)
         self.notification_manager = BackupCheckupNotificationManager(
-            hass, entry.entry_id
+            hass, entry.entry_id, activity=self.activity
         )
         self._normalizer = BackupRecordNormalizer(entry.entry_id)
 
@@ -197,12 +208,34 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self.notification_targets = settings.notification_targets
         self.notify_on_recovery = settings.notify_on_recovery
 
+    def _record_activity(
+        self,
+        action: str,
+        outcome: str,
+        *,
+        level: int = logging.INFO,
+        activity_visible: bool = True,
+        details: Mapping[str, object] | None = None,
+    ) -> None:
+        """Record activity when the runtime journal is available."""
+        activity = getattr(self, "activity", None)
+        if isinstance(activity, BackupCheckupActivityLog):
+            activity.record(
+                action,
+                outcome,
+                level=level,
+                activity_visible=activity_visible,
+                details=details,
+            )
+
     async def async_shutdown(self) -> None:
         """Cancel a running integrity check and shut down the coordinator."""
+        self._record_activity("coordinator_shutdown", ACTIVITY_OUTCOME_STARTED)
         if self._integrity_task is not None and not self._integrity_task.done():
             self._integrity_task.cancel()
             await asyncio.gather(self._integrity_task, return_exceptions=True)
         await super().async_shutdown()
+        self._record_activity("coordinator_shutdown", ACTIVITY_OUTCOME_COMPLETED)
 
     async def _async_fetch_inventory(
         self,
@@ -241,6 +274,12 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             safe_error_type(err),
             error_code,
         )
+        self._record_activity(
+            "backup_manager_read",
+            ACTIVITY_OUTCOME_FAILED,
+            level=logging.WARNING,
+            details={"error_code": error_code, "error_type": safe_error_type(err)},
+        )
         if self.data is None:
             raise UpdateFailed(f"{message} ({error_code})") from None
         snapshot = self._manager_error_snapshot(error_code)
@@ -249,8 +288,23 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
 
     async def _async_update_data(self) -> BackupCheckupData:
         """Read and evaluate the backup inventory."""
+        started = time.monotonic()
+        self._record_activity(
+            "inventory_refresh",
+            ACTIVITY_OUTCOME_STARTED,
+            activity_visible=False,
+        )
         fetched = await self._async_fetch_inventory()
         if isinstance(fetched, BackupCheckupData):
+            self._record_activity(
+                "inventory_refresh",
+                ACTIVITY_OUTCOME_FAILED,
+                level=logging.WARNING,
+                details={
+                    "duration_seconds": round(time.monotonic() - started, 3),
+                    "status": fetched.status,
+                },
+            )
             return fetched
         manager, backups, agent_errors = fetched
 
@@ -269,6 +323,33 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             now=now,
             password_changed=password_changed,
         )
+        self._record_activity(
+            "inventory_refresh",
+            ACTIVITY_OUTCOME_COMPLETED,
+            details={
+                "backup_count": getattr(data, "inventory_backup_count", len(backups)),
+                "duration_seconds": round(time.monotonic() - started, 3),
+                "problem_count": getattr(data, "problem_count", 0),
+                "status": getattr(data, "status", "unknown"),
+            },
+        )
+        previous = self.data
+        previous_status = getattr(previous, "status", None)
+        current_status = getattr(data, "status", None)
+        previous_problems = getattr(previous, "active_problems", None)
+        current_problems = getattr(data, "active_problems", None)
+        if previous is not None and (
+            previous_status != current_status or previous_problems != current_problems
+        ):
+            self._record_activity(
+                "health_state",
+                ACTIVITY_OUTCOME_CHANGED,
+                details={
+                    "from_status": previous_status,
+                    "problem_count": getattr(data, "problem_count", 0),
+                    "to_status": current_status,
+                },
+            )
         return data
 
     async def _async_load_integrity_state(self) -> None:
@@ -284,6 +365,15 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self._backup_password_marker_initialized = state.password_marker is not None
         self._last_manual_verification_at = state.last_manual_verification_at
         self._integrity_state_loaded = True
+        self._record_activity(
+            "integrity_state_load",
+            ACTIVITY_OUTCOME_COMPLETED,
+            activity_visible=False,
+            details={
+                "retry_attempts": self._integrity_retry_attempts,
+                "status": self.integrity_result.status,
+            },
+        )
 
     def _inventory_state(self, backups: Mapping[str, Any]) -> InventoryState:
         """Normalize and partition one backup-manager inventory."""
@@ -1049,6 +1139,11 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             return
         if latest is None:
             return
+        self._record_activity(
+            "integrity_check_schedule",
+            ACTIVITY_OUTCOME_COMPLETED,
+            details={"source": "automatic"},
+        )
         self._set_integrity_task(
             self.hass.async_create_task(
                 self._async_run_integrity_check(latest, source="automatic"),
@@ -1069,6 +1164,12 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             error = None
         if error is not None:
             self.integrity_check_running = False
+            self._record_activity(
+                "integrity_background_task",
+                ACTIVITY_OUTCOME_FAILED,
+                level=logging.ERROR,
+                details={"error_type": safe_error_type(error)},
+            )
             _LOGGER.error(
                 "Unhandled backup verification task failure: error_type=%s",
                 safe_error_type(error),
@@ -1097,17 +1198,35 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
     async def async_start_integrity_check(self, *, source: str = "manual") -> bool:
         """Start an integrity check of the latest monitored backup."""
         if self.integrity_check_pending_or_running:
+            self._record_activity(
+                "integrity_check_request",
+                ACTIVITY_OUTCOME_SKIPPED,
+                level=logging.WARNING,
+                details={"reason": "already_running", "source": source},
+            )
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="verification_already_running",
             )
         latest = self.data.latest_monitored_backup_record
         if latest is None:
+            self._record_activity(
+                "integrity_check_request",
+                ACTIVITY_OUTCOME_SKIPPED,
+                level=logging.WARNING,
+                details={"reason": "no_backup", "source": source},
+            )
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="verification_no_backup",
             )
         if source == "manual" and self.manual_verification_cooldown_active:
+            self._record_activity(
+                "integrity_check_request",
+                ACTIVITY_OUTCOME_SKIPPED,
+                level=logging.WARNING,
+                details={"reason": "cooldown", "source": source},
+            )
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="verification_cooldown",
@@ -1115,6 +1234,11 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                     "minutes": str(self.manual_verification_cooldown_minutes)
                 },
             )
+        self._record_activity(
+            "integrity_check_request",
+            ACTIVITY_OUTCOME_COMPLETED,
+            details={"source": source},
+        )
         self._set_integrity_task(
             self.hass.async_create_task(
                 self._async_run_integrity_check(latest, source=source),
@@ -1135,10 +1259,13 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         cancelled = False
         self.integrity_check_running = True
         try:
-            _LOGGER.info(
-                "Backup verification started: source=%s backup_reference=%s",
-                source,
-                record.backup_reference,
+            self._record_activity(
+                "integrity_check",
+                ACTIVITY_OUTCOME_STARTED,
+                details={
+                    "backup_reference": record.backup_reference,
+                    "source": source,
+                },
             )
             if self.data is not None:
                 self.async_set_updated_data(
@@ -1160,21 +1287,26 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                     result.checked_at or dt_util.utcnow()
                 )
             await self._try_persist_integrity_result(result, source, record)
-            _LOGGER.info(
-                "Backup verification completed: source=%s status=%s "
-                "duration_seconds=%s warnings=%s backup_reference=%s",
-                source,
-                result.status,
-                result.duration_seconds,
-                len(result.warnings),
-                record.backup_reference,
+            self._record_activity(
+                "integrity_check",
+                ACTIVITY_OUTCOME_COMPLETED,
+                details={
+                    "backup_reference": record.backup_reference,
+                    "duration_seconds": result.duration_seconds,
+                    "source": source,
+                    "status": result.status,
+                    "warning_count": len(result.warnings),
+                },
             )
         except asyncio.CancelledError:
             cancelled = True
-            _LOGGER.info(
-                "Backup verification cancelled: source=%s backup_reference=%s",
-                source,
-                record.backup_reference,
+            self._record_activity(
+                "integrity_check",
+                ACTIVITY_OUTCOME_CANCELLED,
+                details={
+                    "backup_reference": record.backup_reference,
+                    "source": source,
+                },
             )
             raise
         except Exception as err:  # noqa: BLE001 - full verification task boundary
@@ -1183,12 +1315,15 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             self._update_integrity_retry_state(result)
             if source == "manual":
                 self._last_manual_verification_at = result.checked_at
-            _LOGGER.error(
-                "Backup verification failed internally: source=%s "
-                "error_type=%s backup_reference=%s",
-                source,
-                safe_error_type(err),
-                record.backup_reference,
+            self._record_activity(
+                "integrity_check",
+                ACTIVITY_OUTCOME_FAILED,
+                level=logging.ERROR,
+                details={
+                    "backup_reference": record.backup_reference,
+                    "error_type": safe_error_type(err),
+                    "source": source,
+                },
             )
             await self._try_persist_integrity_result(result, source, record)
         finally:
@@ -1198,10 +1333,11 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 try:
                     await self.async_request_refresh()
                 except Exception as err:  # noqa: BLE001 - coordinator boundary
-                    _LOGGER.warning(
-                        "Unable to refresh BackupCheckup after verification: "
-                        "error_type=%s",
-                        safe_error_type(err),
+                    self._record_activity(
+                        "post_verification_refresh",
+                        ACTIVITY_OUTCOME_FAILED,
+                        level=logging.WARNING,
+                        details={"error_type": safe_error_type(err)},
                     )
 
     async def _try_persist_integrity_result(
@@ -1220,12 +1356,15 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 or self._integrity_retry_not_before < persist_retry
             ):
                 self._integrity_retry_not_before = persist_retry
-            _LOGGER.error(
-                "Unable to persist backup verification result: source=%s "
-                "error_type=%s backup_reference=%s",
-                source,
-                safe_error_type(err),
-                record.backup_reference,
+            self._record_activity(
+                "integrity_result_persist",
+                ACTIVITY_OUTCOME_FAILED,
+                level=logging.ERROR,
+                details={
+                    "backup_reference": record.backup_reference,
+                    "error_type": safe_error_type(err),
+                    "source": source,
+                },
             )
 
     @staticmethod

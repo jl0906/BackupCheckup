@@ -11,6 +11,13 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.translation import async_get_translations
 
+from .activity import (
+    ACTIVITY_OUTCOME_CHANGED,
+    ACTIVITY_OUTCOME_COMPLETED,
+    ACTIVITY_OUTCOME_FAILED,
+    ACTIVITY_OUTCOME_STARTED,
+    BackupCheckupActivityLog,
+)
 from .const import DOMAIN
 from .models import BackupCheckupData
 from .notification_selection import normalize_notification_targets
@@ -139,10 +146,17 @@ _MESSAGES: dict[str, dict[str, str]] = {
 class BackupCheckupNotificationManager:
     """Send deduplicated notifications to selected Companion App devices."""
 
-    def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry_id: str,
+        *,
+        activity: BackupCheckupActivityLog | None = None,
+    ) -> None:
         """Initialize notification state storage."""
         self.hass = hass
         self._hass = hass
+        self._activity = activity
         self._store: Store[dict[str, Any]] = Store(
             hass,
             _STORAGE_VERSION,
@@ -163,6 +177,11 @@ class BackupCheckupNotificationManager:
             return
         self._was_enabled = False
         await self._async_save()
+        self._record_activity(
+            "notification_processing",
+            ACTIVITY_OUTCOME_CHANGED,
+            details={"enabled": False},
+        )
 
     async def _async_enable_first_problem(
         self,
@@ -261,6 +280,7 @@ class BackupCheckupNotificationManager:
             targets,
             title=strings["test_title"],
             message=strings["test_message"],
+            notification_type="test",
         )
 
     async def async_remove(self) -> None:
@@ -305,6 +325,7 @@ class BackupCheckupNotificationManager:
                 recommendation=recommendation,
                 count=data.problem_count,
             ),
+            notification_type="problem",
         )
 
     async def _async_send_recovery(self, targets: tuple[str, ...]) -> bool:
@@ -315,6 +336,7 @@ class BackupCheckupNotificationManager:
             targets,
             title=strings["recovery_title"],
             message=strings["recovery_message"],
+            notification_type="recovery",
         )
 
     async def _async_send(
@@ -323,8 +345,17 @@ class BackupCheckupNotificationManager:
         *,
         title: str,
         message: str,
+        notification_type: str,
     ) -> bool:
         """Call the native notify entity action."""
+        self._record_activity(
+            "notification_send",
+            ACTIVITY_OUTCOME_STARTED,
+            details={
+                "notification_type": notification_type,
+                "target_count": len(targets),
+            },
+        )
         try:
             await self.hass.services.async_call(
                 "notify",
@@ -341,6 +372,16 @@ class BackupCheckupNotificationManager:
                 safe_error_type(err),
                 self.last_error,
             )
+            self._record_activity(
+                "notification_send",
+                ACTIVITY_OUTCOME_FAILED,
+                level=logging.WARNING,
+                details={
+                    "error_code": self.last_error,
+                    "notification_type": notification_type,
+                    "target_count": len(targets),
+                },
+            )
             return False
         except Exception as err:  # noqa: BLE001
             self.last_error = classify_exception(err)
@@ -350,8 +391,26 @@ class BackupCheckupNotificationManager:
                 safe_error_type(err),
                 self.last_error,
             )
+            self._record_activity(
+                "notification_send",
+                ACTIVITY_OUTCOME_FAILED,
+                level=logging.ERROR,
+                details={
+                    "error_code": self.last_error,
+                    "notification_type": notification_type,
+                    "target_count": len(targets),
+                },
+            )
             return False
         self.last_error = None
+        self._record_activity(
+            "notification_send",
+            ACTIVITY_OUTCOME_COMPLETED,
+            details={
+                "notification_type": notification_type,
+                "target_count": len(targets),
+            },
+        )
         return True
 
     async def _async_read_store(self) -> tuple[dict[str, Any], bool]:
@@ -432,6 +491,18 @@ class BackupCheckupNotificationManager:
                 "last_targets": list(self._last_targets),
             }
         )
+
+    def _record_activity(
+        self,
+        action: str,
+        outcome: str,
+        *,
+        level: int = logging.INFO,
+        details: dict[str, object] | None = None,
+    ) -> None:
+        """Record an activity when a coordinator journal is available."""
+        if self._activity is not None:
+            self._activity.record(action, outcome, level=level, details=details)
 
     def _language(self) -> str:
         """Return the supported language key with English fallback."""

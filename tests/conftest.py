@@ -64,6 +64,7 @@ components = types.ModuleType("homeassistant.components")
 backup = types.ModuleType("homeassistant.components.backup")
 binary_sensor = types.ModuleType("homeassistant.components.binary_sensor")
 button = types.ModuleType("homeassistant.components.button")
+logbook = types.ModuleType("homeassistant.components.logbook")
 sensor = types.ModuleType("homeassistant.components.sensor")
 config_entries = types.ModuleType("homeassistant.config_entries")
 data_entry_flow = types.ModuleType("homeassistant.data_entry_flow")
@@ -386,6 +387,7 @@ binary_sensor.BinarySensorDeviceClass = BinarySensorDeviceClass
 binary_sensor.BinarySensorEntity = BinarySensorEntity
 binary_sensor.BinarySensorEntityDescription = EntityDescription
 button.ButtonEntity = ButtonEntity
+logbook.async_log_entry = lambda *_args, **_kwargs: None
 sensor.SensorDeviceClass = SensorDeviceClass
 sensor.SensorEntity = SensorEntity
 sensor.SensorEntityDescription = EntityDescription
@@ -461,6 +463,7 @@ sys.modules.setdefault("homeassistant.components", components)
 sys.modules.setdefault("homeassistant.components.backup", backup)
 sys.modules.setdefault("homeassistant.components.binary_sensor", binary_sensor)
 sys.modules.setdefault("homeassistant.components.button", button)
+sys.modules.setdefault("homeassistant.components.logbook", logbook)
 sys.modules.setdefault("homeassistant.components.sensor", sensor)
 sys.modules.setdefault("homeassistant.config_entries", config_entries)
 sys.modules.setdefault("homeassistant.data_entry_flow", data_entry_flow)

@@ -1,5 +1,62 @@
 # Changelog
 
+## 2.3.0-alpha1
+
+**Pre-release: live activity and structured integration logging**
+
+This alpha introduces a central privacy-safe activity journal for BackupCheckup. It
+publishes user-relevant integration workflows to Home Assistant Activity in real time,
+mirrors every journal record to the Core log, and includes a bounded recent journal in
+downloaded diagnostics. The config-entry schema remains version 9.
+
+### Added
+
+- Added a central timestamped activity logger with stable action and outcome fields.
+- Added live Home Assistant Activity entries for config-entry setup, first refresh,
+  periodic and manual inventory refreshes, health-state changes, integrity-check
+  requests and results, automatic verification scheduling, notification delivery,
+  temporary-data cleanup, repair synchronization, platform setup, reload, unload, and
+  removal.
+- Added structured Core log records under
+  `custom_components.backup_checkup.activity`; each record includes an explicit UTC
+  timestamp, action, outcome, and bounded details.
+- Added an in-memory ring buffer retaining the latest 250 runtime activity records.
+- Added the latest 100 activity records, total runtime event count, buffered event
+  count, and latest event to integration diagnostics.
+- Added notification-type and target-count logging for problem, recovery, and test
+  notification delivery without exposing target entity IDs.
+- Added functional tests for activity sanitization, buffer bounds, Home Assistant
+  Activity publication, structured logging, and diagnostics export.
+
+### Changed
+
+- Added `logbook` as an optional setup-order dependency so Activity publication is
+  initialized after Logbook when that integration is enabled, without forcing users
+  who disabled Logbook to enable it.
+- Replaced the integrity verifier's separate start, completion, cancellation, and
+  internal-failure messages with the central structured activity format.
+- Inventory refreshes now report duration, inventory count, health status, and problem
+  count through the central journal.
+- Health-state Activity entries are emitted only when status or the active problem set
+  changes, while each refresh remains available in the structured system log.
+
+### Privacy and performance
+
+- Activity details are sorted, bounded to 12 fields, and sanitized to single-line
+  strings with bounded key and value lengths.
+- Backup references remain installation-local anonymous hashes; raw backup IDs, raw
+  storage IDs, paths, passwords, notification targets, exception messages, and archive
+  contents are never written to the activity journal.
+- The journal is memory-bounded and does not create an additional persistent store.
+  Home Assistant controls retention of Activity and Core log entries.
+
+### Notes
+
+- This is a pre-release intended for testing before 2.3.0.
+- Home Assistant Repairs continues to be used only for actionable problems; operational
+  logging is shown in Activity and System Logs instead.
+- No configuration migration is required; the config-entry schema remains version 9.
+
 ## 2.2.5
 
 **Maintainability and coverage hardening update!**

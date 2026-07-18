@@ -12,6 +12,11 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.service import async_register_admin_service
 from homeassistant.helpers.typing import ConfigType
 
+from .activity import (
+    ACTIVITY_OUTCOME_COMPLETED,
+    ACTIVITY_OUTCOME_FAILED,
+    ACTIVITY_OUTCOME_STARTED,
+)
 from .configuration import normalize_configuration
 from .const import (
     CONF_AUTO_VERIFY_NEW_BACKUPS,
@@ -56,6 +61,7 @@ from .const import (
     SERVICE_REFRESH,
     SERVICE_TEST_NOTIFICATION,
     SERVICE_VERIFY_LATEST_BACKUP,
+    VERSION,
 )
 from .coordinator import BackupCheckupCoordinator
 from .entity_mode import async_apply_entity_mode
@@ -75,6 +81,21 @@ from .security import (
 from .storage_cleanup import cleanup_entry_store_files, cleanup_orphaned_store_files
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _record_activity(
+    coordinator: object,
+    action: str,
+    outcome: str,
+    *,
+    level: int = logging.INFO,
+    details: dict[str, object] | None = None,
+) -> None:
+    """Record activity when the coordinator exposes a runtime journal."""
+    activity = getattr(coordinator, "activity", None)
+    record = getattr(activity, "record", None)
+    if callable(record):
+        record(action, outcome, level=level, details=details)
 
 
 def _loaded_coordinator(hass: HomeAssistant) -> BackupCheckupCoordinator:
@@ -132,17 +153,34 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
     await _async_cleanup_orphaned_stores(hass)
 
     async def _async_verify_latest_backup(_call: ServiceCall) -> None:
-        await _loaded_coordinator(hass).async_start_integrity_check(source="manual")
+        coordinator = _loaded_coordinator(hass)
+        _record_activity(
+            coordinator, "service_verify_latest_backup", ACTIVITY_OUTCOME_STARTED
+        )
+        await coordinator.async_start_integrity_check(source="manual")
 
     async def _async_refresh(_call: ServiceCall) -> None:
-        await _loaded_coordinator(hass).async_request_refresh()
+        coordinator = _loaded_coordinator(hass)
+        _record_activity(coordinator, "service_refresh", ACTIVITY_OUTCOME_STARTED)
+        await coordinator.async_request_refresh()
+        _record_activity(coordinator, "service_refresh", ACTIVITY_OUTCOME_COMPLETED)
 
     async def _async_test_notification(_call: ServiceCall) -> None:
         coordinator = _loaded_coordinator(hass)
+        _record_activity(
+            coordinator, "service_test_notification", ACTIVITY_OUTCOME_STARTED
+        )
         if (
             not coordinator.notifications_enabled
             or not coordinator.notification_targets
         ):
+            _record_activity(
+                coordinator,
+                "service_test_notification",
+                ACTIVITY_OUTCOME_FAILED,
+                level=logging.WARNING,
+                details={"reason": "not_configured"},
+            )
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="notification_not_configured",
@@ -150,10 +188,19 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
         if not await coordinator.notification_manager.async_send_test(
             coordinator.notification_targets
         ):
+            _record_activity(
+                coordinator,
+                "service_test_notification",
+                ACTIVITY_OUTCOME_FAILED,
+                level=logging.WARNING,
+            )
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="notification_failed",
             )
+        _record_activity(
+            coordinator, "service_test_notification", ACTIVITY_OUTCOME_COMPLETED
+        )
 
     for service, handler in (
         (SERVICE_VERIFY_LATEST_BACKUP, _async_verify_latest_backup),
@@ -161,6 +208,10 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
         (SERVICE_TEST_NOTIFICATION, _async_test_notification),
     ):
         async_register_admin_service(hass, DOMAIN, service, handler)
+    _LOGGER.info(
+        "activity action=integration_services outcome=completed service_count=%s",
+        3,
+    )
     return True
 
 
@@ -203,6 +254,12 @@ def _legacy_schema_defaults(version: int) -> dict[str, object]:
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate data atomically without changing the entity registry."""
     if entry.version > CONFIG_ENTRY_VERSION:
+        _LOGGER.warning(
+            "activity action=config_migration outcome=failed reason=newer_schema "
+            "source_version=%s target_version=%s",
+            entry.version,
+            CONFIG_ENTRY_VERSION,
+        )
         return False
     if entry.version == CONFIG_ENTRY_VERSION:
         return True
@@ -212,11 +269,18 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         **dict(entry.data),
     }
     normalized = normalize_configuration(migrated, entry.options)
+    source_version = entry.version
     hass.config_entries.async_update_entry(
         entry,
         data=normalized,
         options=normalized,
         version=CONFIG_ENTRY_VERSION,
+    )
+    _LOGGER.info(
+        "activity action=config_migration outcome=completed "
+        "source_version=%s target_version=%s",
+        source_version,
+        CONFIG_ENTRY_VERSION,
     )
     return True
 
@@ -238,6 +302,12 @@ async def _async_cleanup_stale_temporary_data(
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up BackupCheckup from a config entry."""
     coordinator = BackupCheckupCoordinator(hass, entry)
+    _record_activity(
+        coordinator,
+        "config_entry_setup",
+        ACTIVITY_OUTCOME_STARTED,
+        details={"version": VERSION},
+    )
 
     # Registry changes are setup concerns, not config-entry migration side effects.
     async_apply_entity_mode(
@@ -248,10 +318,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     stale_cleanup = await _async_cleanup_stale_temporary_data(hass)
+    _record_activity(
+        coordinator,
+        "temporary_data_cleanup",
+        (
+            ACTIVITY_OUTCOME_FAILED
+            if stale_cleanup.issue_active
+            else ACTIVITY_OUTCOME_COMPLETED
+        ),
+        level=logging.WARNING if stale_cleanup.issue_active else logging.INFO,
+        details={
+            "failures": stale_cleanup.failures,
+            "remaining": stale_cleanup.remaining,
+        },
+    )
     if coordinator.repair_issues_enabled:
         async_set_temporary_cleanup_issue(hass, active=stale_cleanup.issue_active)
 
     await coordinator.async_config_entry_first_refresh()
+    _record_activity(coordinator, "first_refresh", ACTIVITY_OUTCOME_COMPLETED)
 
     entry.runtime_data = coordinator
     entry.async_on_unload(coordinator.async_shutdown)
@@ -264,8 +349,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             async_remove_issues(hass)
 
     _sync_repair_issues()
+    _record_activity(
+        coordinator,
+        "repair_issue_sync",
+        ACTIVITY_OUTCOME_COMPLETED,
+        details={"enabled": coordinator.repair_issues_enabled},
+    )
     entry.async_on_unload(coordinator.async_add_listener(_sync_repair_issues))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    _record_activity(
+        coordinator,
+        "entity_platform_setup",
+        ACTIVITY_OUTCOME_COMPLETED,
+        details={"platform_count": len(PLATFORMS)},
+    )
 
     async_apply_entity_mode(
         hass,
@@ -273,19 +370,38 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator.entity_mode,
         disable_others=False,
     )
+    _record_activity(
+        coordinator,
+        "config_entry_setup",
+        ACTIVITY_OUTCOME_COMPLETED,
+        details={"entity_mode": coordinator.entity_mode},
+    )
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a BackupCheckup config entry."""
+    coordinator = getattr(entry, "runtime_data", None)
+    if isinstance(coordinator, BackupCheckupCoordinator):
+        _record_activity(coordinator, "config_entry_unload", ACTIVITY_OUTCOME_STARTED)
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         async_remove_issues(hass)
+    if isinstance(coordinator, BackupCheckupCoordinator):
+        _record_activity(
+            coordinator,
+            "config_entry_unload",
+            ACTIVITY_OUTCOME_COMPLETED if unload_ok else ACTIVITY_OUTCOME_FAILED,
+            level=logging.INFO if unload_ok else logging.WARNING,
+        )
     return unload_ok
 
 
 async def _async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Reload BackupCheckup after its options change."""
+    coordinator = getattr(entry, "runtime_data", None)
+    if isinstance(coordinator, BackupCheckupCoordinator):
+        _record_activity(coordinator, "config_entry_reload", ACTIVITY_OUTCOME_STARTED)
     await hass.config_entries.async_reload(entry.entry_id)
 
 
@@ -293,6 +409,7 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Remove every private BackupCheckup store when the entry is deleted."""
     coordinator = getattr(entry, "runtime_data", None)
     if isinstance(coordinator, BackupCheckupCoordinator):
+        _record_activity(coordinator, "config_entry_remove", ACTIVITY_OUTCOME_STARTED)
         removers = (
             coordinator.history.async_remove,
             coordinator.integrity_verifier.store.async_remove,
@@ -325,11 +442,34 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
             "Unable to perform exact-path BackupCheckup store cleanup: error_type=%s",
             safe_error_type(err),
         )
+        if isinstance(coordinator, BackupCheckupCoordinator):
+            _record_activity(
+                coordinator,
+                "config_entry_remove",
+                ACTIVITY_OUTCOME_FAILED,
+                level=logging.WARNING,
+                details={"error_type": safe_error_type(err)},
+            )
         return
     if cleanup_result.failed:
         _LOGGER.warning(
             "Unable to remove all BackupCheckup private stores: count=%s",
             cleanup_result.failed,
+        )
+    if isinstance(coordinator, BackupCheckupCoordinator):
+        _record_activity(
+            coordinator,
+            "config_entry_remove",
+            (
+                ACTIVITY_OUTCOME_FAILED
+                if cleanup_result.failed
+                else ACTIVITY_OUTCOME_COMPLETED
+            ),
+            level=logging.WARNING if cleanup_result.failed else logging.INFO,
+            details={
+                "failed_store_count": cleanup_result.failed,
+                "removed_store_count": getattr(cleanup_result, "removed", 0),
+            },
         )
 
 

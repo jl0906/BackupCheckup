@@ -22,6 +22,20 @@ from .security import (
 )
 
 
+def _activity_diagnostics(coordinator: object) -> dict[str, object]:
+    """Return activity diagnostics or an empty compatibility payload."""
+    activity = getattr(coordinator, "activity", None)
+    diagnostics = getattr(activity, "diagnostics", None)
+    if callable(diagnostics):
+        return diagnostics(limit=100)
+    return {
+        "runtime_event_count": 0,
+        "buffered_event_count": 0,
+        "latest": None,
+        "recent": [],
+    }
+
+
 def _iso(value: datetime | None) -> str | None:
     """Return an ISO timestamp for diagnostics."""
     return value.isoformat() if value else None
@@ -249,6 +263,7 @@ async def async_get_config_entry_diagnostics(
             "notify_on_recovery": coordinator.notify_on_recovery,
             "last_error": coordinator.notification_manager.last_error,
         },
+        "activity": _activity_diagnostics(coordinator),
         "entity_registry": _entity_registry_diagnostics(
             hass,
             entry,
