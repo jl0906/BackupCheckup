@@ -1,6 +1,9 @@
 {
   "domain": "backup_checkup",
   "name": "BackupCheckup",
+  "after_dependencies": [
+    "logbook"
+  ],
   "codeowners": [
     "@jl0906"
   ],
@@ -14,8 +17,5 @@
   "issue_tracker": "https://github.com/jl0906/BackupCheckup/issues",
   "requirements": [],
   "single_config_entry": true,
-  "version": "2.3.0-beta1",
-  "after_dependencies": [
-    "logbook"
-  ]
+  "version": "2.3.0-beta1"
 }
