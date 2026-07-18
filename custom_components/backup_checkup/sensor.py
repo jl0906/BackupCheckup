@@ -663,6 +663,78 @@ def _migrate_size_sensor_units(hass: HomeAssistant, entry: ConfigEntry) -> None:
         )
 
 
+def _agent_sensor_entities(
+    coordinator: BackupCheckupCoordinator,
+    entry: ConfigEntry,
+    agent_id: str,
+) -> list[BackupCheckupAgentSensor]:
+    """Create every sensor entity for one backup storage agent."""
+    return [
+        BackupCheckupAgentSensor(coordinator, entry, agent_id, metric)
+        for metric in AGENT_METRICS
+    ]
+
+
+def _flatten_agent_entities(
+    groups: dict[str, list[BackupCheckupAgentSensor]],
+):
+    """Yield all storage-agent sensor entities from grouped collections."""
+    return (entity for group in groups.values() for entity in group)
+
+
+def _add_new_agent_sensors(
+    *,
+    coordinator: BackupCheckupCoordinator,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+    known_agents: set[str],
+    agent_entities: dict[str, list[BackupCheckupAgentSensor]],
+    current_agents: set[str],
+) -> None:
+    """Add sensors for newly discovered storage agents."""
+    new_agents = current_agents - known_agents
+    if not new_agents:
+        return
+    new_entities = {
+        agent_id: _agent_sensor_entities(coordinator, entry, agent_id)
+        for agent_id in sorted(new_agents)
+    }
+    agent_entities.update(new_entities)
+    known_agents.update(new_agents)
+    async_add_entities(_flatten_agent_entities(new_entities))
+
+
+def _remove_missing_agent_sensors(
+    *,
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    known_agents: set[str],
+    current_agents: set[str],
+    missing_counts: dict[str, int],
+    agent_entities: dict[str, list[BackupCheckupAgentSensor]],
+) -> None:
+    """Remove sensors after an agent is absent for three consecutive refreshes."""
+    for agent_id in current_agents:
+        missing_counts.pop(agent_id, None)
+    for agent_id in tuple(known_agents - current_agents):
+        missing_counts[agent_id] = missing_counts.get(agent_id, 0) + 1
+        if missing_counts[agent_id] < 3:
+            continue
+        removed = agent_entities.pop(agent_id, [])
+        known_agents.discard(agent_id)
+        missing_counts.pop(agent_id, None)
+        if removed:
+            hass.async_create_task(
+                async_remove_agent_entities(
+                    hass,
+                    entry_id=entry.entry_id,
+                    platform="sensor",
+                    agent_id=agent_id,
+                    entities=removed,
+                )
+            )
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -672,19 +744,15 @@ async def async_setup_entry(
     coordinator: BackupCheckupCoordinator = entry.runtime_data
     _migrate_enum_translation_keys(hass, entry)
     _migrate_size_sensor_units(hass, entry)
+    known_agents = {summary.agent_id for summary in coordinator.data.agent_summaries}
+    agent_entities = {
+        agent_id: _agent_sensor_entities(coordinator, entry, agent_id)
+        for agent_id in sorted(known_agents)
+    }
     entities: list[SensorEntity] = [
         BackupCheckupSensor(coordinator, entry, description) for description in SENSORS
     ]
-
-    known_agents = {summary.agent_id for summary in coordinator.data.agent_summaries}
-    agent_entities = {
-        agent_id: [
-            BackupCheckupAgentSensor(coordinator, entry, agent_id, metric)
-            for metric in AGENT_METRICS
-        ]
-        for agent_id in sorted(known_agents)
-    }
-    entities.extend(entity for group in agent_entities.values() for entity in group)
+    entities.extend(_flatten_agent_entities(agent_entities))
     async_add_entities(entities)
     missing_counts: dict[str, int] = {}
 
@@ -692,40 +760,22 @@ async def async_setup_entry(
         current_agents = {
             summary.agent_id for summary in coordinator.data.agent_summaries
         }
-        new_agents = current_agents - known_agents
-        if new_agents:
-            new_entities = {
-                agent_id: [
-                    BackupCheckupAgentSensor(coordinator, entry, agent_id, metric)
-                    for metric in AGENT_METRICS
-                ]
-                for agent_id in sorted(new_agents)
-            }
-            agent_entities.update(new_entities)
-            known_agents.update(new_agents)
-            async_add_entities(
-                entity for group in new_entities.values() for entity in group
-            )
-
-        for agent_id in current_agents:
-            missing_counts.pop(agent_id, None)
-        for agent_id in tuple(known_agents - current_agents):
-            missing_counts[agent_id] = missing_counts.get(agent_id, 0) + 1
-            if missing_counts[agent_id] < 3:
-                continue
-            removed = agent_entities.pop(agent_id, [])
-            known_agents.discard(agent_id)
-            missing_counts.pop(agent_id, None)
-            if removed:
-                hass.async_create_task(
-                    async_remove_agent_entities(
-                        hass,
-                        entry_id=entry.entry_id,
-                        platform="sensor",
-                        agent_id=agent_id,
-                        entities=removed,
-                    )
-                )
+        _add_new_agent_sensors(
+            coordinator=coordinator,
+            entry=entry,
+            async_add_entities=async_add_entities,
+            known_agents=known_agents,
+            agent_entities=agent_entities,
+            current_agents=current_agents,
+        )
+        _remove_missing_agent_sensors(
+            hass=hass,
+            entry=entry,
+            known_agents=known_agents,
+            current_agents=current_agents,
+            missing_counts=missing_counts,
+            agent_entities=agent_entities,
+        )
 
     entry.async_on_unload(coordinator.async_add_listener(_sync_agents))
 

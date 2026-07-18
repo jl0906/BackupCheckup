@@ -157,6 +157,65 @@ class BackupCheckupNotificationManager:
         self._lock = asyncio.Lock()
         self.last_error: str | None = None
 
+    async def _async_disable(self) -> None:
+        """Persist the transition to disabled notification processing."""
+        if not self._was_enabled:
+            return
+        self._was_enabled = False
+        await self._async_save()
+
+    async def _async_enable_first_problem(
+        self,
+        data: BackupCheckupData,
+        signature: str,
+        targets: tuple[str, ...],
+    ) -> None:
+        """Enable processing and optionally send the currently active problem."""
+        self._was_enabled = True
+        if not signature:
+            self._last_signature = ""
+            await self._async_save()
+            return
+        if await self._async_send_problem(data, targets):
+            self._last_signature = signature
+            self._last_targets = targets
+            await self._async_save()
+
+    async def _async_sync_targets_for_existing_problem(
+        self,
+        data: BackupCheckupData,
+        targets: tuple[str, ...],
+    ) -> None:
+        """Notify only newly added targets for an unchanged active problem."""
+        added_targets = tuple(
+            target for target in targets if target not in self._last_targets
+        )
+        if added_targets and not await self._async_send_problem(data, added_targets):
+            return
+        self._last_targets = targets
+        await self._async_save()
+
+    async def _async_send_state_change(
+        self,
+        data: BackupCheckupData,
+        signature: str,
+        targets: tuple[str, ...],
+        *,
+        notify_on_recovery: bool,
+    ) -> None:
+        """Send one changed problem or recovery state and persist it on success."""
+        if signature:
+            sent = await self._async_send_problem(data, targets)
+        elif self._last_signature and notify_on_recovery:
+            sent = await self._async_send_recovery(targets)
+        else:
+            sent = True
+        if not sent:
+            return
+        self._last_signature = signature
+        self._last_targets = targets
+        await self._async_save()
+
     async def async_process(
         self,
         data: BackupCheckupData,
@@ -170,60 +229,29 @@ class BackupCheckupNotificationManager:
             await self._async_load()
             signature = "|".join(sorted(data.active_problems))
             normalized_targets = tuple(sorted(set(targets)))
-
             if not enabled or not normalized_targets:
-                if self._was_enabled:
-                    self._was_enabled = False
-                    await self._async_save()
+                await self._async_disable()
                 return
-
             if not self._was_enabled:
-                self._was_enabled = True
-                if not signature:
-                    self._last_signature = ""
-                    await self._async_save()
-                    return
-                if await self._async_send_problem(data, normalized_targets):
-                    self._last_signature = signature
-                    self._last_targets = normalized_targets
-                    await self._async_save()
-                return
-
-            if (
-                signature == self._last_signature
-                and normalized_targets == self._last_targets
-            ):
-                return
-
-            if signature and signature == self._last_signature:
-                added_targets = tuple(
-                    target
-                    for target in normalized_targets
-                    if target not in self._last_targets
+                await self._async_enable_first_problem(
+                    data,
+                    signature,
+                    normalized_targets,
                 )
-                if not added_targets:
-                    # Removing recipients is a state-only change and must not send
-                    # a duplicate problem notification to the remaining devices.
-                    self._last_targets = normalized_targets
-                    await self._async_save()
-                    return
-                if await self._async_send_problem(data, added_targets):
-                    self._last_targets = normalized_targets
-                    await self._async_save()
                 return
-
-            sent = False
-            if signature:
-                sent = await self._async_send_problem(data, normalized_targets)
-            elif self._last_signature and notify_on_recovery:
-                sent = await self._async_send_recovery(normalized_targets)
-            else:
-                sent = True
-
-            if sent:
-                self._last_signature = signature
-                self._last_targets = normalized_targets
-                await self._async_save()
+            if signature == self._last_signature:
+                if normalized_targets != self._last_targets:
+                    await self._async_sync_targets_for_existing_problem(
+                        data,
+                        normalized_targets,
+                    )
+                return
+            await self._async_send_state_change(
+                data,
+                signature,
+                normalized_targets,
+                notify_on_recovery=notify_on_recovery,
+            )
 
     async def async_send_test(self, targets: tuple[str, ...]) -> bool:
         """Send one localized test notification."""
@@ -326,15 +354,12 @@ class BackupCheckupNotificationManager:
         self.last_error = None
         return True
 
-    async def _async_load(self) -> None:
-        """Load the last notification state once."""
-        if self._loaded:
-            return
-        repair_needed = False
+    async def _async_read_store(self) -> tuple[dict[str, Any], bool]:
+        """Return validated store data and whether persistence repair is needed."""
         try:
             stored = await self._store.async_load()
             if stored is None:
-                stored = {}
+                return {}, False
             if not isinstance(stored, dict):
                 raise ValueError("invalid_store_root")
         except Exception as err:  # noqa: BLE001
@@ -342,15 +367,17 @@ class BackupCheckupNotificationManager:
                 "Invalid notification store data was reset: error_type=%s",
                 safe_error_type(err),
             )
-            stored = {}
-            repair_needed = True
             async_set_storage_data_issue(
                 self._hass, store_name="notifications", active=True
             )
-        else:
-            async_set_storage_data_issue(
-                self._hass, store_name="notifications", active=False
-            )
+            return {}, True
+        async_set_storage_data_issue(
+            self._hass, store_name="notifications", active=False
+        )
+        return stored, False
+
+    def _apply_stored_state(self, stored: dict[str, Any]) -> bool:
+        """Apply bounded notification state and report malformed content."""
         signature = stored.get("last_signature", "")
         was_enabled = stored.get("was_enabled", False)
         targets = stored.get("last_targets", [])
@@ -362,28 +389,39 @@ class BackupCheckupNotificationManager:
         )
         self._last_signature = signature[:512] if isinstance(signature, str) else ""
         self._was_enabled = was_enabled is True
-        normalized_stored_targets = normalize_notification_targets(targets)[:100]
-        self._last_targets = tuple(sorted(normalized_stored_targets))
-        if isinstance(targets, list) and targets != normalized_stored_targets:
-            invalid_content = True
-        if invalid_content:
+        normalized_targets = normalize_notification_targets(targets)[:100]
+        self._last_targets = tuple(sorted(normalized_targets))
+        return invalid_content or (
+            isinstance(targets, list) and targets != normalized_targets
+        )
+
+    async def _async_persist_repaired_store(self) -> None:
+        """Persist sanitized state and clear the repair issue on success."""
+        try:
+            await self._async_save()
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning(
+                "Unable to persist repaired notification store data: error_type=%s",
+                safe_error_type(err),
+            )
+            return
+        async_set_storage_data_issue(
+            self._hass, store_name="notifications", active=False
+        )
+
+    async def _async_load(self) -> None:
+        """Load the last notification state once."""
+        if self._loaded:
+            return
+        stored, repair_needed = await self._async_read_store()
+        if self._apply_stored_state(stored):
             repair_needed = True
             async_set_storage_data_issue(
                 self._hass, store_name="notifications", active=True
             )
         self._loaded = True
         if repair_needed:
-            try:
-                await self._async_save()
-            except Exception as err:  # noqa: BLE001
-                _LOGGER.warning(
-                    "Unable to persist repaired notification store data: error_type=%s",
-                    safe_error_type(err),
-                )
-            else:
-                async_set_storage_data_issue(
-                    self._hass, store_name="notifications", active=False
-                )
+            await self._async_persist_repaired_store()
 
     async def _async_save(self) -> None:
         """Persist notification deduplication state."""

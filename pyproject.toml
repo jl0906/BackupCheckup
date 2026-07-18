@@ -3,15 +3,19 @@ target-version = "py313"
 line-length = 88
 
 [tool.ruff.lint]
-select = ["ASYNC", "B", "BLE", "E", "F", "I", "RUF", "UP"]
+select = ["ASYNC", "B", "BLE", "C90", "E", "F", "I", "RUF", "UP"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
 [tool.coverage.run]
 branch = true
+source = ["custom_components/backup_checkup"]
 
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
-fail_under = 60
+fail_under = 90

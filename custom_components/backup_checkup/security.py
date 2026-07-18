@@ -311,40 +311,54 @@ def cleanup_temp_directory(path: Path) -> bool:
     return True
 
 
+def _stale_temp_candidate_action(
+    candidate: Path,
+    *,
+    root: Path,
+    cutoff: float,
+    current_uid: int | None,
+) -> str:
+    """Classify one temporary path as ignored, recent, removable, or failed."""
+    if not candidate.name.startswith(_TEMP_PREFIX):
+        return "ignore"
+    try:
+        stat_result = candidate.lstat()
+        unsafe_type = stat.S_ISLNK(stat_result.st_mode) or not stat.S_ISDIR(
+            stat_result.st_mode
+        )
+        wrong_owner = current_uid is not None and stat_result.st_uid != current_uid
+        wrong_parent = candidate.parent.resolve() != root
+    except OSError:
+        return "failed"
+    if unsafe_type or wrong_owner or wrong_parent:
+        return "ignore"
+    return "recent" if stat_result.st_mtime > cutoff else "remove"
+
+
 def cleanup_stale_temp_directories() -> TempCleanupResult:
     """Remove stale BackupCheckup directories and report any data left behind."""
     root = Path(tempfile.gettempdir()).resolve()
     cutoff = time.time() - STALE_TEMP_DIRECTORY_AGE_HOURS * 3600
-    failures = 0
-    remaining = 0
     current_uid = os.getuid() if hasattr(os, "getuid") else None
-
     try:
         candidates = list(root.iterdir())
     except OSError:
         return TempCleanupResult(failures=1)
 
+    failures = 0
+    remaining = 0
     for candidate in candidates:
-        if not candidate.name.startswith(_TEMP_PREFIX):
-            continue
-        try:
-            stat_result = candidate.lstat()
-            if stat.S_ISLNK(stat_result.st_mode) or not stat.S_ISDIR(
-                stat_result.st_mode
-            ):
-                continue
-            if current_uid is not None and stat_result.st_uid != current_uid:
-                continue
-            if candidate.parent.resolve() != root:
-                continue
-            if stat_result.st_mtime > cutoff:
-                remaining += 1
-                continue
-        except OSError:
+        action = _stale_temp_candidate_action(
+            candidate,
+            root=root,
+            cutoff=cutoff,
+            current_uid=current_uid,
+        )
+        if action == "failed":
             failures += 1
-            continue
-        if not cleanup_temp_directory(candidate):
+        elif action == "recent":
+            remaining += 1
+        elif action == "remove" and not cleanup_temp_directory(candidate):
             failures += 1
             remaining += 1
-
     return TempCleanupResult(failures=failures, remaining=remaining)

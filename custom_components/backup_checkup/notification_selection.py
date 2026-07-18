@@ -13,7 +13,7 @@ def normalize_notification_targets(value: Any) -> list[str]:
     """Return unique notification entity IDs as a JSON-serializable list."""
     if isinstance(value, str):
         values: Iterable[Any] = (value,)
-    elif isinstance(value, (list, tuple, set, frozenset)):
+    elif isinstance(value, list | tuple | set | frozenset):
         values = value
     else:
         return []

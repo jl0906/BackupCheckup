@@ -1,5 +1,47 @@
 # Changelog
 
+## 2.2.5
+
+**Maintainability and coverage hardening update!**
+
+Version 2.2.5 addresses the code smells reported after 2.2.4, closes newly identified cleanup and integrity-verification edge cases, and expands functional and branch coverage across every production Python module. Runtime behavior, entity IDs, private-store formats, and the config-entry schema remain compatible.
+
+### Fixed
+
+- Refactored add-on slug normalization below the configured complexity limit.
+- Fixed legacy add-on metadata supplied directly as a string being normalized as the literal text `None` instead of the actual slug.
+- Split mapping and iterable backup-agent copy normalization into focused helpers while preserving invalid-copy counters and deterministic deduplication.
+- Fixed integrity verification not deterministically closing every opened TAR, nested archive, metadata, and member stream on all success, failure, timeout, and fallback paths.
+- Failed or timed-out storage-copy candidates now remove their temporary files before the next redundant copy is attempted.
+- Replaced a production `assert` in the final candidate-result path with an explicit controlled `internal_error` result if an impossible verifier state is encountered.
+- Fixed stale dynamic storage-entity cleanup stopping after one entity removal fails. Remaining entities and an empty agent device are now still cleaned up best effort.
+- Simplified storage-agent aggregation and integrity-store envelope parsing while preserving existing validation and repair behavior.
+- Preserved all existing notification target-change, history correction, privacy, integrity, storage, and entity-mode behavior during the refactoring.
+
+### Changed
+
+- Split the integrity verifier into bounded budget, candidate preparation, download, archive scan, database validation, result aggregation, and cleanup stages.
+- Split the large diagnostics builder into focused privacy-safe section builders.
+- Extracted persisted integrity-result validation and deserialization helpers from the model class.
+- Split automatic-backup history loading and observation into bounded normalization, success matching, pending-resolution, and retention helpers.
+- Split notification persistence and deduplication into focused load, repair, disabled, initial, target-sync, problem-change, and recovery paths.
+- Simplified stale temporary-directory classification behind one guarded filesystem helper.
+- Split native Backup Manager timestamps, manager state, event state, and stale-event validation into focused helpers.
+- Split dynamic storage-sensor discovery and removal into dedicated failure-isolated helpers.
+- Centralized Repair issue definition construction and current-integrity matching.
+- Split archive metadata validation and SQLite database verification into smaller security-focused helpers.
+- Reduced the maximum measured cyclomatic complexity from 51 to 14 and added a Ruff complexity gate of 15.
+- Coverage now explicitly uses `custom_components/backup_checkup` as its source, preventing unimported production modules from disappearing from reports.
+- Raised the enforced combined statement-and-branch coverage threshold from 60% to 90%.
+
+### Testing
+
+- Expanded the suite from 196 to 233 tests.
+- Added functional coverage for config flow and options flow, integration setup, migration and unload paths, native Backup Manager state, all entity platforms, agent cleanup, coordinator orchestration, manager outages, retry policy, automatic and manual integrity scheduling, and verifier invariant handling.
+- Added regression coverage for string, mapping, and object add-on metadata, agent-copy normalization, bounded private-store parsing, resource cleanup, redundant-copy fallback, and failure-isolated entity cleanup.
+- Measured every production Python module: 92.06% statement coverage, 83.18% branch coverage, and 90.33% combined coverage.
+- Config-entry schema remains version 9; no migration is required.
+
 ## 2.2.4
 
 **Recommended reliability update!**
@@ -73,6 +115,8 @@ Version 2.2.3 fixes automatic verification retry handling, redundant-copy fallba
 - The config-entry schema remains version 9; no migration is required.
 
 ## 2.2.2
+
+**Recommended patch update!**
 
 Version 2.2.2 contains a focused configuration-flow usability fix.
 

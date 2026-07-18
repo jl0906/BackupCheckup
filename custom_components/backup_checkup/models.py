@@ -7,7 +7,119 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+from homeassistant.util import dt as dt_util
+
 from .age import completed_age_days
+from .const import (
+    INTEGRITY_DATABASE_NOT_CHECKED,
+    INTEGRITY_DATABASE_OPTIONS,
+    INTEGRITY_STATUS_NOT_CHECKED,
+    INTEGRITY_STATUS_OPTIONS,
+)
+
+_MAX_RESULT_COUNTER = 10_000_000
+_MAX_VERIFIED_SIZE = 10**15
+_MAX_DURATION_SECONDS = 365 * 86400
+_MAX_STORED_WARNINGS = 1000
+_MAX_LOADED_WARNINGS = 50
+
+
+def _parse_stored_datetime(value: Any) -> datetime | None:
+    """Parse a stored timestamp and normalize it to aware UTC."""
+    if not isinstance(value, str):
+        return None
+    parsed = dt_util.parse_datetime(value)
+    if parsed is None:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return dt_util.as_utc(parsed)
+
+
+def _valid_optional_datetime(value: Any) -> bool:
+    """Return whether a persisted optional timestamp is valid."""
+    return value is None or _parse_stored_datetime(value) is not None
+
+
+def _valid_optional_text(value: Any) -> bool:
+    """Return whether a persisted optional text field has the expected type."""
+    return value is None or isinstance(value, str)
+
+
+def _valid_optional_integral(value: Any) -> bool:
+    """Return whether a persisted optional number is finite and integral."""
+    if value is None:
+        return True
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return False
+    numeric = float(value)
+    return math.isfinite(numeric) and numeric >= 0 and numeric.is_integer()
+
+
+def _valid_optional_duration(value: Any) -> bool:
+    """Return whether a persisted optional duration is finite and non-negative."""
+    if value is None:
+        return True
+    return (
+        not isinstance(value, bool)
+        and isinstance(value, int | float)
+        and math.isfinite(float(value))
+        and value >= 0
+    )
+
+
+def _valid_optional_bool(value: Any) -> bool:
+    """Return whether a persisted optional value is a strict boolean."""
+    return value is None or isinstance(value, bool)
+
+
+def _valid_warnings(value: Any) -> bool:
+    """Return whether persisted warning data is bounded text."""
+    return value is None or (
+        isinstance(value, list)
+        and len(value) <= _MAX_STORED_WARNINGS
+        and all(isinstance(item, str) for item in value)
+    )
+
+
+def _bounded_text(value: Any, *, maximum: int = 256) -> str | None:
+    """Return one bounded non-empty stored string."""
+    return value[:maximum] if isinstance(value, str) and value else None
+
+
+def _bounded_integer(value: Any, *, maximum: int) -> int | None:
+    """Return a bounded non-negative integer without accepting truncation."""
+    if not _valid_optional_integral(value) or value is None:
+        return None
+    parsed = int(value)
+    return parsed if parsed <= maximum else None
+
+
+def _integer_or_zero(value: Any, *, maximum: int = _MAX_RESULT_COUNTER) -> int:
+    """Return a bounded stored integer or zero."""
+    return _bounded_integer(value, maximum=maximum) or 0
+
+
+def _bounded_duration(value: Any) -> float | None:
+    """Return a bounded finite duration."""
+    if not _valid_optional_duration(value) or value is None:
+        return None
+    parsed = float(value)
+    return parsed if parsed <= _MAX_DURATION_SECONDS else None
+
+
+def _enum_or_default(value: Any, allowed: tuple[str, ...], default: str) -> str:
+    """Return a supported stored enum value or its safe default."""
+    return value if isinstance(value, str) and value in allowed else default
+
+
+def _loaded_warnings(value: Any) -> tuple[str, ...]:
+    """Return bounded warnings from private stored data."""
+    if not isinstance(value, list):
+        return ()
+    return tuple(item[:128] for item in value if isinstance(item, str))[
+        :_MAX_LOADED_WARNINGS
+    ]
 
 
 @dataclass(frozen=True, slots=True)
@@ -215,155 +327,79 @@ class BackupIntegrityResult:
     @classmethod
     def storage_dict_is_valid(cls, data: dict[str, Any]) -> bool:
         """Return whether persisted integrity data has safe expected field types."""
-        from homeassistant.util import dt as dt_util
-
-        from .const import INTEGRITY_DATABASE_OPTIONS, INTEGRITY_STATUS_OPTIONS
-
         if not isinstance(data, dict):
             return False
-        status = data.get("status")
-        if status is not None and status not in INTEGRITY_STATUS_OPTIONS:
-            return False
-        database_status = data.get("database_status")
-        if (
-            database_status is not None
-            and database_status not in INTEGRITY_DATABASE_OPTIONS
-        ):
-            return False
-        for key in ("checked_at", "backup_date"):
-            value = data.get(key)
-            if value is not None and (
-                not isinstance(value, str) or dt_util.parse_datetime(value) is None
-            ):
-                return False
-        for key in (
-            "backup_id",
-            "backup_reference",
-            "agent_id",
-            "sha256",
-            "error_code",
-        ):
-            value = data.get(key)
-            if value is not None and not isinstance(value, str):
-                return False
-        for key in ("archive_count", "file_count", "verified_size"):
-            value = data.get(key)
-            if value is not None and (
-                isinstance(value, bool)
-                or not isinstance(value, (int, float))
-                or not math.isfinite(float(value))
-                or float(value) < 0
-                or not float(value).is_integer()
-            ):
-                return False
-        duration = data.get("duration_seconds")
-        if duration is not None and (
-            isinstance(duration, bool)
-            or not isinstance(duration, (int, float))
-            or not math.isfinite(float(duration))
-            or duration < 0
-        ):
-            return False
-        protected = data.get("protected")
-        if protected is not None and not isinstance(protected, bool):
-            return False
-        checksum_changed = data.get("checksum_changed")
-        if checksum_changed is not None and not isinstance(checksum_changed, bool):
-            return False
-        warnings = data.get("warnings")
-        return warnings is None or (
-            isinstance(warnings, list)
-            and len(warnings) <= 1000
-            and all(isinstance(item, str) for item in warnings)
+        enum_fields_valid = (
+            data.get("status") is None or data.get("status") in INTEGRITY_STATUS_OPTIONS
+        ) and (
+            data.get("database_status") is None
+            or data.get("database_status") in INTEGRITY_DATABASE_OPTIONS
+        )
+        datetime_fields_valid = all(
+            _valid_optional_datetime(data.get(key))
+            for key in ("checked_at", "backup_date")
+        )
+        text_fields_valid = all(
+            _valid_optional_text(data.get(key))
+            for key in (
+                "backup_id",
+                "backup_reference",
+                "agent_id",
+                "sha256",
+                "error_code",
+            )
+        )
+        integer_fields_valid = all(
+            _valid_optional_integral(data.get(key))
+            for key in ("archive_count", "file_count", "verified_size")
+        )
+        return all(
+            (
+                enum_fields_valid,
+                datetime_fields_valid,
+                text_fields_valid,
+                integer_fields_valid,
+                _valid_optional_duration(data.get("duration_seconds")),
+                _valid_optional_bool(data.get("protected")),
+                _valid_optional_bool(data.get("checksum_changed")),
+                _valid_warnings(data.get("warnings")),
+            )
         )
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> BackupIntegrityResult:
         """Deserialize a stored integrity result defensively."""
-        from homeassistant.util import dt as dt_util
-
-        from .const import (
-            INTEGRITY_DATABASE_NOT_CHECKED,
-            INTEGRITY_DATABASE_OPTIONS,
-            INTEGRITY_STATUS_NOT_CHECKED,
-            INTEGRITY_STATUS_OPTIONS,
-        )
-
-        def parse(value: Any) -> datetime | None:
-            if not isinstance(value, str):
-                return None
-            parsed = dt_util.parse_datetime(value)
-            if parsed is None:
-                return None
-            if parsed.tzinfo is None:
-                parsed = parsed.replace(tzinfo=UTC)
-            return dt_util.as_utc(parsed)
-
-        def text(value: Any, *, maximum: int = 256) -> str | None:
-            return value[:maximum] if isinstance(value, str) and value else None
-
-        def integer(value: Any, *, maximum: int = 10_000_000) -> int:
-            if isinstance(value, bool) or not isinstance(value, (int, float)):
-                return 0
-            numeric = float(value)
-            if not math.isfinite(numeric) or not numeric.is_integer():
-                return 0
-            parsed = int(numeric)
-            return parsed if 0 <= parsed <= maximum else 0
-
-        def optional_integer(value: Any) -> int | None:
-            if isinstance(value, bool) or not isinstance(value, (int, float)):
-                return None
-            numeric = float(value)
-            if not math.isfinite(numeric) or not numeric.is_integer():
-                return None
-            parsed = int(numeric)
-            return parsed if 0 <= parsed <= 10**15 else None
-
-        def optional_float(value: Any) -> float | None:
-            if isinstance(value, bool) or not isinstance(value, (int, float)):
-                return None
-            parsed = float(value)
-            return (
-                parsed if math.isfinite(parsed) and 0 <= parsed <= 365 * 86400 else None
-            )
-
-        status_raw = data.get("status")
-        status = (
-            status_raw
-            if isinstance(status_raw, str) and status_raw in INTEGRITY_STATUS_OPTIONS
-            else INTEGRITY_STATUS_NOT_CHECKED
-        )
-        database_raw = data.get("database_status")
-        database_status = (
-            database_raw
-            if isinstance(database_raw, str)
-            and database_raw in INTEGRITY_DATABASE_OPTIONS
-            else INTEGRITY_DATABASE_NOT_CHECKED
-        )
-        warnings_raw = data.get("warnings", [])
-        warnings = (
-            tuple(item[:128] for item in warnings_raw if isinstance(item, str))[:50]
-            if isinstance(warnings_raw, list)
-            else ()
-        )
         protected = data.get("protected")
         return cls(
-            status=status,
-            checked_at=parse(data.get("checked_at")),
-            backup_id=text(data.get("backup_id")),
-            backup_reference=text(data.get("backup_reference"), maximum=64),
-            backup_date=parse(data.get("backup_date")),
-            agent_id=text(data.get("agent_id")),
-            sha256=text(data.get("sha256"), maximum=128),
-            verified_size=optional_integer(data.get("verified_size")),
-            duration_seconds=optional_float(data.get("duration_seconds")),
-            archive_count=integer(data.get("archive_count", 0)),
-            file_count=integer(data.get("file_count", 0)),
+            status=_enum_or_default(
+                data.get("status"),
+                tuple(INTEGRITY_STATUS_OPTIONS),
+                INTEGRITY_STATUS_NOT_CHECKED,
+            ),
+            checked_at=_parse_stored_datetime(data.get("checked_at")),
+            backup_id=_bounded_text(data.get("backup_id")),
+            backup_reference=_bounded_text(
+                data.get("backup_reference"),
+                maximum=64,
+            ),
+            backup_date=_parse_stored_datetime(data.get("backup_date")),
+            agent_id=_bounded_text(data.get("agent_id")),
+            sha256=_bounded_text(data.get("sha256"), maximum=128),
+            verified_size=_bounded_integer(
+                data.get("verified_size"),
+                maximum=_MAX_VERIFIED_SIZE,
+            ),
+            duration_seconds=_bounded_duration(data.get("duration_seconds")),
+            archive_count=_integer_or_zero(data.get("archive_count", 0)),
+            file_count=_integer_or_zero(data.get("file_count", 0)),
             protected=protected if isinstance(protected, bool) else None,
-            database_status=database_status,
-            warnings=warnings,
-            error_code=text(data.get("error_code"), maximum=128),
+            database_status=_enum_or_default(
+                data.get("database_status"),
+                tuple(INTEGRITY_DATABASE_OPTIONS),
+                INTEGRITY_DATABASE_NOT_CHECKED,
+            ),
+            warnings=_loaded_warnings(data.get("warnings", [])),
+            error_code=_bounded_text(data.get("error_code"), maximum=128),
             checksum_changed=data.get("checksum_changed") is True,
         )
 

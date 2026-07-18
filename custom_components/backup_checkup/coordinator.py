@@ -118,6 +118,20 @@ class StorageState:
     required_location_missing: bool
 
 
+@dataclass(frozen=True, slots=True)
+class InventoryState:
+    """Partitioned normalized inventory and its latest category records."""
+
+    records: tuple[BackupRecord, ...]
+    monitored: tuple[BackupRecord, ...]
+    automatic: tuple[BackupRecord, ...]
+    manual: tuple[BackupRecord, ...]
+    latest: BackupRecord | None
+    latest_automatic: BackupRecord | None
+    latest_manual: BackupRecord | None
+    ignored_update_count: int
+
+
 class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
     """Fetch and evaluate the actual Home Assistant backup inventory."""
 
@@ -271,6 +285,25 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self._last_manual_verification_at = state.last_manual_verification_at
         self._integrity_state_loaded = True
 
+    def _inventory_state(self, backups: Mapping[str, Any]) -> InventoryState:
+        """Normalize and partition one backup-manager inventory."""
+        normalization = self._normalizer.normalize(backups)
+        self._invalid_backup_count = normalization.invalid_backups
+        self._invalid_agent_copy_count = normalization.invalid_agent_copies
+        monitored = monitoring_backups(normalization.records)
+        automatic = tuple(record for record in monitored if record.automatic)
+        manual = tuple(record for record in monitored if not record.automatic)
+        return InventoryState(
+            records=normalization.records,
+            monitored=monitored,
+            automatic=automatic,
+            manual=manual,
+            latest=monitored[0] if monitored else None,
+            latest_automatic=automatic[0] if automatic else None,
+            latest_manual=manual[0] if manual else None,
+            ignored_update_count=len(normalization.records) - len(monitored),
+        )
+
     async def _async_build_snapshot(
         self,
         *,
@@ -280,21 +313,14 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         now: datetime,
     ) -> BackupCheckupData:
         """Build one complete immutable coordinator snapshot."""
-        normalization = self._normalizer.normalize(backups)
-        records = normalization.records
-        self._invalid_backup_count = normalization.invalid_backups
-        self._invalid_agent_copy_count = normalization.invalid_agent_copies
-        monitoring_records = monitoring_backups(records)
-        ignored_update_count = len(records) - len(monitoring_records)
-        automatic_records = tuple(
-            record for record in monitoring_records if record.automatic
-        )
-        manual_records = tuple(
-            record for record in monitoring_records if not record.automatic
-        )
-        latest = monitoring_records[0] if monitoring_records else None
-        latest_automatic_record = automatic_records[0] if automatic_records else None
-        latest_manual_record = manual_records[0] if manual_records else None
+        inventory = self._inventory_state(backups)
+        records = inventory.records
+        monitoring_records = inventory.monitored
+        automatic_records = inventory.automatic
+        manual_records = inventory.manual
+        latest = inventory.latest
+        latest_automatic_record = inventory.latest_automatic
+        latest_manual_record = inventory.latest_manual
 
         freshness = self._evaluate_freshness(
             now=now,
@@ -361,7 +387,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             minimum_redundant_locations=self.minimum_redundant_locations,
             total_backups=len(monitoring_records),
             inventory_backup_count=len(records),
-            ignored_update_backup_count=ignored_update_count,
+            ignored_update_backup_count=inventory.ignored_update_count,
             automatic_backups=len(automatic_records),
             manual_backups=len(manual_records),
             latest_backup=latest.date if latest else None,
@@ -627,16 +653,16 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             required_location_missing=required_missing,
         )
 
-    def _build_agent_summaries(
-        self,
+    @staticmethod
+    def _index_agent_records(
         inventory_records: tuple[BackupRecord, ...],
         monitoring_records: tuple[BackupRecord, ...],
-        agent_errors: Mapping[str, str],
-        configured_agent_ids: set[str],
-        agent_names: Mapping[str, str],
-        now: datetime,
-    ) -> tuple[BackupAgentSummary, ...]:
-        """Aggregate one health summary per storage agent in linear passes."""
+    ) -> tuple[
+        dict[str, list[BackupRecord]],
+        dict[str, list[BackupRecord]],
+        dict[str, list[int]],
+    ]:
+        """Index inventory records, monitored records, and sizes by agent ID."""
         inventory_by_agent: dict[str, list[BackupRecord]] = defaultdict(list)
         monitoring_by_agent: dict[str, list[BackupRecord]] = defaultdict(list)
         sizes_by_agent: dict[str, list[int]] = defaultdict(list)
@@ -649,55 +675,81 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         for record in monitoring_records:
             for agent_id in record.agents:
                 monitoring_by_agent[agent_id].append(record)
+        return inventory_by_agent, monitoring_by_agent, sizes_by_agent
 
+    @staticmethod
+    def _latest_copy_size(record: BackupRecord | None, agent_id: str) -> int | None:
+        """Return the reported size of one agent's newest monitored copy."""
+        if record is None:
+            return None
+        return next(
+            (copy.size for copy in record.agent_copies if copy.agent_id == agent_id),
+            None,
+        )
+
+    def _agent_summary(
+        self,
+        *,
+        agent_id: str,
+        inventory: list[BackupRecord],
+        monitored: list[BackupRecord],
+        sizes: list[int],
+        error: str | None,
+        storage_name: str | None,
+        now: datetime,
+    ) -> BackupAgentSummary:
+        """Build one storage summary from pre-indexed agent data."""
+        newest = monitored[0] if monitored else None
+        age = precise_age_days(now, newest.date if newest else None)
+        stale = age is None or age > self.max_age_days
+        reference = anonymous_agent_reference(self.config_entry.entry_id, agent_id)
+        return BackupAgentSummary(
+            agent_id=agent_id,
+            agent_reference=reference,
+            storage_name=storage_name or f"Backup storage {reference}",
+            backup_count=len(monitored),
+            inventory_backup_count=len(inventory),
+            ignored_update_backup_count=len(inventory) - len(monitored),
+            latest_backup=newest.date if newest else None,
+            latest_backup_age_days=age,
+            latest_backup_size=self._latest_copy_size(newest, agent_id),
+            stored_bytes=sum(sizes) if sizes else None,
+            error=error,
+            stale=stale,
+            problem=bool(error or stale),
+        )
+
+    def _build_agent_summaries(
+        self,
+        inventory_records: tuple[BackupRecord, ...],
+        monitoring_records: tuple[BackupRecord, ...],
+        agent_errors: Mapping[str, str],
+        configured_agent_ids: set[str],
+        agent_names: Mapping[str, str],
+        now: datetime,
+    ) -> tuple[BackupAgentSummary, ...]:
+        """Aggregate one health summary per storage agent in linear passes."""
+        inventory_by_agent, monitoring_by_agent, sizes_by_agent = (
+            self._index_agent_records(inventory_records, monitoring_records)
+        )
         all_ids = sorted(
             set(inventory_by_agent)
             | set(monitoring_by_agent)
             | set(agent_errors)
             | configured_agent_ids
         )
-        summaries: list[BackupAgentSummary] = []
-        for agent_id in all_ids:
-            inventory = inventory_by_agent.get(agent_id, [])
-            monitored = monitoring_by_agent.get(agent_id, [])
-            newest = monitored[0] if monitored else None
-            newest_size = next(
-                (
-                    copy.size
-                    for copy in (newest.agent_copies if newest else ())
-                    if copy.agent_id == agent_id
-                ),
-                None,
+        return tuple(
+            self._agent_summary(
+                agent_id=agent_id,
+                inventory=inventory_by_agent.get(agent_id, []),
+                monitored=monitoring_by_agent.get(agent_id, []),
+                sizes=sizes_by_agent.get(agent_id, []),
+                error=agent_errors.get(agent_id),
+                storage_name=agent_names.get(agent_id),
+                now=now,
             )
-            age = precise_age_days(now, newest.date if newest else None)
-            stale = age is None or age > self.max_age_days
-            error = agent_errors.get(agent_id)
-            reference = anonymous_agent_reference(self.config_entry.entry_id, agent_id)
-            summaries.append(
-                BackupAgentSummary(
-                    agent_id=agent_id,
-                    agent_reference=reference,
-                    storage_name=agent_names.get(
-                        agent_id,
-                        f"Backup storage {reference}",
-                    ),
-                    backup_count=len(monitored),
-                    inventory_backup_count=len(inventory),
-                    ignored_update_backup_count=len(inventory) - len(monitored),
-                    latest_backup=newest.date if newest else None,
-                    latest_backup_age_days=age,
-                    latest_backup_size=newest_size,
-                    stored_bytes=(
-                        sum(sizes_by_agent[agent_id])
-                        if sizes_by_agent.get(agent_id)
-                        else None
-                    ),
-                    error=error,
-                    stale=stale,
-                    problem=bool(error or stale),
-                )
-            )
-        return tuple(summaries)
+            for agent_id in all_ids
+        )
 
     def _public_location_ids(self, locations: tuple[str, ...]) -> tuple[str, ...]:
         """Return raw or installation-local storage identifiers."""

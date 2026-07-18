@@ -1,0 +1,31 @@
+Name                                                    Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------------------------
+custom_components/backup_checkup/__init__.py              128      1     38      5    96%   118->123, 123->exit, 251->254, 302, 329->exit
+custom_components/backup_checkup/agent_cleanup.py          38      1      8      2    93%   34->exit, 57
+custom_components/backup_checkup/analytics.py             107      1     28      1    99%   113
+custom_components/backup_checkup/backup_normalizer.py     252     29     70     13    87%   55, 70, 84-87, 94-97, 111, 114-117, 131, 141, 155->157, 166-167, 169, 183, 187, 240, 259, 319, 329, 453, 458-459
+custom_components/backup_checkup/binary_sensor.py          78      0     10      1    99%   221->214
+custom_components/backup_checkup/config_flow.py           107      3     34      5    94%   511->533, 516->522, 552-554, 569->586, 570->576
+custom_components/backup_checkup/configuration.py         112     26     32      1    81%   181, 187-188, 286-314
+custom_components/backup_checkup/coordinator.py           482     22    104     13    94%   202->205, 227->229, 254, 532-533, 589->587, 601, 673->671, 847, 917, 1051, 1068-1069, 1071-1072, 1090, 1158->1162, 1173-1179, 1197->exit, 1200-1201, 1216-1223
+custom_components/backup_checkup/diagnostics.py            55      6      8      3    83%   47-54, 170, 173
+custom_components/backup_checkup/integrity.py             716    101    210     50    83%   101-107, 112, 114, 134, 189, 192, 226, 332-333, 395-396, 442, 447, 455, 464, 517-518, 533-538, 581, 607-608, 663-701, 715, 733, 751-752, 765-766, 787->789, 828-836, 838-842, 852-855, 881-892, 970, 1020, 1043, 1045, 1073, 1080-1083, 1085->1095, 1090-1091, 1136, 1220, 1225, 1243-1246, 1261, 1280, 1305-1307, 1310, 1322, 1324, 1349, 1367, 1371, 1374, 1418, 1438, 1449, 1453, 1459, 1467, 1469, 1471, 1479, 1525, 1530, 1539, 1657, 1686, 1695
+custom_components/backup_checkup/models.py                240      1     24      1    99%   35
+custom_components/backup_checkup/notifications.py         154     47     32      7    67%   162-165, 176-178, 179->exit, 194, 207-217, 233-234, 243->248, 249, 258-260, 268, 285-290, 312-314, 336-353, 364-373, 402-407
+custom_components/backup_checkup/repairs.py                56      7     18      3    81%   24, 165-166, 176-188, 209, 213->217
+custom_components/backup_checkup/security.py              212      3     58      1    99%   331-332, 358
+custom_components/backup_checkup/sensor.py                165     31     46      3    75%   58-60, 72-80, 629-638, 643-661, 726->719, 819, 918-919
+custom_components/backup_checkup/storage_cleanup.py        51      7     14      0    89%   38-39, 48-50, 53-54
+tests/conftest.py                                         346     18      4      1    94%   38, 46, 90, 193, 284, 346, 349, 352, 355, 362, 374, 443, 522-528
+tests/test_224_regressions.py                             165      1      0      0    99%   170
+tests/test_branch_coverage.py                             279      2      8      2    99%   430, 676
+tests/test_coordinator_functional.py                      255      1      0      0    99%   38
+tests/test_download_limits.py                              59      0      4      1    98%   59->61
+tests/test_history.py                                      39      1      0      0    97%   27
+tests/test_integration_entrypoint.py                      203      1      4      1    99%   83
+tests/test_repository_metadata.py                          50      0     14      1    98%   79->77
+tests/test_security.py                                     71      0      4      1    99%   92->96
+---------------------------------------------------------------------------------------------------
+TOTAL                                                    6390    310    936    116    94%
+
+30 files skipped due to complete coverage.

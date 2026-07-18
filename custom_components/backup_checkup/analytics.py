@@ -159,7 +159,7 @@ def calculate_inventory_analytics(
 
 def _valid_success_rate(value: float | None) -> float | None:
     """Return a finite percentage in the supported 0-100 range."""
-    if value is None or isinstance(value, bool) or not isinstance(value, (int, float)):
+    if value is None or isinstance(value, bool) or not isinstance(value, int | float):
         return None
     parsed = float(value)
     return parsed if math.isfinite(parsed) and 0.0 <= parsed <= 100.0 else None

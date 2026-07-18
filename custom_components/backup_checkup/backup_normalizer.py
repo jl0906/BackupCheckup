@@ -97,6 +97,14 @@ class ThirdPartyBoundary:
             return None
 
     @staticmethod
+    def mapping_value(value: Any, key: str, default: Any = None) -> Any:
+        """Read one mapping value behind the guarded third-party boundary."""
+        for candidate_key, candidate_value in ThirdPartyBoundary.mapping_items(value):
+            if candidate_key == key:
+                return candidate_value
+        return default
+
+    @staticmethod
     def iterable(value: Any) -> tuple[Any, ...]:
         """Materialize an arbitrary non-string iterable defensively."""
         if isinstance(value, str) or value is None:
@@ -121,6 +129,7 @@ class BackupRecordNormalizer:
         """Convert a value to an aware UTC datetime."""
         if value is None:
             return None
+        parsed: datetime | None
         if isinstance(value, datetime):
             parsed = value
         else:
@@ -140,7 +149,7 @@ class BackupRecordNormalizer:
     @staticmethod
     def as_nonnegative_int(value: Any) -> int | None:
         """Return a finite integral non-negative number without truncation."""
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
+        if isinstance(value, bool) or not isinstance(value, int | float):
             return None
         if isinstance(value, float):
             if not math.isfinite(value) or not value.is_integer():
@@ -168,31 +177,41 @@ class BackupRecordNormalizer:
         return tuple(sorted(normalized))
 
     @staticmethod
-    def addon_slugs(value: Any) -> tuple[str, ...]:
-        """Normalize Home Assistant add-on metadata to sorted slugs."""
+    def _addon_iterable(value: Any) -> tuple[Any, ...]:
+        """Return add-on entries from supported Home Assistant metadata shapes."""
         if value is None:
             return ()
         if isinstance(value, Mapping):
-            iterable = tuple(
-                item for _key, item in ThirdPartyBoundary.mapping_items(value)
-            )
-        elif isinstance(value, str):
-            iterable = (value,)
-        else:
-            iterable = ThirdPartyBoundary.iterable(value)
+            return tuple(item for _key, item in ThirdPartyBoundary.mapping_items(value))
+        if isinstance(value, str):
+            return (value,)
+        return ThirdPartyBoundary.iterable(value)
 
-        slugs: set[str] = set()
-        for addon in iterable:
+    @staticmethod
+    def _addon_slug(addon: Any) -> str | None:
+        """Return one bounded add-on slug from a string, object, or mapping."""
+        if isinstance(addon, str):
+            slug = addon
+        else:
             slug = ThirdPartyBoundary.attribute(addon, "slug", None)
-            if slug is None and isinstance(addon, Mapping):
-                for key, candidate in ThirdPartyBoundary.mapping_items(addon):
-                    if key == "slug":
-                        slug = candidate
-                        break
-            text = ThirdPartyBoundary.text(slug, maximum=_MAX_TEXT_ITEM_LENGTH)
-            if text:
-                slugs.add(text)
-        return tuple(sorted(slugs))
+            if slug is None:
+                slug = ThirdPartyBoundary.mapping_value(addon, "slug")
+        if slug is None:
+            return None
+        return ThirdPartyBoundary.text(slug, maximum=_MAX_TEXT_ITEM_LENGTH)
+
+    @classmethod
+    def addon_slugs(cls, value: Any) -> tuple[str, ...]:
+        """Normalize Home Assistant add-on metadata to sorted slugs."""
+        return tuple(
+            sorted(
+                {
+                    slug
+                    for addon in cls._addon_iterable(value)
+                    if (slug := cls._addon_slug(addon))
+                }
+            )
+        )
 
     @staticmethod
     def compare_copy_sizes(sizes: list[int]) -> CopySizeComparison:
@@ -208,6 +227,18 @@ class BackupRecordNormalizer:
         )
         return CopySizeComparison(spread > tolerance, spread)
 
+    @staticmethod
+    def _agent_detail(value: Any, attribute: str, *mapping_keys: str) -> Any:
+        """Read one agent detail from an attribute and compatible mapping keys."""
+        detail = ThirdPartyBoundary.attribute(value, attribute, None)
+        if detail is not None:
+            return detail
+        for key in mapping_keys:
+            detail = ThirdPartyBoundary.mapping_value(value, key)
+            if detail is not None:
+                return detail
+        return None
+
     def _agent_copy(self, agent_id: Any, details: Any) -> BackupAgentRecord | None:
         """Normalize one backup-agent copy record across HA model versions."""
         normalized_agent_id = ThirdPartyBoundary.text(
@@ -217,16 +248,15 @@ class BackupRecordNormalizer:
         if normalized_agent_id is None:
             return None
 
-        size_raw = ThirdPartyBoundary.attribute(details, "size", None)
-        protected_raw = ThirdPartyBoundary.attribute(details, "protected", None)
+        size_raw = self._agent_detail(details, "size", "size")
+        protected_raw = self._agent_detail(
+            details,
+            "protected",
+            "protected",
+            "is_protected",
+        )
         if protected_raw is None:
             protected_raw = ThirdPartyBoundary.attribute(details, "is_protected", None)
-        if isinstance(details, Mapping):
-            for key, value in ThirdPartyBoundary.mapping_items(details):
-                if key == "size" and size_raw is None:
-                    size_raw = value
-                elif key in {"protected", "is_protected"} and protected_raw is None:
-                    protected_raw = value
 
         return BackupAgentRecord(
             normalized_agent_id,
@@ -235,52 +265,62 @@ class BackupRecordNormalizer:
             protected_raw if isinstance(protected_raw, bool) else None,
         )
 
+    @staticmethod
+    def _deduplicate_copies(
+        copies: list[BackupAgentRecord],
+    ) -> tuple[BackupAgentRecord, ...]:
+        """Return deterministic copies keyed by their normalized agent ID."""
+        deduplicated = {copy.agent_id: copy for copy in copies}
+        return tuple(sorted(deduplicated.values(), key=lambda item: item.agent_id))
+
+    def _mapping_agent_copies(
+        self,
+        value: Mapping[Any, Any],
+    ) -> tuple[tuple[BackupAgentRecord, ...], int]:
+        """Normalize agent copies represented as a mapping."""
+        items = ThirdPartyBoundary.mapping_items(value)
+        if not items:
+            is_empty = ThirdPartyBoundary.mapping_is_empty(value)
+            return (), 0 if is_empty else 1
+
+        normalized = [
+            self._agent_copy(agent_id, details) for agent_id, details in items
+        ]
+        copies = [copy for copy in normalized if copy is not None]
+        return self._deduplicate_copies(copies), len(normalized) - len(copies)
+
+    def _iterable_agent_copies(
+        self,
+        value: Any,
+    ) -> tuple[tuple[BackupAgentRecord, ...], int]:
+        """Normalize legacy agent-ID iterables without copy details."""
+        normalized_ids = [
+            ThirdPartyBoundary.text(agent_id, maximum=_MAX_AGENT_ID_LENGTH)
+            for agent_id in ThirdPartyBoundary.iterable(value)
+        ]
+        copies = [
+            BackupAgentRecord(
+                agent_id,
+                anonymous_agent_reference(self._entry_id, agent_id),
+                None,
+                None,
+            )
+            for agent_id in normalized_ids
+            if agent_id is not None
+        ]
+        return self._deduplicate_copies(copies), normalized_ids.count(None)
+
     def _agent_copies(self, value: Any) -> tuple[tuple[BackupAgentRecord, ...], int]:
         """Normalize all agent copies and return the invalid-copy count."""
-        copies: list[BackupAgentRecord] = []
-        invalid = 0
         if isinstance(value, Mapping):
-            items = ThirdPartyBoundary.mapping_items(value)
-            if not items:
-                is_empty = ThirdPartyBoundary.mapping_is_empty(value)
-                if is_empty is None:
-                    return (), 1
-                if is_empty:
-                    return (), 0
-            for agent_id, details in items:
-                copy = self._agent_copy(agent_id, details)
-                if copy is None:
-                    invalid += 1
-                else:
-                    copies.append(copy)
-        elif isinstance(value, (list, tuple, set, frozenset)):
-            for agent_id in ThirdPartyBoundary.iterable(value):
-                normalized = ThirdPartyBoundary.text(
-                    agent_id,
-                    maximum=_MAX_AGENT_ID_LENGTH,
-                )
-                if normalized is None:
-                    invalid += 1
-                    continue
-                copies.append(
-                    BackupAgentRecord(
-                        normalized,
-                        anonymous_agent_reference(self._entry_id, normalized),
-                        None,
-                        None,
-                    )
-                )
-        else:
-            return (), 1
+            return self._mapping_agent_copies(value)
+        if isinstance(value, list | tuple | set | frozenset):
+            return self._iterable_agent_copies(value)
+        return (), 1
 
-        deduplicated = {copy.agent_id: copy for copy in copies}
-        return (
-            tuple(sorted(deduplicated.values(), key=lambda item: item.agent_id)),
-            invalid,
-        )
-
-    def _normalize_backup(self, backup: Any) -> tuple[BackupRecord, int]:
-        """Normalize one backup or raise ValueError for an unusable record."""
+    @staticmethod
+    def _backup_identity(backup: Any) -> tuple[str, datetime]:
+        """Return validated identity fields required by every backup record."""
         backup_id_raw = ThirdPartyBoundary.attribute(backup, "backup_id", None)
         if not isinstance(backup_id_raw, str):
             raise ValueError("invalid_backup_id")
@@ -288,35 +328,66 @@ class BackupRecordNormalizer:
         if not backup_id or len(backup_id) > _MAX_BACKUP_ID_LENGTH:
             raise ValueError("invalid_backup_id")
 
-        backup_date = self.as_datetime(
+        backup_date = BackupRecordNormalizer.as_datetime(
             ThirdPartyBoundary.attribute(backup, "date", None)
         )
         if backup_date is None:
             raise ValueError("invalid_backup_date")
+        return backup_id, backup_date
 
-        agents_raw = ThirdPartyBoundary.attribute(backup, "agents", {}) or {}
-        agent_copies, invalid_agent_copies = self._agent_copies(agents_raw)
-        agents = tuple(copy.agent_id for copy in agent_copies)
-
-        failed_agents = self.string_tuple(
+    @staticmethod
+    def _failed_components(
+        backup: Any,
+    ) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+        """Return normalized failed agent, add-on, and folder identifiers."""
+        failed_agents = BackupRecordNormalizer.string_tuple(
             ThirdPartyBoundary.attribute(backup, "failed_agent_ids", None)
             or ThirdPartyBoundary.attribute(backup, "failed_agents", None)
         )
-        failed_addons = self.string_tuple(
+        failed_addons = BackupRecordNormalizer.string_tuple(
             ThirdPartyBoundary.attribute(backup, "failed_addons", None)
             or ThirdPartyBoundary.attribute(backup, "failed_addon_ids", None)
         )
-        failed_folders = self.string_tuple(
+        failed_folders = BackupRecordNormalizer.string_tuple(
             ThirdPartyBoundary.attribute(backup, "failed_folders", None)
             or ThirdPartyBoundary.attribute(backup, "failed_folder_ids", None)
         )
+        return failed_agents, failed_addons, failed_folders
 
+    def _copy_size_details(
+        self,
+        backup: Any,
+        agent_copies: tuple[BackupAgentRecord, ...],
+    ) -> tuple[int | None, CopySizeComparison]:
+        """Return the canonical size and redundant-copy comparison."""
         known_sizes = [copy.size for copy in agent_copies if copy.size is not None]
         legacy_size = self.as_nonnegative_int(
             ThirdPartyBoundary.attribute(backup, "size", None)
         )
         size = max(known_sizes) if known_sizes else legacy_size
-        size_comparison = self.compare_copy_sizes(known_sizes)
+        return size, self.compare_copy_sizes(known_sizes)
+
+    @staticmethod
+    def _backup_name(backup: Any) -> str:
+        """Return the bounded display name without exposing conversion failures."""
+        return (
+            ThirdPartyBoundary.text(
+                ThirdPartyBoundary.attribute(backup, "name", ""),
+                maximum=_MAX_BACKUP_NAME_LENGTH,
+                strip=False,
+            )
+            or ""
+        )
+
+    def _normalize_backup(self, backup: Any) -> tuple[BackupRecord, int]:
+        """Normalize one backup or raise ValueError for an unusable record."""
+        backup_id, backup_date = self._backup_identity(backup)
+        agent_copies, invalid_agent_copies = self._agent_copies(
+            ThirdPartyBoundary.attribute(backup, "agents", {}) or {}
+        )
+        agents = tuple(copy.agent_id for copy in agent_copies)
+        failed_agents, failed_addons, failed_folders = self._failed_components(backup)
+        size, size_comparison = self._copy_size_details(backup, agent_copies)
         automatic = (
             ThirdPartyBoundary.attribute(backup, "with_automatic_settings", None)
             is True
@@ -333,14 +404,6 @@ class BackupRecordNormalizer:
         homeassistant_included = self.as_bool(
             ThirdPartyBoundary.attribute(backup, "homeassistant_included", None)
         )
-        name = (
-            ThirdPartyBoundary.text(
-                ThirdPartyBoundary.attribute(backup, "name", ""),
-                maximum=_MAX_BACKUP_NAME_LENGTH,
-                strip=False,
-            )
-            or ""
-        )
         purpose = classify_backup_purpose(
             automatic=automatic,
             extra_metadata=ThirdPartyBoundary.attribute(backup, "extra_metadata", None),
@@ -349,7 +412,7 @@ class BackupRecordNormalizer:
         record = BackupRecord(
             backup_id=backup_id,
             backup_reference=anonymous_backup_reference(self._entry_id, backup_id),
-            name=name,
+            name=self._backup_name(backup),
             date=backup_date,
             automatic=automatic,
             purpose=purpose,

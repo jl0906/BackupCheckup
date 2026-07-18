@@ -10,8 +10,9 @@ import sqlite3
 import tarfile
 import time
 import unicodedata
-from collections.abc import Mapping
-from dataclasses import dataclass, replace
+from collections.abc import Iterator, Mapping
+from contextlib import closing, contextmanager, suppress
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -27,7 +28,6 @@ from .const import (
     INTEGRITY_DATABASE_FAILED,
     INTEGRITY_DATABASE_NOT_APPLICABLE,
     INTEGRITY_DATABASE_NOT_CHECKED,
-    INTEGRITY_DATABASE_NOT_FOUND,
     INTEGRITY_DATABASE_PASSED,
     INTEGRITY_STATUS_ABORTED,
     INTEGRITY_STATUS_CORRUPT,
@@ -62,6 +62,13 @@ _KNOWN_OPTIONAL_INNER_ARCHIVES = frozenset({"supervisor"})
 _DATABASE_FILENAME = "home-assistant_v2.db"
 _DATABASE_PATH = PurePosixPath("data/home-assistant_v2.db")
 _METADATA_PATH = PurePosixPath("backup.json")
+_FAILURE_RANKS = {
+    INTEGRITY_STATUS_ABORTED: 1,
+    INTEGRITY_STATUS_UNREADABLE: 1,
+    INTEGRITY_STATUS_PASSWORD_REQUIRED: 2,
+    INTEGRITY_STATUS_INTERNAL_ERROR: 3,
+    INTEGRITY_STATUS_CORRUPT: 4,
+}
 _GLOBAL_LIMIT_CODES = frozenset(
     {
         "verification_cancelled",
@@ -78,6 +85,33 @@ class _DuplicateJsonKeyError(ValueError):
 
 class _BackupPasswordRequiredError(Exception):
     """Raised when archive metadata requires a password that is unavailable."""
+
+
+@dataclass(slots=True)
+class _DatabaseCheckControl:
+    """Track cooperative SQLite timeout and cancellation state."""
+
+    budget: VerificationBudget
+    deadline: float
+    timed_out: bool = False
+    cancelled: bool = False
+
+    def progress_handler(self) -> int:
+        """Return non-zero when SQLite should abort its current operation."""
+        if self.budget.cancellation_event.is_set():
+            self.cancelled = True
+            return 1
+        if time.monotonic() >= self.deadline:
+            self.timed_out = True
+            return 1
+        return 0
+
+    def raise_if_stopped(self) -> None:
+        """Raise the stable resource-limit error matching the stop reason."""
+        if self.cancelled or self.budget.cancellation_event.is_set():
+            raise VerificationLimitError("verification_cancelled")
+        if self.timed_out or time.monotonic() >= self.deadline:
+            raise VerificationLimitError("database_timeout")
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,6 +132,70 @@ class IntegrityStoreState:
         if self.retry_backup_id and self.retry_error_key:
             return (self.retry_backup_id, self.retry_error_key)
         return None
+
+
+@dataclass(frozen=True, slots=True)
+class _CandidateOutcome:
+    """Result of one storage-copy attempt."""
+
+    result: BackupIntegrityResult | None
+    final: bool = False
+    download_failed: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class _PreparedCandidate:
+    """Validated per-copy resources before downloading a backup."""
+
+    agent_id: str
+    path: Path
+    budget: VerificationBudget
+    expected_size: int | None
+    protected: bool
+
+
+@dataclass(frozen=True, slots=True)
+class _DownloadedCandidate:
+    """Downloaded storage copy with integrity metadata."""
+
+    prepared: _PreparedCandidate
+    downloaded_size: int
+    digest: str
+    warnings: tuple[str, ...]
+    checksum_changed: bool
+
+
+@dataclass(slots=True)
+class _ArchiveScan:
+    """Counts and logical names collected from the streamed outer archive."""
+
+    archive_count: int = 0
+    file_count: int = 0
+    inner_names: set[str] = field(default_factory=set)
+
+
+@dataclass(slots=True)
+class _VerificationFailures:
+    """Aggregate failed-copy state while redundant locations are attempted."""
+
+    best: BackupIntegrityResult | None = None
+    copy_failures: int = 0
+    download_failures: int = 0
+
+    def record(self, outcome: _CandidateOutcome) -> None:
+        """Remember one recoverable candidate failure."""
+        self.copy_failures += 1
+        if outcome.download_failed:
+            self.download_failures += 1
+        result = outcome.result
+        if result is None:
+            return
+        if self.best is None or _FAILURE_RANKS.get(
+            result.status, 0
+        ) > _FAILURE_RANKS.get(self.best.status, 0):
+            self.best = result
+
+
 
 
 class BackupIntegrityStore:
@@ -130,55 +228,52 @@ class BackupIntegrityStore:
             parsed = parsed.replace(tzinfo=UTC)
         return dt_util.as_utc(parsed)
 
+    @staticmethod
+    def _bounded_store_text(value: Any, maximum: int) -> str | None:
+        """Return one non-empty bounded string from persisted private state."""
+        return value[:maximum] if isinstance(value, str) and value else None
+
+    @staticmethod
+    def _retry_attempts(value: Any) -> int:
+        """Return a bounded retry count from persisted private state."""
+        if isinstance(value, bool) or not isinstance(value, int):
+            return 0
+        return value if 0 <= value <= 100 else 0
+
     @classmethod
-    def _state_from_stored(cls, stored: dict[str, Any]) -> IntegrityStoreState:
-        """Read both the legacy result shape and the 2.2.4 envelope."""
+    def _result_and_runtime_data(
+        cls,
+        stored: dict[str, Any],
+    ) -> tuple[dict[str, Any], dict[str, Any], str | None, datetime | None]:
+        """Split legacy result-only data from the current state envelope."""
         result_data = stored.get("result")
         if result_data is None:
-            result_data = stored
-            retry_data: Any = {}
-            password_marker = None
-            last_manual = None
-        else:
-            retry_data = stored.get("retry", {})
-            password_marker = stored.get("password_marker")
-            last_manual = cls._parse_datetime(stored.get("last_manual_verification_at"))
+            return stored, {}, None, None
+        retry_data = stored.get("retry")
+        return (
+            result_data,
+            retry_data if isinstance(retry_data, dict) else {},
+            cls._bounded_store_text(stored.get("password_marker"), 128),
+            cls._parse_datetime(stored.get("last_manual_verification_at")),
+        )
 
+    @classmethod
+    def _state_from_stored(cls, stored: dict[str, Any]) -> IntegrityStoreState:
+        """Read both the legacy result shape and the 2.2.4+ envelope."""
+        result_data, retry_data, password_marker, last_manual = (
+            cls._result_and_runtime_data(stored)
+        )
         if not isinstance(
             result_data, dict
         ) or not BackupIntegrityResult.storage_dict_is_valid(result_data):
             raise ValueError("invalid_store_content")
-        result = BackupIntegrityResult.from_dict(result_data)
 
-        retry_backup_id = None
-        retry_error_key = None
-        retry_attempts = 0
-        retry_not_before = None
-        if isinstance(retry_data, dict):
-            candidate_backup = retry_data.get("backup_id")
-            candidate_error = retry_data.get("error_key")
-            candidate_attempts = retry_data.get("attempts")
-            if isinstance(candidate_backup, str) and candidate_backup:
-                retry_backup_id = candidate_backup[:256]
-            if isinstance(candidate_error, str) and candidate_error:
-                retry_error_key = candidate_error[:128]
-            if (
-                isinstance(candidate_attempts, int)
-                and not isinstance(candidate_attempts, bool)
-                and 0 <= candidate_attempts <= 100
-            ):
-                retry_attempts = candidate_attempts
-            retry_not_before = cls._parse_datetime(retry_data.get("not_before"))
-        if not isinstance(password_marker, str) or not password_marker:
-            password_marker = None
-        else:
-            password_marker = password_marker[:128]
         return IntegrityStoreState(
-            result=result,
-            retry_backup_id=retry_backup_id,
-            retry_error_key=retry_error_key,
-            retry_attempts=retry_attempts,
-            retry_not_before=retry_not_before,
+            result=BackupIntegrityResult.from_dict(result_data),
+            retry_backup_id=cls._bounded_store_text(retry_data.get("backup_id"), 256),
+            retry_error_key=cls._bounded_store_text(retry_data.get("error_key"), 128),
+            retry_attempts=cls._retry_attempts(retry_data.get("attempts")),
+            retry_not_before=cls._parse_datetime(retry_data.get("not_before")),
             password_marker=password_marker,
             last_manual_verification_at=last_manual,
         )
@@ -336,19 +431,16 @@ class BackupIntegrityVerifier:
     ) -> BackupIntegrityResult:
         """Verify an available backup copy and fall back to another agent if needed."""
         started = time.monotonic()
-        try:
-            overall_budget = VerificationBudget.from_options(
-                max_download_gb=max_download_gb,
-                max_expanded_gb=max_expanded_gb,
-                timeout_minutes=timeout_minutes,
-            )
-        except VerificationLimitError as err:
-            return self._failure(
-                INTEGRITY_STATUS_ABORTED,
-                record,
-                started,
-                error_code=err.code,
-            )
+        budget_or_failure = self._verification_budget(
+            record,
+            started=started,
+            max_download_gb=max_download_gb,
+            max_expanded_gb=max_expanded_gb,
+            timeout_minutes=timeout_minutes,
+        )
+        if isinstance(budget_or_failure, BackupIntegrityResult):
+            return budget_or_failure
+
         manager = async_get_manager(self.hass)
         manager_agents = getattr(manager, "backup_agents", None)
         if not isinstance(manager_agents, Mapping):
@@ -366,10 +458,76 @@ class BackupIntegrityVerifier:
                 started,
                 error_code="no_available_storage_agent",
             )
-        password = self._backup_password(manager)
 
+        temp_dir = await self._async_create_temp_directory(record, started)
+        if isinstance(temp_dir, BackupIntegrityResult):
+            return temp_dir
+
+        failures = _VerificationFailures()
         try:
-            temp_dir = await self.hass.async_add_executor_job(
+            previous = await self.store.async_load()
+            for index, candidate_id in enumerate(candidate_agents):
+                outcome = await self._async_verify_candidate(
+                    record=record,
+                    started=started,
+                    overall_budget=budget_or_failure,
+                    manager_agents=manager_agents,
+                    candidate_id=candidate_id,
+                    candidate_path=temp_dir / f"backup-{index}.tar",
+                    temp_dir=temp_dir,
+                    password=self._backup_password(manager),
+                    previous=previous,
+                    database_check=database_check,
+                    database_timeout_minutes=database_timeout_minutes,
+                    prior_copy_failures=failures.copy_failures,
+                )
+                if outcome.final:
+                    if outcome.result is None:
+                        return self._failure(
+                            INTEGRITY_STATUS_INTERNAL_ERROR,
+                            record,
+                            started,
+                            error_code="candidate_result_missing",
+                        )
+                    return outcome.result
+                failures.record(outcome)
+
+            return self._aggregate_failure(record, started, failures)
+        finally:
+            await self._async_cleanup_verification_data(
+                temp_dir, repair_issues_enabled=repair_issues_enabled
+            )
+
+    @staticmethod
+    def _verification_budget(
+        record: BackupRecord,
+        *,
+        started: float,
+        max_download_gb: int,
+        max_expanded_gb: int,
+        timeout_minutes: int,
+    ) -> VerificationBudget | BackupIntegrityResult:
+        """Build the global resource budget or a stable aborted result."""
+        try:
+            return VerificationBudget.from_options(
+                max_download_gb=max_download_gb,
+                max_expanded_gb=max_expanded_gb,
+                timeout_minutes=timeout_minutes,
+            )
+        except VerificationLimitError as err:
+            return BackupIntegrityVerifier._failure(
+                INTEGRITY_STATUS_ABORTED,
+                record,
+                started,
+                error_code=err.code,
+            )
+
+    async def _async_create_temp_directory(
+        self, record: BackupRecord, started: float
+    ) -> Path | BackupIntegrityResult:
+        """Create private verification storage or return a stable failure."""
+        try:
+            return await self.hass.async_add_executor_job(
                 create_private_temp_directory
             )
         except OSError as err:
@@ -384,386 +542,513 @@ class BackupIntegrityVerifier:
                 error_code="temporary_storage_unavailable",
             )
 
-        failure_ranks = {
-            INTEGRITY_STATUS_ABORTED: 1,
-            INTEGRITY_STATUS_UNREADABLE: 1,
-            INTEGRITY_STATUS_PASSWORD_REQUIRED: 2,
-            INTEGRITY_STATUS_INTERNAL_ERROR: 3,
-            INTEGRITY_STATUS_CORRUPT: 4,
-        }
-        best_failure: BackupIntegrityResult | None = None
-        copy_failures = 0
-        download_failures = 0
+    async def _async_verify_candidate(
+        self,
+        *,
+        record: BackupRecord,
+        started: float,
+        overall_budget: VerificationBudget,
+        manager_agents: Mapping[str, Any],
+        candidate_id: str,
+        candidate_path: Path,
+        temp_dir: Path,
+        password: str | None,
+        previous: BackupIntegrityResult,
+        database_check: bool,
+        database_timeout_minutes: int,
+        prior_copy_failures: int,
+    ) -> _CandidateOutcome:
+        """Verify one prepared copy and classify whether another should be tried."""
+        prepared = await self._async_prepare_candidate(
+            record=record,
+            started=started,
+            overall_budget=overall_budget,
+            candidate_id=candidate_id,
+            candidate_path=candidate_path,
+            temp_dir=temp_dir,
+        )
+        if isinstance(prepared, _CandidateOutcome):
+            return prepared
 
-        def remember_failure(result: BackupIntegrityResult) -> None:
-            nonlocal best_failure
-            if best_failure is None or failure_ranks.get(
-                result.status, 0
-            ) > failure_ranks.get(best_failure.status, 0):
-                best_failure = result
+        downloaded = await self._async_download_candidate(
+            record=record,
+            started=started,
+            prepared=prepared,
+            agent=manager_agents[candidate_id],
+            previous=previous,
+        )
+        if isinstance(downloaded, _CandidateOutcome):
+            return downloaded
 
+        return await self._async_verify_downloaded_candidate(
+            record=record,
+            started=started,
+            downloaded=downloaded,
+            temp_dir=temp_dir,
+            password=password,
+            database_check=database_check,
+            database_timeout_minutes=database_timeout_minutes,
+            prior_copy_failures=prior_copy_failures,
+        )
+
+    async def _async_prepare_candidate(
+        self,
+        *,
+        record: BackupRecord,
+        started: float,
+        overall_budget: VerificationBudget,
+        candidate_id: str,
+        candidate_path: Path,
+        temp_dir: Path,
+    ) -> _PreparedCandidate | _CandidateOutcome:
+        """Allocate and validate one independent per-copy resource budget."""
         try:
-            previous = await self.store.async_load()
-            for index, candidate_id in enumerate(candidate_agents):
-                try:
-                    copy_budget = overall_budget.for_copy()
-                except VerificationLimitError as err:
-                    return self._failure(
-                        INTEGRITY_STATUS_ABORTED,
-                        record,
-                        started,
-                        agent_id=candidate_id,
-                        error_code=err.code,
-                    )
-                copy = next(
-                    (
-                        item
-                        for item in record.agent_copies
-                        if item.agent_id == candidate_id
-                    ),
-                    None,
-                )
-                candidate_expected = copy.size if copy else None
-                candidate_protected = bool(copy and copy.protected)
-                try:
-                    copy_budget.validate_expected_download(candidate_expected)
-                    await self.hass.async_add_executor_job(
-                        copy_budget.check_free_space,
-                        temp_dir,
-                        candidate_expected or 0,
-                    )
-                except VerificationLimitError as err:
-                    failure = self._failure(
-                        INTEGRITY_STATUS_ABORTED,
-                        record,
-                        started,
-                        agent_id=candidate_id,
-                        error_code=err.code,
-                    )
-                    if err.code in _GLOBAL_LIMIT_CODES:
-                        return failure
-                    remember_failure(failure)
-                    copy_failures += 1
-                    continue
-
-                candidate_path = temp_dir / f"backup-{index}.tar"
-                try:
-                    downloaded_size, digest = await self._async_download(
-                        manager_agents[candidate_id],
-                        record.backup_id,
-                        candidate_path,
-                        copy_budget,
-                    )
-                except VerificationLimitError as err:
-                    _LOGGER.warning(
-                        "Backup verification download stopped by safety limit: "
-                        "agent=%s code=%s",
-                        safe_log_value(candidate_id),
-                        err.code,
-                    )
-                    failure = self._failure(
-                        INTEGRITY_STATUS_ABORTED,
-                        record,
-                        started,
-                        agent_id=candidate_id,
-                        error_code=err.code,
-                    )
-                    try:
-                        candidate_path.unlink(missing_ok=True)
-                    except OSError:
-                        pass
-                    if err.code in _GLOBAL_LIMIT_CODES:
-                        return failure
-                    remember_failure(failure)
-                    copy_failures += 1
-                    continue
-                except TimeoutError:
-                    return self._failure(
-                        INTEGRITY_STATUS_ABORTED,
-                        record,
-                        started,
-                        agent_id=candidate_id,
-                        error_code="verification_timeout",
-                    )
-                except Exception as err:  # noqa: BLE001
-                    download_failures += 1
-                    copy_failures += 1
-                    _LOGGER.warning(
-                        "Unable to download one backup copy; trying another: "
-                        "agent=%s error_type=%s",
-                        safe_log_value(candidate_id),
-                        safe_error_type(err),
-                    )
-                    try:
-                        candidate_path.unlink(missing_ok=True)
-                    except OSError:
-                        pass
-                    continue
-
-                warnings: list[str] = []
-                if record.copy_size_mismatch:
-                    warnings.append("storage_copy_size_mismatch")
-                if (
-                    candidate_expected is not None
-                    and downloaded_size != candidate_expected
-                ):
-                    warnings.append("reported_size_mismatch")
-                checksum_changed = bool(
-                    previous.backup_id == record.backup_id
-                    and previous.agent_id == candidate_id
-                    and previous.sha256
-                    and previous.sha256 != digest
-                )
-                if checksum_changed:
-                    warnings.append("checksum_changed")
-
-                if candidate_protected and password is None:
-                    remember_failure(
-                        self._result(
-                            INTEGRITY_STATUS_PASSWORD_REQUIRED,
-                            record,
-                            started,
-                            agent_id=candidate_id,
-                            digest=digest,
-                            downloaded_size=downloaded_size,
-                            protected=candidate_protected,
-                            warnings=warnings,
-                            error_code="password_required",
-                            checksum_changed=checksum_changed,
-                        )
-                    )
-                    copy_failures += 1
-                    try:
-                        candidate_path.unlink(missing_ok=True)
-                    except OSError:
-                        pass
-                    continue
-
-                database_path = temp_dir / _DATABASE_FILENAME
-                try:
-                    database_path.unlink(missing_ok=True)
-                except OSError:
-                    return self._result(
-                        INTEGRITY_STATUS_UNREADABLE,
-                        record,
-                        started,
-                        agent_id=candidate_id,
-                        digest=digest,
-                        downloaded_size=downloaded_size,
-                        protected=candidate_protected,
-                        warnings=warnings,
-                        error_code="temporary_database_cleanup_failed",
-                        checksum_changed=checksum_changed,
-                    )
-
-                archive_future = self.hass.async_add_executor_job(
-                    self._verify_archive,
-                    candidate_path,
-                    temp_dir,
-                    password,
-                    candidate_protected,
-                    database_check,
-                    database_timeout_minutes,
-                    copy_budget,
-                )
-                candidate_failure: BackupIntegrityResult | None = None
-                try:
-                    details = await asyncio.shield(archive_future)
-                except asyncio.CancelledError:
-                    copy_budget.cancel()
-                    try:
-                        await archive_future
-                    except Exception as worker_err:  # noqa: BLE001
-                        _LOGGER.debug(
-                            "Cancelled verification worker stopped: error_type=%s",
-                            safe_error_type(worker_err),
-                        )
-                    raise
-                except (_BackupPasswordRequiredError, InvalidPasswordError) as err:
-                    _LOGGER.debug(
-                        "Backup password validation failed: error_type=%s",
-                        safe_error_type(err),
-                    )
-                    candidate_failure = self._result(
-                        INTEGRITY_STATUS_PASSWORD_REQUIRED,
-                        record,
-                        started,
-                        agent_id=candidate_id,
-                        digest=digest,
-                        downloaded_size=downloaded_size,
-                        protected=candidate_protected,
-                        warnings=warnings,
-                        error_code="password_required",
-                        checksum_changed=checksum_changed,
-                    )
-                except VerificationLimitError as err:
-                    _LOGGER.warning(
-                        "Backup verification stopped by safety limit: code=%s", err.code
-                    )
-                    candidate_failure = self._result(
-                        INTEGRITY_STATUS_ABORTED,
-                        record,
-                        started,
-                        agent_id=candidate_id,
-                        digest=digest,
-                        downloaded_size=downloaded_size,
-                        protected=candidate_protected,
-                        warnings=warnings,
-                        error_code=err.code,
-                        checksum_changed=checksum_changed,
-                    )
-                    if err.code in _GLOBAL_LIMIT_CODES:
-                        return candidate_failure
-                except (
-                    tarfile.TarError,
-                    SecureTarError,
-                    json.JSONDecodeError,
-                    KeyError,
-                    ValueError,
-                ) as err:
-                    _LOGGER.warning(
-                        "One backup copy is corrupt or invalid; trying another: "
-                        "agent=%s error_type=%s",
-                        safe_log_value(candidate_id),
-                        safe_error_type(err),
-                    )
-                    candidate_failure = self._result(
-                        INTEGRITY_STATUS_CORRUPT,
-                        record,
-                        started,
-                        agent_id=candidate_id,
-                        digest=digest,
-                        downloaded_size=downloaded_size,
-                        protected=candidate_protected,
-                        warnings=warnings,
-                        error_code="archive_invalid",
-                        checksum_changed=checksum_changed,
-                    )
-                except OSError as err:
-                    _LOGGER.warning(
-                        "One backup copy could not be read; trying another: "
-                        "agent=%s error_type=%s",
-                        safe_log_value(candidate_id),
-                        safe_error_type(err),
-                    )
-                    candidate_failure = self._result(
-                        INTEGRITY_STATUS_UNREADABLE,
-                        record,
-                        started,
-                        agent_id=candidate_id,
-                        digest=digest,
-                        downloaded_size=downloaded_size,
-                        protected=candidate_protected,
-                        warnings=warnings,
-                        error_code="read_failed",
-                        checksum_changed=checksum_changed,
-                    )
-                except Exception as err:  # noqa: BLE001
-                    _LOGGER.error(
-                        "Unexpected verification failure for one backup copy: "
-                        "agent=%s error_type=%s",
-                        safe_log_value(candidate_id),
-                        safe_error_type(err),
-                    )
-                    candidate_failure = self._result(
-                        INTEGRITY_STATUS_INTERNAL_ERROR,
-                        record,
-                        started,
-                        agent_id=candidate_id,
-                        digest=digest,
-                        downloaded_size=downloaded_size,
-                        protected=candidate_protected,
-                        warnings=warnings,
-                        error_code="internal_error",
-                        checksum_changed=checksum_changed,
-                    )
-
-                if candidate_failure is not None:
-                    remember_failure(candidate_failure)
-                    copy_failures += 1
-                    try:
-                        candidate_path.unlink(missing_ok=True)
-                    except OSError:
-                        pass
-                    continue
-
-                warnings.extend(details["warnings"])
-                if copy_failures:
-                    warnings.extend(
-                        (
-                            "alternate_storage_copy_used",
-                            "storage_copy_verification_failed",
-                        )
-                    )
-                database_status = details["database_status"]
-                if database_status == INTEGRITY_DATABASE_FAILED:
-                    warnings.append("database_integrity_failed")
-
-                status = (
-                    INTEGRITY_STATUS_VALID_WITH_WARNINGS
-                    if warnings
-                    else INTEGRITY_STATUS_VALID
-                )
-                if database_status == INTEGRITY_DATABASE_FAILED:
-                    status = INTEGRITY_STATUS_CORRUPT
-
-                return BackupIntegrityResult(
-                    status=status,
-                    checked_at=dt_util.utcnow(),
-                    backup_id=record.backup_id,
-                    backup_reference=record.backup_reference,
-                    backup_date=record.date,
+            copy_budget = overall_budget.for_copy()
+        except VerificationLimitError as err:
+            return _CandidateOutcome(
+                self._failure(
+                    INTEGRITY_STATUS_ABORTED,
+                    record,
+                    started,
                     agent_id=candidate_id,
-                    sha256=digest,
-                    verified_size=downloaded_size,
-                    duration_seconds=round(time.monotonic() - started, 2),
-                    archive_count=details["archive_count"],
-                    file_count=details["file_count"],
-                    protected=details["protected"],
-                    database_status=database_status,
-                    warnings=tuple(dict.fromkeys(warnings)),
-                    error_code=(
-                        "database_integrity_failed"
-                        if database_status == INTEGRITY_DATABASE_FAILED
-                        else None
-                    ),
-                    checksum_changed=checksum_changed,
-                )
+                    error_code=err.code,
+                ),
+                final=True,
+            )
 
-            if best_failure is not None:
-                return replace(
-                    best_failure,
-                    warnings=tuple(
-                        dict.fromkeys(
-                            (*best_failure.warnings, "all_storage_copies_failed")
-                        )
-                    ),
-                )
-            return self._failure(
-                INTEGRITY_STATUS_UNREADABLE,
+        copy = next(
+            (item for item in record.agent_copies if item.agent_id == candidate_id),
+            None,
+        )
+        expected_size = copy.size if copy else None
+        protected = bool(copy and copy.protected)
+        try:
+            copy_budget.validate_expected_download(expected_size)
+            await self.hass.async_add_executor_job(
+                copy_budget.check_free_space, temp_dir, expected_size or 0
+            )
+        except VerificationLimitError as err:
+            failure = self._failure(
+                INTEGRITY_STATUS_ABORTED,
                 record,
                 started,
-                error_code=(
-                    "download_failed_all_copies"
-                    if download_failures > 1
-                    else "download_failed"
+                agent_id=candidate_id,
+                error_code=err.code,
+            )
+            return _CandidateOutcome(
+                failure, final=err.code in _GLOBAL_LIMIT_CODES
+            )
+        return _PreparedCandidate(
+            agent_id=candidate_id,
+            path=candidate_path,
+            budget=copy_budget,
+            expected_size=expected_size,
+            protected=protected,
+        )
+
+    async def _async_download_candidate(
+        self,
+        *,
+        record: BackupRecord,
+        started: float,
+        prepared: _PreparedCandidate,
+        agent: Any,
+        previous: BackupIntegrityResult,
+    ) -> _DownloadedCandidate | _CandidateOutcome:
+        """Download one copy and map controlled boundary failures."""
+        try:
+            downloaded_size, digest = await self._async_download(
+                agent, record.backup_id, prepared.path, prepared.budget
+            )
+        except VerificationLimitError as err:
+            _LOGGER.warning(
+                "Backup verification download stopped by safety limit: "
+                "agent=%s code=%s",
+                safe_log_value(prepared.agent_id),
+                err.code,
+            )
+            self._remove_candidate_file(prepared.path)
+            return _CandidateOutcome(
+                self._failure(
+                    INTEGRITY_STATUS_ABORTED,
+                    record,
+                    started,
+                    agent_id=prepared.agent_id,
+                    error_code=err.code,
+                ),
+                final=err.code in _GLOBAL_LIMIT_CODES,
+            )
+        except TimeoutError:
+            self._remove_candidate_file(prepared.path)
+            return _CandidateOutcome(
+                self._failure(
+                    INTEGRITY_STATUS_ABORTED,
+                    record,
+                    started,
+                    agent_id=prepared.agent_id,
+                    error_code="verification_timeout",
+                ),
+                final=True,
+            )
+        except Exception as err:  # noqa: BLE001 - backup-agent download boundary
+            _LOGGER.warning(
+                "Unable to download one backup copy; trying another: "
+                "agent=%s error_type=%s",
+                safe_log_value(prepared.agent_id),
+                safe_error_type(err),
+            )
+            self._remove_candidate_file(prepared.path)
+            return _CandidateOutcome(None, download_failed=True)
+
+        warnings = self._candidate_warnings(
+            record,
+            expected_size=prepared.expected_size,
+            downloaded_size=downloaded_size,
+        )
+        checksum_changed = bool(
+            previous.backup_id == record.backup_id
+            and previous.agent_id == prepared.agent_id
+            and previous.sha256
+            and previous.sha256 != digest
+        )
+        if checksum_changed:
+            warnings.append("checksum_changed")
+        return _DownloadedCandidate(
+            prepared=prepared,
+            downloaded_size=downloaded_size,
+            digest=digest,
+            warnings=tuple(warnings),
+            checksum_changed=checksum_changed,
+        )
+
+    @staticmethod
+    def _candidate_warnings(
+        record: BackupRecord, *, expected_size: int | None, downloaded_size: int
+    ) -> list[str]:
+        """Return warnings known before archive inspection."""
+        warnings: list[str] = []
+        if record.copy_size_mismatch:
+            warnings.append("storage_copy_size_mismatch")
+        if expected_size is not None and downloaded_size != expected_size:
+            warnings.append("reported_size_mismatch")
+        return warnings
+
+    async def _async_verify_downloaded_candidate(
+        self,
+        *,
+        record: BackupRecord,
+        started: float,
+        downloaded: _DownloadedCandidate,
+        temp_dir: Path,
+        password: str | None,
+        database_check: bool,
+        database_timeout_minutes: int,
+        prior_copy_failures: int,
+    ) -> _CandidateOutcome:
+        """Inspect a downloaded archive and produce a final or retryable result."""
+        prepared = downloaded.prepared
+        if prepared.protected and password is None:
+            self._remove_candidate_file(prepared.path)
+            return _CandidateOutcome(
+                self._downloaded_result(
+                    INTEGRITY_STATUS_PASSWORD_REQUIRED,
+                    record,
+                    started,
+                    downloaded,
+                    error_code="password_required",
+                )
+            )
+
+        database_path = temp_dir / _DATABASE_FILENAME
+        try:
+            database_path.unlink(missing_ok=True)
+        except OSError:
+            return _CandidateOutcome(
+                self._downloaded_result(
+                    INTEGRITY_STATUS_UNREADABLE,
+                    record,
+                    started,
+                    downloaded,
+                    error_code="temporary_database_cleanup_failed",
+                ),
+                final=True,
+            )
+
+        archive_result = await self._async_archive_details(
+            record=record,
+            started=started,
+            downloaded=downloaded,
+            temp_dir=temp_dir,
+            password=password,
+            database_check=database_check,
+            database_timeout_minutes=database_timeout_minutes,
+        )
+        if isinstance(archive_result, _CandidateOutcome):
+            if not archive_result.final:
+                self._remove_candidate_file(prepared.path)
+            return archive_result
+
+        return _CandidateOutcome(
+            self._completed_result(
+                record,
+                started=started,
+                downloaded=downloaded,
+                details=archive_result,
+                prior_copy_failures=prior_copy_failures,
+            ),
+            final=True,
+        )
+
+    async def _async_archive_details(
+        self,
+        *,
+        record: BackupRecord,
+        started: float,
+        downloaded: _DownloadedCandidate,
+        temp_dir: Path,
+        password: str | None,
+        database_check: bool,
+        database_timeout_minutes: int,
+    ) -> dict[str, Any] | _CandidateOutcome:
+        """Run blocking archive verification and classify its failures."""
+        prepared = downloaded.prepared
+        archive_future = self.hass.async_add_executor_job(
+            self._verify_archive,
+            prepared.path,
+            temp_dir,
+            password,
+            prepared.protected,
+            database_check,
+            database_timeout_minutes,
+            prepared.budget,
+        )
+        try:
+            return await asyncio.shield(archive_future)
+        except asyncio.CancelledError:
+            prepared.budget.cancel()
+            try:
+                await archive_future
+            except Exception as worker_err:  # noqa: BLE001 - worker shutdown boundary
+                _LOGGER.debug(
+                    "Cancelled verification worker stopped: error_type=%s",
+                    safe_error_type(worker_err),
+                )
+            raise
+        except (_BackupPasswordRequiredError, InvalidPasswordError) as err:
+            _LOGGER.debug(
+                "Backup password validation failed: error_type=%s",
+                safe_error_type(err),
+            )
+            return _CandidateOutcome(
+                self._downloaded_result(
+                    INTEGRITY_STATUS_PASSWORD_REQUIRED,
+                    record,
+                    started,
+                    downloaded,
+                    error_code="password_required",
+                )
+            )
+        except VerificationLimitError as err:
+            _LOGGER.warning(
+                "Backup verification stopped by safety limit: code=%s", err.code
+            )
+            return _CandidateOutcome(
+                self._downloaded_result(
+                    INTEGRITY_STATUS_ABORTED,
+                    record,
+                    started,
+                    downloaded,
+                    error_code=err.code,
+                ),
+                final=err.code in _GLOBAL_LIMIT_CODES,
+            )
+        except (
+            tarfile.TarError,
+            SecureTarError,
+            json.JSONDecodeError,
+            KeyError,
+            ValueError,
+        ) as err:
+            return self._archive_failure_outcome(
+                INTEGRITY_STATUS_CORRUPT,
+                "archive_invalid",
+                "One backup copy is corrupt or invalid; trying another",
+                err,
+                record=record,
+                started=started,
+                downloaded=downloaded,
+            )
+        except OSError as err:
+            return self._archive_failure_outcome(
+                INTEGRITY_STATUS_UNREADABLE,
+                "read_failed",
+                "One backup copy could not be read; trying another",
+                err,
+                record=record,
+                started=started,
+                downloaded=downloaded,
+            )
+        except Exception as err:  # noqa: BLE001 - archive worker boundary
+            return self._archive_failure_outcome(
+                INTEGRITY_STATUS_INTERNAL_ERROR,
+                "internal_error",
+                "Unexpected verification failure for one backup copy",
+                err,
+                record=record,
+                started=started,
+                downloaded=downloaded,
+                unexpected=True,
+            )
+
+    def _archive_failure_outcome(
+        self,
+        status: str,
+        error_code: str,
+        message: str,
+        error: Exception,
+        *,
+        record: BackupRecord,
+        started: float,
+        downloaded: _DownloadedCandidate,
+        unexpected: bool = False,
+    ) -> _CandidateOutcome:
+        """Log and return one retryable archive-copy failure."""
+        logger = _LOGGER.error if unexpected else _LOGGER.warning
+        logger(
+            "%s: agent=%s error_type=%s",
+            message,
+            safe_log_value(downloaded.prepared.agent_id),
+            safe_error_type(error),
+        )
+        return _CandidateOutcome(
+            self._downloaded_result(
+                status, record, started, downloaded, error_code=error_code
+            )
+        )
+
+    def _downloaded_result(
+        self,
+        status: str,
+        record: BackupRecord,
+        started: float,
+        downloaded: _DownloadedCandidate,
+        *,
+        error_code: str | None,
+    ) -> BackupIntegrityResult:
+        """Build a result retaining checksum data from a downloaded copy."""
+        prepared = downloaded.prepared
+        return self._result(
+            status,
+            record,
+            started,
+            agent_id=prepared.agent_id,
+            digest=downloaded.digest,
+            downloaded_size=downloaded.downloaded_size,
+            protected=prepared.protected,
+            warnings=list(downloaded.warnings),
+            error_code=error_code,
+            checksum_changed=downloaded.checksum_changed,
+        )
+
+    @staticmethod
+    def _completed_result(
+        record: BackupRecord,
+        *,
+        started: float,
+        downloaded: _DownloadedCandidate,
+        details: dict[str, Any],
+        prior_copy_failures: int,
+    ) -> BackupIntegrityResult:
+        """Build the final result for a fully inspected archive."""
+        warnings = [*downloaded.warnings, *details["warnings"]]
+        if prior_copy_failures:
+            warnings.extend(
+                ("alternate_storage_copy_used", "storage_copy_verification_failed")
+            )
+        database_status = details["database_status"]
+        if database_status == INTEGRITY_DATABASE_FAILED:
+            warnings.append("database_integrity_failed")
+        status = (
+            INTEGRITY_STATUS_CORRUPT
+            if database_status == INTEGRITY_DATABASE_FAILED
+            else (
+                INTEGRITY_STATUS_VALID_WITH_WARNINGS
+                if warnings
+                else INTEGRITY_STATUS_VALID
+            )
+        )
+        prepared = downloaded.prepared
+        return BackupIntegrityResult(
+            status=status,
+            checked_at=dt_util.utcnow(),
+            backup_id=record.backup_id,
+            backup_reference=record.backup_reference,
+            backup_date=record.date,
+            agent_id=prepared.agent_id,
+            sha256=downloaded.digest,
+            verified_size=downloaded.downloaded_size,
+            duration_seconds=round(time.monotonic() - started, 2),
+            archive_count=details["archive_count"],
+            file_count=details["file_count"],
+            protected=details["protected"],
+            database_status=database_status,
+            warnings=tuple(dict.fromkeys(warnings)),
+            error_code=(
+                "database_integrity_failed"
+                if database_status == INTEGRITY_DATABASE_FAILED
+                else None
+            ),
+            checksum_changed=downloaded.checksum_changed,
+        )
+
+    def _aggregate_failure(
+        self,
+        record: BackupRecord,
+        started: float,
+        failures: _VerificationFailures,
+    ) -> BackupIntegrityResult:
+        """Return the most useful failure after all available copies were tried."""
+        if failures.best is not None:
+            return replace(
+                failures.best,
+                warnings=tuple(
+                    dict.fromkeys(
+                        (*failures.best.warnings, "all_storage_copies_failed")
+                    )
                 ),
             )
-        finally:
-            cleanup_ok = await self.hass.async_add_executor_job(
-                cleanup_temp_directory, temp_dir
-            )
-            stale_cleanup = await self.hass.async_add_executor_job(
-                cleanup_stale_temp_directories
-            )
-            issue_active = not cleanup_ok or stale_cleanup.issue_active
-            if issue_active:
-                _LOGGER.warning("Temporary verification data could not be removed")
-            if repair_issues_enabled:
-                async_set_temporary_cleanup_issue(
-                    self.hass,
-                    active=issue_active,
-                )
+        return self._failure(
+            INTEGRITY_STATUS_UNREADABLE,
+            record,
+            started,
+            error_code=(
+                "download_failed_all_copies"
+                if failures.download_failures > 1
+                else "download_failed"
+            ),
+        )
+
+    async def _async_cleanup_verification_data(
+        self, temp_dir: Path, *, repair_issues_enabled: bool
+    ) -> None:
+        """Remove private temporary data and update its optional Repair issue."""
+        cleanup_ok = await self.hass.async_add_executor_job(
+            cleanup_temp_directory, temp_dir
+        )
+        stale_cleanup = await self.hass.async_add_executor_job(
+            cleanup_stale_temp_directories
+        )
+        issue_active = not cleanup_ok or stale_cleanup.issue_active
+        if issue_active:
+            _LOGGER.warning("Temporary verification data could not be removed")
+        if repair_issues_enabled:
+            async_set_temporary_cleanup_issue(self.hass, active=issue_active)
+
+    @staticmethod
+    def _remove_candidate_file(path: Path) -> None:
+        """Best-effort removal of one failed candidate archive."""
+        with suppress(OSError):
+            path.unlink(missing_ok=True)
 
     async def _async_download(
         self,
@@ -846,29 +1131,58 @@ class BackupIntegrityVerifier:
     ) -> dict[str, Any]:
         """Synchronously stream every outer and inner archive member."""
         metadata = cls._read_metadata(backup_path, password, budget)
-        metadata_protected = metadata.get("protected")
-        effective_protected = (
-            metadata_protected if isinstance(metadata_protected, bool) else protected
-        )
+        effective_protected = cls._effective_protection(metadata, protected)
         if effective_protected and password is None:
             raise _BackupPasswordRequiredError
 
-        archive_count = 0
-        file_count = 0
-        warnings: list[str] = []
-        inner_names: set[str] = set()
-        database_expected = cls._database_expected(metadata)
-        database_status = (
-            INTEGRITY_DATABASE_NOT_APPLICABLE
-            if database_check and not database_expected
-            else (
-                INTEGRITY_DATABASE_NOT_FOUND
-                if database_check
-                else INTEGRITY_DATABASE_NOT_CHECKED
-            )
-        )
         database_path = working_dir / _DATABASE_FILENAME
+        scan = cls._scan_outer_archive(
+            backup_path,
+            password=password,
+            protected=effective_protected,
+            database_check=database_check,
+            database_path=database_path,
+            budget=budget,
+        )
+        warnings = cls._validate_archive_inventory(metadata, scan)
+        database_status = cls._database_verification_status(
+            metadata,
+            database_path=database_path,
+            database_check=database_check,
+            database_timeout_minutes=database_timeout_minutes,
+            budget=budget,
+        )
+        return {
+            "archive_count": scan.archive_count,
+            "file_count": scan.file_count,
+            "database_status": database_status,
+            "protected": effective_protected,
+            "warnings": warnings,
+        }
 
+    @staticmethod
+    def _effective_protection(metadata: dict[str, Any], fallback: bool) -> bool:
+        """Prefer the validated metadata flag over external copy metadata."""
+        metadata_protected = metadata.get("protected")
+        return (
+            metadata_protected
+            if isinstance(metadata_protected, bool)
+            else fallback
+        )
+
+    @classmethod
+    def _scan_outer_archive(
+        cls,
+        backup_path: Path,
+        *,
+        password: str | None,
+        protected: bool,
+        database_check: bool,
+        database_path: Path,
+        budget: VerificationBudget,
+    ) -> _ArchiveScan:
+        """Stream the outer archive and all declared inner archives."""
+        scan = _ArchiveScan()
         with SecureTarArchive(
             backup_path,
             "r",
@@ -876,98 +1190,207 @@ class BackupIntegrityVerifier:
             password=password,
         ) as outer:
             for member in outer.tar:
-                budget.add_member()
-                cls._validate_member_path(member.name)
-                if member.isdir() or not member.isfile():
-                    continue
+                cls._scan_outer_member(
+                    outer,
+                    member,
+                    scan=scan,
+                    protected=protected,
+                    database_check=database_check,
+                    database_path=database_path,
+                    budget=budget,
+                )
+        return scan
 
-                member_path = PurePosixPath(member.name)
-                normalized_name = member_path.name
-                if normalized_name == "backup.json" and member_path != _METADATA_PATH:
-                    raise KeyError("backup_metadata_path_invalid")
-                if member_path == _METADATA_PATH:
-                    budget.ensure_expanded_capacity(member.size)
-                    reader = outer.tar.extractfile(member)
-                    if reader is None:
-                        raise KeyError("backup_metadata_unreadable")
-                    cls._consume_all(reader, budget=budget, count_expanded=True)
-                    file_count += 1
-                    continue
+    @classmethod
+    def _scan_outer_member(
+        cls,
+        outer: SecureTarArchive,
+        member: tarfile.TarInfo,
+        *,
+        scan: _ArchiveScan,
+        protected: bool,
+        database_check: bool,
+        database_path: Path,
+        budget: VerificationBudget,
+    ) -> None:
+        """Validate and consume one outer TAR member."""
+        budget.add_member()
+        cls._validate_member_path(member.name)
+        if member.isdir() or not member.isfile():
+            return
 
-                if normalized_name.endswith(_INNER_SUFFIXES):
-                    if len(member_path.parts) != 1:
-                        raise KeyError("inner_archive_path_invalid")
-                    archive_count += 1
-                    archive_name = cls._archive_prefix(normalized_name)
-                    if archive_name in inner_names:
-                        raise KeyError("inner_archive_duplicate")
-                    inner_names.add(archive_name)
-                    inspect_database = (
-                        database_check and archive_name == "homeassistant"
-                    )
-                    if effective_protected:
-                        with outer.extract_tar(member) as inner_stream:
-                            file_count += cls._read_inner_archive(
-                                inner_stream,
-                                database_check=inspect_database,
-                                database_path=database_path,
-                                budget=budget,
-                            )
-                            cls._consume_all(
-                                inner_stream,
-                                budget=budget,
-                                count_expanded=False,
-                            )
-                    else:
-                        inner_stream = outer.tar.extractfile(member)
-                        if inner_stream is None:
-                            raise tarfile.ReadError("archive_member_unreadable")
-                        file_count += cls._read_inner_archive(
-                            inner_stream,
-                            database_check=inspect_database,
-                            database_path=database_path,
-                            budget=budget,
-                        )
-                        cls._consume_all(
-                            inner_stream,
-                            budget=budget,
-                            count_expanded=False,
-                        )
-                    continue
-
-                budget.ensure_expanded_capacity(member.size)
-                reader = outer.tar.extractfile(member)
-                if reader is None:
-                    raise tarfile.ReadError("archive_member_unreadable")
-                cls._consume_all(reader, budget=budget, count_expanded=True)
-                file_count += 1
-
-        expected = cls._expected_archives(metadata)
-        missing = expected - inner_names
-        if missing:
-            raise KeyError(f"missing_expected_archives_count_{len(missing)}")
-        if archive_count == 0:
-            raise tarfile.ReadError("no_inner_backup_archives")
-        unexpected = inner_names - expected - _KNOWN_OPTIONAL_INNER_ARCHIVES
-        if unexpected:
-            warnings.append(f"unexpected_inner_archives_{len(unexpected)}")
-
-        if database_check and database_path.exists():
-            database_status = cls._check_database(
-                database_path,
-                database_timeout_minutes=database_timeout_minutes,
+        member_path = PurePosixPath(member.name)
+        normalized_name = member_path.name
+        if normalized_name == "backup.json" and member_path != _METADATA_PATH:
+            raise KeyError("backup_metadata_path_invalid")
+        if member_path == _METADATA_PATH:
+            cls._consume_outer_member(
+                outer, member, budget=budget, unreadable="backup_metadata_unreadable"
+            )
+            scan.file_count += 1
+            return
+        if normalized_name.endswith(_INNER_SUFFIXES):
+            cls._scan_inner_member(
+                outer,
+                member,
+                scan=scan,
+                protected=protected,
+                database_check=database_check,
+                database_path=database_path,
                 budget=budget,
             )
-        elif database_check and database_expected:
-            raise KeyError("expected_database_missing")
+            return
+        cls._consume_outer_member(
+            outer, member, budget=budget, unreadable="archive_member_unreadable"
+        )
+        scan.file_count += 1
 
-        return {
-            "archive_count": archive_count,
-            "file_count": file_count,
-            "database_status": database_status,
-            "protected": effective_protected,
-            "warnings": warnings,
-        }
+    @classmethod
+    def _consume_outer_member(
+        cls,
+        outer: SecureTarArchive,
+        member: tarfile.TarInfo,
+        *,
+        budget: VerificationBudget,
+        unreadable: str,
+    ) -> None:
+        """Consume one regular outer member and close its reader deterministically."""
+        budget.ensure_expanded_capacity(member.size)
+        reader = outer.tar.extractfile(member)
+        if reader is None:
+            raise tarfile.ReadError(unreadable)
+        with closing(reader):
+            cls._consume_all(reader, budget=budget, count_expanded=True)
+
+    @classmethod
+    def _scan_inner_member(
+        cls,
+        outer: SecureTarArchive,
+        member: tarfile.TarInfo,
+        *,
+        scan: _ArchiveScan,
+        protected: bool,
+        database_check: bool,
+        database_path: Path,
+        budget: VerificationBudget,
+    ) -> None:
+        """Validate and fully consume one root-level inner archive."""
+        member_path = PurePosixPath(member.name)
+        if len(member_path.parts) != 1:
+            raise KeyError("inner_archive_path_invalid")
+        archive_name = cls._archive_prefix(member_path.name)
+        if archive_name in scan.inner_names:
+            raise KeyError("inner_archive_duplicate")
+        scan.inner_names.add(archive_name)
+        scan.archive_count += 1
+        inspect_database = database_check and archive_name == "homeassistant"
+        with cls._inner_archive_stream(outer, member, protected) as inner_stream:
+            scan.file_count += cls._read_inner_archive(
+                inner_stream,
+                database_check=inspect_database,
+                database_path=database_path,
+                budget=budget,
+            )
+            cls._consume_all(inner_stream, budget=budget, count_expanded=False)
+
+    @staticmethod
+    @contextmanager
+    def _inner_archive_stream(
+        outer: SecureTarArchive,
+        member: tarfile.TarInfo,
+        protected: bool,
+    ) -> Iterator[Any]:
+        """Yield an inner TAR stream and always close unprotected readers."""
+        if protected:
+            with outer.extract_tar(member) as stream:
+                yield stream
+            return
+        reader = outer.tar.extractfile(member)
+        if reader is None:
+            raise tarfile.ReadError("archive_member_unreadable")
+        with closing(reader):
+            yield reader
+
+    @classmethod
+    def _validate_archive_inventory(
+        cls, metadata: dict[str, Any], scan: _ArchiveScan
+    ) -> list[str]:
+        """Validate declared inner archives and return non-fatal warnings."""
+        expected = cls._expected_archives(metadata)
+        missing = expected - scan.inner_names
+        if missing:
+            raise KeyError(f"missing_expected_archives_count_{len(missing)}")
+        if scan.archive_count == 0:
+            raise tarfile.ReadError("no_inner_backup_archives")
+        unexpected = scan.inner_names - expected - _KNOWN_OPTIONAL_INNER_ARCHIVES
+        return (
+            [f"unexpected_inner_archives_{len(unexpected)}"]
+            if unexpected
+            else []
+        )
+
+    @classmethod
+    def _database_verification_status(
+        cls,
+        metadata: dict[str, Any],
+        *,
+        database_path: Path,
+        database_check: bool,
+        database_timeout_minutes: int,
+        budget: VerificationBudget,
+    ) -> str:
+        """Return the database result or reject a declared missing database."""
+        database_expected = cls._database_expected(metadata)
+        if not database_check:
+            return INTEGRITY_DATABASE_NOT_CHECKED
+        if not database_expected:
+            return INTEGRITY_DATABASE_NOT_APPLICABLE
+        if not database_path.exists():
+            raise KeyError("expected_database_missing")
+        return cls._check_database(
+            database_path,
+            database_timeout_minutes=database_timeout_minutes,
+            budget=budget,
+        )
+
+    @classmethod
+    def _decode_metadata_member(
+        cls,
+        outer: SecureTarArchive,
+        member: tarfile.TarInfo,
+        budget: VerificationBudget,
+    ) -> dict[str, Any]:
+        """Read and validate one bounded root-level metadata member."""
+        budget.check_metadata_size(member.size)
+        reader = outer.tar.extractfile(member)
+        if reader is None:
+            raise KeyError("backup_metadata_unreadable")
+        with closing(reader):
+            raw = reader.read(budget.max_metadata_bytes + 1)
+        if len(raw) > budget.max_metadata_bytes:
+            raise VerificationLimitError("metadata_size_limit")
+        parsed = json.loads(raw, object_pairs_hook=cls._unique_json_object)
+        if not isinstance(parsed, dict):
+            raise KeyError("backup_metadata_root_invalid")
+        cls._validate_metadata_schema(parsed)
+        return parsed
+
+    @classmethod
+    def _metadata_member(
+        cls,
+        outer: SecureTarArchive,
+        member: tarfile.TarInfo,
+        budget: VerificationBudget,
+    ) -> dict[str, Any] | None:
+        """Return decoded metadata for the canonical member or None otherwise."""
+        budget.add_member()
+        cls._validate_member_path(member.name)
+        member_path = PurePosixPath(member.name)
+        if member_path.name == "backup.json" and member_path != _METADATA_PATH:
+            raise KeyError("backup_metadata_path_invalid")
+        if not member.isfile() or member_path != _METADATA_PATH:
+            return None
+        return cls._decode_metadata_member(outer, member, budget)
 
     @classmethod
     def _read_metadata(
@@ -976,11 +1399,8 @@ class BackupIntegrityVerifier:
         password: str | None,
         budget: VerificationBudget,
     ) -> dict[str, Any]:
-        """Read exactly one bounded backup.json without retaining TAR member objects."""
+        """Read exactly one bounded backup.json without retaining TAR members."""
         metadata: dict[str, Any] | None = None
-        metadata_count = 0
-        scanned_members = 0
-
         with SecureTarArchive(
             backup_path,
             "r",
@@ -988,33 +1408,13 @@ class BackupIntegrityVerifier:
             password=password,
         ) as outer:
             for member in outer.tar:
-                budget.check_deadline()
-                scanned_members += 1
-                if scanned_members > budget.max_members:
-                    raise VerificationLimitError("archive_member_limit")
-                cls._validate_member_path(member.name)
-                member_path = PurePosixPath(member.name)
-                if member_path.name == "backup.json" and member_path != _METADATA_PATH:
-                    raise KeyError("backup_metadata_path_invalid")
-                if not member.isfile() or member_path != _METADATA_PATH:
+                parsed = cls._metadata_member(outer, member, budget)
+                if parsed is None:
                     continue
-                metadata_count += 1
-                if metadata_count > 1:
+                if metadata is not None:
                     raise KeyError("backup_metadata_duplicate")
-                budget.check_metadata_size(member.size)
-                reader = outer.tar.extractfile(member)
-                if reader is None:
-                    raise KeyError("backup_metadata_unreadable")
-                raw = reader.read(budget.max_metadata_bytes + 1)
-                if len(raw) > budget.max_metadata_bytes:
-                    raise VerificationLimitError("metadata_size_limit")
-                parsed = json.loads(raw, object_pairs_hook=cls._unique_json_object)
-                if not isinstance(parsed, dict):
-                    raise KeyError("backup_metadata_root_invalid")
-                cls._validate_metadata_schema(parsed)
                 metadata = parsed
-
-        if metadata_count != 1 or metadata is None:
+        if metadata is None:
             raise KeyError("backup_metadata_missing")
         return metadata
 
@@ -1029,47 +1429,61 @@ class BackupIntegrityVerifier:
         return result
 
     @staticmethod
-    def _validate_metadata_schema(metadata: dict[str, Any]) -> None:
-        """Validate security-relevant backup metadata types conservatively."""
-        protected = metadata.get("protected")
-        if protected is not None and not isinstance(protected, bool):
-            raise KeyError("backup_metadata_protected_invalid")
+    def _validated_homeassistant_metadata(metadata: dict[str, Any]) -> bool:
+        """Validate Home Assistant metadata and return whether it is present."""
         homeassistant = metadata.get("homeassistant")
-        if homeassistant is not None and not isinstance(homeassistant, dict):
+        if homeassistant is None:
+            return False
+        if not isinstance(homeassistant, dict):
             raise KeyError("backup_metadata_homeassistant_invalid")
-        if isinstance(homeassistant, dict):
-            exclude_database = homeassistant.get("exclude_database")
-            if exclude_database is not None and not isinstance(exclude_database, bool):
-                raise KeyError("backup_metadata_database_flag_invalid")
+        exclude_database = homeassistant.get("exclude_database")
+        if exclude_database is not None and not isinstance(exclude_database, bool):
+            raise KeyError("backup_metadata_database_flag_invalid")
+        return True
+
+    @classmethod
+    def _validated_addon_slugs(cls, metadata: dict[str, Any]) -> list[str]:
+        """Return unique, valid add-on archive identifiers."""
         addons = metadata.get("addons", [])
         if not isinstance(addons, list) or len(addons) > 10_000:
             raise KeyError("backup_metadata_addons_invalid")
-        addon_slugs: list[str] = []
+        slugs: list[str] = []
         for item in addons:
             if not isinstance(item, dict):
                 raise KeyError("backup_metadata_addons_invalid")
             slug = item.get("slug")
-            if not BackupIntegrityVerifier._valid_archive_identifier(slug):
+            if not cls._valid_archive_identifier(slug):
                 raise KeyError("backup_metadata_addons_invalid")
-            addon_slugs.append(slug)
-        if len(addon_slugs) != len(set(addon_slugs)):
+            slugs.append(slug)
+        if len(slugs) != len(set(slugs)):
             raise KeyError("backup_metadata_addons_duplicate")
+        return slugs
 
+    @classmethod
+    def _validated_folders(cls, metadata: dict[str, Any]) -> list[str]:
+        """Return unique, valid folder archive identifiers."""
         folders = metadata.get("folders", [])
         if not isinstance(folders, list) or len(folders) > 10_000:
             raise KeyError("backup_metadata_folders_invalid")
-        if any(
-            not BackupIntegrityVerifier._valid_archive_identifier(item)
-            for item in folders
-        ):
+        if any(not cls._valid_archive_identifier(item) for item in folders):
             raise KeyError("backup_metadata_folders_invalid")
         if len(folders) != len(set(folders)):
             raise KeyError("backup_metadata_folders_duplicate")
+        return folders
 
+    @classmethod
+    def _validate_metadata_schema(cls, metadata: dict[str, Any]) -> None:
+        """Validate security-relevant backup metadata types conservatively."""
+        protected = metadata.get("protected")
+        if protected is not None and not isinstance(protected, bool):
+            raise KeyError("backup_metadata_protected_invalid")
+        homeassistant_present = cls._validated_homeassistant_metadata(metadata)
+        addon_slugs = cls._validated_addon_slugs(metadata)
+        folders = cls._validated_folders(metadata)
         logical_names = addon_slugs + [
             folder for folder in folders if folder != "homeassistant"
         ]
-        if isinstance(homeassistant, dict):
+        if homeassistant_present:
             logical_names.append("homeassistant")
         if len(logical_names) != len(set(logical_names)):
             raise KeyError("backup_metadata_archive_name_collision")
@@ -1116,21 +1530,24 @@ class BackupIntegrityVerifier:
                     raise tarfile.ReadError("inner_archive_member_unreadable")
                 inner_path = PurePosixPath(inner_member.name)
                 is_database_name = inner_path.name == _DATABASE_FILENAME
-                if database_check and is_database_name:
-                    database_candidates += 1
-                    if inner_path != _DATABASE_PATH:
-                        raise KeyError("database_path_invalid")
-                    if database_candidates > 1 or database_path.exists():
-                        raise KeyError("database_duplicate")
-                    with open_private_binary_writer(database_path) as db_file:
-                        cls._copy_all(
-                            reader,
-                            db_file,
-                            budget=budget,
-                            free_space_path=database_path.parent,
+                with closing(reader):
+                    if database_check and is_database_name:
+                        database_candidates += 1
+                        if inner_path != _DATABASE_PATH:
+                            raise KeyError("database_path_invalid")
+                        if database_candidates > 1 or database_path.exists():
+                            raise KeyError("database_duplicate")
+                        with open_private_binary_writer(database_path) as db_file:
+                            cls._copy_all(
+                                reader,
+                                db_file,
+                                budget=budget,
+                                free_space_path=database_path.parent,
+                            )
+                    else:
+                        cls._consume_all(
+                            reader, budget=budget, count_expanded=True
                         )
-                else:
-                    cls._consume_all(reader, budget=budget, count_expanded=True)
         return file_count
 
     @staticmethod
@@ -1224,6 +1641,23 @@ class BackupIntegrityVerifier:
         return total
 
     @staticmethod
+    def _sqlite_quick_check_passed(connection: sqlite3.Connection) -> bool:
+        """Return whether SQLite's bounded quick check reports only OK rows."""
+        rows = list(connection.execute("PRAGMA quick_check(1)"))
+        return bool(rows) and all(str(row[0]).lower() == "ok" for row in rows)
+
+    @staticmethod
+    def _sqlite_integrity_check_passed(connection: sqlite3.Connection) -> bool:
+        """Return whether the full SQLite integrity check reports only OK rows."""
+        rows_seen = False
+        all_ok = True
+        for row in connection.execute("PRAGMA integrity_check"):
+            rows_seen = True
+            if str(row[0]).lower() != "ok":
+                all_ok = False
+        return rows_seen and all_ok
+
+    @staticmethod
     def _check_database(
         path: Path,
         *,
@@ -1232,23 +1666,13 @@ class BackupIntegrityVerifier:
     ) -> str:
         """Run SQLite's full integrity check with a cooperative deadline."""
         budget.check_deadline()
-        database_deadline = min(
-            budget.deadline,
-            time.monotonic() + database_timeout_minutes * 60,
+        control = _DatabaseCheckControl(
+            budget=budget,
+            deadline=min(
+                budget.deadline,
+                time.monotonic() + database_timeout_minutes * 60,
+            ),
         )
-        timed_out = False
-        cancelled = False
-
-        def _abort_if_timed_out() -> int:
-            nonlocal cancelled, timed_out
-            if budget.cancellation_event.is_set():
-                cancelled = True
-                return 1
-            if time.monotonic() >= database_deadline:
-                timed_out = True
-                return 1
-            return 0
-
         try:
             connection = sqlite3.connect(
                 f"file:{path}?mode=ro&immutable=1",
@@ -1256,39 +1680,23 @@ class BackupIntegrityVerifier:
                 timeout=30,
             )
             try:
-                connection.set_progress_handler(_abort_if_timed_out, 10_000)
+                connection.set_progress_handler(control.progress_handler, 10_000)
                 connection.execute("PRAGMA trusted_schema=OFF")
-                quick_rows = list(connection.execute("PRAGMA quick_check(1)"))
-                if not quick_rows or any(
-                    str(row[0]).lower() != "ok" for row in quick_rows
-                ):
+                if not BackupIntegrityVerifier._sqlite_quick_check_passed(connection):
                     return INTEGRITY_DATABASE_FAILED
-                rows_seen = False
-                all_ok = True
-                for row in connection.execute("PRAGMA integrity_check"):
-                    rows_seen = True
-                    if str(row[0]).lower() != "ok":
-                        all_ok = False
-                if cancelled:
-                    raise VerificationLimitError("verification_cancelled")
-                if timed_out:
-                    raise VerificationLimitError("database_timeout")
+                passed = BackupIntegrityVerifier._sqlite_integrity_check_passed(
+                    connection
+                )
+                control.raise_if_stopped()
             finally:
                 connection.set_progress_handler(None, 0)
                 connection.close()
         except VerificationLimitError:
             raise
         except sqlite3.DatabaseError:
-            if cancelled or budget.cancellation_event.is_set():
-                raise VerificationLimitError("verification_cancelled") from None
-            if timed_out or time.monotonic() >= database_deadline:
-                raise VerificationLimitError("database_timeout") from None
+            control.raise_if_stopped()
             return INTEGRITY_DATABASE_FAILED
-        return (
-            INTEGRITY_DATABASE_PASSED
-            if rows_seen and all_ok
-            else INTEGRITY_DATABASE_FAILED
-        )
+        return INTEGRITY_DATABASE_PASSED if passed else INTEGRITY_DATABASE_FAILED
 
     @staticmethod
     def _result(

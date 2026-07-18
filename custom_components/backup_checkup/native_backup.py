@@ -100,6 +100,91 @@ def _manager_config_value(manager: Any, *path: str) -> Any:
     return value
 
 
+def _native_or_entity_datetime(
+    hass: HomeAssistant,
+    manager: Any,
+    *,
+    path: tuple[str, ...],
+    unique_id: str,
+    fallback: str,
+) -> datetime | None:
+    """Read one manager timestamp with an entity-registry fallback."""
+    native = _as_datetime(_manager_config_value(manager, *path))
+    if native is not None:
+        return native
+    return _state_datetime(
+        hass,
+        _registry_entity_id(hass, unique_id=unique_id, fallback=fallback),
+    )
+
+
+def _native_manager_state(hass: HomeAssistant, manager: Any) -> str:
+    """Return the normalized native backup-manager state."""
+    manager_state = _enum_value(getattr(manager, "state", None))
+    if manager_state:
+        return manager_state
+    entity_id = _registry_entity_id(
+        hass,
+        unique_id="backup_manager_state",
+        fallback=CORE_BACKUP_MANAGER_STATE,
+    )
+    state = hass.states.get(entity_id)
+    return state.state.casefold() if state is not None else STATE_UNKNOWN
+
+
+def _native_event_state(
+    hass: HomeAssistant,
+    manager: Any,
+) -> tuple[str, datetime | None]:
+    """Return the latest automatic-backup event type and timestamp."""
+    action_event = getattr(manager, "last_action_event", None)
+    event_type = _enum_value(getattr(action_event, "state", None))
+    event_entity_id = _registry_entity_id(
+        hass,
+        unique_id="automatic_backup_event",
+        fallback=CORE_AUTOMATIC_BACKUP_EVENT,
+    )
+    event_state = hass.states.get(event_entity_id)
+    if event_state is None:
+        return event_type, None
+    attribute_type = _enum_value(event_state.attributes.get("event_type"))
+    event_at = _as_datetime(
+        getattr(event_state, "last_changed", None)
+        or getattr(event_state, "last_updated", None)
+    )
+    return attribute_type or event_type, event_at
+
+
+def _event_is_relevant(
+    event_at: datetime | None,
+    last_attempt: datetime | None,
+    now: datetime,
+) -> bool:
+    """Return whether one event belongs to the current automatic attempt."""
+    return bool(
+        event_at is not None
+        and last_attempt is not None
+        and event_at >= last_attempt - _EVENT_MATCH_TOLERANCE
+        and event_at <= now + _EVENT_MATCH_TOLERANCE
+    )
+
+
+def _validated_event_type(
+    event_type: str,
+    *,
+    event_relevant: bool,
+    manager_in_progress: bool,
+) -> str:
+    """Ignore stale completed, failed, or in-progress event states."""
+    if event_type in {"completed", "failed"} and not event_relevant:
+        return ""
+    if event_type in {"in_progress", "in progress"} and not (
+        manager_in_progress or event_relevant
+    ):
+        return ""
+    return event_type
+
+
 def read_native_backup_state(
     hass: HomeAssistant,
     manager: Any,
@@ -107,78 +192,29 @@ def read_native_backup_state(
     now: datetime,
 ) -> NativeBackupState:
     """Read current native state with manager data preferred over UI entities."""
-    last_attempt = _as_datetime(
-        _manager_config_value(
-            manager, "config", "data", "last_attempted_automatic_backup"
-        )
-    )
-    last_success = _as_datetime(
-        _manager_config_value(
-            manager, "config", "data", "last_completed_automatic_backup"
-        )
-    )
-    next_scheduled = _as_datetime(
-        _manager_config_value(
-            manager, "config", "data", "schedule", "next_automatic_backup"
-        )
-    )
-
-    if last_attempt is None:
-        last_attempt = _state_datetime(
-            hass,
-            _registry_entity_id(
-                hass,
-                unique_id="last_attempted_automatic_backup",
-                fallback=CORE_LAST_AUTOMATIC_ATTEMPT,
-            ),
-        )
-    if last_success is None:
-        last_success = _state_datetime(
-            hass,
-            _registry_entity_id(
-                hass,
-                unique_id="last_successful_automatic_backup",
-                fallback=CORE_LAST_SUCCESSFUL_AUTOMATIC_BACKUP,
-            ),
-        )
-    if next_scheduled is None:
-        next_scheduled = _state_datetime(
-            hass,
-            _registry_entity_id(
-                hass,
-                unique_id="next_scheduled_automatic_backup",
-                fallback=CORE_NEXT_AUTOMATIC_BACKUP,
-            ),
-        )
-
-    manager_state = _enum_value(getattr(manager, "state", None))
-    if not manager_state:
-        manager_entity = _registry_entity_id(
-            hass,
-            unique_id="backup_manager_state",
-            fallback=CORE_BACKUP_MANAGER_STATE,
-        )
-        state = hass.states.get(manager_entity)
-        manager_state = state.state.casefold() if state is not None else STATE_UNKNOWN
-
-    action_event = getattr(manager, "last_action_event", None)
-    event_type = _enum_value(getattr(action_event, "state", None))
-    event_at: datetime | None = None
-    event_entity_id = _registry_entity_id(
+    last_attempt = _native_or_entity_datetime(
         hass,
-        unique_id="automatic_backup_event",
-        fallback=CORE_AUTOMATIC_BACKUP_EVENT,
+        manager,
+        path=("config", "data", "last_attempted_automatic_backup"),
+        unique_id="last_attempted_automatic_backup",
+        fallback=CORE_LAST_AUTOMATIC_ATTEMPT,
     )
-    event_state = hass.states.get(event_entity_id)
-    if event_state is not None:
-        attr_type = _enum_value(event_state.attributes.get("event_type"))
-        if attr_type:
-            event_type = attr_type
-        event_at = _as_datetime(
-            getattr(event_state, "last_changed", None)
-            or getattr(event_state, "last_updated", None)
-        )
-
+    last_success = _native_or_entity_datetime(
+        hass,
+        manager,
+        path=("config", "data", "last_completed_automatic_backup"),
+        unique_id="last_successful_automatic_backup",
+        fallback=CORE_LAST_SUCCESSFUL_AUTOMATIC_BACKUP,
+    )
+    next_scheduled = _native_or_entity_datetime(
+        hass,
+        manager,
+        path=("config", "data", "schedule", "next_automatic_backup"),
+        unique_id="next_scheduled_automatic_backup",
+        fallback=CORE_NEXT_AUTOMATIC_BACKUP,
+    )
+    manager_state = _native_manager_state(hass, manager)
+    event_type, event_at = _native_event_state(hass, manager)
     manager_in_progress = manager_state in {
         "create_backup",
         "creating_a_backup",
@@ -187,19 +223,11 @@ def read_native_backup_state(
         "receiving_a_backup",
         "receiving a backup",
     }
-    event_relevant = bool(
-        event_at is not None
-        and last_attempt is not None
-        and event_at >= last_attempt - _EVENT_MATCH_TOLERANCE
-        and event_at <= now + _EVENT_MATCH_TOLERANCE
+    event_type = _validated_event_type(
+        event_type,
+        event_relevant=_event_is_relevant(event_at, last_attempt, now),
+        manager_in_progress=manager_in_progress,
     )
-    if event_type in {"completed", "failed"} and not event_relevant:
-        event_type = ""
-    if event_type in {"in_progress", "in progress"} and not (
-        manager_in_progress or event_relevant
-    ):
-        event_type = ""
-
     return NativeBackupState(
         last_attempt=last_attempt,
         last_success=last_success,

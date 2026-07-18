@@ -11,25 +11,34 @@ from .const import DOMAIN, REPAIR_ISSUE_IDS, TROUBLESHOOTING_URL
 from .models import BackupCheckupData
 
 
-@callback
-def async_update_issues(hass: HomeAssistant, data: BackupCheckupData) -> None:
-    """Create active repair issues and remove resolved issues."""
+def _integrity_is_current(data: BackupCheckupData) -> bool:
+    """Return whether the stored integrity result belongs to the latest backup."""
     latest = data.latest_monitored_backup_record
-    issue_definitions: dict[
-        str,
-        tuple[bool, ir.IssueSeverity, dict[str, str]],
-    ] = {
-        "no_backup": (
-            data.no_backup,
-            ir.IssueSeverity.ERROR,
-            {},
-        ),
+    return bool(latest and data.integrity.backup_id == latest.backup_id)
+
+
+def _required_location_problem_count(data: BackupCheckupData) -> int:
+    """Count problematic storage locations required by the latest backup."""
+    latest = data.latest_monitored_backup_record
+    if latest is None:
+        return 0
+    return sum(
+        summary.problem and summary.agent_id in latest.agents
+        for summary in data.agent_summaries
+    )
+
+
+def _issue_definitions(
+    data: BackupCheckupData,
+) -> dict[str, tuple[bool, ir.IssueSeverity, dict[str, str]]]:
+    """Build the complete active Repair issue definition table."""
+    latest = data.latest_monitored_backup_record
+    integrity_current = _integrity_is_current(data)
+    return {
+        "no_backup": (data.no_backup, ir.IssueSeverity.ERROR, {}),
         "backup_integrity_failed": (
-            bool(
-                latest
-                and data.integrity.backup_id == latest.backup_id
-                and data.integrity.status in {"corrupt", "unreadable", "internal_error"}
-            ),
+            integrity_current
+            and data.integrity.status in {"corrupt", "unreadable", "internal_error"},
             ir.IssueSeverity.ERROR,
             {
                 "checked": _format_datetime(data.integrity.checked_at),
@@ -41,21 +50,14 @@ def async_update_issues(hass: HomeAssistant, data: BackupCheckupData) -> None:
             },
         ),
         "backup_integrity_warning": (
-            bool(
-                latest
-                and data.integrity.backup_id == latest.backup_id
-                and data.integrity.status
-                in {"valid_with_warnings", "aborted", "password_required"}
-            ),
+            integrity_current
+            and data.integrity.status
+            in {"valid_with_warnings", "aborted", "password_required"},
             ir.IssueSeverity.WARNING,
             {"checked": _format_datetime(data.integrity.checked_at)},
         ),
         "backup_checksum_changed": (
-            bool(
-                latest
-                and data.integrity.backup_id == latest.backup_id
-                and data.integrity.checksum_changed
-            ),
+            integrity_current and data.integrity.checksum_changed,
             ir.IssueSeverity.ERROR,
             {"checked": _format_datetime(data.integrity.checked_at)},
         ),
@@ -91,9 +93,7 @@ def async_update_issues(hass: HomeAssistant, data: BackupCheckupData) -> None:
         "automatic_schedule_overdue": (
             data.automatic_schedule_overdue,
             ir.IssueSeverity.WARNING,
-            {
-                "scheduled": _format_datetime(data.next_automatic_backup),
-            },
+            {"scheduled": _format_datetime(data.next_automatic_backup)},
         ),
         "manager_unavailable": (
             data.manager_unavailable,
@@ -103,9 +103,7 @@ def async_update_issues(hass: HomeAssistant, data: BackupCheckupData) -> None:
         "storage_error": (
             data.storage_error,
             ir.IssueSeverity.ERROR,
-            {
-                "locations": ", ".join(sorted(data.agent_errors)) or "unknown",
-            },
+            {"locations": ", ".join(sorted(data.agent_errors)) or "unknown"},
         ),
         "backup_size_suspicious": (
             data.backup_size_suspicious,
@@ -136,21 +134,15 @@ def async_update_issues(hass: HomeAssistant, data: BackupCheckupData) -> None:
         "required_location_missing": (
             data.required_location_missing,
             ir.IssueSeverity.WARNING,
-            {
-                "count": str(
-                    sum(
-                        1
-                        for summary in data.agent_summaries
-                        if summary.problem
-                        and latest is not None
-                        and summary.agent_id in latest.agents
-                    )
-                )
-            },
+            {"count": str(_required_location_problem_count(data))},
         ),
     }
 
-    for issue_id, (active, severity, placeholders) in issue_definitions.items():
+
+@callback
+def async_update_issues(hass: HomeAssistant, data: BackupCheckupData) -> None:
+    """Create active repair issues and remove resolved issues."""
+    for issue_id, (active, severity, placeholders) in _issue_definitions(data).items():
         if active:
             ir.async_create_issue(
                 hass,

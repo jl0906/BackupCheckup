@@ -34,10 +34,10 @@ def test_release_versions_are_consistent() -> None:
     readme = (ROOT / "README.md").read_text()
     changelog = (ROOT / "CHANGELOG.md").read_text()
 
-    assert manifest["version"] == "2.2.4"
-    assert 'VERSION = "2.2.4"' in constants
-    assert "2.2.4" in readme
-    assert "## 2.2.4" in changelog
+    assert manifest["version"] == "2.2.5"
+    assert 'VERSION = "2.2.5"' in constants
+    assert "2.2.5" in readme
+    assert "## 2.2.5" in changelog
     assert "VERSION = 9" in (INTEGRATION / "config_flow.py").read_text()
 
 

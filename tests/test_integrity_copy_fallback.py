@@ -13,6 +13,7 @@ from typing import Any
 
 from custom_components.backup_checkup import integrity
 from custom_components.backup_checkup.const import (
+    INTEGRITY_STATUS_INTERNAL_ERROR,
     INTEGRITY_STATUS_VALID_WITH_WARNINGS,
 )
 from custom_components.backup_checkup.integrity import BackupIntegrityVerifier
@@ -283,3 +284,51 @@ def test_reported_cross_copy_size_mismatch_becomes_integrity_warning(
 
     assert result.status == INTEGRITY_STATUS_VALID_WITH_WARNINGS
     assert "storage_copy_size_mismatch" in result.warnings
+
+
+def test_invalid_final_candidate_state_returns_internal_error(
+    monkeypatch, tmp_path
+) -> None:
+    """An impossible final candidate state fails safely without an assert."""
+    manager = SimpleNamespace(
+        backup_agents={"backup.local": object()},
+        config=SimpleNamespace(
+            data=SimpleNamespace(
+                create_backup=SimpleNamespace(password=None)
+            )
+        ),
+    )
+    monkeypatch.setattr(integrity, "async_get_manager", lambda _hass: manager)
+    verifier = BackupIntegrityVerifier(_ExecutorHass(), "entry")
+
+    async def _load_previous() -> BackupIntegrityResult:
+        return BackupIntegrityResult.not_checked()
+
+    async def _temp_directory(*_args, **_kwargs):
+        return tmp_path
+
+    async def _invalid_candidate(**_kwargs):
+        return integrity._CandidateOutcome(None, final=True)
+
+    async def _cleanup(*_args, **_kwargs):
+        return None
+
+    monkeypatch.setattr(verifier.store, "async_load", _load_previous)
+    monkeypatch.setattr(verifier, "_async_create_temp_directory", _temp_directory)
+    monkeypatch.setattr(verifier, "_async_verify_candidate", _invalid_candidate)
+    monkeypatch.setattr(verifier, "_async_cleanup_verification_data", _cleanup)
+
+    result = asyncio.run(
+        verifier.async_verify(
+            _record({"backup.local": 1}),
+            database_check=False,
+            max_download_gb=1,
+            max_expanded_gb=1,
+            timeout_minutes=1,
+            database_timeout_minutes=1,
+            repair_issues_enabled=False,
+        )
+    )
+
+    assert result.status == INTEGRITY_STATUS_INTERNAL_ERROR
+    assert result.error_code == "candidate_result_missing"
