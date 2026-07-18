@@ -127,9 +127,7 @@ def test_manager_path_and_event_validation() -> None:
     assert native_backup._event_is_relevant(None, attempt, now) is False
     assert native_backup._event_is_relevant(now, None, now) is False
     assert (
-        native_backup._event_is_relevant(
-            attempt - timedelta(minutes=3), attempt, now
-        )
+        native_backup._event_is_relevant(attempt - timedelta(minutes=3), attempt, now)
         is False
     )
     assert (

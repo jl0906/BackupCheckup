@@ -68,9 +68,7 @@ class _Manager:
             "backup.remote": SimpleNamespace(name=None),
         }
         self.config = SimpleNamespace(
-            data=SimpleNamespace(
-                create_backup=SimpleNamespace(password="secret")
-            )
+            data=SimpleNamespace(create_backup=SimpleNamespace(password="secret"))
         )
 
     async def async_get_backups(self) -> tuple[Any, Any]:
@@ -89,8 +87,7 @@ def _backup(
         backup_id=backup_id,
         name=f"Backup {backup_id}",
         date=date,
-        agents=agents
-        or {"backup.local": {"size": size, "protected": False}},
+        agents=agents or {"backup.local": {"size": size, "protected": False}},
         failed_agent_ids=[],
         failed_addons=[],
         failed_folders=[],
@@ -423,9 +420,7 @@ def test_retry_policy_and_password_marker() -> None:
     coordinator.integrity_result = password
     coordinator._backup_password_marker = None
     assert (
-        coordinator._automatic_verification_due(
-            record, now=now, password_changed=True
-        )
+        coordinator._automatic_verification_due(record, now=now, password_changed=True)
         is False
     )
     coordinator._backup_password_marker = "marker"
@@ -443,9 +438,7 @@ def test_retry_policy_and_password_marker() -> None:
     assert coordinator._integrity_retry_attempts == 1
     coordinator._update_integrity_retry_state(retryable)
     assert coordinator._integrity_retry_attempts == 2
-    assert coordinator._automatic_verification_due(
-        record, now=now + timedelta(hours=2)
-    )
+    assert coordinator._automatic_verification_due(record, now=now + timedelta(hours=2))
 
     valid = _result(status=INTEGRITY_STATUS_VALID, checked_at=now)
     coordinator._update_integrity_retry_state(valid)

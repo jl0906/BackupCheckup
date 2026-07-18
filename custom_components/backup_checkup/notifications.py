@@ -193,6 +193,7 @@ class BackupCheckupNotificationManager:
         self._was_enabled = True
         if not signature:
             self._last_signature = ""
+            self._last_targets = targets
             await self._async_save()
             return
         if await self._async_send_problem(data, targets):
@@ -259,11 +260,16 @@ class BackupCheckupNotificationManager:
                 )
                 return
             if signature == self._last_signature:
-                if normalized_targets != self._last_targets:
-                    await self._async_sync_targets_for_existing_problem(
-                        data,
-                        normalized_targets,
-                    )
+                if normalized_targets == self._last_targets:
+                    return
+                if not signature:
+                    self._last_targets = normalized_targets
+                    await self._async_save()
+                    return
+                await self._async_sync_targets_for_existing_problem(
+                    data,
+                    normalized_targets,
+                )
                 return
             await self._async_send_state_change(
                 data,

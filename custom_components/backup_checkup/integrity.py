@@ -211,6 +211,7 @@ class BackupIntegrityStore:
             atomic_writes=True,
         )
         self._loaded = False
+        self._load_lock = asyncio.Lock()
         self._state = IntegrityStoreState(BackupIntegrityResult.not_checked())
         self._result = self._state.result
 
@@ -303,40 +304,43 @@ class BackupIntegrityStore:
         """Load persistent state once and recover from invalid private data."""
         if self._loaded:
             return self._state
-        self._loaded = True
-        try:
-            stored = await self._store.async_load()
-            if stored is None:
+        async with self._load_lock:
+            if self._loaded:
+                return self._state
+            try:
+                stored = await self._store.async_load()
+                if stored is None:
+                    async_set_storage_data_issue(
+                        self._hass, store_name="integrity", active=False
+                    )
+                elif not isinstance(stored, dict):
+                    raise ValueError("invalid_store_root")
+                else:
+                    self._state = self._state_from_stored(stored)
+                    self._result = self._state.result
+            except Exception as err:  # noqa: BLE001 - private store boundary
+                _LOGGER.warning(
+                    "Invalid integrity store data was reset: error_type=%s",
+                    safe_error_type(err),
+                )
+                self._state = IntegrityStoreState(BackupIntegrityResult.not_checked())
+                self._result = self._state.result
+                async_set_storage_data_issue(
+                    self._hass, store_name="integrity", active=True
+                )
+                try:
+                    await self._store.async_save(self._state_as_dict(self._state))
+                except Exception as save_err:  # noqa: BLE001 - storage boundary
+                    _LOGGER.warning(
+                        "Unable to persist repaired integrity state: error_type=%s",
+                        safe_error_type(save_err),
+                    )
+            else:
                 async_set_storage_data_issue(
                     self._hass, store_name="integrity", active=False
                 )
-                return self._state
-            if not isinstance(stored, dict):
-                raise ValueError("invalid_store_root")
-            self._state = self._state_from_stored(stored)
-            self._result = self._state.result
-        except Exception as err:  # noqa: BLE001 - private store boundary
-            _LOGGER.warning(
-                "Invalid integrity store data was reset: error_type=%s",
-                safe_error_type(err),
-            )
-            self._state = IntegrityStoreState(BackupIntegrityResult.not_checked())
-            self._result = self._state.result
-            async_set_storage_data_issue(
-                self._hass, store_name="integrity", active=True
-            )
-            try:
-                await self._store.async_save(self._state_as_dict(self._state))
-            except Exception as save_err:  # noqa: BLE001 - storage boundary
-                _LOGGER.warning(
-                    "Unable to persist repaired integrity state: error_type=%s",
-                    safe_error_type(save_err),
-                )
-        else:
-            async_set_storage_data_issue(
-                self._hass, store_name="integrity", active=False
-            )
-        return self._state
+            self._loaded = True
+            return self._state
 
     async def async_load(self) -> BackupIntegrityResult:
         """Load and return the last integrity result."""

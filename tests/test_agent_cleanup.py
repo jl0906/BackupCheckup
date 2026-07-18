@@ -26,9 +26,7 @@ class _Registry:
     def __init__(self) -> None:
         self.removed: list[str] = []
 
-    def async_get_entity_id(
-        self, platform: str, domain: str, unique_id: str
-    ) -> str:
+    def async_get_entity_id(self, platform: str, domain: str, unique_id: str) -> str:
         return f"{platform}.{domain}_{unique_id}"
 
     def async_remove(self, entity_id: str) -> None:

@@ -293,9 +293,7 @@ def test_invalid_final_candidate_state_returns_internal_error(
     manager = SimpleNamespace(
         backup_agents={"backup.local": object()},
         config=SimpleNamespace(
-            data=SimpleNamespace(
-                create_backup=SimpleNamespace(password=None)
-            )
+            data=SimpleNamespace(create_backup=SimpleNamespace(password=None))
         ),
     )
     monkeypatch.setattr(integrity, "async_get_manager", lambda _hass: manager)

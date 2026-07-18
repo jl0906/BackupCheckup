@@ -1,5 +1,68 @@
 # Changelog
 
+## 2.3.0-beta1
+
+**Pre-release: complete production-function coverage and beta hardening**
+
+This beta validates every Python production function in BackupCheckup, fixes the
+functional defects exposed by the expanded state-machine and concurrency tests, and
+adds permanent CI gates so future releases cannot silently lose coverage. The
+Expert-only logging behavior from alpha2 remains unchanged. The config-entry schema
+remains version 9.
+
+### Fixed
+
+- Fixed notification processing being able to send a false problem notification after
+  notifications were enabled while BackupCheckup was healthy or after notification
+  targets changed while no problem was active. Healthy target changes now update only
+  the deduplication state and never invoke the problem sender.
+- Fixed concurrent first loads of the private integrity store being able to return the
+  default `not_checked` state to one caller before the persisted state had finished
+  loading. Initial loading is now serialized and marked complete only after validation
+  or controlled repair finishes.
+- Fixed the validation workflow referencing the unavailable `actions/checkout@v7`; all
+  jobs now use the current supported major version `actions/checkout@v6`.
+- Fixed the README version badge still advertising alpha1 while the repository already
+  contained alpha2. Release metadata now consistently advertises beta1.
+
+### Added
+
+- Added an AST-based function-coverage gate that inventories every synchronous,
+  asynchronous, class, method, and nested production function and verifies that its
+  first executable statement ran during the test suite.
+- Added separate CI thresholds for at least 95% statement coverage and 85% branch
+  coverage, in addition to the existing combined coverage threshold.
+- Added a Python quality job to GitHub Actions covering formatting, Ruff, compilation,
+  the complete pytest suite, statement and branch coverage, and 100% production-function
+  execution.
+- Added functional tests for canonical settings serialization, integrity runtime-state
+  persistence, SQLite progress cancellation and timeout handling, coordinator result
+  persistence, notification recovery and removal, Repairs cleanup, storage-name
+  resolution, entity-registry migrations, diagnostics privacy, and UTC normalization.
+- Added regression tests for healthy notification enablement and target changes, and for
+  concurrent integrity-store loading.
+
+### Changed
+
+- Raised the combined coverage gate from 90% to 93%.
+- Promoted 2.3.0 from alpha to beta after all 371 inventoried production functions were
+  executed by functional tests.
+- Expert mode continues to enable the live activity journal; Standard mode continues to
+  keep it completely disabled.
+- Generated local Coverage.py reports and HTML output are now ignored by Git so test
+  artifacts cannot accidentally enter a release commit.
+
+### Validation
+
+- 256 tests pass.
+- Production function coverage: 371/371 functions entered (100.00%).
+- Production statement coverage: 95.01%.
+- Production branch coverage: 86.98%.
+- Combined statement-and-branch coverage: 93.45%.
+- Ruff, formatter, Python compilation, metadata parsing, and release consistency checks
+  pass.
+- No configuration migration is required; the config-entry schema remains version 9.
+
 ## 2.3.0-alpha2
 
 **Pre-release: Expert-mode activity logging**

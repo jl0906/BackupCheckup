@@ -107,9 +107,7 @@ class _Hass:
 async def test_config_flow_profile_validation_and_custom_path(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(
-        config_flow, "mobile_notification_options", lambda *_args: []
-    )
+    monkeypatch.setattr(config_flow, "mobile_notification_options", lambda *_args: [])
     flow = config_flow.BackupCheckupConfigFlow()
     flow.hass = SimpleNamespace()
 
@@ -153,9 +151,7 @@ async def test_options_flow_applies_changed_entity_mode(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     applied: list[str] = []
-    monkeypatch.setattr(
-        config_flow, "mobile_notification_options", lambda *_args: []
-    )
+    monkeypatch.setattr(config_flow, "mobile_notification_options", lambda *_args: [])
     monkeypatch.setattr(
         config_flow,
         "async_apply_entity_mode",
@@ -181,9 +177,7 @@ async def test_options_flow_applies_changed_entity_mode(
     assert advanced_created["type"] == "create_entry"
 
     assert isinstance(
-        config_flow.BackupCheckupConfigFlow.async_get_options_flow(
-            ConfigEntry()
-        ),
+        config_flow.BackupCheckupConfigFlow.async_get_options_flow(ConfigEntry()),
         config_flow.BackupCheckupOptionsFlow,
     )
 
@@ -196,9 +190,7 @@ def test_entity_values_attributes_and_availability() -> None:
     status_description = next(
         item for item in sensor.SENSORS if item.key == "backup_manager_state"
     )
-    status_sensor = sensor.BackupCheckupSensor(
-        coordinator, entry, status_description
-    )
+    status_sensor = sensor.BackupCheckupSensor(coordinator, entry, status_description)
     assert status_sensor.native_value == "idle"
     assert status_sensor.extra_state_attributes is None
     assert status_sensor.unique_id == "entry_backup_manager_state"
@@ -251,14 +243,10 @@ async def test_buttons_setup_availability_and_actions() -> None:
     assert len(added) == 3
 
     verify = next(
-        item
-        for item in added
-        if isinstance(item, button.BackupCheckupVerifyButton)
+        item for item in added if isinstance(item, button.BackupCheckupVerifyButton)
     )
     refresh = next(
-        item
-        for item in added
-        if isinstance(item, button.BackupCheckupRefreshButton)
+        item for item in added if isinstance(item, button.BackupCheckupRefreshButton)
     )
     test = next(
         item

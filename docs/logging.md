@@ -1,6 +1,6 @@
 # Logging and live activity
 
-BackupCheckup 2.3.0-alpha2 provides one central, privacy-safe activity journal
+BackupCheckup 2.3.0-beta1 provides one central, privacy-safe activity journal
 exclusively in **Expert entity mode**. Each record contains a UTC timestamp, a
 stable action name, an outcome, and a small set of bounded details.
 

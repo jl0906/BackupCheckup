@@ -18,4 +18,4 @@ source = ["custom_components/backup_checkup"]
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
-fail_under = 90
+fail_under = 93
