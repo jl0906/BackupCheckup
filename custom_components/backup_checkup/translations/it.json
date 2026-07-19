@@ -3,135 +3,302 @@
   "config": {
     "step": {
       "user": {
-        "title": "Configura BackupCheckup",
-        "description": "Scegli un profilo di monitoraggio, una modalità entità indipendente e, facoltativamente, i dispositivi Home Assistant Companion App per le notifiche. Tutto può essere modificato in seguito nelle opzioni dell’integrazione.",
+        "title": "Choose a performance profile",
+        "description": "Detected installation: {installation_type}\nArchitecture: {architecture}\nHardware board: {board}\nRecommended profile: {recommended_profile} (confidence: {confidence})\n\nThe recommendation is only a starting point and will not overwrite your settings later.",
         "data": {
-          "monitoring_profile": "Profilo di monitoraggio",
-          "entity_mode": "Modalità entità",
-          "notifications_enabled": "Abilita notifiche mobili",
-          "notification_targets": "Dispositivi mobili da notificare",
-          "notify_on_recovery": "Notifica quando i problemi sono risolti"
+          "runtime_profile": "Performance profile",
+          "adaptive_polling": "Use intelligent polling"
         },
         "data_description": {
-          "monitoring_profile": "Standard è semplice e adatto alla maggior parte delle installazioni. Sicuro richiede una seconda posizione di archiviazione. Personalizzato mostra tutte le impostazioni.",
-          "entity_mode": "Scegli indipendentemente dal profilo di monitoraggio quante entità BackupCheckup attivare dopo la configurazione. Standard attiva le entità di monitoraggio e problema più utili. Esperto attiva anche tutte le entità di analisi, diagnostica, integrità, pianificazione e posizione di archiviazione.",
-          "notifications_enabled": "Invia una notifica mobile quando cambiano i problemi di backup attivi. I controlli ripetuti non inviano notifiche duplicate.",
-          "notification_targets": "Vengono mostrate solo le entità di notifica create dalla Home Assistant Companion App. Puoi selezionare uno o più telefoni o tablet.",
-          "notify_on_recovery": "Invia una notifica finale quando tutti i problemi di backup segnalati in precedenza sono stati risolti."
+          "runtime_profile": "The recommendation is based on the installation type, architecture, and known Home Assistant hardware. It is never applied again automatically after setup.",
+          "adaptive_polling": "Refresh immediately when native backup activity changes, poll faster while a backup is running, and use a longer interval after repeated manager errors."
         }
       },
-      "advanced": {
-        "title": "Impostazioni di monitoraggio personalizzate",
-        "description": "Imposta i tuoi limiti. Il controllo automatico delle dimensioni confronta il backup più recente con i backup recenti.",
+      "runtime_custom": {
+        "title": "Custom performance settings",
+        "description": "Set polling intervals and resource limits manually.",
         "data": {
-          "max_age_days": "Età massima del backup in giorni",
-          "update_interval_minutes": "Intervallo di aggiornamento in minuti",
-          "size_check_mode": "Controllo dimensione backup",
-          "minimum_backup_size_mb": "Dimensione minima fissa del backup in MB",
-          "maximum_size_drop_percent": "Riduzione massima consentita delle dimensioni in percentuale",
-          "minimum_redundant_locations": "Posizioni di backup richieste",
-          "repair_issues_enabled": "Mostra avvisi di riparazione",
-          "analytics_window_days": "Periodo di analisi in giorni",
-          "auto_verify_new_backups": "Verifica automaticamente ogni nuovo backup",
-          "database_integrity_check": "Esegui controllo integrità database (esperto)",
+          "update_interval_minutes": "Normal polling interval in minutes",
+          "active_update_interval_minutes": "Polling interval while a backup is active in minutes",
+          "error_backoff_interval_minutes": "Polling interval after repeated errors in minutes",
+          "adaptive_error_threshold": "Errors before backoff",
           "max_verification_size_gb": "Maximum downloaded backup size in GB",
           "max_expanded_size_gb": "Maximum expanded archive size in GB",
           "verification_timeout_minutes": "Maximum verification duration in minutes",
           "database_timeout_minutes": "Maximum database check duration in minutes",
-          "manual_verification_cooldown_minutes": "Manual verification cooldown in minutes",
-          "expose_backup_metadata": "Expose backup names and IDs (expert)"
+          "manual_verification_cooldown_minutes": "Manual verification cooldown in minutes"
         },
         "data_description": {
-          "max_age_days": "Viene mostrato un avviso dopo questo numero di giorni completi.",
-          "update_interval_minutes": "Frequenza con cui BackupCheckup legge l’inventario dei backup di Home Assistant.",
-          "size_check_mode": "La modalità automatica è consigliata agli utenti che non conoscono la dimensione abituale dei propri backup.",
-          "minimum_backup_size_mb": "Utilizzata solo con la modalità a dimensione minima fissa.",
-          "maximum_size_drop_percent": "Utilizzata per il confronto automatico con i backup precedenti.",
-          "minimum_redundant_locations": "Usa 1 per una posizione oppure 2 per archiviazione locale più NAS/cloud.",
-          "repair_issues_enabled": "Crea avvisi Riparazioni di Home Assistant per i problemi di backup attivi. Gli avvisi scompaiono automaticamente quando il problema è risolto.",
-          "analytics_window_days": "Le statistiche dei backup e la percentuale di successo osservata dei backup automatici usano questo periodo. La registrazione storica inizia con la versione 1.5.0.",
-          "auto_verify_new_backups": "Quando viene rilevato un nuovo backup più recente, viene scaricato e verificato completamente una volta. Può utilizzare molta rete, CPU e spazio temporaneo.",
-          "database_integrity_check": "Estrae temporaneamente il database SQLite ed esegue PRAGMA integrity_check. La verifica richiede più tempo e spazio temporaneo aggiuntivo.",
+          "update_interval_minutes": "Base interval used while Home Assistant is idle.",
+          "active_update_interval_minutes": "Temporary faster interval used while the native backup manager reports an active backup.",
+          "error_backoff_interval_minutes": "Temporary slower interval used after the configured number of consecutive inventory errors.",
+          "adaptive_error_threshold": "Successful inventory reads reset the consecutive error counter.",
           "max_verification_size_gb": "Stops verification before or during download when this limit is exceeded.",
           "max_expanded_size_gb": "Limits the total amount of uncompressed archive data that may be read.",
           "verification_timeout_minutes": "Stops download and archive processing after this overall duration.",
           "database_timeout_minutes": "Stops SQLite PRAGMA integrity_check after this duration.",
-          "manual_verification_cooldown_minutes": "Prevents repeated manual checks. Set to 0 to disable the cooldown.",
-          "expose_backup_metadata": "Disabled by default. When enabled, the latest-backup result entity exposes the user-defined backup name and raw backup ID."
+          "manual_verification_cooldown_minutes": "Prevents repeated manual checks. Set to 0 to disable the cooldown."
+        }
+      },
+      "monitoring": {
+        "title": "Choose a monitoring policy",
+        "description": "Monitoring strictness is independent of the hardware profile.",
+        "data": {
+          "monitoring_policy": "Monitoring policy"
+        },
+        "data_description": {
+          "monitoring_policy": "Balanced is suitable for most installations. Strict expects newer backups and two storage locations. Custom opens every threshold."
+        }
+      },
+      "monitoring_custom": {
+        "title": "Custom monitoring settings",
+        "description": "Set your own backup-health limits.",
+        "data": {
+          "max_age_days": "Maximum backup age in days",
+          "size_check_mode": "Size check mode",
+          "minimum_backup_size_mb": "Fixed minimum backup size in MB",
+          "maximum_size_drop_percent": "Maximum allowed size drop in percent",
+          "minimum_redundant_locations": "Required backup locations",
+          "repair_issues_enabled": "Show repair notifications",
+          "analytics_window_days": "Analysis period in days"
+        },
+        "data_description": {
+          "max_age_days": "A warning is shown after this many complete days.",
+          "size_check_mode": "Automatic compares the newest backup with equivalent recent backups.",
+          "minimum_backup_size_mb": "Only used with the fixed minimum size mode.",
+          "maximum_size_drop_percent": "Used for automatic comparison with previous backups.",
+          "minimum_redundant_locations": "Use 1 for one location or 2 for local storage plus NAS or cloud.",
+          "repair_issues_enabled": "Create Home Assistant Repair issues for active backup problems.",
+          "analytics_window_days": "Backup statistics and observed automatic-backup success use this period."
+        }
+      },
+      "verification": {
+        "title": "Choose an integrity-check strategy",
+        "description": "Automatic archive verification can use considerable network, CPU, and temporary disk space. Deep verification additionally checks the included SQLite database.",
+        "data": {
+          "verification_policy": "Integrity-check strategy"
+        },
+        "data_description": {
+          "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check."
+        }
+      },
+      "presentation": {
+        "title": "Entities and notifications",
+        "description": "Choose the visible entity scope, privacy behavior, and optional mobile alerts.",
+        "data": {
+          "entity_mode": "Entity mode",
+          "expose_backup_metadata": "Expose backup names and IDs (expert)",
+          "notifications_enabled": "Enable mobile notifications",
+          "notification_targets": "Mobile devices to notify",
+          "notify_on_recovery": "Notify when problems are resolved"
+        },
+        "data_description": {
+          "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities and the live activity journal.",
+          "expose_backup_metadata": "Disabled by default. When enabled, selected diagnostics and entities may expose user-defined backup names and raw backup IDs.",
+          "notifications_enabled": "Send a mobile notification when the active backup problems change.",
+          "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
+          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved."
+        }
+      },
+      "summary": {
+        "title": "Confirm setup",
+        "description": "**Detected hardware:** {hardware}\n**Performance profile:** {runtime_profile}\n**Normal polling:** {update_interval} minutes\n**Download limit:** {download_limit} GB\n**Intelligent polling:** {adaptive_polling}\n**Monitoring:** {monitoring_policy}\n**Integrity checks:** {verification_policy}\n**Entity mode:** {entity_mode}\n**Notification devices:** {notification_count}",
+        "data": {
+          "confirm": "Apply this configuration"
+        },
+        "data_description": {
+          "confirm": "Review the summary before creating the integration."
         }
       }
     },
     "abort": {
-      "single_instance_allowed": "È consentita una sola istanza di BackupCheckup."
+      "single_instance_allowed": "Only one BackupCheckup instance is allowed."
     },
     "error": {
-      "fixed_size_required": "Con la dimensione minima fissa inserisci un valore superiore a 0 MB.",
-      "notification_target_required": "Seleziona almeno un dispositivo mobile quando le notifiche mobili sono abilitate."
+      "fixed_size_required": "Enter a minimum backup size greater than 0 MB when using the fixed minimum size mode.",
+      "notification_target_required": "Select at least one mobile device when mobile notifications are enabled.",
+      "active_interval_too_slow": "The active polling interval must not be longer than the normal polling interval.",
+      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval.",
+      "confirmation_required": "Confirm the displayed configuration before saving it."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Opzioni di BackupCheckup",
-        "description": "Scegli un profilo di monitoraggio, una modalità entità indipendente e destinazioni di notifica Companion App opzionali. Personalizzato apre tutte le impostazioni di monitoraggio.",
-        "data": {
-          "monitoring_profile": "Profilo di monitoraggio",
-          "entity_mode": "Modalità entità",
-          "notifications_enabled": "Abilita notifiche mobili",
-          "notification_targets": "Dispositivi mobili da notificare",
-          "notify_on_recovery": "Notifica quando i problemi sono risolti"
-        },
-        "data_description": {
-          "entity_mode": "Scegli indipendentemente dal profilo di monitoraggio quante entità BackupCheckup attivare dopo la configurazione. Standard attiva le entità di monitoraggio e problema più utili. Esperto attiva anche tutte le entità di analisi, diagnostica, integrità, pianificazione e posizione di archiviazione.",
-          "notifications_enabled": "Invia una notifica mobile quando cambiano i problemi di backup attivi. I controlli ripetuti non inviano notifiche duplicate.",
-          "notification_targets": "Vengono mostrate solo le entità di notifica create dalla Home Assistant Companion App. Puoi selezionare uno o più telefoni o tablet.",
-          "notify_on_recovery": "Invia una notifica finale quando tutti i problemi di backup segnalati in precedenza sono stati risolti."
+        "title": "BackupCheckup options",
+        "menu_options": {
+          "runtime": "Performance profile",
+          "monitoring": "Monitoring policy",
+          "verification": "Integrity checks",
+          "presentation": "Entities and notifications",
+          "setup_assistant": "Run the complete setup assistant"
         }
       },
-      "advanced": {
-        "title": "Impostazioni di monitoraggio personalizzate",
-        "description": "Imposta i tuoi limiti. Il controllo automatico delle dimensioni confronta il backup più recente con i backup recenti.",
+      "runtime": {
+        "title": "Performance profile",
+        "description": "Changing a preset replaces the performance-sensitive values with the current preset revision.",
         "data": {
-          "max_age_days": "Età massima del backup in giorni",
-          "update_interval_minutes": "Intervallo di aggiornamento in minuti",
-          "size_check_mode": "Controllo dimensione backup",
-          "minimum_backup_size_mb": "Dimensione minima fissa del backup in MB",
-          "maximum_size_drop_percent": "Riduzione massima consentita delle dimensioni in percentuale",
-          "minimum_redundant_locations": "Posizioni di backup richieste",
-          "repair_issues_enabled": "Mostra avvisi di riparazione",
-          "analytics_window_days": "Periodo di analisi in giorni",
-          "auto_verify_new_backups": "Verifica automaticamente ogni nuovo backup",
-          "database_integrity_check": "Esegui controllo integrità database (esperto)",
+          "runtime_profile": "Performance profile",
+          "adaptive_polling": "Use intelligent polling"
+        },
+        "data_description": {
+          "runtime_profile": "The recommendation is based on the installation type, architecture, and known Home Assistant hardware. It is never applied again automatically after setup.",
+          "adaptive_polling": "Refresh immediately when native backup activity changes, poll faster while a backup is running, and use a longer interval after repeated manager errors."
+        }
+      },
+      "runtime_custom": {
+        "title": "Custom performance settings",
+        "description": "Set polling intervals and resource limits manually.",
+        "data": {
+          "update_interval_minutes": "Normal polling interval in minutes",
+          "active_update_interval_minutes": "Polling interval while a backup is active in minutes",
+          "error_backoff_interval_minutes": "Polling interval after repeated errors in minutes",
+          "adaptive_error_threshold": "Errors before backoff",
           "max_verification_size_gb": "Maximum downloaded backup size in GB",
           "max_expanded_size_gb": "Maximum expanded archive size in GB",
           "verification_timeout_minutes": "Maximum verification duration in minutes",
           "database_timeout_minutes": "Maximum database check duration in minutes",
-          "manual_verification_cooldown_minutes": "Manual verification cooldown in minutes",
-          "expose_backup_metadata": "Expose backup names and IDs (expert)"
+          "manual_verification_cooldown_minutes": "Manual verification cooldown in minutes"
         },
         "data_description": {
-          "max_age_days": "Viene mostrato un avviso dopo questo numero di giorni completi.",
-          "update_interval_minutes": "Frequenza con cui BackupCheckup legge l’inventario dei backup di Home Assistant.",
-          "size_check_mode": "La modalità automatica è consigliata agli utenti che non conoscono la dimensione abituale dei propri backup.",
-          "minimum_backup_size_mb": "Utilizzata solo con la modalità a dimensione minima fissa.",
-          "maximum_size_drop_percent": "Utilizzata per il confronto automatico con i backup precedenti.",
-          "minimum_redundant_locations": "Usa 1 per una posizione oppure 2 per archiviazione locale più NAS/cloud.",
-          "repair_issues_enabled": "Crea avvisi Riparazioni di Home Assistant per i problemi di backup attivi. Gli avvisi scompaiono automaticamente quando il problema è risolto.",
-          "analytics_window_days": "Le statistiche dei backup e la percentuale di successo osservata dei backup automatici usano questo periodo. La registrazione storica inizia con la versione 1.5.0.",
-          "auto_verify_new_backups": "Quando viene rilevato un nuovo backup più recente, viene scaricato e verificato completamente una volta. Può utilizzare molta rete, CPU e spazio temporaneo.",
-          "database_integrity_check": "Estrae temporaneamente il database SQLite ed esegue PRAGMA integrity_check. La verifica richiede più tempo e spazio temporaneo aggiuntivo.",
+          "update_interval_minutes": "Base interval used while Home Assistant is idle.",
+          "active_update_interval_minutes": "Temporary faster interval used while the native backup manager reports an active backup.",
+          "error_backoff_interval_minutes": "Temporary slower interval used after the configured number of consecutive inventory errors.",
+          "adaptive_error_threshold": "Successful inventory reads reset the consecutive error counter.",
           "max_verification_size_gb": "Stops verification before or during download when this limit is exceeded.",
           "max_expanded_size_gb": "Limits the total amount of uncompressed archive data that may be read.",
           "verification_timeout_minutes": "Stops download and archive processing after this overall duration.",
           "database_timeout_minutes": "Stops SQLite PRAGMA integrity_check after this duration.",
-          "manual_verification_cooldown_minutes": "Prevents repeated manual checks. Set to 0 to disable the cooldown.",
-          "expose_backup_metadata": "Disabled by default. When enabled, the latest-backup result entity exposes the user-defined backup name and raw backup ID."
+          "manual_verification_cooldown_minutes": "Prevents repeated manual checks. Set to 0 to disable the cooldown."
+        }
+      },
+      "monitoring": {
+        "title": "Choose a monitoring policy",
+        "description": "Monitoring strictness is independent of the hardware profile.",
+        "data": {
+          "monitoring_policy": "Monitoring policy"
+        },
+        "data_description": {
+          "monitoring_policy": "Balanced is suitable for most installations. Strict expects newer backups and two storage locations. Custom opens every threshold."
+        }
+      },
+      "monitoring_custom": {
+        "title": "Custom monitoring settings",
+        "description": "Set your own backup-health limits.",
+        "data": {
+          "max_age_days": "Maximum backup age in days",
+          "size_check_mode": "Size check mode",
+          "minimum_backup_size_mb": "Fixed minimum backup size in MB",
+          "maximum_size_drop_percent": "Maximum allowed size drop in percent",
+          "minimum_redundant_locations": "Required backup locations",
+          "repair_issues_enabled": "Show repair notifications",
+          "analytics_window_days": "Analysis period in days"
+        },
+        "data_description": {
+          "max_age_days": "A warning is shown after this many complete days.",
+          "size_check_mode": "Automatic compares the newest backup with equivalent recent backups.",
+          "minimum_backup_size_mb": "Only used with the fixed minimum size mode.",
+          "maximum_size_drop_percent": "Used for automatic comparison with previous backups.",
+          "minimum_redundant_locations": "Use 1 for one location or 2 for local storage plus NAS or cloud.",
+          "repair_issues_enabled": "Create Home Assistant Repair issues for active backup problems.",
+          "analytics_window_days": "Backup statistics and observed automatic-backup success use this period."
+        }
+      },
+      "verification": {
+        "title": "Choose an integrity-check strategy",
+        "description": "Automatic archive verification can use considerable network, CPU, and temporary disk space. Deep verification additionally checks the included SQLite database.",
+        "data": {
+          "verification_policy": "Integrity-check strategy"
+        },
+        "data_description": {
+          "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check."
+        }
+      },
+      "presentation": {
+        "title": "Entities and notifications",
+        "description": "Choose the visible entity scope, privacy behavior, and optional mobile alerts.",
+        "data": {
+          "entity_mode": "Entity mode",
+          "expose_backup_metadata": "Expose backup names and IDs (expert)",
+          "notifications_enabled": "Enable mobile notifications",
+          "notification_targets": "Mobile devices to notify",
+          "notify_on_recovery": "Notify when problems are resolved"
+        },
+        "data_description": {
+          "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities and the live activity journal.",
+          "expose_backup_metadata": "Disabled by default. When enabled, selected diagnostics and entities may expose user-defined backup names and raw backup IDs.",
+          "notifications_enabled": "Send a mobile notification when the active backup problems change.",
+          "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
+          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved."
+        }
+      },
+      "setup_assistant": {
+        "title": "Run the setup assistant again",
+        "description": "Detected installation: {installation_type}\nArchitecture: {architecture}\nHardware board: {board}\nRecommended profile: {recommended_profile} (confidence: {confidence})\n\nThe recommendation is only a starting point and will not overwrite your settings later.",
+        "data": {
+          "runtime_profile": "Performance profile",
+          "adaptive_polling": "Use intelligent polling"
+        },
+        "data_description": {
+          "runtime_profile": "The recommendation is based on the installation type, architecture, and known Home Assistant hardware. It is never applied again automatically after setup.",
+          "adaptive_polling": "Refresh immediately when native backup activity changes, poll faster while a backup is running, and use a longer interval after repeated manager errors."
+        }
+      },
+      "setup_monitoring": {
+        "title": "Choose a monitoring policy",
+        "description": "Monitoring strictness is independent of the hardware profile.",
+        "data": {
+          "monitoring_policy": "Monitoring policy"
+        },
+        "data_description": {
+          "monitoring_policy": "Balanced is suitable for most installations. Strict expects newer backups and two storage locations. Custom opens every threshold."
+        }
+      },
+      "setup_verification": {
+        "title": "Choose an integrity-check strategy",
+        "description": "Automatic archive verification can use considerable network, CPU, and temporary disk space. Deep verification additionally checks the included SQLite database.",
+        "data": {
+          "verification_policy": "Integrity-check strategy"
+        },
+        "data_description": {
+          "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check."
+        }
+      },
+      "setup_presentation": {
+        "title": "Entities and notifications",
+        "description": "Choose the visible entity scope, privacy behavior, and optional mobile alerts.",
+        "data": {
+          "entity_mode": "Entity mode",
+          "expose_backup_metadata": "Expose backup names and IDs (expert)",
+          "notifications_enabled": "Enable mobile notifications",
+          "notification_targets": "Mobile devices to notify",
+          "notify_on_recovery": "Notify when problems are resolved"
+        },
+        "data_description": {
+          "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities and the live activity journal.",
+          "expose_backup_metadata": "Disabled by default. When enabled, selected diagnostics and entities may expose user-defined backup names and raw backup IDs.",
+          "notifications_enabled": "Send a mobile notification when the active backup problems change.",
+          "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
+          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved."
+        }
+      },
+      "setup_summary": {
+        "title": "Confirm updated setup",
+        "description": "**Detected hardware:** {hardware}\n**Performance profile:** {runtime_profile}\n**Normal polling:** {update_interval} minutes\n**Download limit:** {download_limit} GB\n**Intelligent polling:** {adaptive_polling}\n**Monitoring:** {monitoring_policy}\n**Integrity checks:** {verification_policy}\n**Entity mode:** {entity_mode}\n**Notification devices:** {notification_count}",
+        "data": {
+          "confirm": "Apply this configuration"
+        },
+        "data_description": {
+          "confirm": "Review the summary before creating the integration."
         }
       }
     },
     "error": {
-      "fixed_size_required": "Con la dimensione minima fissa inserisci un valore superiore a 0 MB.",
-      "notification_target_required": "Seleziona almeno un dispositivo mobile quando le notifiche mobili sono abilitate."
+      "fixed_size_required": "Enter a minimum backup size greater than 0 MB when using the fixed minimum size mode.",
+      "notification_target_required": "Select at least one mobile device when mobile notifications are enabled.",
+      "active_interval_too_slow": "The active polling interval must not be longer than the normal polling interval.",
+      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval.",
+      "confirmation_required": "Confirm the displayed configuration before saving it."
     }
   },
   "entity": {
@@ -383,24 +550,41 @@
     }
   },
   "selector": {
-    "monitoring_profile": {
+    "runtime_profile": {
       "options": {
-        "standard": "Standard",
-        "secure": "Sicuro",
-        "custom": "Personalizzato"
+        "energy_saving": "Energy saving",
+        "home_assistant_appliance": "Home Assistant appliance",
+        "performance": "High performance",
+        "server": "Server",
+        "custom": "Custom"
+      }
+    },
+    "monitoring_policy": {
+      "options": {
+        "balanced": "Balanced",
+        "strict": "Strict",
+        "custom": "Custom"
+      }
+    },
+    "verification_policy": {
+      "options": {
+        "manual": "Manual only",
+        "automatic": "Automatically verify new backups",
+        "deep": "Deep verification including database",
+        "custom": "Keep existing custom settings"
       }
     },
     "size_check_mode": {
       "options": {
-        "automatic": "Confronto automatico",
-        "fixed": "Dimensione minima fissa",
-        "disabled": "Disattivato"
+        "automatic": "Automatic comparison",
+        "fixed": "Fixed minimum size",
+        "disabled": "Disabled"
       }
     },
     "entity_mode": {
       "options": {
-        "standard": "Modalità standard",
-        "expert": "Modalità esperto"
+        "standard": "Standard mode",
+        "expert": "Expert mode"
       }
     }
   },

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
@@ -486,6 +486,9 @@ class BackupCheckupData:
     invalid_agent_copy_count: int = 0
     copy_size_mismatch_count: int = 0
     last_inventory_success_at: datetime | None = None
+    health_score_components: dict[str, int] = field(default_factory=dict)
+    health_score_raw_deductions: dict[str, int] = field(default_factory=dict)
+    health_score_suppressed_deductions: tuple[str, ...] = ()
 
     @property
     def latest_monitored_backup_record(self) -> BackupRecord | None:

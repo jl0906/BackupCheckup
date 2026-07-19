@@ -347,7 +347,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _record_activity(coordinator, "first_refresh", ACTIVITY_OUTCOME_COMPLETED)
 
     entry.runtime_data = coordinator
-    entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
+    coordinator.async_start_adaptive_polling()
 
     def _sync_repair_issues() -> None:
         if coordinator.repair_issues_enabled:
@@ -402,14 +402,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             level=logging.INFO if unload_ok else logging.WARNING,
         )
     return unload_ok
-
-
-async def _async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload BackupCheckup after its options change."""
-    coordinator = getattr(entry, "runtime_data", None)
-    if isinstance(coordinator, BackupCheckupCoordinator):
-        _record_activity(coordinator, "config_entry_reload", ACTIVITY_OUTCOME_STARTED)
-    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:

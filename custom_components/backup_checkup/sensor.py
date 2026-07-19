@@ -31,6 +31,7 @@ from .const import (
     BACKUP_RESULT_OPTIONS,
     DOMAIN,
     HEALTH_RATING_OPTIONS,
+    HEALTH_SCORE_VERSION,
     INTEGRITY_DATABASE_OPTIONS,
     INTEGRITY_STATUS_CHECKING,
     INTEGRITY_STATUS_NOT_CHECKED,
@@ -201,7 +202,13 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         value_fn=lambda data: data.health_score,
         attributes_fn=lambda data: {
             "rating": data.health_rating,
+            "score_version": HEALTH_SCORE_VERSION,
             "deductions": data.health_score_deductions,
+            "component_deductions": data.health_score_components or {},
+            "raw_deductions": data.health_score_raw_deductions or {},
+            "suppressed_correlated_deductions": (
+                data.health_score_suppressed_deductions or ()
+            ),
             "analysis_window_days": data.analytics_window_days,
             "automatic_success_rate": data.automatic_success_rate,
             "consecutive_automatic_failures": (data.consecutive_automatic_failures),
@@ -217,7 +224,12 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         value_fn=lambda data: data.health_rating,
         attributes_fn=lambda data: {
             "score": data.health_score,
+            "score_version": HEALTH_SCORE_VERSION,
             "deductions": data.health_score_deductions,
+            "component_deductions": data.health_score_components or {},
+            "suppressed_correlated_deductions": (
+                data.health_score_suppressed_deductions or ()
+            ),
         },
     ),
     BackupCheckupSensorDescription(

@@ -7,7 +7,7 @@ import hashlib
 import logging
 import time
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from statistics import median
@@ -18,6 +18,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
@@ -66,7 +67,11 @@ from .models import (
     BackupIntegrityResult,
     BackupRecord,
 )
-from .native_backup import NativeBackupState, read_native_backup_state
+from .native_backup import (
+    NativeBackupState,
+    native_backup_activity_entity_ids,
+    read_native_backup_state,
+)
 from .notifications import BackupCheckupNotificationManager
 from .problem_state import evaluate_problem_state
 from .security import (
@@ -177,6 +182,12 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self._invalid_backup_count = 0
         self._invalid_agent_copy_count = 0
         self._last_inventory_success_at: datetime | None = None
+        self._inventory_error_count = 0
+        self._manager_backup_active = False
+        self._adaptive_refresh_task: asyncio.Task[None] | None = None
+        self._adaptive_refresh_pending = False
+        self._adaptive_unsubscribers: list[Callable[[], None]] = []
+        self._adaptive_manager_entity_id: str | None = None
 
         super().__init__(
             hass,
@@ -210,6 +221,13 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self.notifications_enabled = settings.notifications_enabled
         self.notification_targets = settings.notification_targets
         self.notify_on_recovery = settings.notify_on_recovery
+        self.runtime_profile = settings.runtime_profile
+        self.monitoring_policy = settings.monitoring_policy
+        self.verification_policy = settings.verification_policy
+        self.adaptive_polling = settings.adaptive_polling
+        self.active_update_interval_minutes = settings.active_update_interval_minutes
+        self.error_backoff_interval_minutes = settings.error_backoff_interval_minutes
+        self.adaptive_error_threshold = settings.adaptive_error_threshold
 
     def _record_activity(
         self,
@@ -231,12 +249,98 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 details=details,
             )
 
+    def async_start_adaptive_polling(self) -> None:
+        """Subscribe to native backup state changes when adaptive polling is enabled."""
+        if not self.adaptive_polling or self._adaptive_unsubscribers:
+            return
+        entity_ids = native_backup_activity_entity_ids(self.hass)
+        self._adaptive_manager_entity_id = entity_ids[0]
+        for entity_id in entity_ids:
+            unsubscribe = async_track_state_change_event(
+                self.hass, [entity_id], self._handle_native_backup_state_change
+            )
+            self._adaptive_unsubscribers.append(unsubscribe)
+
+    def _handle_native_backup_state_change(self, event: Any) -> None:
+        """React to backup-manager and automatic-backup state changes."""
+        data = getattr(event, "data", {})
+        entity_id = data.get("entity_id") if isinstance(data, Mapping) else None
+        new_state = data.get("new_state") if isinstance(data, Mapping) else None
+        state = str(getattr(new_state, "state", "unknown")).casefold()
+        if entity_id == self._adaptive_manager_entity_id:
+            self._manager_backup_active = state not in {
+                "idle",
+                "unknown",
+                "unavailable",
+                "none",
+            }
+            self._set_adaptive_interval()
+        self._schedule_adaptive_refresh()
+
+    def _schedule_adaptive_refresh(self) -> None:
+        """Coalesce native backup events into one immediate refresh task."""
+        if (
+            self._adaptive_refresh_task is not None
+            and not self._adaptive_refresh_task.done()
+        ):
+            self._adaptive_refresh_pending = True
+            return
+        self._adaptive_refresh_task = self.hass.async_create_task(
+            self._async_adaptive_refresh(), name=f"{DOMAIN}_adaptive_refresh"
+        )
+
+    async def _async_adaptive_refresh(self) -> None:
+        """Refresh after native transitions without losing an event mid-refresh."""
+        try:
+            while True:
+                self._adaptive_refresh_pending = False
+                await self.async_request_refresh()
+                if not self._adaptive_refresh_pending:
+                    break
+        finally:
+            self._adaptive_refresh_pending = False
+            self._adaptive_refresh_task = None
+
+    def _set_adaptive_interval(self) -> None:
+        """Select base, active, or error-backoff polling interval."""
+        if not self.adaptive_polling:
+            return
+        minutes = self.settings.update_interval_minutes
+        if self._inventory_error_count >= self.adaptive_error_threshold:
+            minutes = self.error_backoff_interval_minutes
+        elif self._manager_backup_active:
+            minutes = self.active_update_interval_minutes
+        self.update_interval = timedelta(minutes=minutes)
+
+    def _record_inventory_success(self, manager_state: object) -> None:
+        """Reset adaptive error backoff and reflect the manager state."""
+        self._inventory_error_count = 0
+        state = str(manager_state).casefold()
+        self._manager_backup_active = state not in {
+            "idle",
+            "unknown",
+            "unavailable",
+            "none",
+        }
+        self._set_adaptive_interval()
+
     async def async_shutdown(self) -> None:
         """Cancel a running integrity check and shut down the coordinator."""
         self._record_activity("coordinator_shutdown", ACTIVITY_OUTCOME_STARTED)
         if self._integrity_task is not None and not self._integrity_task.done():
             self._integrity_task.cancel()
             await asyncio.gather(self._integrity_task, return_exceptions=True)
+        if (
+            self._adaptive_refresh_task is not None
+            and not self._adaptive_refresh_task.done()
+        ):
+            self._adaptive_refresh_task.cancel()
+            await asyncio.gather(self._adaptive_refresh_task, return_exceptions=True)
+        for unsubscribe in self._adaptive_unsubscribers:
+            unsubscribe()
+        self._adaptive_unsubscribers.clear()
+        self._adaptive_manager_entity_id = None
+        self._adaptive_refresh_pending = False
         await super().async_shutdown()
         self._record_activity("coordinator_shutdown", ACTIVITY_OUTCOME_COMPLETED)
 
@@ -271,6 +375,8 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
     ) -> BackupCheckupData:
         """Return a marked previous snapshot or raise on the initial refresh."""
         error_code = classify_exception(err)
+        self._inventory_error_count += 1
+        self._set_adaptive_interval()
         _LOGGER.warning(
             "%s: error_type=%s error_code=%s",
             message,
@@ -336,6 +442,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 "status": getattr(data, "status", "unknown"),
             },
         )
+        self._record_inventory_success(getattr(data, "manager_state", "unknown"))
         previous = self.data
         previous_status = getattr(previous, "status", None)
         current_status = getattr(data, "status", None)
@@ -468,6 +575,10 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             automatic_success_rate=history.success_rate,
             consecutive_automatic_failures=history.consecutive_failures,
             resolved_attempts=history.resolved_attempts,
+            latest_backup_age_days=freshness.latest_precise,
+            max_age_days=self.max_age_days,
+            latest_backup_locations=len(latest_locations),
+            minimum_redundant_locations=self.minimum_redundant_locations,
         )
 
         public_locations = self._public_location_ids(latest_locations)
@@ -537,6 +648,9 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             health_score=health.score,
             health_rating=health.rating,
             health_score_deductions=health.deductions,
+            health_score_components=health.component_deductions,
+            health_score_raw_deductions=health.raw_deductions,
+            health_score_suppressed_deductions=health.suppressed_deductions,
             average_backup_size=inventory_analytics.average_backup_size,
             longest_backup_gap_days=inventory_analytics.longest_backup_gap_days,
             size_trend=inventory_analytics.size_trend,
@@ -1094,6 +1208,14 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             automatic_success_rate=self.data.automatic_success_rate,
             consecutive_automatic_failures=self.data.consecutive_automatic_failures,
             resolved_attempts=self.data.automatic_attempts_observed,
+            latest_backup_age_days=freshness.latest_precise,
+            max_age_days=self.max_age_days,
+            latest_backup_locations=self.data.latest_backup_locations,
+            minimum_redundant_locations=getattr(
+                self,
+                "minimum_redundant_locations",
+                self.data.minimum_redundant_locations,
+            ),
         )
         return replace(
             self.data,
@@ -1118,6 +1240,9 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             health_score=health.score,
             health_rating=health.rating,
             health_score_deductions=health.deductions,
+            health_score_components=health.component_deductions,
+            health_score_raw_deductions=health.raw_deductions,
+            health_score_suppressed_deductions=health.suppressed_deductions,
             agent_errors={**self.data.agent_errors, "manager": error_code},
         )
 

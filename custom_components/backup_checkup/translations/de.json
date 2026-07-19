@@ -3,135 +3,302 @@
   "config": {
     "step": {
       "user": {
-        "title": "BackupCheckup einrichten",
-        "description": "Wähle ein Überwachungsprofil, einen davon unabhängigen Entitätsmodus und optional Geräte der Home Assistant Companion App für Benachrichtigungen. Alles kann später in den Integrationsoptionen geändert werden.",
+        "title": "Leistungsprofil auswählen",
+        "description": "Erkannte Installation: {installation_type}\nArchitektur: {architecture}\nHardwareboard: {board}\nEmpfohlenes Profil: {recommended_profile} (Vertrauen: {confidence})\n\nDie Empfehlung dient nur als Ausgangspunkt und überschreibt deine Einstellungen später nicht.",
         "data": {
-          "monitoring_profile": "Überwachungsprofil",
+          "runtime_profile": "Leistungsprofil",
+          "adaptive_polling": "Intelligente Abfrage verwenden"
+        },
+        "data_description": {
+          "runtime_profile": "Die Empfehlung basiert auf Installationsart, Architektur und bekannter Home-Assistant-Hardware. Sie wird nach der Einrichtung niemals automatisch erneut angewendet.",
+          "adaptive_polling": "Bei Änderungen der nativen Backupaktivität sofort aktualisieren, während eines Backups schneller abfragen und nach wiederholten Managerfehlern ein längeres Intervall verwenden."
+        }
+      },
+      "runtime_custom": {
+        "title": "Benutzerdefinierte Leistungseinstellungen",
+        "description": "Lege Abfrageintervalle und Ressourcenlimits selbst fest.",
+        "data": {
+          "update_interval_minutes": "Normales Abfrageintervall in Minuten",
+          "active_update_interval_minutes": "Abfrageintervall während eines Backups in Minuten",
+          "error_backoff_interval_minutes": "Abfrageintervall nach wiederholten Fehlern in Minuten",
+          "adaptive_error_threshold": "Fehler bis zum Backoff",
+          "max_verification_size_gb": "Maximale heruntergeladene Backupgröße in GB",
+          "max_expanded_size_gb": "Maximale entpackte Archivgröße in GB",
+          "verification_timeout_minutes": "Maximale Prüfdauer in Minuten",
+          "database_timeout_minutes": "Maximale Dauer der Datenbankprüfung in Minuten",
+          "manual_verification_cooldown_minutes": "Wartezeit zwischen manuellen Prüfungen in Minuten"
+        },
+        "data_description": {
+          "update_interval_minutes": "Basisintervall, solange Home Assistant im Leerlauf ist.",
+          "active_update_interval_minutes": "Vorübergehend schnelleres Intervall, solange der native Backupmanager ein laufendes Backup meldet.",
+          "error_backoff_interval_minutes": "Vorübergehend langsameres Intervall nach der festgelegten Zahl aufeinanderfolgender Inventarfehler.",
+          "adaptive_error_threshold": "Eine erfolgreiche Inventarabfrage setzt den Fehlerzähler zurück.",
+          "max_verification_size_gb": "Beendet die Prüfung vor oder während des Downloads, wenn das Limit überschritten wird.",
+          "max_expanded_size_gb": "Begrenzt die Gesamtmenge der gelesenen unkomprimierten Archivdaten.",
+          "verification_timeout_minutes": "Beendet Download und Archivverarbeitung nach dieser Gesamtdauer.",
+          "database_timeout_minutes": "Beendet SQLite PRAGMA integrity_check nach dieser Dauer.",
+          "manual_verification_cooldown_minutes": "Verhindert wiederholte manuelle Prüfungen. 0 deaktiviert die Wartezeit."
+        }
+      },
+      "monitoring": {
+        "title": "Überwachungsrichtlinie auswählen",
+        "description": "Die Strenge der Überwachung ist unabhängig vom Hardwareprofil.",
+        "data": {
+          "monitoring_policy": "Überwachungsrichtlinie"
+        },
+        "data_description": {
+          "monitoring_policy": "Ausgewogen passt für die meisten Installationen. Streng erwartet aktuellere Backups und zwei Speicherorte. Benutzerdefiniert öffnet alle Grenzwerte."
+        }
+      },
+      "monitoring_custom": {
+        "title": "Benutzerdefinierte Überwachung",
+        "description": "Lege eigene Grenzwerte für den Backupzustand fest.",
+        "data": {
+          "max_age_days": "Maximales Backupalter in Tagen",
+          "size_check_mode": "Modus der Größenprüfung",
+          "minimum_backup_size_mb": "Feste Mindestgröße in MB",
+          "maximum_size_drop_percent": "Maximal erlaubter Größenabfall in Prozent",
+          "minimum_redundant_locations": "Erforderliche Speicherorte",
+          "repair_issues_enabled": "Reparaturhinweise anzeigen",
+          "analytics_window_days": "Analysezeitraum in Tagen"
+        },
+        "data_description": {
+          "max_age_days": "Nach dieser Zahl vollständiger Tage wird gewarnt.",
+          "size_check_mode": "Automatisch vergleicht das neueste Backup mit gleichartigen früheren Backups.",
+          "minimum_backup_size_mb": "Wird nur bei der festen Mindestgröße verwendet.",
+          "maximum_size_drop_percent": "Wird für den automatischen Vergleich mit früheren Backups verwendet.",
+          "minimum_redundant_locations": "1 für einen Speicherort oder 2 für lokalen Speicher plus NAS oder Cloud.",
+          "repair_issues_enabled": "Erstellt Home-Assistant-Reparaturhinweise für aktive Backupprobleme.",
+          "analytics_window_days": "Backupstatistiken und beobachtete Erfolgsrate verwenden diesen Zeitraum."
+        }
+      },
+      "verification": {
+        "title": "Integritätsstrategie auswählen",
+        "description": "Automatische Archivprüfungen können Netzwerk, CPU und temporären Speicher deutlich belasten. Die Tiefenprüfung kontrolliert zusätzlich die enthaltene SQLite-Datenbank.",
+        "data": {
+          "verification_policy": "Integritätsstrategie"
+        },
+        "data_description": {
+          "verification_policy": "Nur manuell wird für kleine Systeme empfohlen. Automatisch prüft jedes neu erkannte neueste Backup einmal. Tiefenprüfung führt zusätzlich SQLite PRAGMA integrity_check aus."
+        }
+      },
+      "presentation": {
+        "title": "Entitäten und Benachrichtigungen",
+        "description": "Wähle Entitätsumfang, Datenschutzverhalten und optionale mobile Meldungen.",
+        "data": {
           "entity_mode": "Entitätsmodus",
+          "expose_backup_metadata": "Backupnamen und IDs anzeigen (Experte)",
           "notifications_enabled": "Mobile Benachrichtigungen aktivieren",
           "notification_targets": "Zu benachrichtigende Mobilgeräte",
           "notify_on_recovery": "Bei behobenen Problemen benachrichtigen"
         },
         "data_description": {
-          "monitoring_profile": "Standard ist einfach und für die meisten Installationen geeignet. Sicher erwartet einen zweiten Speicherort. Benutzerdefiniert zeigt alle Einstellungen.",
-          "entity_mode": "Lege unabhängig vom Überwachungsprofil fest, wie viele BackupCheckup-Entitäten nach der Einrichtung aktiviert werden. Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert zusätzlich sämtliche Analyse-, Diagnose-, Integritäts-, Zeitplan- und Speicherortentitäten.",
-          "notifications_enabled": "Sendet eine mobile Benachrichtigung, wenn sich die aktiven Backup-Probleme ändern. Wiederholte Abfragen erzeugen keine doppelten Meldungen.",
-          "notification_targets": "Es werden nur Benachrichtigungsentitäten der Home Assistant Companion App angezeigt. Du kannst ein oder mehrere Smartphones oder Tablets auswählen.",
-          "notify_on_recovery": "Sendet eine abschließende Benachrichtigung, sobald alle zuvor gemeldeten Backup-Probleme behoben wurden."
+          "entity_mode": "Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert alle Analyse-, Diagnose-, Integritäts-, Zeitplan- und Speicherentitäten sowie das Live-Aktivitätsjournal.",
+          "expose_backup_metadata": "Standardmäßig deaktiviert. Aktiviert können ausgewählte Diagnosen und Entitäten benutzerdefinierte Backupnamen und rohe Backup-IDs anzeigen.",
+          "notifications_enabled": "Sendet eine mobile Benachrichtigung, wenn sich die aktiven Backupprobleme ändern.",
+          "notification_targets": "Es werden nur Benachrichtigungsentitäten der Home Assistant Companion App aufgelistet. Mehrere Geräte sind möglich.",
+          "notify_on_recovery": "Sendet eine abschließende Benachrichtigung, wenn alle zuvor gemeldeten Probleme behoben sind."
         }
       },
-      "advanced": {
-        "title": "Benutzerdefinierte Überwachungseinstellungen",
-        "description": "Lege eigene Grenzwerte fest. Die automatische Größenprüfung vergleicht das neueste Backup mit kürzlich erstellten Backups.",
+      "summary": {
+        "title": "Einrichtung bestätigen",
+        "description": "**Erkannte Hardware:** {hardware}\n**Leistungsprofil:** {runtime_profile}\n**Normale Abfrage:** {update_interval} Minuten\n**Downloadlimit:** {download_limit} GB\n**Intelligente Abfrage:** {adaptive_polling}\n**Überwachung:** {monitoring_policy}\n**Integritätsprüfungen:** {verification_policy}\n**Entitätsmodus:** {entity_mode}\n**Benachrichtigungsgeräte:** {notification_count}",
         "data": {
-          "max_age_days": "Maximales Backup-Alter in Tagen",
-          "update_interval_minutes": "Aktualisierungsintervall in Minuten",
-          "size_check_mode": "Prüfung der Backup-Größe",
-          "minimum_backup_size_mb": "Feste Mindestgröße des Backups in MB",
-          "maximum_size_drop_percent": "Maximal zulässige Größenabnahme in Prozent",
-          "minimum_redundant_locations": "Erforderliche Backup-Speicherorte",
-          "repair_issues_enabled": "Reparaturhinweise anzeigen",
-          "analytics_window_days": "Analysezeitraum in Tagen",
-          "auto_verify_new_backups": "Jedes neue Backup automatisch prüfen",
-          "database_integrity_check": "Datenbank-Integritätsprüfung ausführen (Expertenmodus)",
-          "max_verification_size_gb": "Maximale Downloadgröße des Backups in GB",
-          "max_expanded_size_gb": "Maximale entpackte Archivgröße in GB",
-          "verification_timeout_minutes": "Maximale Prüfdauer in Minuten",
-          "database_timeout_minutes": "Maximale Dauer der Datenbankprüfung in Minuten",
-          "manual_verification_cooldown_minutes": "Sperrzeit für manuelle Prüfungen in Minuten",
-          "expose_backup_metadata": "Backupnamen und IDs anzeigen (Experte)"
+          "confirm": "Diese Konfiguration übernehmen"
         },
         "data_description": {
-          "max_age_days": "Nach dieser Anzahl vollständig vergangener Tage wird eine Warnung angezeigt.",
-          "update_interval_minutes": "Legt fest, wie häufig BackupCheckup den Backup-Bestand von Home Assistant ausliest.",
-          "size_check_mode": "Automatisch wird für Nutzer empfohlen, die ihre übliche Backup-Größe nicht kennen.",
-          "minimum_backup_size_mb": "Wird nur im Modus mit fester Mindestgröße verwendet.",
-          "maximum_size_drop_percent": "Wird für den automatischen Vergleich mit früheren Backups verwendet.",
-          "minimum_redundant_locations": "Verwende 1 für einen Speicherort oder 2 für lokalen Speicher plus NAS/Cloud.",
-          "repair_issues_enabled": "Erstellt Home-Assistant-Reparaturhinweise für aktive Backup-Probleme. Die Hinweise verschwinden automatisch, sobald das Problem behoben ist.",
-          "analytics_window_days": "Backup-Statistiken und die beobachtete Erfolgsquote automatischer Backups verwenden diesen Zeitraum. Die historische Erfolgsaufzeichnung beginnt mit Version 1.5.0.",
-          "auto_verify_new_backups": "Wenn ein neues neuestes Backup erkannt wird, wird es einmal vollständig heruntergeladen und geprüft. Dies kann Netzwerk, CPU und temporären Speicher deutlich belasten.",
-          "database_integrity_check": "Extrahiert vorübergehend die enthaltene SQLite-Datenbank und führt PRAGMA integrity_check aus. Die Prüfung dauert dadurch länger und benötigt zusätzlichen temporären Speicher.",
-          "max_verification_size_gb": "Beendet die Prüfung vor oder während des Downloads, wenn dieser Grenzwert überschritten wird.",
-          "max_expanded_size_gb": "Begrenzt die Gesamtmenge der gelesenen unkomprimierten Archivdaten.",
-          "verification_timeout_minutes": "Beendet Download und Archivprüfung nach dieser Gesamtdauer.",
-          "database_timeout_minutes": "Beendet SQLite PRAGMA integrity_check nach dieser Dauer.",
-          "manual_verification_cooldown_minutes": "Verhindert wiederholte manuelle Prüfungen. Mit 0 wird die Sperrzeit deaktiviert.",
-          "expose_backup_metadata": "Standardmäßig deaktiviert. Bei Aktivierung zeigt die Entität für das letzte Backup den frei vergebenen Backupnamen und die unveränderte Backup-ID an."
+          "confirm": "Prüfe die Zusammenfassung, bevor die Integration erstellt wird."
         }
       }
     },
     "abort": {
-      "single_instance_allowed": "Es kann nur eine BackupCheckup-Instanz eingerichtet werden."
+      "single_instance_allowed": "Es ist nur eine BackupCheckup-Instanz zulässig."
     },
     "error": {
-      "fixed_size_required": "Gib bei der festen Mindestgröße einen Wert größer als 0 MB ein.",
-      "notification_target_required": "Wähle mindestens ein Mobilgerät aus, wenn mobile Benachrichtigungen aktiviert sind."
+      "fixed_size_required": "Bei fester Mindestgröße muss eine Backupgröße über 0 MB eingetragen werden.",
+      "notification_target_required": "Wähle mindestens ein Mobilgerät aus, wenn mobile Benachrichtigungen aktiviert sind.",
+      "active_interval_too_slow": "Das aktive Abfrageintervall darf nicht länger als das normale Abfrageintervall sein.",
+      "backoff_interval_too_fast": "Das Fehler-Backoff darf nicht kürzer als das normale Abfrageintervall sein.",
+      "confirmation_required": "Bestätige die angezeigte Konfiguration vor dem Speichern."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "BackupCheckup-Optionen",
-        "description": "Wähle ein Überwachungsprofil, einen davon unabhängigen Entitätsmodus und optionale Companion-App-Benachrichtigungsziele. Mit Benutzerdefiniert werden alle einzelnen Überwachungseinstellungen geöffnet.",
+        "menu_options": {
+          "runtime": "Leistungsprofil",
+          "monitoring": "Überwachungsrichtlinie",
+          "verification": "Integritätsprüfungen",
+          "presentation": "Entitäten und Benachrichtigungen",
+          "setup_assistant": "Kompletten Einrichtungsassistenten starten"
+        }
+      },
+      "runtime": {
+        "title": "Leistungsprofil",
+        "description": "Beim Wechsel auf ein Preset werden die leistungsabhängigen Werte durch die aktuelle Preset-Version ersetzt.",
         "data": {
-          "monitoring_profile": "Überwachungsprofil",
+          "runtime_profile": "Leistungsprofil",
+          "adaptive_polling": "Intelligente Abfrage verwenden"
+        },
+        "data_description": {
+          "runtime_profile": "Die Empfehlung basiert auf Installationsart, Architektur und bekannter Home-Assistant-Hardware. Sie wird nach der Einrichtung niemals automatisch erneut angewendet.",
+          "adaptive_polling": "Bei Änderungen der nativen Backupaktivität sofort aktualisieren, während eines Backups schneller abfragen und nach wiederholten Managerfehlern ein längeres Intervall verwenden."
+        }
+      },
+      "runtime_custom": {
+        "title": "Benutzerdefinierte Leistungseinstellungen",
+        "description": "Lege Abfrageintervalle und Ressourcenlimits selbst fest.",
+        "data": {
+          "update_interval_minutes": "Normales Abfrageintervall in Minuten",
+          "active_update_interval_minutes": "Abfrageintervall während eines Backups in Minuten",
+          "error_backoff_interval_minutes": "Abfrageintervall nach wiederholten Fehlern in Minuten",
+          "adaptive_error_threshold": "Fehler bis zum Backoff",
+          "max_verification_size_gb": "Maximale heruntergeladene Backupgröße in GB",
+          "max_expanded_size_gb": "Maximale entpackte Archivgröße in GB",
+          "verification_timeout_minutes": "Maximale Prüfdauer in Minuten",
+          "database_timeout_minutes": "Maximale Dauer der Datenbankprüfung in Minuten",
+          "manual_verification_cooldown_minutes": "Wartezeit zwischen manuellen Prüfungen in Minuten"
+        },
+        "data_description": {
+          "update_interval_minutes": "Basisintervall, solange Home Assistant im Leerlauf ist.",
+          "active_update_interval_minutes": "Vorübergehend schnelleres Intervall, solange der native Backupmanager ein laufendes Backup meldet.",
+          "error_backoff_interval_minutes": "Vorübergehend langsameres Intervall nach der festgelegten Zahl aufeinanderfolgender Inventarfehler.",
+          "adaptive_error_threshold": "Eine erfolgreiche Inventarabfrage setzt den Fehlerzähler zurück.",
+          "max_verification_size_gb": "Beendet die Prüfung vor oder während des Downloads, wenn das Limit überschritten wird.",
+          "max_expanded_size_gb": "Begrenzt die Gesamtmenge der gelesenen unkomprimierten Archivdaten.",
+          "verification_timeout_minutes": "Beendet Download und Archivverarbeitung nach dieser Gesamtdauer.",
+          "database_timeout_minutes": "Beendet SQLite PRAGMA integrity_check nach dieser Dauer.",
+          "manual_verification_cooldown_minutes": "Verhindert wiederholte manuelle Prüfungen. 0 deaktiviert die Wartezeit."
+        }
+      },
+      "monitoring": {
+        "title": "Überwachungsrichtlinie auswählen",
+        "description": "Die Strenge der Überwachung ist unabhängig vom Hardwareprofil.",
+        "data": {
+          "monitoring_policy": "Überwachungsrichtlinie"
+        },
+        "data_description": {
+          "monitoring_policy": "Ausgewogen passt für die meisten Installationen. Streng erwartet aktuellere Backups und zwei Speicherorte. Benutzerdefiniert öffnet alle Grenzwerte."
+        }
+      },
+      "monitoring_custom": {
+        "title": "Benutzerdefinierte Überwachung",
+        "description": "Lege eigene Grenzwerte für den Backupzustand fest.",
+        "data": {
+          "max_age_days": "Maximales Backupalter in Tagen",
+          "size_check_mode": "Modus der Größenprüfung",
+          "minimum_backup_size_mb": "Feste Mindestgröße in MB",
+          "maximum_size_drop_percent": "Maximal erlaubter Größenabfall in Prozent",
+          "minimum_redundant_locations": "Erforderliche Speicherorte",
+          "repair_issues_enabled": "Reparaturhinweise anzeigen",
+          "analytics_window_days": "Analysezeitraum in Tagen"
+        },
+        "data_description": {
+          "max_age_days": "Nach dieser Zahl vollständiger Tage wird gewarnt.",
+          "size_check_mode": "Automatisch vergleicht das neueste Backup mit gleichartigen früheren Backups.",
+          "minimum_backup_size_mb": "Wird nur bei der festen Mindestgröße verwendet.",
+          "maximum_size_drop_percent": "Wird für den automatischen Vergleich mit früheren Backups verwendet.",
+          "minimum_redundant_locations": "1 für einen Speicherort oder 2 für lokalen Speicher plus NAS oder Cloud.",
+          "repair_issues_enabled": "Erstellt Home-Assistant-Reparaturhinweise für aktive Backupprobleme.",
+          "analytics_window_days": "Backupstatistiken und beobachtete Erfolgsrate verwenden diesen Zeitraum."
+        }
+      },
+      "verification": {
+        "title": "Integritätsstrategie auswählen",
+        "description": "Automatische Archivprüfungen können Netzwerk, CPU und temporären Speicher deutlich belasten. Die Tiefenprüfung kontrolliert zusätzlich die enthaltene SQLite-Datenbank.",
+        "data": {
+          "verification_policy": "Integritätsstrategie"
+        },
+        "data_description": {
+          "verification_policy": "Nur manuell wird für kleine Systeme empfohlen. Automatisch prüft jedes neu erkannte neueste Backup einmal. Tiefenprüfung führt zusätzlich SQLite PRAGMA integrity_check aus."
+        }
+      },
+      "presentation": {
+        "title": "Entitäten und Benachrichtigungen",
+        "description": "Wähle Entitätsumfang, Datenschutzverhalten und optionale mobile Meldungen.",
+        "data": {
           "entity_mode": "Entitätsmodus",
+          "expose_backup_metadata": "Backupnamen und IDs anzeigen (Experte)",
           "notifications_enabled": "Mobile Benachrichtigungen aktivieren",
           "notification_targets": "Zu benachrichtigende Mobilgeräte",
           "notify_on_recovery": "Bei behobenen Problemen benachrichtigen"
         },
         "data_description": {
-          "entity_mode": "Lege unabhängig vom Überwachungsprofil fest, wie viele BackupCheckup-Entitäten aktiviert werden. Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert alle Analyse-, Diagnose-, Integritäts-, Zeitplan-, Zeitstempel- und Speicherortentitäten. Entitäten, die du selbst oder über „Neu hinzugefügte Entitäten deaktivieren“ gesperrt hast, bleiben deaktiviert.",
-          "notifications_enabled": "Sendet eine mobile Benachrichtigung, wenn sich die aktiven Backup-Probleme ändern. Wiederholte Abfragen erzeugen keine doppelten Meldungen.",
-          "notification_targets": "Es werden nur Benachrichtigungsentitäten der Home Assistant Companion App angezeigt. Du kannst ein oder mehrere Smartphones oder Tablets auswählen.",
-          "notify_on_recovery": "Sendet eine abschließende Benachrichtigung, sobald alle zuvor gemeldeten Backup-Probleme behoben wurden."
+          "entity_mode": "Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert alle Analyse-, Diagnose-, Integritäts-, Zeitplan- und Speicherentitäten sowie das Live-Aktivitätsjournal.",
+          "expose_backup_metadata": "Standardmäßig deaktiviert. Aktiviert können ausgewählte Diagnosen und Entitäten benutzerdefinierte Backupnamen und rohe Backup-IDs anzeigen.",
+          "notifications_enabled": "Sendet eine mobile Benachrichtigung, wenn sich die aktiven Backupprobleme ändern.",
+          "notification_targets": "Es werden nur Benachrichtigungsentitäten der Home Assistant Companion App aufgelistet. Mehrere Geräte sind möglich.",
+          "notify_on_recovery": "Sendet eine abschließende Benachrichtigung, wenn alle zuvor gemeldeten Probleme behoben sind."
         }
       },
-      "advanced": {
-        "title": "Benutzerdefinierte Überwachungseinstellungen",
-        "description": "Lege eigene Grenzwerte fest. Die automatische Größenprüfung vergleicht das neueste Backup mit kürzlich erstellten Backups.",
+      "setup_assistant": {
+        "title": "Einrichtungsassistent erneut ausführen",
+        "description": "Erkannte Installation: {installation_type}\nArchitektur: {architecture}\nHardwareboard: {board}\nEmpfohlenes Profil: {recommended_profile} (Vertrauen: {confidence})\n\nDie Empfehlung dient nur als Ausgangspunkt und überschreibt deine Einstellungen später nicht.",
         "data": {
-          "max_age_days": "Maximales Backup-Alter in Tagen",
-          "update_interval_minutes": "Aktualisierungsintervall in Minuten",
-          "size_check_mode": "Prüfung der Backup-Größe",
-          "minimum_backup_size_mb": "Feste Mindestgröße des Backups in MB",
-          "maximum_size_drop_percent": "Maximal zulässige Größenabnahme in Prozent",
-          "minimum_redundant_locations": "Erforderliche Backup-Speicherorte",
-          "repair_issues_enabled": "Reparaturhinweise anzeigen",
-          "analytics_window_days": "Analysezeitraum in Tagen",
-          "auto_verify_new_backups": "Jedes neue Backup automatisch prüfen",
-          "database_integrity_check": "Datenbank-Integritätsprüfung ausführen (Expertenmodus)",
-          "max_verification_size_gb": "Maximale Downloadgröße des Backups in GB",
-          "max_expanded_size_gb": "Maximale entpackte Archivgröße in GB",
-          "verification_timeout_minutes": "Maximale Prüfdauer in Minuten",
-          "database_timeout_minutes": "Maximale Dauer der Datenbankprüfung in Minuten",
-          "manual_verification_cooldown_minutes": "Sperrzeit für manuelle Prüfungen in Minuten",
-          "expose_backup_metadata": "Backupnamen und IDs anzeigen (Experte)"
+          "runtime_profile": "Leistungsprofil",
+          "adaptive_polling": "Intelligente Abfrage verwenden"
         },
         "data_description": {
-          "max_age_days": "Nach dieser Anzahl vollständig vergangener Tage wird eine Warnung angezeigt.",
-          "update_interval_minutes": "Legt fest, wie häufig BackupCheckup den Backup-Bestand von Home Assistant ausliest.",
-          "size_check_mode": "Automatisch wird für Nutzer empfohlen, die ihre übliche Backup-Größe nicht kennen.",
-          "minimum_backup_size_mb": "Wird nur im Modus mit fester Mindestgröße verwendet.",
-          "maximum_size_drop_percent": "Wird für den automatischen Vergleich mit früheren Backups verwendet.",
-          "minimum_redundant_locations": "Verwende 1 für einen Speicherort oder 2 für lokalen Speicher plus NAS/Cloud.",
-          "repair_issues_enabled": "Erstellt Home-Assistant-Reparaturhinweise für aktive Backup-Probleme. Die Hinweise verschwinden automatisch, sobald das Problem behoben ist.",
-          "analytics_window_days": "Backup-Statistiken und die beobachtete Erfolgsquote automatischer Backups verwenden diesen Zeitraum. Die historische Erfolgsaufzeichnung beginnt mit Version 1.5.0.",
-          "auto_verify_new_backups": "Wenn ein neues neuestes Backup erkannt wird, wird es einmal vollständig heruntergeladen und geprüft. Dies kann Netzwerk, CPU und temporären Speicher deutlich belasten.",
-          "database_integrity_check": "Extrahiert vorübergehend die enthaltene SQLite-Datenbank und führt PRAGMA integrity_check aus. Die Prüfung dauert dadurch länger und benötigt zusätzlichen temporären Speicher.",
-          "max_verification_size_gb": "Beendet die Prüfung vor oder während des Downloads, wenn dieser Grenzwert überschritten wird.",
-          "max_expanded_size_gb": "Begrenzt die Gesamtmenge der gelesenen unkomprimierten Archivdaten.",
-          "verification_timeout_minutes": "Beendet Download und Archivprüfung nach dieser Gesamtdauer.",
-          "database_timeout_minutes": "Beendet SQLite PRAGMA integrity_check nach dieser Dauer.",
-          "manual_verification_cooldown_minutes": "Verhindert wiederholte manuelle Prüfungen. Mit 0 wird die Sperrzeit deaktiviert.",
-          "expose_backup_metadata": "Standardmäßig deaktiviert. Bei Aktivierung zeigt die Entität für das letzte Backup den frei vergebenen Backupnamen und die unveränderte Backup-ID an."
+          "runtime_profile": "Die Empfehlung basiert auf Installationsart, Architektur und bekannter Home-Assistant-Hardware. Sie wird nach der Einrichtung niemals automatisch erneut angewendet.",
+          "adaptive_polling": "Bei Änderungen der nativen Backupaktivität sofort aktualisieren, während eines Backups schneller abfragen und nach wiederholten Managerfehlern ein längeres Intervall verwenden."
+        }
+      },
+      "setup_monitoring": {
+        "title": "Überwachungsrichtlinie auswählen",
+        "description": "Die Strenge der Überwachung ist unabhängig vom Hardwareprofil.",
+        "data": {
+          "monitoring_policy": "Überwachungsrichtlinie"
+        },
+        "data_description": {
+          "monitoring_policy": "Ausgewogen passt für die meisten Installationen. Streng erwartet aktuellere Backups und zwei Speicherorte. Benutzerdefiniert öffnet alle Grenzwerte."
+        }
+      },
+      "setup_verification": {
+        "title": "Integritätsstrategie auswählen",
+        "description": "Automatische Archivprüfungen können Netzwerk, CPU und temporären Speicher deutlich belasten. Die Tiefenprüfung kontrolliert zusätzlich die enthaltene SQLite-Datenbank.",
+        "data": {
+          "verification_policy": "Integritätsstrategie"
+        },
+        "data_description": {
+          "verification_policy": "Nur manuell wird für kleine Systeme empfohlen. Automatisch prüft jedes neu erkannte neueste Backup einmal. Tiefenprüfung führt zusätzlich SQLite PRAGMA integrity_check aus."
+        }
+      },
+      "setup_presentation": {
+        "title": "Entitäten und Benachrichtigungen",
+        "description": "Wähle Entitätsumfang, Datenschutzverhalten und optionale mobile Meldungen.",
+        "data": {
+          "entity_mode": "Entitätsmodus",
+          "expose_backup_metadata": "Backupnamen und IDs anzeigen (Experte)",
+          "notifications_enabled": "Mobile Benachrichtigungen aktivieren",
+          "notification_targets": "Zu benachrichtigende Mobilgeräte",
+          "notify_on_recovery": "Bei behobenen Problemen benachrichtigen"
+        },
+        "data_description": {
+          "entity_mode": "Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert alle Analyse-, Diagnose-, Integritäts-, Zeitplan- und Speicherentitäten sowie das Live-Aktivitätsjournal.",
+          "expose_backup_metadata": "Standardmäßig deaktiviert. Aktiviert können ausgewählte Diagnosen und Entitäten benutzerdefinierte Backupnamen und rohe Backup-IDs anzeigen.",
+          "notifications_enabled": "Sendet eine mobile Benachrichtigung, wenn sich die aktiven Backupprobleme ändern.",
+          "notification_targets": "Es werden nur Benachrichtigungsentitäten der Home Assistant Companion App aufgelistet. Mehrere Geräte sind möglich.",
+          "notify_on_recovery": "Sendet eine abschließende Benachrichtigung, wenn alle zuvor gemeldeten Probleme behoben sind."
+        }
+      },
+      "setup_summary": {
+        "title": "Neue Einrichtung bestätigen",
+        "description": "**Erkannte Hardware:** {hardware}\n**Leistungsprofil:** {runtime_profile}\n**Normale Abfrage:** {update_interval} Minuten\n**Downloadlimit:** {download_limit} GB\n**Intelligente Abfrage:** {adaptive_polling}\n**Überwachung:** {monitoring_policy}\n**Integritätsprüfungen:** {verification_policy}\n**Entitätsmodus:** {entity_mode}\n**Benachrichtigungsgeräte:** {notification_count}",
+        "data": {
+          "confirm": "Diese Konfiguration übernehmen"
+        },
+        "data_description": {
+          "confirm": "Prüfe die Zusammenfassung, bevor die Integration erstellt wird."
         }
       }
     },
     "error": {
-      "fixed_size_required": "Gib bei der festen Mindestgröße einen Wert größer als 0 MB ein.",
-      "notification_target_required": "Wähle mindestens ein Mobilgerät aus, wenn mobile Benachrichtigungen aktiviert sind."
+      "fixed_size_required": "Bei fester Mindestgröße muss eine Backupgröße über 0 MB eingetragen werden.",
+      "notification_target_required": "Wähle mindestens ein Mobilgerät aus, wenn mobile Benachrichtigungen aktiviert sind.",
+      "active_interval_too_slow": "Das aktive Abfrageintervall darf nicht länger als das normale Abfrageintervall sein.",
+      "backoff_interval_too_fast": "Das Fehler-Backoff darf nicht kürzer als das normale Abfrageintervall sein.",
+      "confirmation_required": "Bestätige die angezeigte Konfiguration vor dem Speichern."
     }
   },
   "entity": {
@@ -383,11 +550,28 @@
     }
   },
   "selector": {
-    "monitoring_profile": {
+    "runtime_profile": {
       "options": {
-        "standard": "Standard",
-        "secure": "Sicher",
+        "energy_saving": "Energiesparend",
+        "home_assistant_appliance": "Home Assistant Appliance",
+        "performance": "Leistungsstark",
+        "server": "Server",
         "custom": "Benutzerdefiniert"
+      }
+    },
+    "monitoring_policy": {
+      "options": {
+        "balanced": "Ausgewogen",
+        "strict": "Streng",
+        "custom": "Benutzerdefiniert"
+      }
+    },
+    "verification_policy": {
+      "options": {
+        "manual": "Nur manuell",
+        "automatic": "Neue Backups automatisch prüfen",
+        "deep": "Tiefenprüfung inklusive Datenbank",
+        "custom": "Benutzerdefinierte bisherige Einstellung beibehalten"
       }
     },
     "size_check_mode": {

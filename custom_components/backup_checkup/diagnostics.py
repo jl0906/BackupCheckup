@@ -11,7 +11,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
 from .configuration import normalize_configuration
-from .const import CONF_NOTIFICATION_TARGETS, DOMAIN, VERSION
+from .const import (
+    CONF_NOTIFICATION_TARGETS,
+    DOMAIN,
+    HEALTH_SCORE_VERSION,
+    VERSION,
+)
 from .coordinator import BackupCheckupCoordinator
 from .models import BackupCheckupData, BackupRecord
 from .notification_selection import normalize_notification_targets
@@ -90,6 +95,18 @@ def _coordinator_diagnostics(
 ) -> dict[str, Any]:
     """Return coordinator state without raw exception messages."""
     last_exception = coordinator.last_exception
+    adaptive_polling = bool(getattr(coordinator, "adaptive_polling", False))
+    error_count = int(getattr(coordinator, "_inventory_error_count", 0))
+    error_threshold = int(getattr(coordinator, "adaptive_error_threshold", 3))
+    manager_backup_active = bool(getattr(coordinator, "_manager_backup_active", False))
+    adaptive_state = "disabled"
+    if adaptive_polling:
+        if error_count >= error_threshold:
+            adaptive_state = "error_backoff"
+        elif manager_backup_active:
+            adaptive_state = "backup_active"
+        else:
+            adaptive_state = "normal"
     return {
         "last_update_success": coordinator.last_update_success,
         "last_exception": (
@@ -107,6 +124,11 @@ def _coordinator_diagnostics(
         ),
         "checked_at": data.checked_at.isoformat(),
         "last_inventory_success_at": _iso(data.last_inventory_success_at),
+        "runtime_profile": getattr(coordinator, "runtime_profile", "legacy_custom"),
+        "adaptive_polling": adaptive_polling,
+        "adaptive_polling_state": adaptive_state,
+        "consecutive_inventory_errors": error_count,
+        "native_backup_active": manager_backup_active,
     }
 
 
@@ -114,8 +136,14 @@ def _health_diagnostics(data: BackupCheckupData) -> dict[str, Any]:
     """Return the aggregate health result and its source flags."""
     return {
         "score": data.health_score,
+        "score_version": HEALTH_SCORE_VERSION,
         "rating": data.health_rating,
         "score_deductions": data.health_score_deductions,
+        "score_component_deductions": data.health_score_components or {},
+        "score_raw_deductions": data.health_score_raw_deductions or {},
+        "score_suppressed_correlated_deductions": list(
+            data.health_score_suppressed_deductions or ()
+        ),
         "status": data.status,
         "recommendation": data.recommendation,
         "problem": data.problem,

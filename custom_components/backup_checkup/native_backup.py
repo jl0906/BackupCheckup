@@ -83,6 +83,22 @@ def _registry_entity_id(
     return fallback
 
 
+def native_backup_activity_entity_ids(hass: HomeAssistant) -> tuple[str, str]:
+    """Return current entity IDs for native backup activity signals."""
+    return (
+        _registry_entity_id(
+            hass,
+            unique_id="backup_manager_state",
+            fallback=CORE_BACKUP_MANAGER_STATE,
+        ),
+        _registry_entity_id(
+            hass,
+            unique_id="automatic_backup_event",
+            fallback=CORE_AUTOMATIC_BACKUP_EVENT,
+        ),
+    )
+
+
 def _state_datetime(hass: HomeAssistant, entity_id: str) -> datetime | None:
     state = hass.states.get(entity_id)
     if state is None or state.state in {STATE_UNKNOWN, STATE_UNAVAILABLE, "", "none"}:

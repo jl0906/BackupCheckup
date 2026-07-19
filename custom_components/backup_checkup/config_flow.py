@@ -1,356 +1,68 @@
-"""Config flow for BackupCheckup."""
+"""Guided config and options flows for BackupCheckup."""
 
 from __future__ import annotations
 
 from typing import Any
 
-import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers.selector import (
-    BooleanSelector,
-    NumberSelector,
-    NumberSelectorConfig,
-    NumberSelectorMode,
-    SelectSelector,
-    SelectSelectorConfig,
-    SelectSelectorMode,
-)
 
 from .configuration import normalize_configuration
 from .const import (
-    CONF_ANALYTICS_WINDOW_DAYS,
-    CONF_AUTO_VERIFY_NEW_BACKUPS,
-    CONF_DATABASE_INTEGRITY_CHECK,
-    CONF_DATABASE_TIMEOUT_MINUTES,
+    CONF_ADAPTIVE_POLLING,
     CONF_ENTITY_MODE,
     CONF_EXPOSE_BACKUP_METADATA,
-    CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
-    CONF_MAX_AGE_DAYS,
+    CONF_HARDWARE_DETECTION,
     CONF_MAX_EXPANDED_SIZE_GB,
     CONF_MAX_VERIFICATION_SIZE_GB,
-    CONF_MAXIMUM_SIZE_DROP_PERCENT,
-    CONF_MINIMUM_BACKUP_SIZE_MB,
-    CONF_MINIMUM_REDUNDANT_LOCATIONS,
-    CONF_MONITORING_PROFILE,
+    CONF_MONITORING_POLICY,
     CONF_NOTIFICATION_TARGETS,
     CONF_NOTIFICATIONS_ENABLED,
     CONF_NOTIFY_ON_RECOVERY,
-    CONF_REPAIR_ISSUES_ENABLED,
+    CONF_PRESET_REVISION,
+    CONF_RUNTIME_PROFILE,
     CONF_SIZE_CHECK_MODE,
-    CONF_UPDATE_INTERVAL_MINUTES,
-    CONF_VERIFICATION_TIMEOUT_MINUTES,
-    DEFAULT_ANALYTICS_WINDOW_DAYS,
-    DEFAULT_AUTO_VERIFY_NEW_BACKUPS,
-    DEFAULT_DATABASE_INTEGRITY_CHECK,
-    DEFAULT_DATABASE_TIMEOUT_MINUTES,
+    CONF_VERIFICATION_POLICY,
     DEFAULT_ENTITY_MODE,
     DEFAULT_EXPOSE_BACKUP_METADATA,
-    DEFAULT_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
-    DEFAULT_MAX_AGE_DAYS,
-    DEFAULT_MAX_EXPANDED_SIZE_GB,
-    DEFAULT_MAX_VERIFICATION_SIZE_GB,
-    DEFAULT_MAXIMUM_SIZE_DROP_PERCENT,
-    DEFAULT_MINIMUM_BACKUP_SIZE_MB,
-    DEFAULT_MINIMUM_REDUNDANT_LOCATIONS,
-    DEFAULT_MONITORING_PROFILE,
+    DEFAULT_MONITORING_POLICY,
     DEFAULT_NOTIFICATION_TARGETS,
     DEFAULT_NOTIFICATIONS_ENABLED,
     DEFAULT_NOTIFY_ON_RECOVERY,
-    DEFAULT_REPAIR_ISSUES_ENABLED,
-    DEFAULT_SIZE_CHECK_MODE,
-    DEFAULT_UPDATE_INTERVAL_MINUTES,
-    DEFAULT_VERIFICATION_TIMEOUT_MINUTES,
+    DEFAULT_VERIFICATION_POLICY,
     DOMAIN,
-    ENTITY_MODE_OPTIONS,
-    MAX_ANALYTICS_WINDOW_DAYS,
-    MAX_DATABASE_TIMEOUT_MINUTES,
-    MAX_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
-    MAX_MAX_AGE_DAYS,
     MAX_MAX_EXPANDED_SIZE_GB,
-    MAX_MAX_VERIFICATION_SIZE_GB,
-    MAX_MAXIMUM_SIZE_DROP_PERCENT,
-    MAX_MINIMUM_BACKUP_SIZE_MB,
-    MAX_REDUNDANT_LOCATIONS,
-    MAX_UPDATE_INTERVAL_MINUTES,
-    MAX_VERIFICATION_TIMEOUT_MINUTES,
-    MIN_ANALYTICS_WINDOW_DAYS,
-    MIN_DATABASE_TIMEOUT_MINUTES,
-    MIN_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
-    MIN_MAX_AGE_DAYS,
-    MIN_MAX_EXPANDED_SIZE_GB,
-    MIN_MAX_VERIFICATION_SIZE_GB,
-    MIN_MAXIMUM_SIZE_DROP_PERCENT,
-    MIN_MINIMUM_BACKUP_SIZE_MB,
-    MIN_REDUNDANT_LOCATIONS,
-    MIN_UPDATE_INTERVAL_MINUTES,
-    MIN_VERIFICATION_TIMEOUT_MINUTES,
+    MONITORING_POLICY_CUSTOM,
     NAME,
-    PROFILE_CUSTOM,
-    PROFILE_OPTIONS,
-    PROFILE_SECURE,
-    PROFILE_STANDARD,
-    SIZE_CHECK_AUTO,
+    PRESET_REVISION,
+    RUNTIME_PROFILE_CUSTOM,
+    RUNTIME_PROFILE_LEGACY,
     SIZE_CHECK_FIXED,
-    SIZE_CHECK_OPTIONS,
+    VERIFICATION_POLICY_CUSTOM,
 )
-from .entity_mode import async_apply_entity_mode
-from .notification_selection import (
-    mobile_notification_options,
-    normalize_notification_targets,
+from .flow_schemas import (
+    CONF_CONFIRM,
+    monitoring_custom_schema,
+    monitoring_policy_schema,
+    presentation_schema,
+    runtime_custom_schema,
+    runtime_profile_schema,
+    summary_schema,
+    verification_policy_schema,
 )
+from .hardware_profile import HardwareSnapshot, async_detect_hardware
+from .notification_selection import normalize_notification_targets
+from .presets import monitoring_values, runtime_values, verification_values
+from .setup_recommendation import async_recommended_verification_size_gb
 
-PROFILE_PRESETS: dict[str, dict[str, Any]] = {
-    PROFILE_STANDARD: {
-        CONF_MAX_AGE_DAYS: 4,
-        CONF_UPDATE_INTERVAL_MINUTES: 5,
-        CONF_MINIMUM_BACKUP_SIZE_MB: 1,
-        CONF_MAXIMUM_SIZE_DROP_PERCENT: 50,
-        CONF_MINIMUM_REDUNDANT_LOCATIONS: 1,
-        CONF_SIZE_CHECK_MODE: SIZE_CHECK_AUTO,
-        CONF_REPAIR_ISSUES_ENABLED: True,
-        CONF_ANALYTICS_WINDOW_DAYS: 30,
-        CONF_AUTO_VERIFY_NEW_BACKUPS: False,
-        CONF_DATABASE_INTEGRITY_CHECK: False,
-        CONF_MAX_VERIFICATION_SIZE_GB: DEFAULT_MAX_VERIFICATION_SIZE_GB,
-        CONF_MAX_EXPANDED_SIZE_GB: DEFAULT_MAX_EXPANDED_SIZE_GB,
-        CONF_VERIFICATION_TIMEOUT_MINUTES: DEFAULT_VERIFICATION_TIMEOUT_MINUTES,
-        CONF_DATABASE_TIMEOUT_MINUTES: DEFAULT_DATABASE_TIMEOUT_MINUTES,
-        CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES: (
-            DEFAULT_MANUAL_VERIFICATION_COOLDOWN_MINUTES
-        ),
-        CONF_EXPOSE_BACKUP_METADATA: DEFAULT_EXPOSE_BACKUP_METADATA,
-    },
-    PROFILE_SECURE: {
-        CONF_MAX_AGE_DAYS: 2,
-        CONF_UPDATE_INTERVAL_MINUTES: 2,
-        CONF_MINIMUM_BACKUP_SIZE_MB: 1,
-        CONF_MAXIMUM_SIZE_DROP_PERCENT: 35,
-        CONF_MINIMUM_REDUNDANT_LOCATIONS: 2,
-        CONF_SIZE_CHECK_MODE: SIZE_CHECK_AUTO,
-        CONF_REPAIR_ISSUES_ENABLED: True,
-        CONF_ANALYTICS_WINDOW_DAYS: 30,
-        CONF_AUTO_VERIFY_NEW_BACKUPS: False,
-        CONF_DATABASE_INTEGRITY_CHECK: False,
-        CONF_MAX_VERIFICATION_SIZE_GB: DEFAULT_MAX_VERIFICATION_SIZE_GB,
-        CONF_MAX_EXPANDED_SIZE_GB: DEFAULT_MAX_EXPANDED_SIZE_GB,
-        CONF_VERIFICATION_TIMEOUT_MINUTES: DEFAULT_VERIFICATION_TIMEOUT_MINUTES,
-        CONF_DATABASE_TIMEOUT_MINUTES: DEFAULT_DATABASE_TIMEOUT_MINUTES,
-        CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES: (
-            DEFAULT_MANUAL_VERIFICATION_COOLDOWN_MINUTES
-        ),
-        CONF_EXPOSE_BACKUP_METADATA: DEFAULT_EXPOSE_BACKUP_METADATA,
-    },
-}
-
-
-def _profile_schema(
-    hass: HomeAssistant,
-    default: str,
-    entity_mode: str,
-    notifications: dict[str, Any],
-) -> vol.Schema:
-    """Return monitoring, entity-mode, and mobile-notification selectors."""
-    return vol.Schema(
-        {
-            vol.Required(
-                CONF_MONITORING_PROFILE,
-                default=default,
-            ): SelectSelector(
-                SelectSelectorConfig(
-                    options=PROFILE_OPTIONS,
-                    mode=SelectSelectorMode.DROPDOWN,
-                    translation_key="monitoring_profile",
-                )
-            ),
-            vol.Required(
-                CONF_ENTITY_MODE,
-                default=entity_mode,
-            ): SelectSelector(
-                SelectSelectorConfig(
-                    options=ENTITY_MODE_OPTIONS,
-                    mode=SelectSelectorMode.DROPDOWN,
-                    translation_key="entity_mode",
-                )
-            ),
-            vol.Required(
-                CONF_NOTIFICATIONS_ENABLED,
-                default=bool(notifications[CONF_NOTIFICATIONS_ENABLED]),
-            ): BooleanSelector(),
-            vol.Optional(
-                CONF_NOTIFICATION_TARGETS,
-                default=list(notifications[CONF_NOTIFICATION_TARGETS]),
-            ): SelectSelector(
-                SelectSelectorConfig(
-                    options=mobile_notification_options(
-                        hass, notifications[CONF_NOTIFICATION_TARGETS]
-                    ),
-                    multiple=True,
-                    custom_value=False,
-                    mode=SelectSelectorMode.DROPDOWN,
-                    sort=True,
-                )
-            ),
-            vol.Required(
-                CONF_NOTIFY_ON_RECOVERY,
-                default=bool(notifications[CONF_NOTIFY_ON_RECOVERY]),
-            ): BooleanSelector(),
-        }
-    )
-
-
-def _integer_selector(minimum: int, maximum: int) -> NumberSelector:
-    """Return a whole-number selector."""
-    return NumberSelector(
-        NumberSelectorConfig(
-            min=minimum,
-            max=maximum,
-            step=1,
-            mode=NumberSelectorMode.BOX,
-        )
-    )
-
-
-def _advanced_schema(values: dict[str, Any]) -> vol.Schema:
-    """Return the custom monitoring schema."""
-    return vol.Schema(
-        {
-            vol.Required(
-                CONF_MAX_AGE_DAYS,
-                default=values[CONF_MAX_AGE_DAYS],
-            ): _integer_selector(MIN_MAX_AGE_DAYS, MAX_MAX_AGE_DAYS),
-            vol.Required(
-                CONF_UPDATE_INTERVAL_MINUTES,
-                default=values[CONF_UPDATE_INTERVAL_MINUTES],
-            ): _integer_selector(
-                MIN_UPDATE_INTERVAL_MINUTES,
-                MAX_UPDATE_INTERVAL_MINUTES,
-            ),
-            vol.Required(
-                CONF_SIZE_CHECK_MODE,
-                default=values[CONF_SIZE_CHECK_MODE],
-            ): SelectSelector(
-                SelectSelectorConfig(
-                    options=SIZE_CHECK_OPTIONS,
-                    mode=SelectSelectorMode.DROPDOWN,
-                    translation_key="size_check_mode",
-                )
-            ),
-            vol.Required(
-                CONF_MINIMUM_BACKUP_SIZE_MB,
-                default=values[CONF_MINIMUM_BACKUP_SIZE_MB],
-            ): _integer_selector(
-                MIN_MINIMUM_BACKUP_SIZE_MB,
-                MAX_MINIMUM_BACKUP_SIZE_MB,
-            ),
-            vol.Required(
-                CONF_MAXIMUM_SIZE_DROP_PERCENT,
-                default=values[CONF_MAXIMUM_SIZE_DROP_PERCENT],
-            ): _integer_selector(
-                MIN_MAXIMUM_SIZE_DROP_PERCENT,
-                MAX_MAXIMUM_SIZE_DROP_PERCENT,
-            ),
-            vol.Required(
-                CONF_MINIMUM_REDUNDANT_LOCATIONS,
-                default=values[CONF_MINIMUM_REDUNDANT_LOCATIONS],
-            ): _integer_selector(
-                MIN_REDUNDANT_LOCATIONS,
-                MAX_REDUNDANT_LOCATIONS,
-            ),
-            vol.Required(
-                CONF_REPAIR_ISSUES_ENABLED,
-                default=values[CONF_REPAIR_ISSUES_ENABLED],
-            ): BooleanSelector(),
-            vol.Required(
-                CONF_ANALYTICS_WINDOW_DAYS,
-                default=values[CONF_ANALYTICS_WINDOW_DAYS],
-            ): _integer_selector(
-                MIN_ANALYTICS_WINDOW_DAYS,
-                MAX_ANALYTICS_WINDOW_DAYS,
-            ),
-            vol.Required(
-                CONF_AUTO_VERIFY_NEW_BACKUPS,
-                default=values[CONF_AUTO_VERIFY_NEW_BACKUPS],
-            ): BooleanSelector(),
-            vol.Required(
-                CONF_DATABASE_INTEGRITY_CHECK,
-                default=values[CONF_DATABASE_INTEGRITY_CHECK],
-            ): BooleanSelector(),
-            vol.Required(
-                CONF_MAX_VERIFICATION_SIZE_GB,
-                default=values[CONF_MAX_VERIFICATION_SIZE_GB],
-            ): _integer_selector(
-                MIN_MAX_VERIFICATION_SIZE_GB,
-                MAX_MAX_VERIFICATION_SIZE_GB,
-            ),
-            vol.Required(
-                CONF_MAX_EXPANDED_SIZE_GB,
-                default=values[CONF_MAX_EXPANDED_SIZE_GB],
-            ): _integer_selector(
-                MIN_MAX_EXPANDED_SIZE_GB,
-                MAX_MAX_EXPANDED_SIZE_GB,
-            ),
-            vol.Required(
-                CONF_VERIFICATION_TIMEOUT_MINUTES,
-                default=values[CONF_VERIFICATION_TIMEOUT_MINUTES],
-            ): _integer_selector(
-                MIN_VERIFICATION_TIMEOUT_MINUTES,
-                MAX_VERIFICATION_TIMEOUT_MINUTES,
-            ),
-            vol.Required(
-                CONF_DATABASE_TIMEOUT_MINUTES,
-                default=values[CONF_DATABASE_TIMEOUT_MINUTES],
-            ): _integer_selector(
-                MIN_DATABASE_TIMEOUT_MINUTES,
-                MAX_DATABASE_TIMEOUT_MINUTES,
-            ),
-            vol.Required(
-                CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
-                default=values[CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES],
-            ): _integer_selector(
-                MIN_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
-                MAX_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
-            ),
-            vol.Required(
-                CONF_EXPOSE_BACKUP_METADATA,
-                default=values[CONF_EXPOSE_BACKUP_METADATA],
-            ): BooleanSelector(),
-        }
-    )
-
-
-def _monitoring_defaults() -> dict[str, Any]:
-    """Return all monitoring defaults."""
-    return {
-        CONF_MAX_AGE_DAYS: DEFAULT_MAX_AGE_DAYS,
-        CONF_UPDATE_INTERVAL_MINUTES: DEFAULT_UPDATE_INTERVAL_MINUTES,
-        CONF_MINIMUM_BACKUP_SIZE_MB: DEFAULT_MINIMUM_BACKUP_SIZE_MB,
-        CONF_MAXIMUM_SIZE_DROP_PERCENT: DEFAULT_MAXIMUM_SIZE_DROP_PERCENT,
-        CONF_MINIMUM_REDUNDANT_LOCATIONS: DEFAULT_MINIMUM_REDUNDANT_LOCATIONS,
-        CONF_SIZE_CHECK_MODE: DEFAULT_SIZE_CHECK_MODE,
-        CONF_REPAIR_ISSUES_ENABLED: DEFAULT_REPAIR_ISSUES_ENABLED,
-        CONF_ANALYTICS_WINDOW_DAYS: DEFAULT_ANALYTICS_WINDOW_DAYS,
-        CONF_AUTO_VERIFY_NEW_BACKUPS: DEFAULT_AUTO_VERIFY_NEW_BACKUPS,
-        CONF_DATABASE_INTEGRITY_CHECK: DEFAULT_DATABASE_INTEGRITY_CHECK,
-        CONF_MAX_VERIFICATION_SIZE_GB: DEFAULT_MAX_VERIFICATION_SIZE_GB,
-        CONF_MAX_EXPANDED_SIZE_GB: DEFAULT_MAX_EXPANDED_SIZE_GB,
-        CONF_VERIFICATION_TIMEOUT_MINUTES: DEFAULT_VERIFICATION_TIMEOUT_MINUTES,
-        CONF_DATABASE_TIMEOUT_MINUTES: DEFAULT_DATABASE_TIMEOUT_MINUTES,
-        CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES: (
-            DEFAULT_MANUAL_VERIFICATION_COOLDOWN_MINUTES
-        ),
-        CONF_EXPOSE_BACKUP_METADATA: DEFAULT_EXPOSE_BACKUP_METADATA,
-    }
-
-
-def _notification_defaults() -> dict[str, Any]:
-    """Return mobile-notification defaults."""
-    return {
-        CONF_NOTIFICATIONS_ENABLED: DEFAULT_NOTIFICATIONS_ENABLED,
-        CONF_NOTIFICATION_TARGETS: list(DEFAULT_NOTIFICATION_TARGETS),
-        CONF_NOTIFY_ON_RECOVERY: DEFAULT_NOTIFY_ON_RECOVERY,
-    }
+_OPTIONS_MENU = (
+    "runtime",
+    "monitoring",
+    "verification",
+    "presentation",
+    "setup_assistant",
+)
 
 
 def _notification_values(user_input: dict[str, Any]) -> dict[str, Any]:
@@ -364,8 +76,8 @@ def _notification_values(user_input: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def _validate_profile_input(user_input: dict[str, Any]) -> dict[str, str]:
-    """Validate notification settings from the profile step."""
+def _validate_notifications(user_input: dict[str, Any]) -> dict[str, str]:
+    """Require a target whenever mobile notifications are enabled."""
     if bool(user_input[CONF_NOTIFICATIONS_ENABLED]) and not user_input.get(
         CONF_NOTIFICATION_TARGETS
     ):
@@ -373,99 +85,277 @@ def _validate_profile_input(user_input: dict[str, Any]) -> dict[str, str]:
     return {}
 
 
-def _validate_advanced_input(user_input: dict[str, Any]) -> dict[str, str]:
-    """Validate combinations that cannot be expressed in the schema."""
+def _validate_monitoring(user_input: dict[str, Any]) -> dict[str, str]:
+    """Validate combinations not expressible by selectors alone."""
     if (
         user_input[CONF_SIZE_CHECK_MODE] == SIZE_CHECK_FIXED
-        and int(user_input[CONF_MINIMUM_BACKUP_SIZE_MB]) == 0
+        and int(user_input.get("minimum_backup_size_mb", 0)) == 0
     ):
         return {"base": "fixed_size_required"}
     return {}
 
 
-class BackupCheckupConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle the BackupCheckup configuration flow."""
+def _validate_runtime(user_input: dict[str, Any]) -> dict[str, str]:
+    """Validate custom adaptive polling intervals."""
+    if int(user_input["active_update_interval_minutes"]) > int(
+        user_input["update_interval_minutes"]
+    ):
+        return {"base": "active_interval_too_slow"}
+    if int(user_input["error_backoff_interval_minutes"]) < int(
+        user_input["update_interval_minutes"]
+    ):
+        return {"base": "backoff_interval_too_fast"}
+    return {}
 
-    VERSION = 9
+
+def _new_configuration(snapshot: HardwareSnapshot) -> dict[str, Any]:
+    """Return resolved defaults for a new installation."""
+    runtime_profile = snapshot.recommended_profile
+    return normalize_configuration(
+        {
+            CONF_RUNTIME_PROFILE: runtime_profile,
+            CONF_MONITORING_POLICY: DEFAULT_MONITORING_POLICY,
+            CONF_VERIFICATION_POLICY: DEFAULT_VERIFICATION_POLICY,
+            CONF_PRESET_REVISION: PRESET_REVISION,
+            CONF_HARDWARE_DETECTION: snapshot.as_dict(),
+            CONF_ENTITY_MODE: DEFAULT_ENTITY_MODE,
+            CONF_NOTIFICATIONS_ENABLED: DEFAULT_NOTIFICATIONS_ENABLED,
+            CONF_NOTIFICATION_TARGETS: list(DEFAULT_NOTIFICATION_TARGETS),
+            CONF_NOTIFY_ON_RECOVERY: DEFAULT_NOTIFY_ON_RECOVERY,
+            CONF_EXPOSE_BACKUP_METADATA: DEFAULT_EXPOSE_BACKUP_METADATA,
+            **runtime_values(runtime_profile),
+            **monitoring_values(DEFAULT_MONITORING_POLICY),
+            **verification_values(DEFAULT_VERIFICATION_POLICY),
+        }
+    )
+
+
+def _summary_placeholders(values: dict[str, Any]) -> dict[str, str]:
+    """Return localized summary values without exposing sensitive identifiers."""
+    hardware = values.get(CONF_HARDWARE_DETECTION, {})
+    board = hardware.get("board")
+    architecture = hardware.get("architecture")
+    hardware_name = (
+        board
+        if isinstance(board, str) and board != "unknown"
+        else architecture
+        if isinstance(architecture, str) and architecture != "unknown"
+        else "unknown"
+    )
+    verification = values[CONF_VERIFICATION_POLICY]
+    if verification == VERIFICATION_POLICY_CUSTOM:
+        verification = "custom"
+    return {
+        "hardware": str(hardware_name),
+        "runtime_profile": str(values[CONF_RUNTIME_PROFILE]),
+        "update_interval": str(values["update_interval_minutes"]),
+        "download_limit": str(values[CONF_MAX_VERIFICATION_SIZE_GB]),
+        "adaptive_polling": "enabled" if values[CONF_ADAPTIVE_POLLING] else "disabled",
+        "monitoring_policy": str(values[CONF_MONITORING_POLICY]),
+        "verification_policy": str(verification),
+        "entity_mode": str(values[CONF_ENTITY_MODE]),
+        "notification_count": str(len(values[CONF_NOTIFICATION_TARGETS])),
+    }
+
+
+class _GuidedFlowState:
+    """Shared state helpers for initial setup and the options setup assistant."""
+
+    _draft: dict[str, Any]
+    _hardware: HardwareSnapshot | None
+    _recommended_verification_size_gb: int | None
+
+    def _apply_inventory_size_recommendation(self) -> None:
+        """Ensure profile limits can hold the largest currently known backup."""
+        minimum = self._recommended_verification_size_gb
+        if minimum is None:
+            return
+        self._draft[CONF_MAX_VERIFICATION_SIZE_GB] = max(
+            self._draft[CONF_MAX_VERIFICATION_SIZE_GB], minimum
+        )
+        self._draft[CONF_MAX_EXPANDED_SIZE_GB] = min(
+            MAX_MAX_EXPANDED_SIZE_GB,
+            max(self._draft[CONF_MAX_EXPANDED_SIZE_GB], minimum * 5),
+        )
+
+    def _apply_runtime_profile(self, profile: str, adaptive: bool) -> None:
+        self._draft[CONF_RUNTIME_PROFILE] = profile
+        self._draft[CONF_ADAPTIVE_POLLING] = adaptive
+        if profile != RUNTIME_PROFILE_CUSTOM:
+            self._draft.update(runtime_values(profile, adaptive_polling=adaptive))
+            self._apply_inventory_size_recommendation()
+
+    def _apply_monitoring_policy(self, policy: str) -> None:
+        self._draft[CONF_MONITORING_POLICY] = policy
+        if policy != MONITORING_POLICY_CUSTOM:
+            self._draft.update(monitoring_values(policy))
+
+    def _apply_verification_policy(self, policy: str) -> None:
+        self._draft[CONF_VERIFICATION_POLICY] = policy
+        self._draft.update(verification_values(policy))
+
+    def _apply_presentation(self, user_input: dict[str, Any]) -> None:
+        self._draft[CONF_ENTITY_MODE] = str(user_input[CONF_ENTITY_MODE])
+        self._draft[CONF_EXPOSE_BACKUP_METADATA] = bool(
+            user_input[CONF_EXPOSE_BACKUP_METADATA]
+        )
+        self._draft.update(_notification_values(user_input))
+
+
+class BackupCheckupConfigFlow(
+    _GuidedFlowState, config_entries.ConfigFlow, domain=DOMAIN
+):
+    """Handle the guided BackupCheckup installation flow."""
+
+    VERSION = 10
 
     def __init__(self) -> None:
-        """Initialize the config flow."""
-        self._profile = DEFAULT_MONITORING_PROFILE
-        self._entity_mode = DEFAULT_ENTITY_MODE
-        self._notifications = _notification_defaults()
+        """Initialize an empty guided flow."""
+        self._draft = {}
+        self._hardware = None
+        self._recommended_verification_size_gb = None
+
+    async def _async_prepare(self) -> None:
+        """Detect hardware once and prepare resolved defaults."""
+        if self._hardware is not None:
+            return
+        self._hardware = await async_detect_hardware(self.hass)
+        self._recommended_verification_size_gb = (
+            await async_recommended_verification_size_gb(self.hass)
+        )
+        self._draft = _new_configuration(self._hardware)
+        self._apply_inventory_size_recommendation()
 
     async def async_step_user(
-        self,
-        user_input: dict[str, Any] | None = None,
+        self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Choose a profile and optional mobile notifications."""
+        """Select a recommended or custom runtime profile."""
         if self._async_current_entries():
             return self.async_abort(reason="single_instance_allowed")
-
-        errors: dict[str, str] = {}
+        await self._async_prepare()
         if user_input is not None:
-            errors = _validate_profile_input(user_input)
-            if not errors:
-                self._profile = str(user_input[CONF_MONITORING_PROFILE])
-                self._entity_mode = str(user_input[CONF_ENTITY_MODE])
-                self._notifications = _notification_values(user_input)
-                if self._profile in PROFILE_PRESETS:
-                    return self.async_create_entry(
-                        title=NAME,
-                        data={
-                            CONF_MONITORING_PROFILE: self._profile,
-                            CONF_ENTITY_MODE: self._entity_mode,
-                            **PROFILE_PRESETS[self._profile],
-                            **self._notifications,
-                        },
-                    )
-                return await self.async_step_advanced()
+            profile = str(user_input[CONF_RUNTIME_PROFILE])
+            self._apply_runtime_profile(
+                profile, bool(user_input[CONF_ADAPTIVE_POLLING])
+            )
+            if profile == RUNTIME_PROFILE_CUSTOM:
+                return await self.async_step_runtime_custom()
+            return await self.async_step_monitoring()
 
-        values = _notification_defaults()
-        if user_input is not None:
-            values.update(_notification_values(user_input))
+        hardware = self._hardware
+        if hardware is None:
+            raise RuntimeError("Hardware detection did not complete")
         return self.async_show_form(
             step_id="user",
-            data_schema=_profile_schema(
-                self.hass,
-                str(
-                    user_input.get(CONF_MONITORING_PROFILE, DEFAULT_MONITORING_PROFILE)
-                    if user_input
-                    else DEFAULT_MONITORING_PROFILE
-                ),
-                str(
-                    user_input.get(CONF_ENTITY_MODE, DEFAULT_ENTITY_MODE)
-                    if user_input
-                    else DEFAULT_ENTITY_MODE
-                ),
-                values,
-            ),
+            data_schema=runtime_profile_schema(self._draft),
+            description_placeholders={
+                "installation_type": hardware.installation_type,
+                "architecture": hardware.architecture,
+                "board": hardware.board,
+                "recommended_profile": hardware.recommended_profile,
+                "confidence": hardware.confidence,
+            },
+        )
+
+    async def async_step_runtime_custom(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure custom polling and verification budgets."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            errors = _validate_runtime(user_input)
+            if not errors:
+                self._draft.update(user_input)
+                return await self.async_step_monitoring()
+        return self.async_show_form(
+            step_id="runtime_custom",
+            data_schema=runtime_custom_schema(user_input or self._draft),
             errors=errors,
         )
 
-    async def async_step_advanced(
-        self,
-        user_input: dict[str, Any] | None = None,
+    async def async_step_monitoring(
+        self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Configure all monitoring thresholds."""
+        """Choose a backup-health monitoring policy."""
+        if user_input is not None:
+            policy = str(user_input[CONF_MONITORING_POLICY])
+            self._apply_monitoring_policy(policy)
+            if policy == MONITORING_POLICY_CUSTOM:
+                return await self.async_step_monitoring_custom()
+            return await self.async_step_verification()
+        return self.async_show_form(
+            step_id="monitoring",
+            data_schema=monitoring_policy_schema(self._draft),
+        )
+
+    async def async_step_monitoring_custom(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure custom backup-health thresholds."""
         errors: dict[str, str] = {}
         if user_input is not None:
-            errors = _validate_advanced_input(user_input)
+            errors = _validate_monitoring(user_input)
             if not errors:
-                return self.async_create_entry(
-                    title=NAME,
-                    data={
-                        CONF_MONITORING_PROFILE: PROFILE_CUSTOM,
-                        CONF_ENTITY_MODE: self._entity_mode,
-                        **user_input,
-                        **self._notifications,
-                    },
-                )
-
+                self._draft.update(user_input)
+                return await self.async_step_verification()
         return self.async_show_form(
-            step_id="advanced",
-            data_schema=_advanced_schema(user_input or _monitoring_defaults()),
+            step_id="monitoring_custom",
+            data_schema=monitoring_custom_schema(user_input or self._draft),
             errors=errors,
+        )
+
+    async def async_step_verification(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Choose how new backups are verified."""
+        if user_input is not None:
+            self._apply_verification_policy(str(user_input[CONF_VERIFICATION_POLICY]))
+            return await self.async_step_presentation()
+        return self.async_show_form(
+            step_id="verification",
+            data_schema=verification_policy_schema(self._draft),
+        )
+
+    async def async_step_presentation(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure entities, privacy, and mobile notifications."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            errors = _validate_notifications(user_input)
+            if not errors:
+                self._apply_presentation(user_input)
+                return await self.async_step_summary()
+        values = dict(self._draft)
+        if user_input is not None:
+            values.update(user_input)
+            values[CONF_NOTIFICATION_TARGETS] = normalize_notification_targets(
+                user_input.get(CONF_NOTIFICATION_TARGETS)
+            )
+        return self.async_show_form(
+            step_id="presentation",
+            data_schema=presentation_schema(self.hass, values),
+            errors=errors,
+        )
+
+    async def async_step_summary(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Show the resolved setup before persisting it."""
+        if user_input is not None:
+            if not user_input.get(CONF_CONFIRM):
+                return self.async_show_form(
+                    step_id="summary",
+                    data_schema=summary_schema(),
+                    errors={"base": "confirmation_required"},
+                    description_placeholders=_summary_placeholders(self._draft),
+                )
+            data = normalize_configuration(self._draft)
+            return self.async_create_entry(title=NAME, data=data)
+        return self.async_show_form(
+            step_id="summary",
+            data_schema=summary_schema(),
+            description_placeholders=_summary_placeholders(self._draft),
         )
 
     @staticmethod
@@ -473,122 +363,268 @@ class BackupCheckupConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def async_get_options_flow(
         config_entry: config_entries.ConfigEntry,
     ) -> config_entries.OptionsFlow:
-        """Return the options flow."""
+        """Return the menu-based options flow."""
         return BackupCheckupOptionsFlow()
 
 
-class BackupCheckupOptionsFlow(config_entries.OptionsFlow):
-    """Handle BackupCheckup options."""
+class BackupCheckupOptionsFlow(_GuidedFlowState, config_entries.OptionsFlowWithReload):
+    """Edit independent setting groups or rerun the complete assistant."""
 
     def __init__(self) -> None:
-        """Initialize the options flow."""
-        self._notifications = _notification_defaults()
-        self._entity_mode = DEFAULT_ENTITY_MODE
-        self._previous_entity_mode = DEFAULT_ENTITY_MODE
+        """Initialize options state."""
+        self._draft = {}
+        self._hardware = None
+        self._recommended_verification_size_gb = None
+        self._assistant_mode = False
 
-    def _current_snapshot(self) -> dict[str, Any]:
-        """Return a fully normalized snapshot for the first and later form opens."""
+    def _current(self) -> dict[str, Any]:
+        """Return one normalized snapshot of data and options."""
         return normalize_configuration(
-            self.config_entry.data,
-            self.config_entry.options,
+            self.config_entry.data, self.config_entry.options
         )
 
-    def _current(self, key: str, default: Any) -> Any:
-        """Return one normalized option with a defensive fallback."""
-        return self._current_snapshot().get(key, default)
+    def _save(self, patch: dict[str, Any]) -> FlowResult:
+        """Persist one complete options snapshot and let Home Assistant reload."""
+        return self.async_create_entry(
+            title="", data=normalize_configuration(self._current(), patch)
+        )
 
     async def async_step_init(
-        self,
-        user_input: dict[str, Any] | None = None,
+        self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Choose monitoring, entity, and mobile-notification options."""
-        errors: dict[str, str] = {}
-        self._previous_entity_mode = str(
-            self._current(CONF_ENTITY_MODE, DEFAULT_ENTITY_MODE)
-        )
-        if user_input is not None:
-            errors = _validate_profile_input(user_input)
-            if not errors:
-                profile = str(user_input[CONF_MONITORING_PROFILE])
-                self._entity_mode = str(user_input[CONF_ENTITY_MODE])
-                self._notifications = _notification_values(user_input)
-                if profile in PROFILE_PRESETS:
-                    if self._entity_mode != self._previous_entity_mode:
-                        async_apply_entity_mode(
-                            self.hass,
-                            self.config_entry,
-                            self._entity_mode,
-                        )
-                    return self.async_create_entry(
-                        title="",
-                        data={
-                            CONF_MONITORING_PROFILE: profile,
-                            CONF_ENTITY_MODE: self._entity_mode,
-                            **PROFILE_PRESETS[profile],
-                            **self._notifications,
-                        },
-                    )
-                return await self.async_step_advanced()
+        """Show a focused settings menu."""
+        del user_input
+        return self.async_show_menu(step_id="init", menu_options=list(_OPTIONS_MENU))
 
-        profile = str(self._current(CONF_MONITORING_PROFILE, PROFILE_CUSTOM))
-        entity_mode = self._previous_entity_mode
-        notifications = {
-            CONF_NOTIFICATIONS_ENABLED: self._current(
-                CONF_NOTIFICATIONS_ENABLED,
-                DEFAULT_NOTIFICATIONS_ENABLED,
-            ),
-            CONF_NOTIFICATION_TARGETS: normalize_notification_targets(
-                self._current(
-                    CONF_NOTIFICATION_TARGETS,
-                    DEFAULT_NOTIFICATION_TARGETS,
-                )
-            ),
-            CONF_NOTIFY_ON_RECOVERY: self._current(
-                CONF_NOTIFY_ON_RECOVERY,
-                DEFAULT_NOTIFY_ON_RECOVERY,
-            ),
-        }
+    async def async_step_runtime(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit the runtime profile and adaptive polling."""
+        values = self._current()
         if user_input is not None:
-            profile = str(user_input[CONF_MONITORING_PROFILE])
-            entity_mode = str(user_input[CONF_ENTITY_MODE])
-            notifications.update(_notification_values(user_input))
+            profile = str(user_input[CONF_RUNTIME_PROFILE])
+            patch = {
+                CONF_RUNTIME_PROFILE: profile,
+                CONF_ADAPTIVE_POLLING: bool(user_input[CONF_ADAPTIVE_POLLING]),
+                CONF_PRESET_REVISION: PRESET_REVISION,
+            }
+            patch.update(
+                runtime_values(
+                    profile,
+                    adaptive_polling=bool(user_input[CONF_ADAPTIVE_POLLING]),
+                )
+            )
+            if profile == RUNTIME_PROFILE_CUSTOM:
+                self._draft = normalize_configuration(values, patch)
+                return await self.async_step_runtime_custom()
+            return self._save(patch)
+        if values[CONF_RUNTIME_PROFILE] == RUNTIME_PROFILE_LEGACY:
+            values[CONF_RUNTIME_PROFILE] = RUNTIME_PROFILE_CUSTOM
         return self.async_show_form(
-            step_id="init",
-            data_schema=_profile_schema(self.hass, profile, entity_mode, notifications),
+            step_id="runtime", data_schema=runtime_profile_schema(values)
+        )
+
+    async def async_step_runtime_custom(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit custom runtime values."""
+        values = self._draft or self._current()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            errors = _validate_runtime(user_input)
+            if not errors:
+                patch = {
+                    CONF_RUNTIME_PROFILE: RUNTIME_PROFILE_CUSTOM,
+                    CONF_PRESET_REVISION: PRESET_REVISION,
+                    **user_input,
+                }
+                if self._assistant_mode:
+                    self._draft.update(patch)
+                    return await self.async_step_setup_monitoring()
+                return self._save(patch)
+        return self.async_show_form(
+            step_id="runtime_custom",
+            data_schema=runtime_custom_schema(user_input or values),
             errors=errors,
         )
 
-    async def async_step_advanced(
-        self,
-        user_input: dict[str, Any] | None = None,
+    async def async_step_monitoring(
+        self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Edit every monitoring threshold."""
+        """Edit the monitoring policy."""
+        values = self._current()
+        if user_input is not None:
+            policy = str(user_input[CONF_MONITORING_POLICY])
+            patch = {CONF_MONITORING_POLICY: policy, **monitoring_values(policy)}
+            if policy == MONITORING_POLICY_CUSTOM:
+                self._draft = normalize_configuration(values, patch)
+                return await self.async_step_monitoring_custom()
+            return self._save(patch)
+        return self.async_show_form(
+            step_id="monitoring", data_schema=monitoring_policy_schema(values)
+        )
+
+    async def async_step_monitoring_custom(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit custom monitoring thresholds."""
+        values = self._draft or self._current()
         errors: dict[str, str] = {}
         if user_input is not None:
-            errors = _validate_advanced_input(user_input)
+            errors = _validate_monitoring(user_input)
             if not errors:
-                if self._entity_mode != self._previous_entity_mode:
-                    async_apply_entity_mode(
-                        self.hass,
-                        self.config_entry,
-                        self._entity_mode,
-                    )
-                return self.async_create_entry(
-                    title="",
-                    data={
-                        CONF_MONITORING_PROFILE: PROFILE_CUSTOM,
-                        CONF_ENTITY_MODE: self._entity_mode,
-                        **user_input,
-                        **self._notifications,
-                    },
-                )
-
-        values = {
-            key: self._current(key, default)
-            for key, default in _monitoring_defaults().items()
-        }
+                patch = {CONF_MONITORING_POLICY: MONITORING_POLICY_CUSTOM, **user_input}
+                if self._assistant_mode:
+                    self._draft.update(patch)
+                    return await self.async_step_setup_verification()
+                return self._save(patch)
         return self.async_show_form(
-            step_id="advanced",
-            data_schema=_advanced_schema(user_input or values),
+            step_id="monitoring_custom",
+            data_schema=monitoring_custom_schema(user_input or values),
             errors=errors,
+        )
+
+    async def async_step_verification(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit the automatic verification strategy."""
+        values = self._current()
+        if user_input is not None:
+            policy = str(user_input[CONF_VERIFICATION_POLICY])
+            return self._save(
+                {CONF_VERIFICATION_POLICY: policy, **verification_values(policy)}
+            )
+        return self.async_show_form(
+            step_id="verification", data_schema=verification_policy_schema(values)
+        )
+
+    async def async_step_presentation(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Edit entity, privacy, and notification settings."""
+        values = self._current()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            errors = _validate_notifications(user_input)
+            if not errors:
+                patch = {
+                    CONF_ENTITY_MODE: str(user_input[CONF_ENTITY_MODE]),
+                    CONF_EXPOSE_BACKUP_METADATA: bool(
+                        user_input[CONF_EXPOSE_BACKUP_METADATA]
+                    ),
+                    **_notification_values(user_input),
+                }
+                return self._save(patch)
+            values.update(user_input)
+            values[CONF_NOTIFICATION_TARGETS] = normalize_notification_targets(
+                user_input.get(CONF_NOTIFICATION_TARGETS)
+            )
+        return self.async_show_form(
+            step_id="presentation",
+            data_schema=presentation_schema(self.hass, values),
+            errors=errors,
+        )
+
+    async def async_step_setup_assistant(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Rerun the complete guided assistant from the options menu."""
+        if self._hardware is None:
+            self._hardware = await async_detect_hardware(self.hass)
+            self._recommended_verification_size_gb = (
+                await async_recommended_verification_size_gb(self.hass)
+            )
+            self._draft = self._current()
+            self._draft[CONF_HARDWARE_DETECTION] = self._hardware.as_dict()
+        self._assistant_mode = True
+        if user_input is not None:
+            profile = str(user_input[CONF_RUNTIME_PROFILE])
+            self._apply_runtime_profile(
+                profile, bool(user_input[CONF_ADAPTIVE_POLLING])
+            )
+            self._draft[CONF_PRESET_REVISION] = PRESET_REVISION
+            if profile == RUNTIME_PROFILE_CUSTOM:
+                return await self.async_step_runtime_custom()
+            return await self.async_step_setup_monitoring()
+        hardware = self._hardware
+        if hardware is None:
+            raise RuntimeError("Hardware detection did not complete")
+        values = dict(self._draft)
+        if values[CONF_RUNTIME_PROFILE] == RUNTIME_PROFILE_LEGACY:
+            values[CONF_RUNTIME_PROFILE] = hardware.recommended_profile
+        return self.async_show_form(
+            step_id="setup_assistant",
+            data_schema=runtime_profile_schema(values),
+            description_placeholders={
+                "installation_type": hardware.installation_type,
+                "architecture": hardware.architecture,
+                "board": hardware.board,
+                "recommended_profile": hardware.recommended_profile,
+                "confidence": hardware.confidence,
+            },
+        )
+
+    async def async_step_setup_monitoring(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Choose monitoring while rerunning the setup assistant."""
+        if user_input is not None:
+            policy = str(user_input[CONF_MONITORING_POLICY])
+            self._apply_monitoring_policy(policy)
+            if policy == MONITORING_POLICY_CUSTOM:
+                return await self.async_step_monitoring_custom()
+            return await self.async_step_setup_verification()
+        return self.async_show_form(
+            step_id="setup_monitoring",
+            data_schema=monitoring_policy_schema(self._draft),
+        )
+
+    async def async_step_setup_verification(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Choose verification while rerunning the setup assistant."""
+        if user_input is not None:
+            self._apply_verification_policy(str(user_input[CONF_VERIFICATION_POLICY]))
+            return await self.async_step_setup_presentation()
+        return self.async_show_form(
+            step_id="setup_verification",
+            data_schema=verification_policy_schema(self._draft),
+        )
+
+    async def async_step_setup_presentation(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Choose presentation while rerunning the setup assistant."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            errors = _validate_notifications(user_input)
+            if not errors:
+                self._apply_presentation(user_input)
+                return await self.async_step_setup_summary()
+        values = dict(self._draft)
+        if user_input is not None:
+            values.update(user_input)
+            values[CONF_NOTIFICATION_TARGETS] = normalize_notification_targets(
+                user_input.get(CONF_NOTIFICATION_TARGETS)
+            )
+        return self.async_show_form(
+            step_id="setup_presentation",
+            data_schema=presentation_schema(self.hass, values),
+            errors=errors,
+        )
+
+    async def async_step_setup_summary(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Confirm and save the complete options assistant."""
+        if user_input is not None and user_input.get(CONF_CONFIRM):
+            return self.async_create_entry(
+                title="", data=normalize_configuration(self._draft)
+            )
+        errors = {"base": "confirmation_required"} if user_input is not None else {}
+        return self.async_show_form(
+            step_id="setup_summary",
+            data_schema=summary_schema(),
+            errors=errors,
+            description_placeholders=_summary_placeholders(self._draft),
         )
