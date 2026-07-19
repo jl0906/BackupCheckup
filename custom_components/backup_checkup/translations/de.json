@@ -632,7 +632,8 @@
         "home_assistant_appliance": "Home Assistant Appliance",
         "performance": "Leistungsstark",
         "server": "Server",
-        "custom": "Benutzerdefiniert"
+        "custom": "Benutzerdefiniert",
+        "legacy_custom": "Benutzerdefinierte bisherige Einstellung beibehalten"
       }
     },
     "monitoring_policy": {
@@ -668,54 +669,6 @@
         "enabled": "Aktiviert",
         "disabled": "Deaktiviert"
       }
-    },
-    "summary_runtime_profile_energy_saving": {
-      "value": "Energiesparend"
-    },
-    "summary_runtime_profile_home_assistant_appliance": {
-      "value": "Home Assistant Appliance"
-    },
-    "summary_runtime_profile_performance": {
-      "value": "Leistungsstark"
-    },
-    "summary_runtime_profile_server": {
-      "value": "Server"
-    },
-    "summary_runtime_profile_custom": {
-      "value": "Benutzerdefiniert"
-    },
-    "summary_monitoring_policy_balanced": {
-      "value": "Ausgewogen"
-    },
-    "summary_monitoring_policy_strict": {
-      "value": "Streng"
-    },
-    "summary_monitoring_policy_custom": {
-      "value": "Benutzerdefiniert"
-    },
-    "summary_verification_policy_manual": {
-      "value": "Nur manuell"
-    },
-    "summary_verification_policy_automatic": {
-      "value": "Neue Backups automatisch prüfen"
-    },
-    "summary_verification_policy_deep": {
-      "value": "Tiefenprüfung inklusive Datenbank"
-    },
-    "summary_verification_policy_custom": {
-      "value": "Benutzerdefinierte bisherige Einstellung beibehalten"
-    },
-    "summary_entity_mode_standard": {
-      "value": "Standardmodus"
-    },
-    "summary_entity_mode_expert": {
-      "value": "Expertenmodus"
-    },
-    "summary_enabled_state_enabled": {
-      "value": "Aktiviert"
-    },
-    "summary_enabled_state_disabled": {
-      "value": "Deaktiviert"
     }
   },
   "issues": {

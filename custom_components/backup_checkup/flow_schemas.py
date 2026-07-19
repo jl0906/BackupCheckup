@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
@@ -45,6 +46,7 @@ from .const import (
     CONF_UPDATE_INTERVAL_MINUTES,
     CONF_VERIFICATION_POLICY,
     CONF_VERIFICATION_TIMEOUT_MINUTES,
+    DOMAIN,
     ENTITY_MODE_OPTIONS,
     MAX_ACTIVE_UPDATE_INTERVAL_MINUTES,
     MAX_ADAPTIVE_ERROR_THRESHOLD,
@@ -312,23 +314,67 @@ def presentation_schema(hass: HomeAssistant, values: dict[str, Any]) -> vol.Sche
     )
 
 
+_SUMMARY_LABEL_FALLBACKS: dict[str, dict[str, str]] = {
+    "runtime_profile": {
+        "energy_saving": "Energy saving",
+        "home_assistant_appliance": "Home Assistant appliance",
+        "performance": "High performance",
+        "server": "Server",
+        "custom": "Custom",
+        "legacy_custom": "Keep existing custom settings",
+    },
+    "monitoring_policy": {
+        "balanced": "Balanced",
+        "strict": "Strict",
+        "custom": "Custom",
+    },
+    "verification_policy": {
+        "manual": "Manual only",
+        "automatic": "Automatically verify new backups",
+        "deep": "Deep verification including database",
+        "custom": "Keep existing custom settings",
+    },
+    "entity_mode": {
+        "standard": "Standard mode",
+        "expert": "Expert mode",
+    },
+    "enabled_state": {
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+    },
+}
+
+
 def _summary_constant(
-    value: str | int | bool, *, translation_key: str | None = None
+    value: str | int | bool, *, label: str | None = None
 ) -> ConstantSelector:
     """Return a compact, non-editable value for the final summary."""
     config: ConstantSelectorConfig = {"value": value}
-    if translation_key is not None:
-        config["translation_key"] = translation_key
+    if label is not None:
+        config["label"] = label
     return ConstantSelector(config)
 
 
-def _translated_summary_constant(group: str, value: str) -> ConstantSelector:
-    """Return a localized constant value selected by its stored identifier."""
-    return _summary_constant(value, translation_key=f"summary_{group}_{value}")
+def _summary_label(group: str, value: str, translations: Mapping[str, str]) -> str:
+    """Return a localized label from a hassfest-supported select translation."""
+    key = f"component.{DOMAIN}.selector.{group}.options.{value}"
+    return translations.get(
+        key, _SUMMARY_LABEL_FALLBACKS.get(group, {}).get(value, value)
+    )
 
 
-def summary_schema(values: dict[str, Any]) -> vol.Schema:
+def _translated_summary_constant(
+    group: str, value: str, translations: Mapping[str, str]
+) -> ConstantSelector:
+    """Return a localized constant using an existing select-option translation."""
+    return _summary_constant(value, label=_summary_label(group, value, translations))
+
+
+def summary_schema(
+    values: dict[str, Any], translations: Mapping[str, str] | None = None
+) -> vol.Schema:
     """Return a compact, grouped, non-editable setup summary."""
+    labels = translations or {}
     enabled_state = "enabled" if values[CONF_ADAPTIVE_POLLING] else "disabled"
     repair_state = "enabled" if values[CONF_REPAIR_ISSUES_ENABLED] else "disabled"
     metadata_state = "enabled" if values[CONF_EXPOSE_BACKUP_METADATA] else "disabled"
@@ -345,7 +391,9 @@ def summary_schema(values: dict[str, Any]) -> vol.Schema:
                         ),
                         vol.Optional(SUMMARY_RUNTIME_PROFILE): (
                             _translated_summary_constant(
-                                "runtime_profile", values[CONF_RUNTIME_PROFILE]
+                                "runtime_profile",
+                                values[CONF_RUNTIME_PROFILE],
+                                labels,
                             )
                         ),
                     }
@@ -356,7 +404,9 @@ def summary_schema(values: dict[str, Any]) -> vol.Schema:
                 vol.Schema(
                     {
                         vol.Optional(SUMMARY_ADAPTIVE_POLLING): (
-                            _translated_summary_constant("enabled_state", enabled_state)
+                            _translated_summary_constant(
+                                "enabled_state", enabled_state, labels
+                            )
                         ),
                         vol.Optional(SUMMARY_UPDATE_INTERVAL): _summary_constant(
                             int(values[CONF_UPDATE_INTERVAL_MINUTES])
@@ -384,6 +434,7 @@ def summary_schema(values: dict[str, Any]) -> vol.Schema:
                             _translated_summary_constant(
                                 "monitoring_policy",
                                 values[CONF_MONITORING_POLICY],
+                                labels,
                             )
                         ),
                         vol.Optional(SUMMARY_MAX_AGE): _summary_constant(
@@ -395,7 +446,9 @@ def summary_schema(values: dict[str, Any]) -> vol.Schema:
                             )
                         ),
                         vol.Optional(SUMMARY_REPAIR_ISSUES): (
-                            _translated_summary_constant("enabled_state", repair_state)
+                            _translated_summary_constant(
+                                "enabled_state", repair_state, labels
+                            )
                         ),
                     }
                 ),
@@ -408,16 +461,17 @@ def summary_schema(values: dict[str, Any]) -> vol.Schema:
                             _translated_summary_constant(
                                 "verification_policy",
                                 values[CONF_VERIFICATION_POLICY],
+                                labels,
                             )
                         ),
                         vol.Optional(SUMMARY_ENTITY_MODE): (
                             _translated_summary_constant(
-                                "entity_mode", values[CONF_ENTITY_MODE]
+                                "entity_mode", values[CONF_ENTITY_MODE], labels
                             )
                         ),
                         vol.Optional(SUMMARY_EXPOSE_METADATA): (
                             _translated_summary_constant(
-                                "enabled_state", metadata_state
+                                "enabled_state", metadata_state, labels
                             )
                         ),
                     }
@@ -429,7 +483,7 @@ def summary_schema(values: dict[str, Any]) -> vol.Schema:
                     {
                         vol.Optional(SUMMARY_NOTIFICATIONS_ENABLED): (
                             _translated_summary_constant(
-                                "enabled_state", notification_state
+                                "enabled_state", notification_state, labels
                             )
                         ),
                         vol.Optional(SUMMARY_NOTIFICATION_COUNT): (
@@ -437,7 +491,7 @@ def summary_schema(values: dict[str, Any]) -> vol.Schema:
                         ),
                         vol.Optional(SUMMARY_NOTIFY_ON_RECOVERY): (
                             _translated_summary_constant(
-                                "enabled_state", recovery_state
+                                "enabled_state", recovery_state, labels
                             )
                         ),
                     }

@@ -632,7 +632,8 @@
         "home_assistant_appliance": "Home Assistant appliance",
         "performance": "High performance",
         "server": "Server",
-        "custom": "Custom"
+        "custom": "Custom",
+        "legacy_custom": "Keep existing custom settings"
       }
     },
     "monitoring_policy": {
@@ -668,54 +669,6 @@
         "enabled": "Aktiverad",
         "disabled": "Inaktiverad"
       }
-    },
-    "summary_runtime_profile_energy_saving": {
-      "value": "Energy saving"
-    },
-    "summary_runtime_profile_home_assistant_appliance": {
-      "value": "Home Assistant appliance"
-    },
-    "summary_runtime_profile_performance": {
-      "value": "High performance"
-    },
-    "summary_runtime_profile_server": {
-      "value": "Server"
-    },
-    "summary_runtime_profile_custom": {
-      "value": "Custom"
-    },
-    "summary_monitoring_policy_balanced": {
-      "value": "Balanced"
-    },
-    "summary_monitoring_policy_strict": {
-      "value": "Strict"
-    },
-    "summary_monitoring_policy_custom": {
-      "value": "Custom"
-    },
-    "summary_verification_policy_manual": {
-      "value": "Manual only"
-    },
-    "summary_verification_policy_automatic": {
-      "value": "Automatically verify new backups"
-    },
-    "summary_verification_policy_deep": {
-      "value": "Deep verification including database"
-    },
-    "summary_verification_policy_custom": {
-      "value": "Keep existing custom settings"
-    },
-    "summary_entity_mode_standard": {
-      "value": "Standard mode"
-    },
-    "summary_entity_mode_expert": {
-      "value": "Expert mode"
-    },
-    "summary_enabled_state_enabled": {
-      "value": "Aktiverad"
-    },
-    "summary_enabled_state_disabled": {
-      "value": "Inaktiverad"
     }
   },
   "issues": {

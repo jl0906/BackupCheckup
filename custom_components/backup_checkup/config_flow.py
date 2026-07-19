@@ -8,6 +8,7 @@ from typing import Any
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
+from homeassistant.helpers.translation import async_get_translations
 
 from .configuration import normalize_configuration
 from .const import (
@@ -63,6 +64,25 @@ _OPTIONS_MENU = (
     "presentation",
     "setup_assistant",
 )
+
+
+def _flow_language(flow: object) -> str:
+    """Return the language selected for the current flow."""
+    context = getattr(flow, "context", None)
+    if isinstance(context, dict) and isinstance(context.get("language"), str):
+        return context["language"]
+    hass = getattr(flow, "hass", None)
+    config = getattr(hass, "config", None)
+    language = getattr(config, "language", "en")
+    return language if isinstance(language, str) else "en"
+
+
+async def _async_summary_translations(flow: object) -> dict[str, str]:
+    """Load valid selector-option translations for compact summary labels."""
+    hass = flow.hass  # type: ignore[attr-defined]
+    return await async_get_translations(
+        hass, _flow_language(flow), "selector", {DOMAIN}
+    )
 
 
 def _notification_values(user_input: dict[str, Any]) -> dict[str, Any]:
@@ -343,9 +363,10 @@ class BackupCheckupConfigFlow(
         if user_input is not None:
             data = normalize_configuration(self._draft)
             return self.async_create_entry(title=NAME, data=data)
+        translations = await _async_summary_translations(self)
         return self.async_show_form(
             step_id="summary",
-            data_schema=summary_schema(_summary_values(self._draft)),
+            data_schema=summary_schema(_summary_values(self._draft), translations),
             last_step=True,
         )
 
@@ -631,8 +652,9 @@ class BackupCheckupOptionsFlow(_GuidedFlowState, config_entries.OptionsFlowWithR
             return self.async_create_entry(
                 title="", data=normalize_configuration(self._draft)
             )
+        translations = await _async_summary_translations(self)
         return self.async_show_form(
             step_id="setup_summary",
-            data_schema=summary_schema(_summary_values(self._draft)),
+            data_schema=summary_schema(_summary_values(self._draft), translations),
             last_step=True,
         )
