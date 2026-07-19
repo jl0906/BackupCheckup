@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-orange.svg">
-  <img alt="Version 2.4.0" src="https://img.shields.io/badge/version-2.4.0-blue.svg">
-  <img alt="AI Coded and Maintained" src="https://img.shields.io/badge/AI-Coded%20%26%20Maintained-8A2BE2.svg">
-  <img alt="Home Assistant 2026.3 or newer" src="https://img.shields.io/badge/Home%20Assistant-2026.3%20or%20newer-41BDF5.svg">
-  <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg">
+  <img alt="HACS Custom" src="docs/badges/hacs-custom.svg">
+  <img alt="Version 2.4.0" src="docs/badges/version-2.4.0.svg">
+  <img alt="AI Coded and Maintained" src="docs/badges/ai-coded-maintained.svg">
+  <img alt="Home Assistant 2026.3 or newer" src="docs/badges/home-assistant-2026.3.svg">
+  <img alt="MIT License" src="docs/badges/license-mit.svg">
 </p>
 
 BackupCheckup is a local Home Assistant custom integration that monitors the **actual backup inventory** reported by Home Assistant's native backup manager.
