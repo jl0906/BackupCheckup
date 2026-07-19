@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.4.3
+
+### Fixed
+
+- Replaced the unsupported `selector.<key>.value` translation nodes used by the compact setup summary. Summary constants now reuse the existing hassfest-valid select option translations as display labels, preserving localized values without invalid translation keys.
+- Added the explicit config-entry-only `CONFIG_SCHEMA` required for integrations that implement `async_setup` but do not support YAML configuration.
+- Added regression coverage for hassfest-compatible selector translation structures, localized summary labels, and the config-entry-only schema declaration.
+
 ## 2.4.2
 
 **Compact, grouped setup confirmation**
