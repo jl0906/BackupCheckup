@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import math
 from collections.abc import Mapping
 
@@ -14,6 +15,7 @@ from .const import MAX_MAX_VERIFICATION_SIZE_GB, MIN_MAX_VERIFICATION_SIZE_GB
 _SETUP_NORMALIZER_ID = "setup-recommendation"
 _DOWNLOAD_HEADROOM_RATIO = 1.25
 _BYTES_PER_GB = 1_000_000_000
+_SETUP_RECOMMENDATION_TIMEOUT_SECONDS = 15.0
 
 
 async def async_recommended_verification_size_gb(
@@ -22,7 +24,8 @@ async def async_recommended_verification_size_gb(
     """Return a safe download limit from the largest known backup, when available."""
     try:
         manager = async_get_manager(hass)
-        backups, _agent_errors = await manager.async_get_backups()
+        async with asyncio.timeout(_SETUP_RECOMMENDATION_TIMEOUT_SECONDS):
+            backups, _agent_errors = await manager.async_get_backups()
         if not isinstance(backups, Mapping):
             return None
         normalized = BackupRecordNormalizer(_SETUP_NORMALIZER_ID).normalize(backups)

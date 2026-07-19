@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Choose a performance profile",
-        "description": "Detected installation: {installation_type}\nArchitecture: {architecture}\nHardware board: {board}\nRecommended profile: {recommended_profile} (confidence: {confidence})\n\nThe recommendation is only a starting point and will not overwrite your settings later.",
+        "description": "Instalación detectada: {installation_type}\nArquitectura: {architecture}\nPlaca de hardware: {board}\n\nEl perfil de rendimiento recomendado ya está seleccionado. La recomendación es solo un punto de partida y no sobrescribirá tus ajustes posteriormente.",
         "data": {
           "runtime_profile": "Performance profile",
           "adaptive_polling": "Use intelligent polling"
@@ -102,12 +102,26 @@
       },
       "summary": {
         "title": "Confirm setup",
-        "description": "**Detected hardware:** {hardware}\n**Performance profile:** {runtime_profile}\n**Normal polling:** {update_interval} minutes\n**Download limit:** {download_limit} GB\n**Intelligent polling:** {adaptive_polling}\n**Monitoring:** {monitoring_policy}\n**Integrity checks:** {verification_policy}\n**Entity mode:** {entity_mode}\n**Notification devices:** {notification_count}",
+        "description": "Revisa los ajustes resultantes. Selecciona Enviar para crear BackupCheckup.",
         "data": {
-          "confirm": "Apply this configuration"
-        },
-        "data_description": {
-          "confirm": "Review the summary before creating the integration."
+          "summary_hardware": "Hardware detectado",
+          "summary_runtime_profile": "Perfil de rendimiento",
+          "summary_update_interval": "Intervalo normal de consulta en minutos",
+          "summary_active_interval": "Intervalo durante una copia en minutos",
+          "summary_error_backoff": "Intervalo de espera tras errores en minutos",
+          "summary_adaptive_polling": "Consulta inteligente",
+          "summary_download_limit": "Tamaño máximo de descarga en GB",
+          "summary_expanded_limit": "Tamaño máximo descomprimido en GB",
+          "summary_monitoring_policy": "Política de supervisión",
+          "summary_max_age": "Antigüedad máxima de la copia en días",
+          "summary_redundant_locations": "Ubicaciones de almacenamiento requeridas",
+          "summary_repair_issues": "Avisos de reparación",
+          "summary_verification_policy": "Estrategia de integridad",
+          "summary_entity_mode": "Modo de entidades",
+          "summary_expose_metadata": "Mostrar nombres e ID de copias",
+          "summary_notifications_enabled": "Notificaciones móviles",
+          "summary_notification_count": "Dispositivos de notificación seleccionados",
+          "summary_notify_on_recovery": "Notificación de recuperación"
         }
       }
     },
@@ -118,8 +132,7 @@
       "fixed_size_required": "Enter a minimum backup size greater than 0 MB when using the fixed minimum size mode.",
       "notification_target_required": "Select at least one mobile device when mobile notifications are enabled.",
       "active_interval_too_slow": "The active polling interval must not be longer than the normal polling interval.",
-      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval.",
-      "confirmation_required": "Confirm the displayed configuration before saving it."
+      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval."
     }
   },
   "options": {
@@ -234,7 +247,7 @@
       },
       "setup_assistant": {
         "title": "Run the setup assistant again",
-        "description": "Detected installation: {installation_type}\nArchitecture: {architecture}\nHardware board: {board}\nRecommended profile: {recommended_profile} (confidence: {confidence})\n\nThe recommendation is only a starting point and will not overwrite your settings later.",
+        "description": "Instalación detectada: {installation_type}\nArquitectura: {architecture}\nPlaca de hardware: {board}\n\nEl perfil de rendimiento recomendado ya está seleccionado. La recomendación es solo un punto de partida y no sobrescribirá tus ajustes posteriormente.",
         "data": {
           "runtime_profile": "Performance profile",
           "adaptive_polling": "Use intelligent polling"
@@ -284,12 +297,26 @@
       },
       "setup_summary": {
         "title": "Confirm updated setup",
-        "description": "**Detected hardware:** {hardware}\n**Performance profile:** {runtime_profile}\n**Normal polling:** {update_interval} minutes\n**Download limit:** {download_limit} GB\n**Intelligent polling:** {adaptive_polling}\n**Monitoring:** {monitoring_policy}\n**Integrity checks:** {verification_policy}\n**Entity mode:** {entity_mode}\n**Notification devices:** {notification_count}",
+        "description": "Revisa los ajustes resultantes. Selecciona Enviar para guardar la configuración.",
         "data": {
-          "confirm": "Apply this configuration"
-        },
-        "data_description": {
-          "confirm": "Review the summary before creating the integration."
+          "summary_hardware": "Hardware detectado",
+          "summary_runtime_profile": "Perfil de rendimiento",
+          "summary_update_interval": "Intervalo normal de consulta en minutos",
+          "summary_active_interval": "Intervalo durante una copia en minutos",
+          "summary_error_backoff": "Intervalo de espera tras errores en minutos",
+          "summary_adaptive_polling": "Consulta inteligente",
+          "summary_download_limit": "Tamaño máximo de descarga en GB",
+          "summary_expanded_limit": "Tamaño máximo descomprimido en GB",
+          "summary_monitoring_policy": "Política de supervisión",
+          "summary_max_age": "Antigüedad máxima de la copia en días",
+          "summary_redundant_locations": "Ubicaciones de almacenamiento requeridas",
+          "summary_repair_issues": "Avisos de reparación",
+          "summary_verification_policy": "Estrategia de integridad",
+          "summary_entity_mode": "Modo de entidades",
+          "summary_expose_metadata": "Mostrar nombres e ID de copias",
+          "summary_notifications_enabled": "Notificaciones móviles",
+          "summary_notification_count": "Dispositivos de notificación seleccionados",
+          "summary_notify_on_recovery": "Notificación de recuperación"
         }
       }
     },
@@ -297,8 +324,7 @@
       "fixed_size_required": "Enter a minimum backup size greater than 0 MB when using the fixed minimum size mode.",
       "notification_target_required": "Select at least one mobile device when mobile notifications are enabled.",
       "active_interval_too_slow": "The active polling interval must not be longer than the normal polling interval.",
-      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval.",
-      "confirmation_required": "Confirm the displayed configuration before saving it."
+      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval."
     }
   },
   "entity": {
@@ -585,6 +611,12 @@
       "options": {
         "standard": "Standard mode",
         "expert": "Expert mode"
+      }
+    },
+    "enabled_state": {
+      "options": {
+        "enabled": "Activado",
+        "disabled": "Desactivado"
       }
     }
   },

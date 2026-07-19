@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Leistungsprofil auswählen",
-        "description": "Erkannte Installation: {installation_type}\nArchitektur: {architecture}\nHardwareboard: {board}\nEmpfohlenes Profil: {recommended_profile} (Vertrauen: {confidence})\n\nDie Empfehlung dient nur als Ausgangspunkt und überschreibt deine Einstellungen später nicht.",
+        "description": "Erkannte Installation: {installation_type}\nArchitektur: {architecture}\nHardwareboard: {board}\n\nDas empfohlene Leistungsprofil ist bereits vorausgewählt. Die Empfehlung dient nur als Ausgangspunkt und überschreibt deine Einstellungen später nicht.",
         "data": {
           "runtime_profile": "Leistungsprofil",
           "adaptive_polling": "Intelligente Abfrage verwenden"
@@ -102,12 +102,26 @@
       },
       "summary": {
         "title": "Einrichtung bestätigen",
-        "description": "**Erkannte Hardware:** {hardware}\n**Leistungsprofil:** {runtime_profile}\n**Normale Abfrage:** {update_interval} Minuten\n**Downloadlimit:** {download_limit} GB\n**Intelligente Abfrage:** {adaptive_polling}\n**Überwachung:** {monitoring_policy}\n**Integritätsprüfungen:** {verification_policy}\n**Entitätsmodus:** {entity_mode}\n**Benachrichtigungsgeräte:** {notification_count}",
+        "description": "Prüfe die unten aufgelösten Einstellungen. Mit Absenden wird BackupCheckup eingerichtet.",
         "data": {
-          "confirm": "Diese Konfiguration übernehmen"
-        },
-        "data_description": {
-          "confirm": "Prüfe die Zusammenfassung, bevor die Integration erstellt wird."
+          "summary_hardware": "Erkannte Hardware",
+          "summary_runtime_profile": "Leistungsprofil",
+          "summary_update_interval": "Normales Abfrageintervall in Minuten",
+          "summary_active_interval": "Abfrageintervall während eines Backups in Minuten",
+          "summary_error_backoff": "Fehler-Backoff-Intervall in Minuten",
+          "summary_adaptive_polling": "Intelligente Abfrage",
+          "summary_download_limit": "Maximale Downloadgröße in GB",
+          "summary_expanded_limit": "Maximale entpackte Größe in GB",
+          "summary_monitoring_policy": "Überwachungsrichtlinie",
+          "summary_max_age": "Maximales Backupalter in Tagen",
+          "summary_redundant_locations": "Erforderliche Speicherorte",
+          "summary_repair_issues": "Reparaturmeldungen",
+          "summary_verification_policy": "Integritätsstrategie",
+          "summary_entity_mode": "Entitätsmodus",
+          "summary_expose_metadata": "Backupnamen und IDs anzeigen",
+          "summary_notifications_enabled": "Mobile Benachrichtigungen",
+          "summary_notification_count": "Ausgewählte Benachrichtigungsgeräte",
+          "summary_notify_on_recovery": "Benachrichtigung bei Behebung"
         }
       }
     },
@@ -118,8 +132,7 @@
       "fixed_size_required": "Bei fester Mindestgröße muss eine Backupgröße über 0 MB eingetragen werden.",
       "notification_target_required": "Wähle mindestens ein Mobilgerät aus, wenn mobile Benachrichtigungen aktiviert sind.",
       "active_interval_too_slow": "Das aktive Abfrageintervall darf nicht länger als das normale Abfrageintervall sein.",
-      "backoff_interval_too_fast": "Das Fehler-Backoff darf nicht kürzer als das normale Abfrageintervall sein.",
-      "confirmation_required": "Bestätige die angezeigte Konfiguration vor dem Speichern."
+      "backoff_interval_too_fast": "Das Fehler-Backoff darf nicht kürzer als das normale Abfrageintervall sein."
     }
   },
   "options": {
@@ -234,7 +247,7 @@
       },
       "setup_assistant": {
         "title": "Einrichtungsassistent erneut ausführen",
-        "description": "Erkannte Installation: {installation_type}\nArchitektur: {architecture}\nHardwareboard: {board}\nEmpfohlenes Profil: {recommended_profile} (Vertrauen: {confidence})\n\nDie Empfehlung dient nur als Ausgangspunkt und überschreibt deine Einstellungen später nicht.",
+        "description": "Erkannte Installation: {installation_type}\nArchitektur: {architecture}\nHardwareboard: {board}\n\nDas empfohlene Leistungsprofil ist bereits vorausgewählt. Die Empfehlung dient nur als Ausgangspunkt und überschreibt deine Einstellungen später nicht.",
         "data": {
           "runtime_profile": "Leistungsprofil",
           "adaptive_polling": "Intelligente Abfrage verwenden"
@@ -284,12 +297,26 @@
       },
       "setup_summary": {
         "title": "Neue Einrichtung bestätigen",
-        "description": "**Erkannte Hardware:** {hardware}\n**Leistungsprofil:** {runtime_profile}\n**Normale Abfrage:** {update_interval} Minuten\n**Downloadlimit:** {download_limit} GB\n**Intelligente Abfrage:** {adaptive_polling}\n**Überwachung:** {monitoring_policy}\n**Integritätsprüfungen:** {verification_policy}\n**Entitätsmodus:** {entity_mode}\n**Benachrichtigungsgeräte:** {notification_count}",
+        "description": "Prüfe die unten aufgelösten Einstellungen. Mit Absenden wird die geänderte Konfiguration gespeichert.",
         "data": {
-          "confirm": "Diese Konfiguration übernehmen"
-        },
-        "data_description": {
-          "confirm": "Prüfe die Zusammenfassung, bevor die Integration erstellt wird."
+          "summary_hardware": "Erkannte Hardware",
+          "summary_runtime_profile": "Leistungsprofil",
+          "summary_update_interval": "Normales Abfrageintervall in Minuten",
+          "summary_active_interval": "Abfrageintervall während eines Backups in Minuten",
+          "summary_error_backoff": "Fehler-Backoff-Intervall in Minuten",
+          "summary_adaptive_polling": "Intelligente Abfrage",
+          "summary_download_limit": "Maximale Downloadgröße in GB",
+          "summary_expanded_limit": "Maximale entpackte Größe in GB",
+          "summary_monitoring_policy": "Überwachungsrichtlinie",
+          "summary_max_age": "Maximales Backupalter in Tagen",
+          "summary_redundant_locations": "Erforderliche Speicherorte",
+          "summary_repair_issues": "Reparaturmeldungen",
+          "summary_verification_policy": "Integritätsstrategie",
+          "summary_entity_mode": "Entitätsmodus",
+          "summary_expose_metadata": "Backupnamen und IDs anzeigen",
+          "summary_notifications_enabled": "Mobile Benachrichtigungen",
+          "summary_notification_count": "Ausgewählte Benachrichtigungsgeräte",
+          "summary_notify_on_recovery": "Benachrichtigung bei Behebung"
         }
       }
     },
@@ -297,8 +324,7 @@
       "fixed_size_required": "Bei fester Mindestgröße muss eine Backupgröße über 0 MB eingetragen werden.",
       "notification_target_required": "Wähle mindestens ein Mobilgerät aus, wenn mobile Benachrichtigungen aktiviert sind.",
       "active_interval_too_slow": "Das aktive Abfrageintervall darf nicht länger als das normale Abfrageintervall sein.",
-      "backoff_interval_too_fast": "Das Fehler-Backoff darf nicht kürzer als das normale Abfrageintervall sein.",
-      "confirmation_required": "Bestätige die angezeigte Konfiguration vor dem Speichern."
+      "backoff_interval_too_fast": "Das Fehler-Backoff darf nicht kürzer als das normale Abfrageintervall sein."
     }
   },
   "entity": {
@@ -585,6 +611,12 @@
       "options": {
         "standard": "Standardmodus",
         "expert": "Expertenmodus"
+      }
+    },
+    "enabled_state": {
+      "options": {
+        "enabled": "Aktiviert",
+        "disabled": "Deaktiviert"
       }
     }
   },

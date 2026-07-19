@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from dataclasses import asdict, dataclass
 from typing import Any
 
@@ -16,6 +17,7 @@ from .const import (
 from .security import safe_error_type
 
 _UNKNOWN = "unknown"
+_HARDWARE_DETECTION_TIMEOUT_SECONDS = 10.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,7 +88,8 @@ def recommend_runtime_profile(
 async def async_detect_hardware(hass: HomeAssistant) -> HardwareSnapshot:
     """Detect available system information without ever blocking setup."""
     try:
-        info = await async_get_system_info(hass)
+        async with asyncio.timeout(_HARDWARE_DETECTION_TIMEOUT_SECONDS):
+            info = await async_get_system_info(hass)
     except Exception as err:  # noqa: BLE001 - optional Home Assistant helper boundary
         return HardwareSnapshot(
             installation_type=_UNKNOWN,

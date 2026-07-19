@@ -1,5 +1,56 @@
 # Changelog
 
+## 2.4.1
+
+**Config-flow localization, reliability, and release presentation fixes**
+
+BackupCheckup 2.4.1 is a maintenance release for the hardware-aware setup introduced
+in 2.4.0. It keeps config-entry schema version 10 and does not alter existing settings.
+
+### Fixed
+
+- Removed the redundant confirmation switch from the final page of both the initial
+  config flow and the complete options assistant. The normal Home Assistant submit
+  action now confirms and saves the displayed configuration.
+- Replaced raw English config values in the final summary with localized, read-only
+  selector fields. Runtime profile, intelligent polling, monitoring policy, integrity
+  strategy, entity mode, notifications, privacy, repair issues, intervals, and resource
+  limits are now shown as resolved settings before saving.
+- Fixed changing to the Custom runtime profile in the options flow losing the intelligent
+  polling choice made on the preceding page. The complete draft is now used when the
+  custom runtime values are saved.
+- Removed internal recommendation values such as `home_assistant_appliance`, `high`, and
+  `low` from hardware-detection descriptions. The translated recommended profile remains
+  visibly preselected in the selector instead.
+- Added bounded timeouts to Home Assistant system-information detection and the optional
+  backup-inventory sizing recommendation. A stalled helper or backup agent can no longer
+  leave the setup page waiting indefinitely.
+- Prepared hardware detection and inventory sizing concurrently to reduce setup latency.
+- Reset setup-assistant state whenever the normal options menu or a direct settings
+  category is opened, preventing stale assistant routing after back/menu navigation.
+- Repaired the README badge row for GitHub and HACS by using absolute static Shields.io
+  image URLs only; no relative badge assets are required.
+
+### Changed
+
+- Expanded the final summary with the actual normal, active, and error-backoff intervals,
+  download and expansion limits, backup-age and redundancy requirements, repair setting,
+  metadata exposure, mobile-notification state, selected-device count, and recovery
+  notification state.
+- Added localized summary labels and enabled/disabled values for English, German, Danish,
+  Spanish, French, Italian, Dutch, Polish, and Swedish.
+- Unknown hardware values are displayed with a language-neutral dash instead of the raw
+  internal value `unknown`.
+
+### Validation
+
+- Added frontend-shaped regression tests that submit only fields present in each form
+  schema, including both intelligent-polling toggle directions for the Custom profile.
+- Added tests for read-only localized summary selectors, normal summary submission,
+  hardware placeholder privacy, bounded timeouts, concurrent preparation, options-state
+  reset, and GitHub/HACS-safe badge references.
+- Config-entry schema remains version 10; no migration is required.
+
 ## 2.4.0
 
 **Hardware-aware setup, independent policies, adaptive polling, and config-flow redesign**

@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Choose a performance profile",
-        "description": "Detected installation: {installation_type}\nArchitecture: {architecture}\nHardware board: {board}\nRecommended profile: {recommended_profile} (confidence: {confidence})\n\nThe recommendation is only a starting point and will not overwrite your settings later.",
+        "description": "Registreret installation: {installation_type}\nArkitektur: {architecture}\nHardwarekort: {board}\n\nDen anbefalede ydelsesprofil er allerede valgt. Anbefalingen er kun et udgangspunkt og overskriver ikke dine indstillinger senere.",
         "data": {
           "runtime_profile": "Performance profile",
           "adaptive_polling": "Use intelligent polling"
@@ -102,12 +102,26 @@
       },
       "summary": {
         "title": "Confirm setup",
-        "description": "**Detected hardware:** {hardware}\n**Performance profile:** {runtime_profile}\n**Normal polling:** {update_interval} minutes\n**Download limit:** {download_limit} GB\n**Intelligent polling:** {adaptive_polling}\n**Monitoring:** {monitoring_policy}\n**Integrity checks:** {verification_policy}\n**Entity mode:** {entity_mode}\n**Notification devices:** {notification_count}",
+        "description": "Gennemgå de valgte indstillinger nedenfor. Vælg Send for at oprette BackupCheckup.",
         "data": {
-          "confirm": "Apply this configuration"
-        },
-        "data_description": {
-          "confirm": "Review the summary before creating the integration."
+          "summary_hardware": "Registreret hardware",
+          "summary_runtime_profile": "Ydelsesprofil",
+          "summary_update_interval": "Normalt forespørgselsinterval i minutter",
+          "summary_active_interval": "Forespørgselsinterval under backup i minutter",
+          "summary_error_backoff": "Fejl-backoff i minutter",
+          "summary_adaptive_polling": "Intelligent forespørgsel",
+          "summary_download_limit": "Maksimal downloadstørrelse i GB",
+          "summary_expanded_limit": "Maksimal udpakket størrelse i GB",
+          "summary_monitoring_policy": "Overvågningspolitik",
+          "summary_max_age": "Maksimal backupalder i dage",
+          "summary_redundant_locations": "Krævede lagerplaceringer",
+          "summary_repair_issues": "Reparationsmeddelelser",
+          "summary_verification_policy": "Integritetsstrategi",
+          "summary_entity_mode": "Entitetstilstand",
+          "summary_expose_metadata": "Vis backupnavne og id’er",
+          "summary_notifications_enabled": "Mobilnotifikationer",
+          "summary_notification_count": "Valgte notifikationsenheder",
+          "summary_notify_on_recovery": "Notifikation ved gendannelse"
         }
       }
     },
@@ -118,8 +132,7 @@
       "fixed_size_required": "Enter a minimum backup size greater than 0 MB when using the fixed minimum size mode.",
       "notification_target_required": "Select at least one mobile device when mobile notifications are enabled.",
       "active_interval_too_slow": "The active polling interval must not be longer than the normal polling interval.",
-      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval.",
-      "confirmation_required": "Confirm the displayed configuration before saving it."
+      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval."
     }
   },
   "options": {
@@ -234,7 +247,7 @@
       },
       "setup_assistant": {
         "title": "Run the setup assistant again",
-        "description": "Detected installation: {installation_type}\nArchitecture: {architecture}\nHardware board: {board}\nRecommended profile: {recommended_profile} (confidence: {confidence})\n\nThe recommendation is only a starting point and will not overwrite your settings later.",
+        "description": "Registreret installation: {installation_type}\nArkitektur: {architecture}\nHardwarekort: {board}\n\nDen anbefalede ydelsesprofil er allerede valgt. Anbefalingen er kun et udgangspunkt og overskriver ikke dine indstillinger senere.",
         "data": {
           "runtime_profile": "Performance profile",
           "adaptive_polling": "Use intelligent polling"
@@ -284,12 +297,26 @@
       },
       "setup_summary": {
         "title": "Confirm updated setup",
-        "description": "**Detected hardware:** {hardware}\n**Performance profile:** {runtime_profile}\n**Normal polling:** {update_interval} minutes\n**Download limit:** {download_limit} GB\n**Intelligent polling:** {adaptive_polling}\n**Monitoring:** {monitoring_policy}\n**Integrity checks:** {verification_policy}\n**Entity mode:** {entity_mode}\n**Notification devices:** {notification_count}",
+        "description": "Gennemgå de valgte indstillinger nedenfor. Vælg Send for at gemme konfigurationen.",
         "data": {
-          "confirm": "Apply this configuration"
-        },
-        "data_description": {
-          "confirm": "Review the summary before creating the integration."
+          "summary_hardware": "Registreret hardware",
+          "summary_runtime_profile": "Ydelsesprofil",
+          "summary_update_interval": "Normalt forespørgselsinterval i minutter",
+          "summary_active_interval": "Forespørgselsinterval under backup i minutter",
+          "summary_error_backoff": "Fejl-backoff i minutter",
+          "summary_adaptive_polling": "Intelligent forespørgsel",
+          "summary_download_limit": "Maksimal downloadstørrelse i GB",
+          "summary_expanded_limit": "Maksimal udpakket størrelse i GB",
+          "summary_monitoring_policy": "Overvågningspolitik",
+          "summary_max_age": "Maksimal backupalder i dage",
+          "summary_redundant_locations": "Krævede lagerplaceringer",
+          "summary_repair_issues": "Reparationsmeddelelser",
+          "summary_verification_policy": "Integritetsstrategi",
+          "summary_entity_mode": "Entitetstilstand",
+          "summary_expose_metadata": "Vis backupnavne og id’er",
+          "summary_notifications_enabled": "Mobilnotifikationer",
+          "summary_notification_count": "Valgte notifikationsenheder",
+          "summary_notify_on_recovery": "Notifikation ved gendannelse"
         }
       }
     },
@@ -297,8 +324,7 @@
       "fixed_size_required": "Enter a minimum backup size greater than 0 MB when using the fixed minimum size mode.",
       "notification_target_required": "Select at least one mobile device when mobile notifications are enabled.",
       "active_interval_too_slow": "The active polling interval must not be longer than the normal polling interval.",
-      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval.",
-      "confirmation_required": "Confirm the displayed configuration before saving it."
+      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval."
     }
   },
   "entity": {
@@ -585,6 +611,12 @@
       "options": {
         "standard": "Standard mode",
         "expert": "Expert mode"
+      }
+    },
+    "enabled_state": {
+      "options": {
+        "enabled": "Aktiveret",
+        "disabled": "Deaktiveret"
       }
     }
   },

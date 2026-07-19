@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from homeassistant import config_entries
@@ -39,10 +40,9 @@ from .const import (
     RUNTIME_PROFILE_CUSTOM,
     RUNTIME_PROFILE_LEGACY,
     SIZE_CHECK_FIXED,
-    VERIFICATION_POLICY_CUSTOM,
 )
 from .flow_schemas import (
-    CONF_CONFIRM,
+    SUMMARY_HARDWARE,
     monitoring_custom_schema,
     monitoring_policy_schema,
     presentation_schema,
@@ -130,8 +130,22 @@ def _new_configuration(snapshot: HardwareSnapshot) -> dict[str, Any]:
     )
 
 
-def _summary_placeholders(values: dict[str, Any]) -> dict[str, str]:
-    """Return localized summary values without exposing sensitive identifiers."""
+def _display_hardware_value(value: str) -> str:
+    """Return a language-neutral display value for unknown hardware fields."""
+    return "—" if value == "unknown" else value
+
+
+def _hardware_placeholders(snapshot: HardwareSnapshot) -> dict[str, str]:
+    """Return technical hardware details without raw internal profile values."""
+    return {
+        "installation_type": _display_hardware_value(snapshot.installation_type),
+        "architecture": _display_hardware_value(snapshot.architecture),
+        "board": _display_hardware_value(snapshot.board),
+    }
+
+
+def _summary_values(values: dict[str, Any]) -> dict[str, Any]:
+    """Return a read-only summary snapshot without sensitive identifiers."""
     hardware = values.get(CONF_HARDWARE_DETECTION, {})
     board = hardware.get("board")
     architecture = hardware.get("architecture")
@@ -140,22 +154,9 @@ def _summary_placeholders(values: dict[str, Any]) -> dict[str, str]:
         if isinstance(board, str) and board != "unknown"
         else architecture
         if isinstance(architecture, str) and architecture != "unknown"
-        else "unknown"
+        else "—"
     )
-    verification = values[CONF_VERIFICATION_POLICY]
-    if verification == VERIFICATION_POLICY_CUSTOM:
-        verification = "custom"
-    return {
-        "hardware": str(hardware_name),
-        "runtime_profile": str(values[CONF_RUNTIME_PROFILE]),
-        "update_interval": str(values["update_interval_minutes"]),
-        "download_limit": str(values[CONF_MAX_VERIFICATION_SIZE_GB]),
-        "adaptive_polling": "enabled" if values[CONF_ADAPTIVE_POLLING] else "disabled",
-        "monitoring_policy": str(values[CONF_MONITORING_POLICY]),
-        "verification_policy": str(verification),
-        "entity_mode": str(values[CONF_ENTITY_MODE]),
-        "notification_count": str(len(values[CONF_NOTIFICATION_TARGETS])),
-    }
+    return {**values, SUMMARY_HARDWARE: str(hardware_name)}
 
 
 class _GuidedFlowState:
@@ -219,9 +220,12 @@ class BackupCheckupConfigFlow(
         """Detect hardware once and prepare resolved defaults."""
         if self._hardware is not None:
             return
-        self._hardware = await async_detect_hardware(self.hass)
-        self._recommended_verification_size_gb = (
-            await async_recommended_verification_size_gb(self.hass)
+        (
+            self._hardware,
+            self._recommended_verification_size_gb,
+        ) = await asyncio.gather(
+            async_detect_hardware(self.hass),
+            async_recommended_verification_size_gb(self.hass),
         )
         self._draft = _new_configuration(self._hardware)
         self._apply_inventory_size_recommendation()
@@ -248,13 +252,7 @@ class BackupCheckupConfigFlow(
         return self.async_show_form(
             step_id="user",
             data_schema=runtime_profile_schema(self._draft),
-            description_placeholders={
-                "installation_type": hardware.installation_type,
-                "architecture": hardware.architecture,
-                "board": hardware.board,
-                "recommended_profile": hardware.recommended_profile,
-                "confidence": hardware.confidence,
-            },
+            description_placeholders=_hardware_placeholders(hardware),
         )
 
     async def async_step_runtime_custom(
@@ -343,19 +341,11 @@ class BackupCheckupConfigFlow(
     ) -> FlowResult:
         """Show the resolved setup before persisting it."""
         if user_input is not None:
-            if not user_input.get(CONF_CONFIRM):
-                return self.async_show_form(
-                    step_id="summary",
-                    data_schema=summary_schema(),
-                    errors={"base": "confirmation_required"},
-                    description_placeholders=_summary_placeholders(self._draft),
-                )
             data = normalize_configuration(self._draft)
             return self.async_create_entry(title=NAME, data=data)
         return self.async_show_form(
             step_id="summary",
-            data_schema=summary_schema(),
-            description_placeholders=_summary_placeholders(self._draft),
+            data_schema=summary_schema(_summary_values(self._draft)),
         )
 
     @staticmethod
@@ -394,12 +384,20 @@ class BackupCheckupOptionsFlow(_GuidedFlowState, config_entries.OptionsFlowWithR
     ) -> FlowResult:
         """Show a focused settings menu."""
         del user_input
+        self._assistant_mode = False
+        self._draft = {}
+        self._hardware = None
+        self._recommended_verification_size_gb = None
         return self.async_show_menu(step_id="init", menu_options=list(_OPTIONS_MENU))
 
     async def async_step_runtime(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Edit the runtime profile and adaptive polling."""
+        self._assistant_mode = False
+        self._draft = {}
+        self._hardware = None
+        self._recommended_verification_size_gb = None
         values = self._current()
         if user_input is not None:
             profile = str(user_input[CONF_RUNTIME_PROFILE])
@@ -441,7 +439,9 @@ class BackupCheckupOptionsFlow(_GuidedFlowState, config_entries.OptionsFlowWithR
                 if self._assistant_mode:
                     self._draft.update(patch)
                     return await self.async_step_setup_monitoring()
-                return self._save(patch)
+                return self.async_create_entry(
+                    title="", data=normalize_configuration(values, patch)
+                )
         return self.async_show_form(
             step_id="runtime_custom",
             data_schema=runtime_custom_schema(user_input or values),
@@ -452,6 +452,10 @@ class BackupCheckupOptionsFlow(_GuidedFlowState, config_entries.OptionsFlowWithR
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Edit the monitoring policy."""
+        self._assistant_mode = False
+        self._draft = {}
+        self._hardware = None
+        self._recommended_verification_size_gb = None
         values = self._current()
         if user_input is not None:
             policy = str(user_input[CONF_MONITORING_POLICY])
@@ -488,6 +492,10 @@ class BackupCheckupOptionsFlow(_GuidedFlowState, config_entries.OptionsFlowWithR
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Edit the automatic verification strategy."""
+        self._assistant_mode = False
+        self._draft = {}
+        self._hardware = None
+        self._recommended_verification_size_gb = None
         values = self._current()
         if user_input is not None:
             policy = str(user_input[CONF_VERIFICATION_POLICY])
@@ -502,6 +510,10 @@ class BackupCheckupOptionsFlow(_GuidedFlowState, config_entries.OptionsFlowWithR
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Edit entity, privacy, and notification settings."""
+        self._assistant_mode = False
+        self._draft = {}
+        self._hardware = None
+        self._recommended_verification_size_gb = None
         values = self._current()
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -529,14 +541,17 @@ class BackupCheckupOptionsFlow(_GuidedFlowState, config_entries.OptionsFlowWithR
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Rerun the complete guided assistant from the options menu."""
+        self._assistant_mode = True
         if self._hardware is None:
-            self._hardware = await async_detect_hardware(self.hass)
-            self._recommended_verification_size_gb = (
-                await async_recommended_verification_size_gb(self.hass)
+            (
+                self._hardware,
+                self._recommended_verification_size_gb,
+            ) = await asyncio.gather(
+                async_detect_hardware(self.hass),
+                async_recommended_verification_size_gb(self.hass),
             )
             self._draft = self._current()
             self._draft[CONF_HARDWARE_DETECTION] = self._hardware.as_dict()
-        self._assistant_mode = True
         if user_input is not None:
             profile = str(user_input[CONF_RUNTIME_PROFILE])
             self._apply_runtime_profile(
@@ -555,13 +570,7 @@ class BackupCheckupOptionsFlow(_GuidedFlowState, config_entries.OptionsFlowWithR
         return self.async_show_form(
             step_id="setup_assistant",
             data_schema=runtime_profile_schema(values),
-            description_placeholders={
-                "installation_type": hardware.installation_type,
-                "architecture": hardware.architecture,
-                "board": hardware.board,
-                "recommended_profile": hardware.recommended_profile,
-                "confidence": hardware.confidence,
-            },
+            description_placeholders=_hardware_placeholders(hardware),
         )
 
     async def async_step_setup_monitoring(
@@ -617,14 +626,11 @@ class BackupCheckupOptionsFlow(_GuidedFlowState, config_entries.OptionsFlowWithR
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Confirm and save the complete options assistant."""
-        if user_input is not None and user_input.get(CONF_CONFIRM):
+        if user_input is not None:
             return self.async_create_entry(
                 title="", data=normalize_configuration(self._draft)
             )
-        errors = {"base": "confirmation_required"} if user_input is not None else {}
         return self.async_show_form(
             step_id="setup_summary",
-            data_schema=summary_schema(),
-            errors=errors,
-            description_placeholders=_summary_placeholders(self._draft),
+            data_schema=summary_schema(_summary_values(self._draft)),
         )

@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <img alt="HACS Custom" src="docs/badges/hacs-custom.svg">
-  <img alt="Version 2.4.0" src="docs/badges/version-2.4.0.svg">
-  <img alt="AI Coded and Maintained" src="docs/badges/ai-coded-maintained.svg">
-  <img alt="Home Assistant 2026.3 or newer" src="docs/badges/home-assistant-2026.3.svg">
-  <img alt="MIT License" src="docs/badges/license-mit.svg">
+  <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-orange.svg">
+  <img alt="Version 2.4.1" src="https://img.shields.io/badge/version-2.4.1-blue.svg">
+  <img alt="AI Coded and Maintained" src="https://img.shields.io/badge/AI-Coded_and_Maintained-8A2BE2.svg">
+  <img alt="Home Assistant 2026.3 or newer" src="https://img.shields.io/badge/Home_Assistant-2026.3_or_newer-41BDF5.svg">
+  <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg">
 </p>
 
 BackupCheckup is a local Home Assistant custom integration that monitors the **actual backup inventory** reported by Home Assistant's native backup manager.
@@ -38,7 +38,7 @@ It warns you when backups are missing, outdated, incomplete, unexpectedly small,
 
 Copy `custom_components/backup_checkup` to `/config/custom_components/backup_checkup`, restart Home Assistant, and add the integration through **Settings → Devices & services**.
 
-## Guided setup in 2.4.0
+## Guided setup in 2.4.x
 
 BackupCheckup now separates system performance from backup safety. The assistant guides you through five focused steps:
 
