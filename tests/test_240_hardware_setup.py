@@ -68,7 +68,6 @@ from custom_components.backup_checkup.const import (
     VERIFICATION_POLICY_MANUAL,
 )
 from custom_components.backup_checkup.coordinator import BackupCheckupCoordinator
-from custom_components.backup_checkup.flow_schemas import CONF_CONFIRM
 from custom_components.backup_checkup.hardware_profile import HardwareSnapshot
 from custom_components.backup_checkup.native_backup import (
     native_backup_activity_entity_ids,
@@ -345,8 +344,8 @@ async def test_all_config_flow_validation_and_confirmation_branches(
         {CONF_VERIFICATION_POLICY: VERIFICATION_POLICY_AUTOMATIC}
     )
     await flow.async_step_presentation(_presentation())
-    rejected = await flow.async_step_summary({CONF_CONFIRM: False})
-    assert rejected["errors"] == {"base": "confirmation_required"}
+    created = await flow.async_step_summary({})
+    assert created["type"] == "create_entry"
 
 
 @pytest.mark.asyncio
@@ -400,9 +399,14 @@ async def test_every_options_flow_category_and_custom_assistant_path(
     await custom.async_step_runtime(
         {CONF_RUNTIME_PROFILE: RUNTIME_PROFILE_CUSTOM, CONF_ADAPTIVE_POLLING: True}
     )
-    values = dict(custom._draft)
+    custom_form = await custom.async_step_runtime_custom()
+    values = {
+        marker.key: custom._draft[marker.key]
+        for marker in custom_form["data_schema"].schema
+    }
     saved_custom = await custom.async_step_runtime_custom(values)
     assert saved_custom["data"][CONF_RUNTIME_PROFILE] == RUNTIME_PROFILE_CUSTOM
+    assert saved_custom["data"][CONF_ADAPTIVE_POLLING] is True
 
     monitor_custom = config_flow.BackupCheckupOptionsFlow()
     monitor_custom.hass = SimpleNamespace()
@@ -443,8 +447,8 @@ async def test_every_options_flow_category_and_custom_assistant_path(
         {CONF_VERIFICATION_POLICY: VERIFICATION_POLICY_MANUAL}
     )
     await assistant.async_step_setup_presentation(_presentation())
-    rejected = await assistant.async_step_setup_summary({CONF_CONFIRM: False})
-    assert rejected["errors"] == {"base": "confirmation_required"}
+    saved_assistant = await assistant.async_step_setup_summary({})
+    assert saved_assistant["type"] == "create_entry"
 
 
 @pytest.mark.asyncio

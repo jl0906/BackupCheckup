@@ -39,7 +39,6 @@ from custom_components.backup_checkup.const import (
     SIZE_CHECK_FIXED,
     VERIFICATION_POLICY_MANUAL,
 )
-from custom_components.backup_checkup.flow_schemas import CONF_CONFIRM
 from custom_components.backup_checkup.hardware_profile import HardwareSnapshot
 from custom_components.backup_checkup.models import BackupAgentSummary
 
@@ -170,7 +169,7 @@ async def test_guided_config_flow_and_custom_validation(
     assert (await flow.async_step_presentation(_presentation_input()))[
         "step_id"
     ] == "summary"
-    created = await flow.async_step_summary({CONF_CONFIRM: True})
+    created = await flow.async_step_summary({})
     assert created["type"] == "create_entry"
     assert created["data"][CONF_RUNTIME_PROFILE] == RUNTIME_PROFILE_APPLIANCE
     assert created["data"][CONF_MONITORING_POLICY] == MONITORING_POLICY_BALANCED
@@ -256,7 +255,7 @@ async def test_options_flow_menu_categories_and_setup_assistant(
     assert (await assistant.async_step_setup_presentation(_presentation_input()))[
         "step_id"
     ] == "setup_summary"
-    saved = await assistant.async_step_setup_summary({CONF_CONFIRM: True})
+    saved = await assistant.async_step_setup_summary({})
     assert saved["type"] == "create_entry"
 
     assert isinstance(

@@ -34,14 +34,15 @@ def test_release_versions_are_consistent() -> None:
     readme = (ROOT / "README.md").read_text()
     changelog = (ROOT / "CHANGELOG.md").read_text()
 
-    assert manifest["version"] == "2.4.0"
-    assert 'VERSION = "2.4.0"' in constants
-    assert "2.4.0" in readme
-    assert "version-2.4.0-blue.svg" in readme
+    assert manifest["version"] == "2.4.1"
+    assert 'VERSION = "2.4.1"' in constants
+    assert "2.4.1" in readme
+    assert "version-2.4.1-blue.svg" in readme
     assert "docs/function-coverage-2.3.0.md" in readme
     assert "docs/security-hardening-2.3.1.md" in readme
     assert "docs/hardware-aware-setup-2.4.0.md" in readme
     assert (ROOT / "docs" / "hardware-aware-setup-2.4.0.md").is_file()
+    assert "## 2.4.1" in changelog
     assert "## 2.4.0" in changelog
     assert "## 2.3.1" in changelog
     assert "VERSION = 10" in (INTEGRATION / "config_flow.py").read_text()

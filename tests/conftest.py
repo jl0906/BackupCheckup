@@ -274,6 +274,7 @@ class NumberSelectorConfig:
     max: int
     step: int
     mode: Any
+    read_only: bool = False
 
 
 @dataclass(frozen=True)
@@ -284,6 +285,12 @@ class SelectSelectorConfig:
     multiple: bool = False
     custom_value: bool = False
     sort: bool = False
+    read_only: bool = False
+
+
+@dataclass(frozen=True)
+class TextSelectorConfig:
+    read_only: bool = False
 
 
 class _Selector:
@@ -303,6 +310,10 @@ class NumberSelector(_Selector):
 
 
 class SelectSelector(_Selector):
+    pass
+
+
+class TextSelector(_Selector):
     pass
 
 
@@ -443,6 +454,8 @@ selector.NumberSelectorMode = NumberSelectorMode
 selector.SelectSelector = SelectSelector
 selector.SelectSelectorConfig = SelectSelectorConfig
 selector.SelectSelectorMode = SelectSelectorMode
+selector.TextSelector = TextSelector
+selector.TextSelectorConfig = TextSelectorConfig
 system_info.async_get_system_info = lambda _hass: {}
 event.async_track_state_change_event = lambda *_args, **_kwargs: lambda: None
 translation.async_get_translations = lambda *_args, **_kwargs: {}
