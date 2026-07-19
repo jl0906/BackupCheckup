@@ -76,6 +76,21 @@ async def test_summary_uses_compact_grouped_constant_rows(
         "async_recommended_verification_size_gb",
         AsyncMock(return_value=None),
     )
+    monkeypatch.setattr(
+        config_flow,
+        "async_get_translations",
+        AsyncMock(
+            return_value={
+                (
+                    "component.backup_checkup.selector.runtime_profile.options."
+                    "home_assistant_appliance"
+                ): "Home Assistant Appliance",
+                (
+                    "component.backup_checkup.selector.enabled_state.options.enabled"
+                ): "Aktiviert",
+            }
+        ),
+    )
     flow = config_flow.BackupCheckupConfigFlow()
     flow.hass = SimpleNamespace()
     await flow._async_prepare()
@@ -104,10 +119,8 @@ async def test_summary_uses_compact_grouped_constant_rows(
         if marker.key == flow_schemas.SUMMARY_RUNTIME_PROFILE
     )
     assert profile_selector.config["value"] == RUNTIME_PROFILE_APPLIANCE
-    assert (
-        profile_selector.config["translation_key"]
-        == "summary_runtime_profile_home_assistant_appliance"
-    )
+    assert profile_selector.config["label"] == "Home Assistant Appliance"
+    assert "translation_key" not in profile_selector.config
 
     polling = next(
         value
@@ -119,9 +132,8 @@ async def test_summary_uses_compact_grouped_constant_rows(
         for marker, selector in polling.schema.schema.items()
         if marker.key == flow_schemas.SUMMARY_ADAPTIVE_POLLING
     )
-    assert (
-        adaptive_selector.config["translation_key"] == "summary_enabled_state_enabled"
-    )
+    assert adaptive_selector.config["label"] == "Aktiviert"
+    assert "translation_key" not in adaptive_selector.config
     assert all(
         selector.__class__.__name__ == "ConstantSelector"
         for summary_section in sections.values()
@@ -303,11 +315,8 @@ def test_summary_translation_values_and_badges_are_release_safe() -> None:
         de["selector"]["runtime_profile"]["options"][RUNTIME_PROFILE_APPLIANCE]
         == "Home Assistant Appliance"
     )
-    assert de["selector"]["summary_enabled_state_enabled"]["value"] == "Aktiviert"
-    assert (
-        de["selector"]["summary_runtime_profile_home_assistant_appliance"]["value"]
-        == "Home Assistant Appliance"
-    )
+    assert not any(key.startswith("summary_") for key in de["selector"])
+    assert de["selector"]["enabled_state"]["options"]["enabled"] == "Aktiviert"
 
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "docs/badges/" not in readme

@@ -1,4 +1,4 @@
-"""Regression tests for the compact 2.4.2 confirmation summary."""
+"""Regression tests for the compact hassfest-valid confirmation summary."""
 
 from __future__ import annotations
 
@@ -30,7 +30,30 @@ def test_summary_sections_are_compact_and_notifications_collapse_when_disabled()
         }
     )
     values[flow_schemas.SUMMARY_HARDWARE] = "x86_64"
-    schema = flow_schemas.summary_schema(values).schema
+    translations = {
+        (
+            "component.backup_checkup.selector.runtime_profile.options.performance"
+        ): "Leistungsstark",
+        (
+            "component.backup_checkup.selector.enabled_state.options.disabled"
+        ): "Deaktiviert",
+    }
+    schema = flow_schemas.summary_schema(values, translations).schema
+
+    system = next(
+        value
+        for marker, value in schema.items()
+        if marker.key == flow_schemas.SUMMARY_SECTION_SYSTEM
+    )
+    profile = next(
+        selector
+        for marker, selector in system.schema.schema.items()
+        if marker.key == flow_schemas.SUMMARY_RUNTIME_PROFILE
+    )
+    assert profile.config == {
+        "value": RUNTIME_PROFILE_PERFORMANCE,
+        "label": "Leistungsstark",
+    }
 
     notifications = next(
         value
@@ -59,14 +82,13 @@ def test_summary_sections_and_constant_values_exist_in_every_locale() -> None:
         for branch, step in (("config", "summary"), ("options", "setup_summary")):
             assert set(data[branch]["step"][step]["sections"]) == expected_sections
             assert "data" not in data[branch]["step"][step]
-        assert (
-            data["selector"]["summary_enabled_state_enabled"]["value"]
-            == data["selector"]["enabled_state"]["options"]["enabled"]
+        assert not any(key.startswith("summary_") for key in data["selector"])
+        assert all(
+            set(selector_translation) <= {"options", "unit_of_measurement"}
+            for selector_translation in data["selector"].values()
         )
-        assert (
-            data["selector"]["summary_runtime_profile_performance"]["value"]
-            == data["selector"]["runtime_profile"]["options"]["performance"]
-        )
+        assert "performance" in data["selector"]["runtime_profile"]["options"]
+        assert "enabled" in data["selector"]["enabled_state"]["options"]
 
     assert source["config"]["step"]["summary"]["sections"]
 

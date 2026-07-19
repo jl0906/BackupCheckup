@@ -72,6 +72,7 @@ const = types.ModuleType("homeassistant.const")
 core = types.ModuleType("homeassistant.core")
 exceptions = types.ModuleType("homeassistant.exceptions")
 helpers = types.ModuleType("homeassistant.helpers")
+config_validation = types.ModuleType("homeassistant.helpers.config_validation")
 device_registry = types.ModuleType("homeassistant.helpers.device_registry")
 entity_registry = types.ModuleType("homeassistant.helpers.entity_registry")
 entity = types.ModuleType("homeassistant.helpers.entity")
@@ -455,6 +456,7 @@ core.ServiceCall = ServiceCall
 core.callback = lambda function: function
 exceptions.HomeAssistantError = HomeAssistantError
 device_registry.DeviceEntry = DeviceEntry
+helpers.config_validation = config_validation
 helpers.device_registry = device_registry
 device_registry.DeviceInfo = DeviceInfo
 entity.Entity = Entity
@@ -484,7 +486,16 @@ selector.TextSelector = TextSelector
 selector.TextSelectorConfig = TextSelectorConfig
 system_info.async_get_system_info = lambda _hass: {}
 event.async_track_state_change_event = lambda *_args, **_kwargs: lambda: None
-translation.async_get_translations = lambda *_args, **_kwargs: {}
+
+
+async def _async_get_translations(*_args: Any, **_kwargs: Any) -> dict[str, str]:
+    return {}
+
+
+translation.async_get_translations = _async_get_translations
+config_validation.config_entry_only_config_schema = lambda domain: {
+    "config_entry_only": domain
+}
 update_coordinator.CoordinatorEntity = CoordinatorEntity
 update_coordinator.DataUpdateCoordinator = DataUpdateCoordinator
 update_coordinator.UpdateFailed = UpdateFailed
@@ -522,6 +533,7 @@ sys.modules.setdefault("homeassistant.const", const)
 sys.modules.setdefault("homeassistant.core", core)
 sys.modules.setdefault("homeassistant.exceptions", exceptions)
 sys.modules.setdefault("homeassistant.helpers", helpers)
+sys.modules.setdefault("homeassistant.helpers.config_validation", config_validation)
 sys.modules.setdefault("homeassistant.helpers.device_registry", device_registry)
 sys.modules.setdefault("homeassistant.helpers.entity", entity)
 sys.modules.setdefault("homeassistant.helpers.entity_platform", entity_platform)
