@@ -105,6 +105,9 @@ class _Coordinator:
         )
         self.async_shutdown = AsyncMock()
         self.async_config_entry_first_refresh = AsyncMock()
+        self.async_start_adaptive_polling = lambda: setattr(
+            self, "adaptive_started", True
+        )
         self.listener: Any = None
 
     def async_add_listener(self, listener: Any) -> Any:
@@ -317,9 +320,6 @@ async def test_unload_reload_remove_and_device_policy(
     assert removed_issues == [True]
     hass.config_entries.unload_result = False
     assert await module.async_unload_entry(hass, entry) is False
-
-    await module._async_reload_entry(hass, entry)
-    assert hass.config_entries.reloaded == ["entry"]
 
     hass.executor_result = SimpleNamespace(failed=1)
     await module.async_remove_entry(hass, entry)

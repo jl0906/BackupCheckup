@@ -281,11 +281,14 @@ required number of locations.
 
 ## Unexpected health score or status
 
-Open the attributes of `sensor.backup_checkup_health_score`. The `deductions`
-attribute lists every applied penalty. Multiple conditions can overlap.
+Open the attributes of `sensor.backup_checkup_health_score`. `deductions` lists
+penalties actually applied to the score. `raw_deductions` lists every detected
+candidate, while `suppressed_correlated_deductions` shows symptoms that were not
+counted twice because they belong to the same cause group.
 
 The central status shows the highest-priority problem, while `active_problems` and
-the problem-count sensor can expose simultaneous conditions.
+the problem-count sensor expose simultaneous conditions. `score_version` identifies
+the calculation model used by the installed release.
 
 ## Integrity status shows `valid` instead of a translated value
 

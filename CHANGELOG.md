@@ -1,5 +1,122 @@
 # Changelog
 
+## 2.4.0
+
+**Hardware-aware setup, independent policies, adaptive polling, and config-flow redesign**
+
+BackupCheckup 2.4.0 introduces a guided setup assistant that recommends a runtime
+profile from the Home Assistant system information available on the host. Runtime
+performance, backup-health thresholds, integrity verification, entity exposure,
+privacy, and notifications are now independent choices. Existing 2.3.x entries are
+migrated without changing their resolved behavior.
+
+### Added
+
+- Added a hardware-aware runtime recommendation based on available installation type,
+  CPU architecture, and known Home Assistant board information. Detection is best
+  effort, bounded, privacy-safe, and never blocks setup.
+- Added Energy saving, Home Assistant appliance, High performance, Server, Custom, and
+  migrated legacy-custom runtime profiles with concrete polling, resource, timeout, and
+  cooldown values.
+- Added independent Balanced, Strict, and Custom monitoring policies. Hardware choice
+  no longer decides backup-age, size, redundancy, analytics, or Repair thresholds.
+- Added independent Manual only, Automatic, Deep, and Custom integrity strategies. Deep
+  database verification is never enabled solely from a hardware recommendation.
+- Added adaptive polling that coalesces native backup events, refreshes immediately
+  around backup activity, temporarily uses an active interval while a backup runs, and
+  applies an error-backoff interval after repeated inventory failures.
+- Added registry-aware native backup entity resolution so adaptive polling continues to
+  work when users rename the Home Assistant backup-manager entities.
+- Added best-effort inventory sizing during the complete assistant. When a known backup
+  exceeds a profile budget, the proposed download limit is raised to at least 125% of
+  the largest known backup and the expanded-data budget is raised consistently.
+- Added a final setup summary that displays the fully resolved configuration before it
+  is saved.
+- Added a focused options menu for runtime profile, monitoring policy, integrity checks,
+  entities and notifications, and a voluntary rerun of the complete setup assistant.
+- Added diagnostics for the selected policies, adaptive state, consecutive inventory
+  errors, and current native backup activity.
+- Added dedicated setup and adaptive-polling documentation.
+
+### Changed
+
+- Reworked the Health Score to version 2. Correlated symptoms now share a cause
+  group, so one storage outage, integrity failure, or automatic-backup failure
+  series is no longer counted multiple times.
+- Added proportional stale-backup and missing-redundancy severity while retaining
+  deterministic 0-100 output and the existing rating thresholds.
+- Added transparent Health Score attributes for applied deductions, raw deductions,
+  component deductions, suppressed correlated deductions, and score version.
+- Split the previous combined config-flow implementation into dedicated preset, hardware
+  detection, schema, configuration-normalization, and routing modules.
+- Replaced the old combined monitoring-profile concept with independent persisted
+  runtime, monitoring, and verification selections while continuing to store every
+  resolved value explicitly. Future preset revisions therefore cannot silently alter an
+  existing installation.
+- Reworked the initial config flow into focused steps instead of one overloaded form.
+- Reworked the options flow to use Home Assistant's reload-aware options base and removed
+  entity-registry side effects from the flow itself. Changes are applied once through
+  normal config-entry reload and setup.
+- Changed the default new-installation runtime recommendation to a conservative profile
+  selected from available system information. Users must confirm the recommendation;
+  BackupCheckup never changes it later without an explicit options-flow action.
+- Updated English and German setup text completely and kept all supported translation
+  files structurally aligned.
+
+### Fixed
+
+- Fixed the Health Score double-counting correlated storage conditions
+  (`storage_error`, `required_location_missing`, and `backup_not_redundant`).
+- Fixed automatic-backup history being counted repeatedly through the current failure,
+  success-rate, consecutive-failure, and schedule signals. The strongest correlated
+  deduction is now applied while every raw signal remains visible.
+- Fixed impossible history combinations, such as consecutive failures without any
+  resolved attempts, lowering the score when the source metrics are internally
+  inconsistent.
+- Fixed a native backup event arriving during an in-progress adaptive refresh being
+  discarded. A pending event now triggers one immediate follow-up refresh.
+- Fixed setup summaries showing `unknown` hardware even when a valid architecture was
+  available but the board value was unknown.
+- Fixed Health Score documentation reporting an outdated integrity deduction and not
+  explaining overlapping deductions.
+- Fixed performance characteristics being coupled to backup-protection strictness in the
+  old profile model. A small host can now use strict monitoring, and a large host can use
+  balanced monitoring, without hidden interval changes.
+- Fixed static polling being unable to react promptly to native backup start, completion,
+  or failure events when adaptive polling is enabled.
+- Fixed renamed native backup entities potentially preventing activity detection by
+  resolving them through stable entity-registry unique IDs.
+- Fixed repeated backup-manager failures continuing at the normal polling rate by adding
+  a bounded configurable backoff that resets after a successful inventory read.
+- Fixed pending adaptive-refresh tasks and event subscriptions potentially surviving
+  config-entry unload. Shutdown now cancels the task and unsubscribes every listener.
+- Fixed custom runtime combinations accepting an active interval longer than the base
+  interval or an error-backoff interval shorter than the base interval.
+
+### Migration
+
+- Increased the config-entry schema from version 9 to version 10.
+- Existing 2.3.x entries preserve every concrete interval, threshold, resource limit,
+  integrity setting, privacy choice, notification target, and entity mode.
+- Migrated entries use the `legacy_custom` runtime profile and keep adaptive polling
+  disabled, preserving the previous fixed-interval behavior.
+- Monitoring and verification policy labels are derived from the already stored values;
+  no hardware recommendation is applied during migration.
+- The new setup assistant remains available voluntarily from the options menu.
+
+### Validation
+
+- 294 tests pass with asyncio debug enabled and all Python warnings treated as errors.
+- Production function coverage: 453/453 functions entered (100.00%).
+- Production statement coverage: 95.59%.
+- Production branch coverage: 88.70%.
+- Combined statement-and-branch coverage: 94.27%.
+- Ruff linting and formatting, Bandit security scanning, Python compilation, metadata
+  parsing, translation alignment, release consistency, and the repository coverage gates
+  pass.
+- The manifest uses Home Assistant's required key order: `domain`, `name`, then all
+  remaining keys alphabetically.
+
 ## 2.3.1
 
 **Security and maintenance release: close the generic entity-refresh authorization bypass**

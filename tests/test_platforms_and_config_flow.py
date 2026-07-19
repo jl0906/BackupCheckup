@@ -11,35 +11,65 @@ from unittest.mock import AsyncMock
 import pytest
 from homeassistant.config_entries import ConfigEntry
 
-from custom_components.backup_checkup import binary_sensor, button, config_flow, sensor
+from custom_components.backup_checkup import (
+    binary_sensor,
+    button,
+    config_flow,
+    flow_schemas,
+    sensor,
+)
 from custom_components.backup_checkup.const import (
+    CONF_ADAPTIVE_POLLING,
     CONF_ENTITY_MODE,
+    CONF_EXPOSE_BACKUP_METADATA,
     CONF_MINIMUM_BACKUP_SIZE_MB,
-    CONF_MONITORING_PROFILE,
+    CONF_MONITORING_POLICY,
     CONF_NOTIFICATION_TARGETS,
     CONF_NOTIFICATIONS_ENABLED,
     CONF_NOTIFY_ON_RECOVERY,
+    CONF_RUNTIME_PROFILE,
     CONF_SIZE_CHECK_MODE,
+    CONF_VERIFICATION_POLICY,
     ENTITY_MODE_EXPERT,
-    PROFILE_CUSTOM,
-    PROFILE_STANDARD,
+    MONITORING_POLICY_BALANCED,
+    MONITORING_POLICY_CUSTOM,
+    RUNTIME_PROFILE_APPLIANCE,
+    RUNTIME_PROFILE_CUSTOM,
+    RUNTIME_PROFILE_PERFORMANCE,
     SIZE_CHECK_FIXED,
+    VERIFICATION_POLICY_MANUAL,
 )
+from custom_components.backup_checkup.flow_schemas import CONF_CONFIRM
+from custom_components.backup_checkup.hardware_profile import HardwareSnapshot
 from custom_components.backup_checkup.models import BackupAgentSummary
 
 
-def _profile_input(profile: str = PROFILE_STANDARD) -> dict[str, Any]:
+def _hardware() -> HardwareSnapshot:
+    return HardwareSnapshot(
+        installation_type="Home Assistant OS",
+        architecture="aarch64",
+        board="green",
+        recommended_profile=RUNTIME_PROFILE_APPLIANCE,
+        confidence="high",
+        detection="automatic",
+    )
+
+
+def _runtime_input(profile: str = RUNTIME_PROFILE_APPLIANCE) -> dict[str, Any]:
     return {
-        CONF_MONITORING_PROFILE: profile,
+        CONF_RUNTIME_PROFILE: profile,
+        CONF_ADAPTIVE_POLLING: True,
+    }
+
+
+def _presentation_input() -> dict[str, Any]:
+    return {
         CONF_ENTITY_MODE: ENTITY_MODE_EXPERT,
+        CONF_EXPOSE_BACKUP_METADATA: False,
         CONF_NOTIFICATIONS_ENABLED: False,
         CONF_NOTIFICATION_TARGETS: [],
         CONF_NOTIFY_ON_RECOVERY: True,
     }
-
-
-def _advanced_input() -> dict[str, Any]:
-    return config_flow._monitoring_defaults()
 
 
 def _summary(agent_id: str = "backup.local") -> BackupAgentSummary:
@@ -104,42 +134,78 @@ class _Hass:
 
 
 @pytest.mark.asyncio
-async def test_config_flow_profile_validation_and_custom_path(
+async def test_guided_config_flow_and_custom_validation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(config_flow, "mobile_notification_options", lambda *_args: [])
+    monkeypatch.setattr(
+        config_flow, "async_detect_hardware", AsyncMock(return_value=_hardware())
+    )
+    monkeypatch.setattr(flow_schemas, "mobile_notification_options", lambda *_args: [])
     flow = config_flow.BackupCheckupConfigFlow()
     flow.hass = SimpleNamespace()
 
     form = await flow.async_step_user()
-    assert form["type"] == "form"
     assert form["step_id"] == "user"
+    assert form["description_placeholders"]["board"] == "green"
 
-    invalid = _profile_input()
+    assert (await flow.async_step_user(_runtime_input()))["step_id"] == "monitoring"
+    assert (
+        await flow.async_step_monitoring(
+            {CONF_MONITORING_POLICY: MONITORING_POLICY_BALANCED}
+        )
+    )["step_id"] == "verification"
+    assert (
+        await flow.async_step_verification(
+            {CONF_VERIFICATION_POLICY: VERIFICATION_POLICY_MANUAL}
+        )
+    )["step_id"] == "presentation"
+
+    invalid = _presentation_input()
     invalid[CONF_NOTIFICATIONS_ENABLED] = True
-    invalid_result = await flow.async_step_user(invalid)
+    invalid_result = await flow.async_step_presentation(invalid)
     assert invalid_result["errors"] == {
         CONF_NOTIFICATION_TARGETS: "notification_target_required"
     }
 
-    created = await flow.async_step_user(_profile_input())
+    assert (await flow.async_step_presentation(_presentation_input()))[
+        "step_id"
+    ] == "summary"
+    created = await flow.async_step_summary({CONF_CONFIRM: True})
     assert created["type"] == "create_entry"
-    assert created["data"][CONF_MONITORING_PROFILE] == PROFILE_STANDARD
+    assert created["data"][CONF_RUNTIME_PROFILE] == RUNTIME_PROFILE_APPLIANCE
+    assert created["data"][CONF_MONITORING_POLICY] == MONITORING_POLICY_BALANCED
+    assert created["data"][CONF_VERIFICATION_POLICY] == VERIFICATION_POLICY_MANUAL
 
     custom = config_flow.BackupCheckupConfigFlow()
     custom.hass = SimpleNamespace()
-    custom_form = await custom.async_step_user(_profile_input(PROFILE_CUSTOM))
-    assert custom_form["step_id"] == "advanced"
+    monkeypatch.setattr(
+        config_flow, "async_detect_hardware", AsyncMock(return_value=_hardware())
+    )
+    assert (await custom.async_step_user(_runtime_input(RUNTIME_PROFILE_CUSTOM)))[
+        "step_id"
+    ] == "runtime_custom"
+    bad_runtime = dict(custom._draft)
+    bad_runtime["active_update_interval_minutes"] = 10
+    bad_runtime["update_interval_minutes"] = 5
+    assert (await custom.async_step_runtime_custom(bad_runtime))["errors"] == {
+        "base": "active_interval_too_slow"
+    }
 
-    bad_advanced = _advanced_input()
-    bad_advanced[CONF_SIZE_CHECK_MODE] = SIZE_CHECK_FIXED
-    bad_advanced[CONF_MINIMUM_BACKUP_SIZE_MB] = 0
-    bad_result = await custom.async_step_advanced(bad_advanced)
-    assert bad_result["errors"] == {"base": "fixed_size_required"}
-
-    good_result = await custom.async_step_advanced(_advanced_input())
-    assert good_result["type"] == "create_entry"
-    assert good_result["data"][CONF_MONITORING_PROFILE] == PROFILE_CUSTOM
+    good_runtime = dict(custom._draft)
+    assert (await custom.async_step_runtime_custom(good_runtime))[
+        "step_id"
+    ] == "monitoring"
+    assert (
+        await custom.async_step_monitoring(
+            {CONF_MONITORING_POLICY: MONITORING_POLICY_CUSTOM}
+        )
+    )["step_id"] == "monitoring_custom"
+    bad_monitoring = dict(custom._draft)
+    bad_monitoring[CONF_SIZE_CHECK_MODE] = SIZE_CHECK_FIXED
+    bad_monitoring[CONF_MINIMUM_BACKUP_SIZE_MB] = 0
+    assert (await custom.async_step_monitoring_custom(bad_monitoring))["errors"] == {
+        "base": "fixed_size_required"
+    }
 
     duplicate = config_flow.BackupCheckupConfigFlow()
     duplicate._async_current_entries = lambda: [object()]
@@ -147,34 +213,51 @@ async def test_config_flow_profile_validation_and_custom_path(
 
 
 @pytest.mark.asyncio
-async def test_options_flow_applies_changed_entity_mode(
+async def test_options_flow_menu_categories_and_setup_assistant(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    applied: list[str] = []
-    monkeypatch.setattr(config_flow, "mobile_notification_options", lambda *_args: [])
+    monkeypatch.setattr(flow_schemas, "mobile_notification_options", lambda *_args: [])
     monkeypatch.setattr(
-        config_flow,
-        "async_apply_entity_mode",
-        lambda _hass, _entry, mode: applied.append(mode),
+        config_flow, "async_detect_hardware", AsyncMock(return_value=_hardware())
     )
     options = config_flow.BackupCheckupOptionsFlow()
     options.hass = SimpleNamespace()
     options.config_entry = ConfigEntry(data={}, options={})
 
-    shown = await options.async_step_init()
-    assert shown["step_id"] == "init"
+    menu = await options.async_step_init()
+    assert menu["type"] == "menu"
+    assert "setup_assistant" in menu["menu_options"]
 
-    created = await options.async_step_init(_profile_input())
-    assert created["type"] == "create_entry"
-    assert applied == [ENTITY_MODE_EXPERT]
+    runtime = await options.async_step_runtime(
+        {CONF_RUNTIME_PROFILE: RUNTIME_PROFILE_PERFORMANCE, CONF_ADAPTIVE_POLLING: True}
+    )
+    assert runtime["type"] == "create_entry"
+    assert runtime["data"][CONF_RUNTIME_PROFILE] == RUNTIME_PROFILE_PERFORMANCE
 
-    custom = config_flow.BackupCheckupOptionsFlow()
-    custom.hass = SimpleNamespace()
-    custom.config_entry = ConfigEntry(data={}, options={})
-    advanced_form = await custom.async_step_init(_profile_input(PROFILE_CUSTOM))
-    assert advanced_form["step_id"] == "advanced"
-    advanced_created = await custom.async_step_advanced(_advanced_input())
-    assert advanced_created["type"] == "create_entry"
+    assistant = config_flow.BackupCheckupOptionsFlow()
+    assistant.hass = SimpleNamespace()
+    assistant.config_entry = ConfigEntry(data={}, options={})
+    assert (await assistant.async_step_setup_assistant())[
+        "step_id"
+    ] == "setup_assistant"
+    assert (await assistant.async_step_setup_assistant(_runtime_input()))[
+        "step_id"
+    ] == "setup_monitoring"
+    assert (
+        await assistant.async_step_setup_monitoring(
+            {CONF_MONITORING_POLICY: MONITORING_POLICY_BALANCED}
+        )
+    )["step_id"] == "setup_verification"
+    assert (
+        await assistant.async_step_setup_verification(
+            {CONF_VERIFICATION_POLICY: VERIFICATION_POLICY_MANUAL}
+        )
+    )["step_id"] == "setup_presentation"
+    assert (await assistant.async_step_setup_presentation(_presentation_input()))[
+        "step_id"
+    ] == "setup_summary"
+    saved = await assistant.async_step_setup_summary({CONF_CONFIRM: True})
+    assert saved["type"] == "create_entry"
 
     assert isinstance(
         config_flow.BackupCheckupConfigFlow.async_get_options_flow(ConfigEntry()),

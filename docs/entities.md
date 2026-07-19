@@ -159,24 +159,52 @@ sensor.backup_checkup_local_latest_backup
 binary_sensor.backup_checkup_local_problem
 ```
 
-## Health-score deductions
+## Health Score version 2
 
-| Condition | Deduction |
+The Health Score remains deterministic from `0` to `100`, but deductions are now
+correlation-aware. Every active signal is retained as a raw deduction, while only the
+strongest deduction in each cause group is applied to the score. This prevents one root
+cause from being counted several times.
+
+Examples:
+
+- A storage outage can trigger `storage_error`, `required_location_missing`, and
+  `backup_not_redundant`. The score applies only the strongest storage deduction.
+- One failed automatic-backup series can affect the current failure, success rate,
+  consecutive failures, and schedule. The score applies only the strongest automation
+  deduction.
+- A failed integrity check can also report a checksum change or warning. The failed
+  integrity result remains the applied deduction.
+
+The Health Score attributes expose:
+
+- `score_version`: currently `2`
+- `deductions`: deductions actually applied to the score
+- `component_deductions`: applied deduction per cause group
+- `raw_deductions`: all detected deduction candidates
+- `suppressed_correlated_deductions`: signals retained for diagnosis but not counted a
+  second time
+
+Base deductions include:
+
+| Condition | Base deduction |
 | --- | ---: |
 | No backup available | 100 |
-| Newest backup corrupt or unreadable | 50 |
+| Newest backup corrupt or unreadable | 60 |
 | Backup manager unavailable | 50 |
-| Backup too old | 25 |
+| Stored backup checksum changed | 40 |
+| Backup too old | 20 / 25 / 35 depending on severity |
 | Latest backup incomplete | 25 |
 | Latest automatic backup failed | 20 |
 | Storage error | 20 |
 | Backup unusually small | 15 |
-| Backup not redundant | 15 |
+| Backup not redundant | 15-25 depending on missing locations |
 | Automatic backup overdue | 15 |
+| Integrity warning | 11 |
 | Automatic schedule missing | 10 |
 | Automatic schedule overdue | 10 |
 | Required location unhealthy | 10 |
 | Observed success rate below 95% / 80% / 60% | 5 / 12 / 20 |
 | Consecutive automatic failures | 5 each, maximum 15 |
 
-Deductions can overlap. The final score cannot fall below `0`.
+Independent cause groups can still combine. The final score cannot fall below `0`.

@@ -355,7 +355,7 @@ def test_migration_updates_once_without_entity_registry_side_effects(
 
     assert asyncio.run(integration.async_migrate_entry(hass, entry)) is True
     assert len(updates) == 1
-    assert updates[0]["version"] == 9
+    assert updates[0]["version"] == 10
 
 
 def test_health_score_ignores_invalid_history_metrics() -> None:

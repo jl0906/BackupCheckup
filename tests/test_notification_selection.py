@@ -105,7 +105,7 @@ def test_config_flow_uses_dropdown_multiple_select() -> None:
         Path(__file__).resolve().parents[1]
         / "custom_components"
         / "backup_checkup"
-        / "config_flow.py"
+        / "flow_schemas.py"
     ).read_text()
     selector_block = source.split("CONF_NOTIFICATION_TARGETS", 2)[2].split(
         "CONF_NOTIFY_ON_RECOVERY", 1

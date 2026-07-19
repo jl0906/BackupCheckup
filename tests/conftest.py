@@ -77,6 +77,8 @@ entity_registry = types.ModuleType("homeassistant.helpers.entity_registry")
 entity = types.ModuleType("homeassistant.helpers.entity")
 entity_platform = types.ModuleType("homeassistant.helpers.entity_platform")
 selector = types.ModuleType("homeassistant.helpers.selector")
+system_info = types.ModuleType("homeassistant.helpers.system_info")
+event = types.ModuleType("homeassistant.helpers.event")
 issue_registry = types.ModuleType("homeassistant.helpers.issue_registry")
 service = types.ModuleType("homeassistant.helpers.service")
 storage = types.ModuleType("homeassistant.helpers.storage")
@@ -157,11 +159,18 @@ class ConfigFlow:
     def async_show_form(self, **kwargs: Any) -> dict[str, Any]:
         return {"type": "form", **kwargs}
 
+    def async_show_menu(self, **kwargs: Any) -> dict[str, Any]:
+        return {"type": "menu", **kwargs}
+
 
 class OptionsFlow(ConfigFlow):
     """Minimal options-flow base."""
 
     config_entry: ConfigEntry
+
+
+class OptionsFlowWithReload(OptionsFlow):
+    """Minimal auto-reloading options-flow base."""
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -395,6 +404,7 @@ sensor.SensorStateClass = SensorStateClass
 config_entries.ConfigEntry = ConfigEntry
 config_entries.ConfigFlow = ConfigFlow
 config_entries.OptionsFlow = OptionsFlow
+config_entries.OptionsFlowWithReload = OptionsFlowWithReload
 data_entry_flow.FlowResult = dict
 const.Platform = Platform
 const.EntityCategory = EntityCategory
@@ -433,6 +443,8 @@ selector.NumberSelectorMode = NumberSelectorMode
 selector.SelectSelector = SelectSelector
 selector.SelectSelectorConfig = SelectSelectorConfig
 selector.SelectSelectorMode = SelectSelectorMode
+system_info.async_get_system_info = lambda _hass: {}
+event.async_track_state_change_event = lambda *_args, **_kwargs: lambda: None
 translation.async_get_translations = lambda *_args, **_kwargs: {}
 update_coordinator.CoordinatorEntity = CoordinatorEntity
 update_coordinator.DataUpdateCoordinator = DataUpdateCoordinator
@@ -477,6 +489,8 @@ sys.modules.setdefault("homeassistant.helpers.entity_platform", entity_platform)
 sys.modules.setdefault("homeassistant.helpers.entity_registry", entity_registry)
 sys.modules.setdefault("homeassistant.helpers.issue_registry", issue_registry)
 sys.modules.setdefault("homeassistant.helpers.selector", selector)
+sys.modules.setdefault("homeassistant.helpers.system_info", system_info)
+sys.modules.setdefault("homeassistant.helpers.event", event)
 sys.modules.setdefault("homeassistant.helpers.service", service)
 sys.modules.setdefault("homeassistant.helpers.storage", storage)
 sys.modules.setdefault("homeassistant.helpers.typing", typing_module)
