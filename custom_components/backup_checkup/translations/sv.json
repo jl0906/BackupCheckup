@@ -103,25 +103,50 @@
       "summary": {
         "title": "Confirm setup",
         "description": "Granska de fastställda inställningarna nedan. Välj Skicka för att skapa BackupCheckup.",
-        "data": {
-          "summary_hardware": "Identifierad hårdvara",
-          "summary_runtime_profile": "Prestandaprofil",
-          "summary_update_interval": "Normalt intervall i minuter",
-          "summary_active_interval": "Intervall under säkerhetskopiering i minuter",
-          "summary_error_backoff": "Intervall efter fel i minuter",
-          "summary_adaptive_polling": "Intelligent avfrågning",
-          "summary_download_limit": "Maximal nedladdningsstorlek i GB",
-          "summary_expanded_limit": "Maximal uppackad storlek i GB",
-          "summary_monitoring_policy": "Övervakningspolicy",
-          "summary_max_age": "Maximal ålder i dagar",
-          "summary_redundant_locations": "Krävda lagringsplatser",
-          "summary_repair_issues": "Reparationsmeddelanden",
-          "summary_verification_policy": "Integritetsstrategi",
-          "summary_entity_mode": "Entitetsläge",
-          "summary_expose_metadata": "Visa namn och ID för säkerhetskopior",
-          "summary_notifications_enabled": "Mobilaviseringar",
-          "summary_notification_count": "Valda aviseringsenheter",
-          "summary_notify_on_recovery": "Återställningsavisering"
+        "sections": {
+          "summary_system": {
+            "name": "System och prestanda",
+            "data": {
+              "summary_hardware": "Identifierad hårdvara",
+              "summary_runtime_profile": "Prestandaprofil"
+            }
+          },
+          "summary_polling": {
+            "name": "Avläsning och resursgränser",
+            "data": {
+              "summary_adaptive_polling": "Intelligent avfrågning",
+              "summary_update_interval": "Normalt intervall i minuter",
+              "summary_active_interval": "Intervall under säkerhetskopiering i minuter",
+              "summary_error_backoff": "Intervall efter fel i minuter",
+              "summary_download_limit": "Maximal nedladdningsstorlek i GB",
+              "summary_expanded_limit": "Maximal uppackad storlek i GB"
+            }
+          },
+          "summary_monitoring": {
+            "name": "Säkerhetskopieringsövervakning",
+            "data": {
+              "summary_monitoring_policy": "Övervakningspolicy",
+              "summary_max_age": "Maximal ålder i dagar",
+              "summary_redundant_locations": "Krävda lagringsplatser",
+              "summary_repair_issues": "Reparationsmeddelanden"
+            }
+          },
+          "summary_integrity": {
+            "name": "Integritet och visning",
+            "data": {
+              "summary_verification_policy": "Integritetsstrategi",
+              "summary_entity_mode": "Entitetsläge",
+              "summary_expose_metadata": "Visa namn och ID för säkerhetskopior"
+            }
+          },
+          "summary_notifications": {
+            "name": "Aviseringar",
+            "data": {
+              "summary_notifications_enabled": "Mobilaviseringar",
+              "summary_notification_count": "Valda aviseringsenheter",
+              "summary_notify_on_recovery": "Återställningsavisering"
+            }
+          }
         }
       }
     },
@@ -298,25 +323,50 @@
       "setup_summary": {
         "title": "Confirm updated setup",
         "description": "Granska de fastställda inställningarna nedan. Välj Skicka för att spara konfigurationen.",
-        "data": {
-          "summary_hardware": "Identifierad hårdvara",
-          "summary_runtime_profile": "Prestandaprofil",
-          "summary_update_interval": "Normalt intervall i minuter",
-          "summary_active_interval": "Intervall under säkerhetskopiering i minuter",
-          "summary_error_backoff": "Intervall efter fel i minuter",
-          "summary_adaptive_polling": "Intelligent avfrågning",
-          "summary_download_limit": "Maximal nedladdningsstorlek i GB",
-          "summary_expanded_limit": "Maximal uppackad storlek i GB",
-          "summary_monitoring_policy": "Övervakningspolicy",
-          "summary_max_age": "Maximal ålder i dagar",
-          "summary_redundant_locations": "Krävda lagringsplatser",
-          "summary_repair_issues": "Reparationsmeddelanden",
-          "summary_verification_policy": "Integritetsstrategi",
-          "summary_entity_mode": "Entitetsläge",
-          "summary_expose_metadata": "Visa namn och ID för säkerhetskopior",
-          "summary_notifications_enabled": "Mobilaviseringar",
-          "summary_notification_count": "Valda aviseringsenheter",
-          "summary_notify_on_recovery": "Återställningsavisering"
+        "sections": {
+          "summary_system": {
+            "name": "System och prestanda",
+            "data": {
+              "summary_hardware": "Identifierad hårdvara",
+              "summary_runtime_profile": "Prestandaprofil"
+            }
+          },
+          "summary_polling": {
+            "name": "Avläsning och resursgränser",
+            "data": {
+              "summary_adaptive_polling": "Intelligent avfrågning",
+              "summary_update_interval": "Normalt intervall i minuter",
+              "summary_active_interval": "Intervall under säkerhetskopiering i minuter",
+              "summary_error_backoff": "Intervall efter fel i minuter",
+              "summary_download_limit": "Maximal nedladdningsstorlek i GB",
+              "summary_expanded_limit": "Maximal uppackad storlek i GB"
+            }
+          },
+          "summary_monitoring": {
+            "name": "Säkerhetskopieringsövervakning",
+            "data": {
+              "summary_monitoring_policy": "Övervakningspolicy",
+              "summary_max_age": "Maximal ålder i dagar",
+              "summary_redundant_locations": "Krävda lagringsplatser",
+              "summary_repair_issues": "Reparationsmeddelanden"
+            }
+          },
+          "summary_integrity": {
+            "name": "Integritet och visning",
+            "data": {
+              "summary_verification_policy": "Integritetsstrategi",
+              "summary_entity_mode": "Entitetsläge",
+              "summary_expose_metadata": "Visa namn och ID för säkerhetskopior"
+            }
+          },
+          "summary_notifications": {
+            "name": "Aviseringar",
+            "data": {
+              "summary_notifications_enabled": "Mobilaviseringar",
+              "summary_notification_count": "Valda aviseringsenheter",
+              "summary_notify_on_recovery": "Återställningsavisering"
+            }
+          }
         }
       }
     },
@@ -618,6 +668,54 @@
         "enabled": "Aktiverad",
         "disabled": "Inaktiverad"
       }
+    },
+    "summary_runtime_profile_energy_saving": {
+      "value": "Energy saving"
+    },
+    "summary_runtime_profile_home_assistant_appliance": {
+      "value": "Home Assistant appliance"
+    },
+    "summary_runtime_profile_performance": {
+      "value": "High performance"
+    },
+    "summary_runtime_profile_server": {
+      "value": "Server"
+    },
+    "summary_runtime_profile_custom": {
+      "value": "Custom"
+    },
+    "summary_monitoring_policy_balanced": {
+      "value": "Balanced"
+    },
+    "summary_monitoring_policy_strict": {
+      "value": "Strict"
+    },
+    "summary_monitoring_policy_custom": {
+      "value": "Custom"
+    },
+    "summary_verification_policy_manual": {
+      "value": "Manual only"
+    },
+    "summary_verification_policy_automatic": {
+      "value": "Automatically verify new backups"
+    },
+    "summary_verification_policy_deep": {
+      "value": "Deep verification including database"
+    },
+    "summary_verification_policy_custom": {
+      "value": "Keep existing custom settings"
+    },
+    "summary_entity_mode_standard": {
+      "value": "Standard mode"
+    },
+    "summary_entity_mode_expert": {
+      "value": "Expert mode"
+    },
+    "summary_enabled_state_enabled": {
+      "value": "Aktiverad"
+    },
+    "summary_enabled_state_disabled": {
+      "value": "Inaktiverad"
     }
   },
   "issues": {

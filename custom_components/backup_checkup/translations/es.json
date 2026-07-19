@@ -103,25 +103,50 @@
       "summary": {
         "title": "Confirm setup",
         "description": "Revisa los ajustes resultantes. Selecciona Enviar para crear BackupCheckup.",
-        "data": {
-          "summary_hardware": "Hardware detectado",
-          "summary_runtime_profile": "Perfil de rendimiento",
-          "summary_update_interval": "Intervalo normal de consulta en minutos",
-          "summary_active_interval": "Intervalo durante una copia en minutos",
-          "summary_error_backoff": "Intervalo de espera tras errores en minutos",
-          "summary_adaptive_polling": "Consulta inteligente",
-          "summary_download_limit": "Tamaño máximo de descarga en GB",
-          "summary_expanded_limit": "Tamaño máximo descomprimido en GB",
-          "summary_monitoring_policy": "Política de supervisión",
-          "summary_max_age": "Antigüedad máxima de la copia en días",
-          "summary_redundant_locations": "Ubicaciones de almacenamiento requeridas",
-          "summary_repair_issues": "Avisos de reparación",
-          "summary_verification_policy": "Estrategia de integridad",
-          "summary_entity_mode": "Modo de entidades",
-          "summary_expose_metadata": "Mostrar nombres e ID de copias",
-          "summary_notifications_enabled": "Notificaciones móviles",
-          "summary_notification_count": "Dispositivos de notificación seleccionados",
-          "summary_notify_on_recovery": "Notificación de recuperación"
+        "sections": {
+          "summary_system": {
+            "name": "Sistema y rendimiento",
+            "data": {
+              "summary_hardware": "Hardware detectado",
+              "summary_runtime_profile": "Perfil de rendimiento"
+            }
+          },
+          "summary_polling": {
+            "name": "Sondeo y límites de recursos",
+            "data": {
+              "summary_adaptive_polling": "Consulta inteligente",
+              "summary_update_interval": "Intervalo normal de consulta en minutos",
+              "summary_active_interval": "Intervalo durante una copia en minutos",
+              "summary_error_backoff": "Intervalo de espera tras errores en minutos",
+              "summary_download_limit": "Tamaño máximo de descarga en GB",
+              "summary_expanded_limit": "Tamaño máximo descomprimido en GB"
+            }
+          },
+          "summary_monitoring": {
+            "name": "Supervisión de copias",
+            "data": {
+              "summary_monitoring_policy": "Política de supervisión",
+              "summary_max_age": "Antigüedad máxima de la copia en días",
+              "summary_redundant_locations": "Ubicaciones de almacenamiento requeridas",
+              "summary_repair_issues": "Avisos de reparación"
+            }
+          },
+          "summary_integrity": {
+            "name": "Integridad y presentación",
+            "data": {
+              "summary_verification_policy": "Estrategia de integridad",
+              "summary_entity_mode": "Modo de entidades",
+              "summary_expose_metadata": "Mostrar nombres e ID de copias"
+            }
+          },
+          "summary_notifications": {
+            "name": "Notificaciones",
+            "data": {
+              "summary_notifications_enabled": "Notificaciones móviles",
+              "summary_notification_count": "Dispositivos de notificación seleccionados",
+              "summary_notify_on_recovery": "Notificación de recuperación"
+            }
+          }
         }
       }
     },
@@ -298,25 +323,50 @@
       "setup_summary": {
         "title": "Confirm updated setup",
         "description": "Revisa los ajustes resultantes. Selecciona Enviar para guardar la configuración.",
-        "data": {
-          "summary_hardware": "Hardware detectado",
-          "summary_runtime_profile": "Perfil de rendimiento",
-          "summary_update_interval": "Intervalo normal de consulta en minutos",
-          "summary_active_interval": "Intervalo durante una copia en minutos",
-          "summary_error_backoff": "Intervalo de espera tras errores en minutos",
-          "summary_adaptive_polling": "Consulta inteligente",
-          "summary_download_limit": "Tamaño máximo de descarga en GB",
-          "summary_expanded_limit": "Tamaño máximo descomprimido en GB",
-          "summary_monitoring_policy": "Política de supervisión",
-          "summary_max_age": "Antigüedad máxima de la copia en días",
-          "summary_redundant_locations": "Ubicaciones de almacenamiento requeridas",
-          "summary_repair_issues": "Avisos de reparación",
-          "summary_verification_policy": "Estrategia de integridad",
-          "summary_entity_mode": "Modo de entidades",
-          "summary_expose_metadata": "Mostrar nombres e ID de copias",
-          "summary_notifications_enabled": "Notificaciones móviles",
-          "summary_notification_count": "Dispositivos de notificación seleccionados",
-          "summary_notify_on_recovery": "Notificación de recuperación"
+        "sections": {
+          "summary_system": {
+            "name": "Sistema y rendimiento",
+            "data": {
+              "summary_hardware": "Hardware detectado",
+              "summary_runtime_profile": "Perfil de rendimiento"
+            }
+          },
+          "summary_polling": {
+            "name": "Sondeo y límites de recursos",
+            "data": {
+              "summary_adaptive_polling": "Consulta inteligente",
+              "summary_update_interval": "Intervalo normal de consulta en minutos",
+              "summary_active_interval": "Intervalo durante una copia en minutos",
+              "summary_error_backoff": "Intervalo de espera tras errores en minutos",
+              "summary_download_limit": "Tamaño máximo de descarga en GB",
+              "summary_expanded_limit": "Tamaño máximo descomprimido en GB"
+            }
+          },
+          "summary_monitoring": {
+            "name": "Supervisión de copias",
+            "data": {
+              "summary_monitoring_policy": "Política de supervisión",
+              "summary_max_age": "Antigüedad máxima de la copia en días",
+              "summary_redundant_locations": "Ubicaciones de almacenamiento requeridas",
+              "summary_repair_issues": "Avisos de reparación"
+            }
+          },
+          "summary_integrity": {
+            "name": "Integridad y presentación",
+            "data": {
+              "summary_verification_policy": "Estrategia de integridad",
+              "summary_entity_mode": "Modo de entidades",
+              "summary_expose_metadata": "Mostrar nombres e ID de copias"
+            }
+          },
+          "summary_notifications": {
+            "name": "Notificaciones",
+            "data": {
+              "summary_notifications_enabled": "Notificaciones móviles",
+              "summary_notification_count": "Dispositivos de notificación seleccionados",
+              "summary_notify_on_recovery": "Notificación de recuperación"
+            }
+          }
         }
       }
     },
@@ -618,6 +668,54 @@
         "enabled": "Activado",
         "disabled": "Desactivado"
       }
+    },
+    "summary_runtime_profile_energy_saving": {
+      "value": "Energy saving"
+    },
+    "summary_runtime_profile_home_assistant_appliance": {
+      "value": "Home Assistant appliance"
+    },
+    "summary_runtime_profile_performance": {
+      "value": "High performance"
+    },
+    "summary_runtime_profile_server": {
+      "value": "Server"
+    },
+    "summary_runtime_profile_custom": {
+      "value": "Custom"
+    },
+    "summary_monitoring_policy_balanced": {
+      "value": "Balanced"
+    },
+    "summary_monitoring_policy_strict": {
+      "value": "Strict"
+    },
+    "summary_monitoring_policy_custom": {
+      "value": "Custom"
+    },
+    "summary_verification_policy_manual": {
+      "value": "Manual only"
+    },
+    "summary_verification_policy_automatic": {
+      "value": "Automatically verify new backups"
+    },
+    "summary_verification_policy_deep": {
+      "value": "Deep verification including database"
+    },
+    "summary_verification_policy_custom": {
+      "value": "Keep existing custom settings"
+    },
+    "summary_entity_mode_standard": {
+      "value": "Standard mode"
+    },
+    "summary_entity_mode_expert": {
+      "value": "Expert mode"
+    },
+    "summary_enabled_state_enabled": {
+      "value": "Activado"
+    },
+    "summary_enabled_state_disabled": {
+      "value": "Desactivado"
     }
   },
   "issues": {

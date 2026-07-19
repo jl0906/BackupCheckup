@@ -10,7 +10,7 @@
 
 <p align="center">
   <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-orange.svg">
-  <img alt="Version 2.4.1" src="https://img.shields.io/badge/version-2.4.1-blue.svg">
+  <img alt="Version 2.4.2" src="https://img.shields.io/badge/version-2.4.2-blue.svg">
   <img alt="AI Coded and Maintained" src="https://img.shields.io/badge/AI-Coded_and_Maintained-8A2BE2.svg">
   <img alt="Home Assistant 2026.3 or newer" src="https://img.shields.io/badge/Home_Assistant-2026.3_or_newer-41BDF5.svg">
   <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg">
@@ -20,6 +20,8 @@ BackupCheckup is a local Home Assistant custom integration that monitors the **a
 
 It warns you when backups are missing, outdated, incomplete, unexpectedly small, stored on too few locations, or no longer readable. No separate helpers or automations are required.
 
+> [!NOTE]
+> BackupCheckup is AI-coded and AI-maintained under human direction, testing, and release control.
 
 ## Install with HACS
 

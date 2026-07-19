@@ -103,25 +103,50 @@
       "summary": {
         "title": "Confirm setup",
         "description": "Gennemgå de valgte indstillinger nedenfor. Vælg Send for at oprette BackupCheckup.",
-        "data": {
-          "summary_hardware": "Registreret hardware",
-          "summary_runtime_profile": "Ydelsesprofil",
-          "summary_update_interval": "Normalt forespørgselsinterval i minutter",
-          "summary_active_interval": "Forespørgselsinterval under backup i minutter",
-          "summary_error_backoff": "Fejl-backoff i minutter",
-          "summary_adaptive_polling": "Intelligent forespørgsel",
-          "summary_download_limit": "Maksimal downloadstørrelse i GB",
-          "summary_expanded_limit": "Maksimal udpakket størrelse i GB",
-          "summary_monitoring_policy": "Overvågningspolitik",
-          "summary_max_age": "Maksimal backupalder i dage",
-          "summary_redundant_locations": "Krævede lagerplaceringer",
-          "summary_repair_issues": "Reparationsmeddelelser",
-          "summary_verification_policy": "Integritetsstrategi",
-          "summary_entity_mode": "Entitetstilstand",
-          "summary_expose_metadata": "Vis backupnavne og id’er",
-          "summary_notifications_enabled": "Mobilnotifikationer",
-          "summary_notification_count": "Valgte notifikationsenheder",
-          "summary_notify_on_recovery": "Notifikation ved gendannelse"
+        "sections": {
+          "summary_system": {
+            "name": "System og ydeevne",
+            "data": {
+              "summary_hardware": "Registreret hardware",
+              "summary_runtime_profile": "Ydelsesprofil"
+            }
+          },
+          "summary_polling": {
+            "name": "Forespørgsler og ressourcegrænser",
+            "data": {
+              "summary_adaptive_polling": "Intelligent forespørgsel",
+              "summary_update_interval": "Normalt forespørgselsinterval i minutter",
+              "summary_active_interval": "Forespørgselsinterval under backup i minutter",
+              "summary_error_backoff": "Fejl-backoff i minutter",
+              "summary_download_limit": "Maksimal downloadstørrelse i GB",
+              "summary_expanded_limit": "Maksimal udpakket størrelse i GB"
+            }
+          },
+          "summary_monitoring": {
+            "name": "Backupovervågning",
+            "data": {
+              "summary_monitoring_policy": "Overvågningspolitik",
+              "summary_max_age": "Maksimal backupalder i dage",
+              "summary_redundant_locations": "Krævede lagerplaceringer",
+              "summary_repair_issues": "Reparationsmeddelelser"
+            }
+          },
+          "summary_integrity": {
+            "name": "Integritet og visning",
+            "data": {
+              "summary_verification_policy": "Integritetsstrategi",
+              "summary_entity_mode": "Entitetstilstand",
+              "summary_expose_metadata": "Vis backupnavne og id’er"
+            }
+          },
+          "summary_notifications": {
+            "name": "Notifikationer",
+            "data": {
+              "summary_notifications_enabled": "Mobilnotifikationer",
+              "summary_notification_count": "Valgte notifikationsenheder",
+              "summary_notify_on_recovery": "Notifikation ved gendannelse"
+            }
+          }
         }
       }
     },
@@ -298,25 +323,50 @@
       "setup_summary": {
         "title": "Confirm updated setup",
         "description": "Gennemgå de valgte indstillinger nedenfor. Vælg Send for at gemme konfigurationen.",
-        "data": {
-          "summary_hardware": "Registreret hardware",
-          "summary_runtime_profile": "Ydelsesprofil",
-          "summary_update_interval": "Normalt forespørgselsinterval i minutter",
-          "summary_active_interval": "Forespørgselsinterval under backup i minutter",
-          "summary_error_backoff": "Fejl-backoff i minutter",
-          "summary_adaptive_polling": "Intelligent forespørgsel",
-          "summary_download_limit": "Maksimal downloadstørrelse i GB",
-          "summary_expanded_limit": "Maksimal udpakket størrelse i GB",
-          "summary_monitoring_policy": "Overvågningspolitik",
-          "summary_max_age": "Maksimal backupalder i dage",
-          "summary_redundant_locations": "Krævede lagerplaceringer",
-          "summary_repair_issues": "Reparationsmeddelelser",
-          "summary_verification_policy": "Integritetsstrategi",
-          "summary_entity_mode": "Entitetstilstand",
-          "summary_expose_metadata": "Vis backupnavne og id’er",
-          "summary_notifications_enabled": "Mobilnotifikationer",
-          "summary_notification_count": "Valgte notifikationsenheder",
-          "summary_notify_on_recovery": "Notifikation ved gendannelse"
+        "sections": {
+          "summary_system": {
+            "name": "System og ydeevne",
+            "data": {
+              "summary_hardware": "Registreret hardware",
+              "summary_runtime_profile": "Ydelsesprofil"
+            }
+          },
+          "summary_polling": {
+            "name": "Forespørgsler og ressourcegrænser",
+            "data": {
+              "summary_adaptive_polling": "Intelligent forespørgsel",
+              "summary_update_interval": "Normalt forespørgselsinterval i minutter",
+              "summary_active_interval": "Forespørgselsinterval under backup i minutter",
+              "summary_error_backoff": "Fejl-backoff i minutter",
+              "summary_download_limit": "Maksimal downloadstørrelse i GB",
+              "summary_expanded_limit": "Maksimal udpakket størrelse i GB"
+            }
+          },
+          "summary_monitoring": {
+            "name": "Backupovervågning",
+            "data": {
+              "summary_monitoring_policy": "Overvågningspolitik",
+              "summary_max_age": "Maksimal backupalder i dage",
+              "summary_redundant_locations": "Krævede lagerplaceringer",
+              "summary_repair_issues": "Reparationsmeddelelser"
+            }
+          },
+          "summary_integrity": {
+            "name": "Integritet og visning",
+            "data": {
+              "summary_verification_policy": "Integritetsstrategi",
+              "summary_entity_mode": "Entitetstilstand",
+              "summary_expose_metadata": "Vis backupnavne og id’er"
+            }
+          },
+          "summary_notifications": {
+            "name": "Notifikationer",
+            "data": {
+              "summary_notifications_enabled": "Mobilnotifikationer",
+              "summary_notification_count": "Valgte notifikationsenheder",
+              "summary_notify_on_recovery": "Notifikation ved gendannelse"
+            }
+          }
         }
       }
     },
@@ -618,6 +668,54 @@
         "enabled": "Aktiveret",
         "disabled": "Deaktiveret"
       }
+    },
+    "summary_runtime_profile_energy_saving": {
+      "value": "Energy saving"
+    },
+    "summary_runtime_profile_home_assistant_appliance": {
+      "value": "Home Assistant appliance"
+    },
+    "summary_runtime_profile_performance": {
+      "value": "High performance"
+    },
+    "summary_runtime_profile_server": {
+      "value": "Server"
+    },
+    "summary_runtime_profile_custom": {
+      "value": "Custom"
+    },
+    "summary_monitoring_policy_balanced": {
+      "value": "Balanced"
+    },
+    "summary_monitoring_policy_strict": {
+      "value": "Strict"
+    },
+    "summary_monitoring_policy_custom": {
+      "value": "Custom"
+    },
+    "summary_verification_policy_manual": {
+      "value": "Manual only"
+    },
+    "summary_verification_policy_automatic": {
+      "value": "Automatically verify new backups"
+    },
+    "summary_verification_policy_deep": {
+      "value": "Deep verification including database"
+    },
+    "summary_verification_policy_custom": {
+      "value": "Keep existing custom settings"
+    },
+    "summary_entity_mode_standard": {
+      "value": "Standard mode"
+    },
+    "summary_entity_mode_expert": {
+      "value": "Expert mode"
+    },
+    "summary_enabled_state_enabled": {
+      "value": "Aktiveret"
+    },
+    "summary_enabled_state_disabled": {
+      "value": "Deaktiveret"
     }
   },
   "issues": {

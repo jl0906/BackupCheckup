@@ -346,6 +346,7 @@ class BackupCheckupConfigFlow(
         return self.async_show_form(
             step_id="summary",
             data_schema=summary_schema(_summary_values(self._draft)),
+            last_step=True,
         )
 
     @staticmethod
@@ -633,4 +634,5 @@ class BackupCheckupOptionsFlow(_GuidedFlowState, config_entries.OptionsFlowWithR
         return self.async_show_form(
             step_id="setup_summary",
             data_schema=summary_schema(_summary_values(self._draft)),
+            last_step=True,
         )

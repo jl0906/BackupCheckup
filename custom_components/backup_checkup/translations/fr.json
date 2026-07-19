@@ -103,25 +103,50 @@
       "summary": {
         "title": "Confirm setup",
         "description": "Vérifiez les réglages déterminés ci-dessous. Sélectionnez Envoyer pour créer BackupCheckup.",
-        "data": {
-          "summary_hardware": "Matériel détecté",
-          "summary_runtime_profile": "Profil de performances",
-          "summary_update_interval": "Intervalle normal en minutes",
-          "summary_active_interval": "Intervalle pendant une sauvegarde en minutes",
-          "summary_error_backoff": "Intervalle après erreurs en minutes",
-          "summary_adaptive_polling": "Interrogation intelligente",
-          "summary_download_limit": "Taille maximale téléchargée en Go",
-          "summary_expanded_limit": "Taille maximale décompressée en Go",
-          "summary_monitoring_policy": "Politique de surveillance",
-          "summary_max_age": "Âge maximal de la sauvegarde en jours",
-          "summary_redundant_locations": "Emplacements de stockage requis",
-          "summary_repair_issues": "Notifications de réparation",
-          "summary_verification_policy": "Stratégie d’intégrité",
-          "summary_entity_mode": "Mode des entités",
-          "summary_expose_metadata": "Afficher les noms et ID des sauvegardes",
-          "summary_notifications_enabled": "Notifications mobiles",
-          "summary_notification_count": "Appareils de notification sélectionnés",
-          "summary_notify_on_recovery": "Notification de rétablissement"
+        "sections": {
+          "summary_system": {
+            "name": "Système et performances",
+            "data": {
+              "summary_hardware": "Matériel détecté",
+              "summary_runtime_profile": "Profil de performances"
+            }
+          },
+          "summary_polling": {
+            "name": "Interrogation et limites de ressources",
+            "data": {
+              "summary_adaptive_polling": "Interrogation intelligente",
+              "summary_update_interval": "Intervalle normal en minutes",
+              "summary_active_interval": "Intervalle pendant une sauvegarde en minutes",
+              "summary_error_backoff": "Intervalle après erreurs en minutes",
+              "summary_download_limit": "Taille maximale téléchargée en Go",
+              "summary_expanded_limit": "Taille maximale décompressée en Go"
+            }
+          },
+          "summary_monitoring": {
+            "name": "Surveillance des sauvegardes",
+            "data": {
+              "summary_monitoring_policy": "Politique de surveillance",
+              "summary_max_age": "Âge maximal de la sauvegarde en jours",
+              "summary_redundant_locations": "Emplacements de stockage requis",
+              "summary_repair_issues": "Notifications de réparation"
+            }
+          },
+          "summary_integrity": {
+            "name": "Intégrité et présentation",
+            "data": {
+              "summary_verification_policy": "Stratégie d’intégrité",
+              "summary_entity_mode": "Mode des entités",
+              "summary_expose_metadata": "Afficher les noms et ID des sauvegardes"
+            }
+          },
+          "summary_notifications": {
+            "name": "Notifications",
+            "data": {
+              "summary_notifications_enabled": "Notifications mobiles",
+              "summary_notification_count": "Appareils de notification sélectionnés",
+              "summary_notify_on_recovery": "Notification de rétablissement"
+            }
+          }
         }
       }
     },
@@ -298,25 +323,50 @@
       "setup_summary": {
         "title": "Confirm updated setup",
         "description": "Vérifiez les réglages déterminés ci-dessous. Sélectionnez Envoyer pour enregistrer la configuration.",
-        "data": {
-          "summary_hardware": "Matériel détecté",
-          "summary_runtime_profile": "Profil de performances",
-          "summary_update_interval": "Intervalle normal en minutes",
-          "summary_active_interval": "Intervalle pendant une sauvegarde en minutes",
-          "summary_error_backoff": "Intervalle après erreurs en minutes",
-          "summary_adaptive_polling": "Interrogation intelligente",
-          "summary_download_limit": "Taille maximale téléchargée en Go",
-          "summary_expanded_limit": "Taille maximale décompressée en Go",
-          "summary_monitoring_policy": "Politique de surveillance",
-          "summary_max_age": "Âge maximal de la sauvegarde en jours",
-          "summary_redundant_locations": "Emplacements de stockage requis",
-          "summary_repair_issues": "Notifications de réparation",
-          "summary_verification_policy": "Stratégie d’intégrité",
-          "summary_entity_mode": "Mode des entités",
-          "summary_expose_metadata": "Afficher les noms et ID des sauvegardes",
-          "summary_notifications_enabled": "Notifications mobiles",
-          "summary_notification_count": "Appareils de notification sélectionnés",
-          "summary_notify_on_recovery": "Notification de rétablissement"
+        "sections": {
+          "summary_system": {
+            "name": "Système et performances",
+            "data": {
+              "summary_hardware": "Matériel détecté",
+              "summary_runtime_profile": "Profil de performances"
+            }
+          },
+          "summary_polling": {
+            "name": "Interrogation et limites de ressources",
+            "data": {
+              "summary_adaptive_polling": "Interrogation intelligente",
+              "summary_update_interval": "Intervalle normal en minutes",
+              "summary_active_interval": "Intervalle pendant une sauvegarde en minutes",
+              "summary_error_backoff": "Intervalle après erreurs en minutes",
+              "summary_download_limit": "Taille maximale téléchargée en Go",
+              "summary_expanded_limit": "Taille maximale décompressée en Go"
+            }
+          },
+          "summary_monitoring": {
+            "name": "Surveillance des sauvegardes",
+            "data": {
+              "summary_monitoring_policy": "Politique de surveillance",
+              "summary_max_age": "Âge maximal de la sauvegarde en jours",
+              "summary_redundant_locations": "Emplacements de stockage requis",
+              "summary_repair_issues": "Notifications de réparation"
+            }
+          },
+          "summary_integrity": {
+            "name": "Intégrité et présentation",
+            "data": {
+              "summary_verification_policy": "Stratégie d’intégrité",
+              "summary_entity_mode": "Mode des entités",
+              "summary_expose_metadata": "Afficher les noms et ID des sauvegardes"
+            }
+          },
+          "summary_notifications": {
+            "name": "Notifications",
+            "data": {
+              "summary_notifications_enabled": "Notifications mobiles",
+              "summary_notification_count": "Appareils de notification sélectionnés",
+              "summary_notify_on_recovery": "Notification de rétablissement"
+            }
+          }
         }
       }
     },
@@ -618,6 +668,54 @@
         "enabled": "Activé",
         "disabled": "Désactivé"
       }
+    },
+    "summary_runtime_profile_energy_saving": {
+      "value": "Energy saving"
+    },
+    "summary_runtime_profile_home_assistant_appliance": {
+      "value": "Home Assistant appliance"
+    },
+    "summary_runtime_profile_performance": {
+      "value": "High performance"
+    },
+    "summary_runtime_profile_server": {
+      "value": "Server"
+    },
+    "summary_runtime_profile_custom": {
+      "value": "Custom"
+    },
+    "summary_monitoring_policy_balanced": {
+      "value": "Balanced"
+    },
+    "summary_monitoring_policy_strict": {
+      "value": "Strict"
+    },
+    "summary_monitoring_policy_custom": {
+      "value": "Custom"
+    },
+    "summary_verification_policy_manual": {
+      "value": "Manual only"
+    },
+    "summary_verification_policy_automatic": {
+      "value": "Automatically verify new backups"
+    },
+    "summary_verification_policy_deep": {
+      "value": "Deep verification including database"
+    },
+    "summary_verification_policy_custom": {
+      "value": "Keep existing custom settings"
+    },
+    "summary_entity_mode_standard": {
+      "value": "Standard mode"
+    },
+    "summary_entity_mode_expert": {
+      "value": "Expert mode"
+    },
+    "summary_enabled_state_enabled": {
+      "value": "Activé"
+    },
+    "summary_enabled_state_disabled": {
+      "value": "Désactivé"
     }
   },
   "issues": {

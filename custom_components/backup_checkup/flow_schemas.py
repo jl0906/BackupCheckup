@@ -6,16 +6,17 @@ from typing import Any
 
 import voluptuous as vol
 from homeassistant.core import HomeAssistant
+from homeassistant.data_entry_flow import section
 from homeassistant.helpers.selector import (
     BooleanSelector,
+    ConstantSelector,
+    ConstantSelectorConfig,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
-    TextSelector,
-    TextSelectorConfig,
 )
 
 from .const import (
@@ -81,6 +82,12 @@ from .const import (
 )
 from .notification_selection import mobile_notification_options
 
+SUMMARY_SECTION_SYSTEM = "summary_system"
+SUMMARY_SECTION_POLLING = "summary_polling"
+SUMMARY_SECTION_MONITORING = "summary_monitoring"
+SUMMARY_SECTION_INTEGRITY = "summary_integrity"
+SUMMARY_SECTION_NOTIFICATIONS = "summary_notifications"
+
 SUMMARY_HARDWARE = "summary_hardware"
 SUMMARY_RUNTIME_PROFILE = "summary_runtime_profile"
 SUMMARY_UPDATE_INTERVAL = "summary_update_interval"
@@ -99,8 +106,6 @@ SUMMARY_EXPOSE_METADATA = "summary_expose_metadata"
 SUMMARY_NOTIFICATIONS_ENABLED = "summary_notifications_enabled"
 SUMMARY_NOTIFICATION_COUNT = "summary_notification_count"
 SUMMARY_NOTIFY_ON_RECOVERY = "summary_notify_on_recovery"
-
-_ENABLED_STATE_OPTIONS = ["enabled", "disabled"]
 
 
 def integer_selector(minimum: int, maximum: int) -> NumberSelector:
@@ -307,100 +312,137 @@ def presentation_schema(hass: HomeAssistant, values: dict[str, Any]) -> vol.Sche
     )
 
 
-def _readonly_text(value: str) -> TextSelector:
-    """Return a read-only text selector for resolved summary values."""
-    del value
-    return TextSelector(TextSelectorConfig(read_only=True))
+def _summary_constant(
+    value: str | int | bool, *, translation_key: str | None = None
+) -> ConstantSelector:
+    """Return a compact, non-editable value for the final summary."""
+    config: ConstantSelectorConfig = {"value": value}
+    if translation_key is not None:
+        config["translation_key"] = translation_key
+    return ConstantSelector(config)
 
 
-def _readonly_select(options: list[str], translation_key: str) -> SelectSelector:
-    """Return a translated read-only select selector."""
-    return SelectSelector(
-        SelectSelectorConfig(
-            options=options,
-            mode=SelectSelectorMode.DROPDOWN,
-            translation_key=translation_key,
-            read_only=True,
-        )
-    )
+def _translated_summary_constant(group: str, value: str) -> ConstantSelector:
+    """Return a localized constant value selected by its stored identifier."""
+    return _summary_constant(value, translation_key=f"summary_{group}_{value}")
 
 
 def summary_schema(values: dict[str, Any]) -> vol.Schema:
-    """Return a localized, read-only setup summary."""
-    verification_options = list(VERIFICATION_POLICY_OPTIONS)
-    if values[CONF_VERIFICATION_POLICY] == VERIFICATION_POLICY_CUSTOM:
-        verification_options.append(VERIFICATION_POLICY_CUSTOM)
+    """Return a compact, grouped, non-editable setup summary."""
+    enabled_state = "enabled" if values[CONF_ADAPTIVE_POLLING] else "disabled"
+    repair_state = "enabled" if values[CONF_REPAIR_ISSUES_ENABLED] else "disabled"
+    metadata_state = "enabled" if values[CONF_EXPOSE_BACKUP_METADATA] else "disabled"
+    notification_state = "enabled" if values[CONF_NOTIFICATIONS_ENABLED] else "disabled"
+    recovery_state = "enabled" if values[CONF_NOTIFY_ON_RECOVERY] else "disabled"
 
-    enabled = "enabled"
-    disabled = "disabled"
     return vol.Schema(
         {
-            vol.Optional(
-                SUMMARY_HARDWARE, default=str(values[SUMMARY_HARDWARE])
-            ): _readonly_text(str(values[SUMMARY_HARDWARE])),
-            vol.Optional(
-                SUMMARY_RUNTIME_PROFILE, default=values[CONF_RUNTIME_PROFILE]
-            ): _readonly_select(RUNTIME_PROFILE_OPTIONS, "runtime_profile"),
-            vol.Optional(
-                SUMMARY_UPDATE_INTERVAL,
-                default=str(values[CONF_UPDATE_INTERVAL_MINUTES]),
-            ): _readonly_text(str(values[CONF_UPDATE_INTERVAL_MINUTES])),
-            vol.Optional(
-                SUMMARY_ACTIVE_INTERVAL,
-                default=str(values[CONF_ACTIVE_UPDATE_INTERVAL_MINUTES]),
-            ): _readonly_text(str(values[CONF_ACTIVE_UPDATE_INTERVAL_MINUTES])),
-            vol.Optional(
-                SUMMARY_ERROR_BACKOFF,
-                default=str(values[CONF_ERROR_BACKOFF_INTERVAL_MINUTES]),
-            ): _readonly_text(str(values[CONF_ERROR_BACKOFF_INTERVAL_MINUTES])),
-            vol.Optional(
-                SUMMARY_ADAPTIVE_POLLING,
-                default=enabled if values[CONF_ADAPTIVE_POLLING] else disabled,
-            ): _readonly_select(_ENABLED_STATE_OPTIONS, "enabled_state"),
-            vol.Optional(
-                SUMMARY_DOWNLOAD_LIMIT,
-                default=str(values[CONF_MAX_VERIFICATION_SIZE_GB]),
-            ): _readonly_text(str(values[CONF_MAX_VERIFICATION_SIZE_GB])),
-            vol.Optional(
-                SUMMARY_EXPANDED_LIMIT,
-                default=str(values[CONF_MAX_EXPANDED_SIZE_GB]),
-            ): _readonly_text(str(values[CONF_MAX_EXPANDED_SIZE_GB])),
-            vol.Optional(
-                SUMMARY_MONITORING_POLICY, default=values[CONF_MONITORING_POLICY]
-            ): _readonly_select(MONITORING_POLICY_OPTIONS, "monitoring_policy"),
-            vol.Optional(
-                SUMMARY_MAX_AGE, default=str(values[CONF_MAX_AGE_DAYS])
-            ): _readonly_text(str(values[CONF_MAX_AGE_DAYS])),
-            vol.Optional(
-                SUMMARY_REDUNDANT_LOCATIONS,
-                default=str(values[CONF_MINIMUM_REDUNDANT_LOCATIONS]),
-            ): _readonly_text(str(values[CONF_MINIMUM_REDUNDANT_LOCATIONS])),
-            vol.Optional(
-                SUMMARY_REPAIR_ISSUES,
-                default=enabled if values[CONF_REPAIR_ISSUES_ENABLED] else disabled,
-            ): _readonly_select(_ENABLED_STATE_OPTIONS, "enabled_state"),
-            vol.Optional(
-                SUMMARY_VERIFICATION_POLICY,
-                default=values[CONF_VERIFICATION_POLICY],
-            ): _readonly_select(verification_options, "verification_policy"),
-            vol.Optional(
-                SUMMARY_ENTITY_MODE, default=values[CONF_ENTITY_MODE]
-            ): _readonly_select(ENTITY_MODE_OPTIONS, "entity_mode"),
-            vol.Optional(
-                SUMMARY_EXPOSE_METADATA,
-                default=enabled if values[CONF_EXPOSE_BACKUP_METADATA] else disabled,
-            ): _readonly_select(_ENABLED_STATE_OPTIONS, "enabled_state"),
-            vol.Optional(
-                SUMMARY_NOTIFICATIONS_ENABLED,
-                default=enabled if values[CONF_NOTIFICATIONS_ENABLED] else disabled,
-            ): _readonly_select(_ENABLED_STATE_OPTIONS, "enabled_state"),
-            vol.Optional(
-                SUMMARY_NOTIFICATION_COUNT,
-                default=str(len(values[CONF_NOTIFICATION_TARGETS])),
-            ): _readonly_text(str(len(values[CONF_NOTIFICATION_TARGETS]))),
-            vol.Optional(
-                SUMMARY_NOTIFY_ON_RECOVERY,
-                default=enabled if values[CONF_NOTIFY_ON_RECOVERY] else disabled,
-            ): _readonly_select(_ENABLED_STATE_OPTIONS, "enabled_state"),
+            vol.Optional(SUMMARY_SECTION_SYSTEM): section(
+                vol.Schema(
+                    {
+                        vol.Optional(SUMMARY_HARDWARE): _summary_constant(
+                            str(values[SUMMARY_HARDWARE])
+                        ),
+                        vol.Optional(SUMMARY_RUNTIME_PROFILE): (
+                            _translated_summary_constant(
+                                "runtime_profile", values[CONF_RUNTIME_PROFILE]
+                            )
+                        ),
+                    }
+                ),
+                {"collapsed": False},
+            ),
+            vol.Optional(SUMMARY_SECTION_POLLING): section(
+                vol.Schema(
+                    {
+                        vol.Optional(SUMMARY_ADAPTIVE_POLLING): (
+                            _translated_summary_constant("enabled_state", enabled_state)
+                        ),
+                        vol.Optional(SUMMARY_UPDATE_INTERVAL): _summary_constant(
+                            int(values[CONF_UPDATE_INTERVAL_MINUTES])
+                        ),
+                        vol.Optional(SUMMARY_ACTIVE_INTERVAL): _summary_constant(
+                            int(values[CONF_ACTIVE_UPDATE_INTERVAL_MINUTES])
+                        ),
+                        vol.Optional(SUMMARY_ERROR_BACKOFF): _summary_constant(
+                            int(values[CONF_ERROR_BACKOFF_INTERVAL_MINUTES])
+                        ),
+                        vol.Optional(SUMMARY_DOWNLOAD_LIMIT): _summary_constant(
+                            int(values[CONF_MAX_VERIFICATION_SIZE_GB])
+                        ),
+                        vol.Optional(SUMMARY_EXPANDED_LIMIT): _summary_constant(
+                            int(values[CONF_MAX_EXPANDED_SIZE_GB])
+                        ),
+                    }
+                ),
+                {"collapsed": False},
+            ),
+            vol.Optional(SUMMARY_SECTION_MONITORING): section(
+                vol.Schema(
+                    {
+                        vol.Optional(SUMMARY_MONITORING_POLICY): (
+                            _translated_summary_constant(
+                                "monitoring_policy",
+                                values[CONF_MONITORING_POLICY],
+                            )
+                        ),
+                        vol.Optional(SUMMARY_MAX_AGE): _summary_constant(
+                            int(values[CONF_MAX_AGE_DAYS])
+                        ),
+                        vol.Optional(SUMMARY_REDUNDANT_LOCATIONS): (
+                            _summary_constant(
+                                int(values[CONF_MINIMUM_REDUNDANT_LOCATIONS])
+                            )
+                        ),
+                        vol.Optional(SUMMARY_REPAIR_ISSUES): (
+                            _translated_summary_constant("enabled_state", repair_state)
+                        ),
+                    }
+                ),
+                {"collapsed": False},
+            ),
+            vol.Optional(SUMMARY_SECTION_INTEGRITY): section(
+                vol.Schema(
+                    {
+                        vol.Optional(SUMMARY_VERIFICATION_POLICY): (
+                            _translated_summary_constant(
+                                "verification_policy",
+                                values[CONF_VERIFICATION_POLICY],
+                            )
+                        ),
+                        vol.Optional(SUMMARY_ENTITY_MODE): (
+                            _translated_summary_constant(
+                                "entity_mode", values[CONF_ENTITY_MODE]
+                            )
+                        ),
+                        vol.Optional(SUMMARY_EXPOSE_METADATA): (
+                            _translated_summary_constant(
+                                "enabled_state", metadata_state
+                            )
+                        ),
+                    }
+                ),
+                {"collapsed": False},
+            ),
+            vol.Optional(SUMMARY_SECTION_NOTIFICATIONS): section(
+                vol.Schema(
+                    {
+                        vol.Optional(SUMMARY_NOTIFICATIONS_ENABLED): (
+                            _translated_summary_constant(
+                                "enabled_state", notification_state
+                            )
+                        ),
+                        vol.Optional(SUMMARY_NOTIFICATION_COUNT): (
+                            _summary_constant(len(values[CONF_NOTIFICATION_TARGETS]))
+                        ),
+                        vol.Optional(SUMMARY_NOTIFY_ON_RECOVERY): (
+                            _translated_summary_constant(
+                                "enabled_state", recovery_state
+                            )
+                        ),
+                    }
+                ),
+                {"collapsed": not values[CONF_NOTIFICATIONS_ENABLED]},
+            ),
         }
     )

@@ -93,6 +93,17 @@ def _async_get_manager(_hass: Any) -> Any:
     raise RuntimeError("Not available in isolated unit tests")
 
 
+class section:
+    """Minimal nested data-entry-flow section test double."""
+
+    def __init__(self, schema: Any, options: dict[str, Any] | None = None) -> None:
+        self.schema = schema
+        self.options = {"collapsed": False, **(options or {})}
+
+    def __call__(self, value: Any) -> Any:
+        return self.schema(value)
+
+
 class Platform(StrEnum):
     """Subset of Home Assistant platforms used by the integration."""
 
@@ -293,6 +304,14 @@ class TextSelectorConfig:
     read_only: bool = False
 
 
+@dataclass(frozen=True)
+class ConstantSelectorConfig:
+    value: str | int | bool
+    label: str | None = None
+    translation_key: str | None = None
+    read_only: bool = False
+
+
 class _Selector:
     def __init__(self, config: Any = None) -> None:
         self.config = config
@@ -302,6 +321,10 @@ class _Selector:
 
 
 class BooleanSelector(_Selector):
+    pass
+
+
+class ConstantSelector(_Selector):
     pass
 
 
@@ -417,6 +440,7 @@ config_entries.ConfigFlow = ConfigFlow
 config_entries.OptionsFlow = OptionsFlow
 config_entries.OptionsFlowWithReload = OptionsFlowWithReload
 data_entry_flow.FlowResult = dict
+data_entry_flow.section = section
 const.Platform = Platform
 const.EntityCategory = EntityCategory
 const.UnitOfInformation = UnitOfInformation
@@ -448,6 +472,8 @@ service.async_register_admin_service = lambda *_args, **_kwargs: None
 typing_module.ConfigType = dict
 storage.Store = Store
 selector.BooleanSelector = BooleanSelector
+selector.ConstantSelector = ConstantSelector
+selector.ConstantSelectorConfig = ConstantSelectorConfig
 selector.NumberSelector = NumberSelector
 selector.NumberSelectorConfig = NumberSelectorConfig
 selector.NumberSelectorMode = NumberSelectorMode

@@ -65,7 +65,7 @@ def _options_flow(*, adaptive: bool) -> config_flow.BackupCheckupOptionsFlow:
 
 
 @pytest.mark.asyncio
-async def test_summary_has_no_extra_confirmation_and_uses_read_only_selectors(
+async def test_summary_uses_compact_grouped_constant_rows(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
@@ -81,26 +81,52 @@ async def test_summary_has_no_extra_confirmation_and_uses_read_only_selectors(
     await flow._async_prepare()
 
     form = await flow.async_step_summary()
-    keys = {marker.key for marker in form["data_schema"].schema}
-    assert "confirm" not in keys
-    assert flow_schemas.SUMMARY_RUNTIME_PROFILE in keys
-    assert flow_schemas.SUMMARY_ADAPTIVE_POLLING in keys
+    sections = form["data_schema"].schema
+    section_keys = [marker.key for marker in sections]
+    assert section_keys == [
+        flow_schemas.SUMMARY_SECTION_SYSTEM,
+        flow_schemas.SUMMARY_SECTION_POLLING,
+        flow_schemas.SUMMARY_SECTION_MONITORING,
+        flow_schemas.SUMMARY_SECTION_INTEGRITY,
+        flow_schemas.SUMMARY_SECTION_NOTIFICATIONS,
+    ]
+    assert form["last_step"] is True
 
-    selectors = form["data_schema"].schema
+    system = next(
+        value
+        for marker, value in sections.items()
+        if marker.key == flow_schemas.SUMMARY_SECTION_SYSTEM
+    )
+    system_fields = system.schema.schema
     profile_selector = next(
         selector
-        for marker, selector in selectors.items()
+        for marker, selector in system_fields.items()
         if marker.key == flow_schemas.SUMMARY_RUNTIME_PROFILE
+    )
+    assert profile_selector.config["value"] == RUNTIME_PROFILE_APPLIANCE
+    assert (
+        profile_selector.config["translation_key"]
+        == "summary_runtime_profile_home_assistant_appliance"
+    )
+
+    polling = next(
+        value
+        for marker, value in sections.items()
+        if marker.key == flow_schemas.SUMMARY_SECTION_POLLING
     )
     adaptive_selector = next(
         selector
-        for marker, selector in selectors.items()
+        for marker, selector in polling.schema.schema.items()
         if marker.key == flow_schemas.SUMMARY_ADAPTIVE_POLLING
     )
-    assert profile_selector.config.read_only is True
-    assert profile_selector.config.translation_key == "runtime_profile"
-    assert adaptive_selector.config.read_only is True
-    assert adaptive_selector.config.translation_key == "enabled_state"
+    assert (
+        adaptive_selector.config["translation_key"] == "summary_enabled_state_enabled"
+    )
+    assert all(
+        selector.__class__.__name__ == "ConstantSelector"
+        for summary_section in sections.values()
+        for selector in summary_section.schema.schema.values()
+    )
 
     created = await flow.async_step_summary({})
     assert created["type"] == "create_entry"
@@ -267,15 +293,21 @@ def test_summary_translation_values_and_badges_are_release_safe() -> None:
     )
     summary = de["config"]["step"]["summary"]
     assert "{runtime_profile}" not in summary["description"]
-    assert summary["data"][flow_schemas.SUMMARY_RUNTIME_PROFILE] == "Leistungsprofil"
+    assert (
+        summary["sections"][flow_schemas.SUMMARY_SECTION_SYSTEM]["data"][
+            flow_schemas.SUMMARY_RUNTIME_PROFILE
+        ]
+        == "Leistungsprofil"
+    )
     assert (
         de["selector"]["runtime_profile"]["options"][RUNTIME_PROFILE_APPLIANCE]
         == "Home Assistant Appliance"
     )
-    assert de["selector"]["enabled_state"]["options"] == {
-        "enabled": "Aktiviert",
-        "disabled": "Deaktiviert",
-    }
+    assert de["selector"]["summary_enabled_state_enabled"]["value"] == "Aktiviert"
+    assert (
+        de["selector"]["summary_runtime_profile_home_assistant_appliance"]["value"]
+        == "Home Assistant Appliance"
+    )
 
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "docs/badges/" not in readme

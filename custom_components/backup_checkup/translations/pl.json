@@ -103,25 +103,50 @@
       "summary": {
         "title": "Confirm setup",
         "description": "Sprawdź poniższe ustawienia. Wybierz Wyślij, aby utworzyć BackupCheckup.",
-        "data": {
-          "summary_hardware": "Wykryty sprzęt",
-          "summary_runtime_profile": "Profil wydajności",
-          "summary_update_interval": "Normalny interwał odpytywania w minutach",
-          "summary_active_interval": "Interwał podczas kopii w minutach",
-          "summary_error_backoff": "Interwał po błędach w minutach",
-          "summary_adaptive_polling": "Inteligentne odpytywanie",
-          "summary_download_limit": "Maksymalny rozmiar pobierania w GB",
-          "summary_expanded_limit": "Maksymalny rozmiar po rozpakowaniu w GB",
-          "summary_monitoring_policy": "Polityka monitorowania",
-          "summary_max_age": "Maksymalny wiek kopii w dniach",
-          "summary_redundant_locations": "Wymagane lokalizacje przechowywania",
-          "summary_repair_issues": "Powiadomienia naprawcze",
-          "summary_verification_policy": "Strategia integralności",
-          "summary_entity_mode": "Tryb encji",
-          "summary_expose_metadata": "Pokaż nazwy i identyfikatory kopii",
-          "summary_notifications_enabled": "Powiadomienia mobilne",
-          "summary_notification_count": "Wybrane urządzenia powiadomień",
-          "summary_notify_on_recovery": "Powiadomienie o przywróceniu"
+        "sections": {
+          "summary_system": {
+            "name": "System i wydajność",
+            "data": {
+              "summary_hardware": "Wykryty sprzęt",
+              "summary_runtime_profile": "Profil wydajności"
+            }
+          },
+          "summary_polling": {
+            "name": "Odpytywanie i limity zasobów",
+            "data": {
+              "summary_adaptive_polling": "Inteligentne odpytywanie",
+              "summary_update_interval": "Normalny interwał odpytywania w minutach",
+              "summary_active_interval": "Interwał podczas kopii w minutach",
+              "summary_error_backoff": "Interwał po błędach w minutach",
+              "summary_download_limit": "Maksymalny rozmiar pobierania w GB",
+              "summary_expanded_limit": "Maksymalny rozmiar po rozpakowaniu w GB"
+            }
+          },
+          "summary_monitoring": {
+            "name": "Monitorowanie kopii zapasowych",
+            "data": {
+              "summary_monitoring_policy": "Polityka monitorowania",
+              "summary_max_age": "Maksymalny wiek kopii w dniach",
+              "summary_redundant_locations": "Wymagane lokalizacje przechowywania",
+              "summary_repair_issues": "Powiadomienia naprawcze"
+            }
+          },
+          "summary_integrity": {
+            "name": "Integralność i prezentacja",
+            "data": {
+              "summary_verification_policy": "Strategia integralności",
+              "summary_entity_mode": "Tryb encji",
+              "summary_expose_metadata": "Pokaż nazwy i identyfikatory kopii"
+            }
+          },
+          "summary_notifications": {
+            "name": "Powiadomienia",
+            "data": {
+              "summary_notifications_enabled": "Powiadomienia mobilne",
+              "summary_notification_count": "Wybrane urządzenia powiadomień",
+              "summary_notify_on_recovery": "Powiadomienie o przywróceniu"
+            }
+          }
         }
       }
     },
@@ -298,25 +323,50 @@
       "setup_summary": {
         "title": "Confirm updated setup",
         "description": "Sprawdź poniższe ustawienia. Wybierz Wyślij, aby zapisać konfigurację.",
-        "data": {
-          "summary_hardware": "Wykryty sprzęt",
-          "summary_runtime_profile": "Profil wydajności",
-          "summary_update_interval": "Normalny interwał odpytywania w minutach",
-          "summary_active_interval": "Interwał podczas kopii w minutach",
-          "summary_error_backoff": "Interwał po błędach w minutach",
-          "summary_adaptive_polling": "Inteligentne odpytywanie",
-          "summary_download_limit": "Maksymalny rozmiar pobierania w GB",
-          "summary_expanded_limit": "Maksymalny rozmiar po rozpakowaniu w GB",
-          "summary_monitoring_policy": "Polityka monitorowania",
-          "summary_max_age": "Maksymalny wiek kopii w dniach",
-          "summary_redundant_locations": "Wymagane lokalizacje przechowywania",
-          "summary_repair_issues": "Powiadomienia naprawcze",
-          "summary_verification_policy": "Strategia integralności",
-          "summary_entity_mode": "Tryb encji",
-          "summary_expose_metadata": "Pokaż nazwy i identyfikatory kopii",
-          "summary_notifications_enabled": "Powiadomienia mobilne",
-          "summary_notification_count": "Wybrane urządzenia powiadomień",
-          "summary_notify_on_recovery": "Powiadomienie o przywróceniu"
+        "sections": {
+          "summary_system": {
+            "name": "System i wydajność",
+            "data": {
+              "summary_hardware": "Wykryty sprzęt",
+              "summary_runtime_profile": "Profil wydajności"
+            }
+          },
+          "summary_polling": {
+            "name": "Odpytywanie i limity zasobów",
+            "data": {
+              "summary_adaptive_polling": "Inteligentne odpytywanie",
+              "summary_update_interval": "Normalny interwał odpytywania w minutach",
+              "summary_active_interval": "Interwał podczas kopii w minutach",
+              "summary_error_backoff": "Interwał po błędach w minutach",
+              "summary_download_limit": "Maksymalny rozmiar pobierania w GB",
+              "summary_expanded_limit": "Maksymalny rozmiar po rozpakowaniu w GB"
+            }
+          },
+          "summary_monitoring": {
+            "name": "Monitorowanie kopii zapasowych",
+            "data": {
+              "summary_monitoring_policy": "Polityka monitorowania",
+              "summary_max_age": "Maksymalny wiek kopii w dniach",
+              "summary_redundant_locations": "Wymagane lokalizacje przechowywania",
+              "summary_repair_issues": "Powiadomienia naprawcze"
+            }
+          },
+          "summary_integrity": {
+            "name": "Integralność i prezentacja",
+            "data": {
+              "summary_verification_policy": "Strategia integralności",
+              "summary_entity_mode": "Tryb encji",
+              "summary_expose_metadata": "Pokaż nazwy i identyfikatory kopii"
+            }
+          },
+          "summary_notifications": {
+            "name": "Powiadomienia",
+            "data": {
+              "summary_notifications_enabled": "Powiadomienia mobilne",
+              "summary_notification_count": "Wybrane urządzenia powiadomień",
+              "summary_notify_on_recovery": "Powiadomienie o przywróceniu"
+            }
+          }
         }
       }
     },
@@ -618,6 +668,54 @@
         "enabled": "Włączone",
         "disabled": "Wyłączone"
       }
+    },
+    "summary_runtime_profile_energy_saving": {
+      "value": "Energy saving"
+    },
+    "summary_runtime_profile_home_assistant_appliance": {
+      "value": "Home Assistant appliance"
+    },
+    "summary_runtime_profile_performance": {
+      "value": "High performance"
+    },
+    "summary_runtime_profile_server": {
+      "value": "Server"
+    },
+    "summary_runtime_profile_custom": {
+      "value": "Custom"
+    },
+    "summary_monitoring_policy_balanced": {
+      "value": "Balanced"
+    },
+    "summary_monitoring_policy_strict": {
+      "value": "Strict"
+    },
+    "summary_monitoring_policy_custom": {
+      "value": "Custom"
+    },
+    "summary_verification_policy_manual": {
+      "value": "Manual only"
+    },
+    "summary_verification_policy_automatic": {
+      "value": "Automatically verify new backups"
+    },
+    "summary_verification_policy_deep": {
+      "value": "Deep verification including database"
+    },
+    "summary_verification_policy_custom": {
+      "value": "Keep existing custom settings"
+    },
+    "summary_entity_mode_standard": {
+      "value": "Standard mode"
+    },
+    "summary_entity_mode_expert": {
+      "value": "Expert mode"
+    },
+    "summary_enabled_state_enabled": {
+      "value": "Włączone"
+    },
+    "summary_enabled_state_disabled": {
+      "value": "Wyłączone"
     }
   },
   "issues": {

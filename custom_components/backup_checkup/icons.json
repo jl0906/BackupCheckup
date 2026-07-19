@@ -1,0 +1,28 @@
+{
+  "config": {
+    "step": {
+      "summary": {
+        "sections": {
+          "summary_system": "mdi:chip",
+          "summary_polling": "mdi:timer-cog-outline",
+          "summary_monitoring": "mdi:shield-check-outline",
+          "summary_integrity": "mdi:file-check-outline",
+          "summary_notifications": "mdi:bell-outline"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "setup_summary": {
+        "sections": {
+          "summary_system": "mdi:chip",
+          "summary_polling": "mdi:timer-cog-outline",
+          "summary_monitoring": "mdi:shield-check-outline",
+          "summary_integrity": "mdi:file-check-outline",
+          "summary_notifications": "mdi:bell-outline"
+        }
+      }
+    }
+  }
+}

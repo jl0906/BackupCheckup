@@ -103,25 +103,50 @@
       "summary": {
         "title": "Confirm setup",
         "description": "Review the resolved settings below. Select Submit to create BackupCheckup.",
-        "data": {
-          "summary_hardware": "Detected hardware",
-          "summary_runtime_profile": "Performance profile",
-          "summary_update_interval": "Normal polling interval in minutes",
-          "summary_active_interval": "Active-backup polling interval in minutes",
-          "summary_error_backoff": "Error-backoff interval in minutes",
-          "summary_adaptive_polling": "Intelligent polling",
-          "summary_download_limit": "Maximum download size in GB",
-          "summary_expanded_limit": "Maximum expanded size in GB",
-          "summary_monitoring_policy": "Monitoring policy",
-          "summary_max_age": "Maximum backup age in days",
-          "summary_redundant_locations": "Required backup locations",
-          "summary_repair_issues": "Repair notifications",
-          "summary_verification_policy": "Integrity-check strategy",
-          "summary_entity_mode": "Entity mode",
-          "summary_expose_metadata": "Expose backup names and IDs",
-          "summary_notifications_enabled": "Mobile notifications",
-          "summary_notification_count": "Selected notification devices",
-          "summary_notify_on_recovery": "Recovery notification"
+        "sections": {
+          "summary_system": {
+            "name": "System and performance",
+            "data": {
+              "summary_hardware": "Detected hardware",
+              "summary_runtime_profile": "Performance profile"
+            }
+          },
+          "summary_polling": {
+            "name": "Polling and resource limits",
+            "data": {
+              "summary_adaptive_polling": "Intelligent polling",
+              "summary_update_interval": "Normal polling interval in minutes",
+              "summary_active_interval": "Active-backup polling interval in minutes",
+              "summary_error_backoff": "Error-backoff interval in minutes",
+              "summary_download_limit": "Maximum download size in GB",
+              "summary_expanded_limit": "Maximum expanded size in GB"
+            }
+          },
+          "summary_monitoring": {
+            "name": "Backup monitoring",
+            "data": {
+              "summary_monitoring_policy": "Monitoring policy",
+              "summary_max_age": "Maximum backup age in days",
+              "summary_redundant_locations": "Required backup locations",
+              "summary_repair_issues": "Repair notifications"
+            }
+          },
+          "summary_integrity": {
+            "name": "Integrity and presentation",
+            "data": {
+              "summary_verification_policy": "Integrity-check strategy",
+              "summary_entity_mode": "Entity mode",
+              "summary_expose_metadata": "Expose backup names and IDs"
+            }
+          },
+          "summary_notifications": {
+            "name": "Notifications",
+            "data": {
+              "summary_notifications_enabled": "Mobile notifications",
+              "summary_notification_count": "Selected notification devices",
+              "summary_notify_on_recovery": "Recovery notification"
+            }
+          }
         }
       }
     },
@@ -298,25 +323,50 @@
       "setup_summary": {
         "title": "Confirm updated setup",
         "description": "Review the resolved settings below. Select Submit to save the updated configuration.",
-        "data": {
-          "summary_hardware": "Detected hardware",
-          "summary_runtime_profile": "Performance profile",
-          "summary_update_interval": "Normal polling interval in minutes",
-          "summary_active_interval": "Active-backup polling interval in minutes",
-          "summary_error_backoff": "Error-backoff interval in minutes",
-          "summary_adaptive_polling": "Intelligent polling",
-          "summary_download_limit": "Maximum download size in GB",
-          "summary_expanded_limit": "Maximum expanded size in GB",
-          "summary_monitoring_policy": "Monitoring policy",
-          "summary_max_age": "Maximum backup age in days",
-          "summary_redundant_locations": "Required backup locations",
-          "summary_repair_issues": "Repair notifications",
-          "summary_verification_policy": "Integrity-check strategy",
-          "summary_entity_mode": "Entity mode",
-          "summary_expose_metadata": "Expose backup names and IDs",
-          "summary_notifications_enabled": "Mobile notifications",
-          "summary_notification_count": "Selected notification devices",
-          "summary_notify_on_recovery": "Recovery notification"
+        "sections": {
+          "summary_system": {
+            "name": "System and performance",
+            "data": {
+              "summary_hardware": "Detected hardware",
+              "summary_runtime_profile": "Performance profile"
+            }
+          },
+          "summary_polling": {
+            "name": "Polling and resource limits",
+            "data": {
+              "summary_adaptive_polling": "Intelligent polling",
+              "summary_update_interval": "Normal polling interval in minutes",
+              "summary_active_interval": "Active-backup polling interval in minutes",
+              "summary_error_backoff": "Error-backoff interval in minutes",
+              "summary_download_limit": "Maximum download size in GB",
+              "summary_expanded_limit": "Maximum expanded size in GB"
+            }
+          },
+          "summary_monitoring": {
+            "name": "Backup monitoring",
+            "data": {
+              "summary_monitoring_policy": "Monitoring policy",
+              "summary_max_age": "Maximum backup age in days",
+              "summary_redundant_locations": "Required backup locations",
+              "summary_repair_issues": "Repair notifications"
+            }
+          },
+          "summary_integrity": {
+            "name": "Integrity and presentation",
+            "data": {
+              "summary_verification_policy": "Integrity-check strategy",
+              "summary_entity_mode": "Entity mode",
+              "summary_expose_metadata": "Expose backup names and IDs"
+            }
+          },
+          "summary_notifications": {
+            "name": "Notifications",
+            "data": {
+              "summary_notifications_enabled": "Mobile notifications",
+              "summary_notification_count": "Selected notification devices",
+              "summary_notify_on_recovery": "Recovery notification"
+            }
+          }
         }
       }
     },
@@ -618,6 +668,54 @@
         "enabled": "Enabled",
         "disabled": "Disabled"
       }
+    },
+    "summary_runtime_profile_energy_saving": {
+      "value": "Energy saving"
+    },
+    "summary_runtime_profile_home_assistant_appliance": {
+      "value": "Home Assistant appliance"
+    },
+    "summary_runtime_profile_performance": {
+      "value": "High performance"
+    },
+    "summary_runtime_profile_server": {
+      "value": "Server"
+    },
+    "summary_runtime_profile_custom": {
+      "value": "Custom"
+    },
+    "summary_monitoring_policy_balanced": {
+      "value": "Balanced"
+    },
+    "summary_monitoring_policy_strict": {
+      "value": "Strict"
+    },
+    "summary_monitoring_policy_custom": {
+      "value": "Custom"
+    },
+    "summary_verification_policy_manual": {
+      "value": "Manual only"
+    },
+    "summary_verification_policy_automatic": {
+      "value": "Automatically verify new backups"
+    },
+    "summary_verification_policy_deep": {
+      "value": "Deep verification including database"
+    },
+    "summary_verification_policy_custom": {
+      "value": "Keep existing custom settings"
+    },
+    "summary_entity_mode_standard": {
+      "value": "Standard mode"
+    },
+    "summary_entity_mode_expert": {
+      "value": "Expert mode"
+    },
+    "summary_enabled_state_enabled": {
+      "value": "Enabled"
+    },
+    "summary_enabled_state_disabled": {
+      "value": "Disabled"
     }
   },
   "issues": {
