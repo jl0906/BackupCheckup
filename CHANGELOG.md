@@ -1,5 +1,39 @@
 # Changelog
 
+## 2.4.2
+
+**Compact, grouped setup confirmation**
+
+BackupCheckup 2.4.2 replaces the long read-only form used on the final setup page
+with a compact confirmation list. Config-entry schema version 10 remains unchanged,
+and existing settings require no migration.
+
+### Changed
+
+- Replaced the full-width disabled text boxes and dropdowns on the final config-flow
+  and options-assistant pages with non-editable constant rows.
+- Grouped resolved settings into five clear sections: System and performance, Polling
+  and resource limits, Backup monitoring, Integrity and presentation, and
+  Notifications.
+- Added section icons and made the Notifications section initially collapsed when
+  mobile notifications are disabled.
+- Marked both confirmation pages as the final flow step so Home Assistant presents a
+  clear final submit action.
+- Kept all profile, policy, mode, and enabled/disabled values localized through
+  frontend selector translations in every included language.
+
+### Fixed
+
+- Removed the visual impression that resolved settings were still editable controls.
+- Reduced excessive vertical scrolling on desktop and mobile confirmation dialogs.
+
+### Validation
+
+- Added regression coverage for nested flow sections, compact constant selectors,
+  localized values, notification-section collapse behavior, section icons, and normal
+  final submission in both the initial and options flows.
+- Config-entry schema remains version 10; no migration is required.
+
 ## 2.4.1
 
 **Config-flow localization, reliability, and release presentation fixes**
