@@ -243,7 +243,14 @@ def verification_policy_schema(values: dict[str, Any]) -> vol.Schema:
         {
             vol.Required(CONF_VERIFICATION_POLICY, default=selected): translated_select(
                 options, "verification_policy"
-            )
+            ),
+            vol.Required(
+                CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
+                default=values[CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES],
+            ): integer_selector(
+                MIN_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
+                MAX_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
+            ),
         }
     )
 

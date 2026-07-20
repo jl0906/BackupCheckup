@@ -262,7 +262,7 @@ class BackupCheckupPanel extends HTMLElement {
   _storageRows(agents, text) {
     if (!agents.length) return `<div class="empty">${this._escape(text.noStorage)}</div>`;
     return agents.map((agent) => {
-      const tone = agent.problem ? "danger" : agent.stale ? "warning" : "good";
+      const tone = agent.error ? "danger" : agent.stale ? "warning" : "good";
       const latest = agent.latest_backup ? this._date(agent.latest_backup) : "—";
       return `
         <div class="storage-row">

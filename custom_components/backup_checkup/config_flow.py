@@ -15,6 +15,7 @@ from .const import (
     CONF_ENTITY_MODE,
     CONF_EXPOSE_BACKUP_METADATA,
     CONF_HARDWARE_DETECTION,
+    CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
     CONF_MAX_EXPANDED_SIZE_GB,
     CONF_MAX_VERIFICATION_SIZE_GB,
     CONF_MONITORING_POLICY,
@@ -180,6 +181,16 @@ class _GuidedFlowState:
         self._draft[CONF_VERIFICATION_POLICY] = policy
         self._draft.update(verification_values(policy))
 
+    def _apply_verification_settings(self, user_input: dict[str, Any]) -> None:
+        """Apply integrity strategy and the manual-button cooldown."""
+        self._apply_verification_policy(str(user_input[CONF_VERIFICATION_POLICY]))
+        self._draft[CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES] = int(
+            user_input.get(
+                CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
+                self._draft[CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES],
+            )
+        )
+
     def _apply_presentation(self, user_input: dict[str, Any]) -> None:
         self._draft[CONF_ENTITY_MODE] = str(user_input[CONF_ENTITY_MODE])
         self._draft[CONF_EXPOSE_BACKUP_METADATA] = bool(
@@ -298,7 +309,7 @@ class BackupCheckupConfigFlow(
     ) -> FlowResult:
         """Choose how new backups are verified."""
         if user_input is not None:
-            self._apply_verification_policy(str(user_input[CONF_VERIFICATION_POLICY]))
+            self._apply_verification_settings(user_input)
             return await self.async_step_presentation()
         return self.async_show_form(
             step_id="verification",
@@ -492,7 +503,16 @@ class BackupCheckupOptionsFlow(_GuidedFlowState, config_entries.OptionsFlowWithR
         if user_input is not None:
             policy = str(user_input[CONF_VERIFICATION_POLICY])
             return self._save(
-                {CONF_VERIFICATION_POLICY: policy, **verification_values(policy)}
+                {
+                    CONF_VERIFICATION_POLICY: policy,
+                    **verification_values(policy),
+                    CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES: int(
+                        user_input.get(
+                            CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
+                            values[CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES],
+                        )
+                    ),
+                }
             )
         return self.async_show_form(
             step_id="verification", data_schema=verification_policy_schema(values)
@@ -591,7 +611,7 @@ class BackupCheckupOptionsFlow(_GuidedFlowState, config_entries.OptionsFlowWithR
     ) -> FlowResult:
         """Choose verification while rerunning the setup assistant."""
         if user_input is not None:
-            self._apply_verification_policy(str(user_input[CONF_VERIFICATION_POLICY]))
+            self._apply_verification_settings(user_input)
             return await self.async_step_setup_presentation()
         return self.async_show_form(
             step_id="setup_verification",

@@ -840,7 +840,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         required_missing = bool(
             latest_location_ids
             and any(
-                summary.problem
+                summary.error
                 for summary in summaries
                 if summary.agent_id in latest_location_ids
             )
@@ -1178,7 +1178,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         required_missing = bool(
             latest
             and any(
-                summary.problem
+                summary.error
                 for summary in summaries
                 if summary.agent_id in latest.agents
             )

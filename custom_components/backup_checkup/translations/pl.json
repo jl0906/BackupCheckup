@@ -76,10 +76,12 @@
         "title": "Choose an integrity-check strategy",
         "description": "Automatic archive verification can use considerable network, CPU, and temporary disk space. Deep verification additionally checks the included SQLite database.",
         "data": {
-          "verification_policy": "Integrity-check strategy"
+          "verification_policy": "Integrity-check strategy",
+          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes"
         },
         "data_description": {
-          "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check."
+          "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check.",
+          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown."
         }
       },
       "presentation": {
@@ -203,10 +205,12 @@
         "title": "Choose an integrity-check strategy",
         "description": "Automatic archive verification can use considerable network, CPU, and temporary disk space. Deep verification additionally checks the included SQLite database.",
         "data": {
-          "verification_policy": "Integrity-check strategy"
+          "verification_policy": "Integrity-check strategy",
+          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes"
         },
         "data_description": {
-          "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check."
+          "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check.",
+          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown."
         }
       },
       "presentation": {
@@ -255,10 +259,12 @@
         "title": "Choose an integrity-check strategy",
         "description": "Automatic archive verification can use considerable network, CPU, and temporary disk space. Deep verification additionally checks the included SQLite database.",
         "data": {
-          "verification_policy": "Integrity-check strategy"
+          "verification_policy": "Integrity-check strategy",
+          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes"
         },
         "data_description": {
-          "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check."
+          "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check.",
+          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown."
         }
       },
       "setup_presentation": {

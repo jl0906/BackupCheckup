@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.5.1
+
+**Storage-state and manual verification controls**
+
+### Fixed
+
+- A reachable storage location containing only old backups is no longer treated
+  as missing. Old backups now produce the freshness warning and the recommendation
+  to create a new backup; actual storage-agent errors still produce the storage
+  warning.
+- The sidebar now renders a stale but reachable storage location as a warning
+  instead of an error.
+- The manual verification cooldown is now available directly under integrity
+  checks in the initial flow, the setup assistant, and focused options. Set it to
+  `0` to make the administrator verification button immediately reusable.
+
 ## 2.5.0
 
 **Optional BackupCheckup frontend**

@@ -18,12 +18,12 @@ def _integrity_is_current(data: BackupCheckupData) -> bool:
 
 
 def _required_location_problem_count(data: BackupCheckupData) -> int:
-    """Count problematic storage locations required by the latest backup."""
+    """Count unavailable storage locations used by the latest backup."""
     latest = data.latest_monitored_backup_record
     if latest is None:
         return 0
     return sum(
-        summary.problem and summary.agent_id in latest.agents
+        bool(summary.error) and summary.agent_id in latest.agents
         for summary in data.agent_summaries
     )
 

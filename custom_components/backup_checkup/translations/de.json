@@ -76,10 +76,12 @@
         "title": "Integritätsstrategie auswählen",
         "description": "Automatische Archivprüfungen können Netzwerk, CPU und temporären Speicher deutlich belasten. Die Tiefenprüfung kontrolliert zusätzlich die enthaltene SQLite-Datenbank.",
         "data": {
-          "verification_policy": "Integritätsstrategie"
+          "verification_policy": "Integritätsstrategie",
+          "manual_verification_cooldown_minutes": "Wartezeit für den Admin-Button in Minuten"
         },
         "data_description": {
-          "verification_policy": "Nur manuell wird für kleine Systeme empfohlen. Automatisch prüft jedes neu erkannte neueste Backup einmal. Tiefenprüfung führt zusätzlich SQLite PRAGMA integrity_check aus."
+          "verification_policy": "Nur manuell wird für kleine Systeme empfohlen. Automatisch prüft jedes neu erkannte neueste Backup einmal. Tiefenprüfung führt zusätzlich SQLite PRAGMA integrity_check aus.",
+          "manual_verification_cooldown_minutes": "Legt fest, wann der Admin-Button nach einer manuellen Prüfung wieder verwendet werden kann. 0 deaktiviert die Wartezeit."
         }
       },
       "presentation": {
@@ -203,10 +205,12 @@
         "title": "Integritätsstrategie auswählen",
         "description": "Automatische Archivprüfungen können Netzwerk, CPU und temporären Speicher deutlich belasten. Die Tiefenprüfung kontrolliert zusätzlich die enthaltene SQLite-Datenbank.",
         "data": {
-          "verification_policy": "Integritätsstrategie"
+          "verification_policy": "Integritätsstrategie",
+          "manual_verification_cooldown_minutes": "Wartezeit für den Admin-Button in Minuten"
         },
         "data_description": {
-          "verification_policy": "Nur manuell wird für kleine Systeme empfohlen. Automatisch prüft jedes neu erkannte neueste Backup einmal. Tiefenprüfung führt zusätzlich SQLite PRAGMA integrity_check aus."
+          "verification_policy": "Nur manuell wird für kleine Systeme empfohlen. Automatisch prüft jedes neu erkannte neueste Backup einmal. Tiefenprüfung führt zusätzlich SQLite PRAGMA integrity_check aus.",
+          "manual_verification_cooldown_minutes": "Legt fest, wann der Admin-Button nach einer manuellen Prüfung wieder verwendet werden kann. 0 deaktiviert die Wartezeit."
         }
       },
       "presentation": {
@@ -255,10 +259,12 @@
         "title": "Integritätsstrategie auswählen",
         "description": "Automatische Archivprüfungen können Netzwerk, CPU und temporären Speicher deutlich belasten. Die Tiefenprüfung kontrolliert zusätzlich die enthaltene SQLite-Datenbank.",
         "data": {
-          "verification_policy": "Integritätsstrategie"
+          "verification_policy": "Integritätsstrategie",
+          "manual_verification_cooldown_minutes": "Wartezeit für den Admin-Button in Minuten"
         },
         "data_description": {
-          "verification_policy": "Nur manuell wird für kleine Systeme empfohlen. Automatisch prüft jedes neu erkannte neueste Backup einmal. Tiefenprüfung führt zusätzlich SQLite PRAGMA integrity_check aus."
+          "verification_policy": "Nur manuell wird für kleine Systeme empfohlen. Automatisch prüft jedes neu erkannte neueste Backup einmal. Tiefenprüfung führt zusätzlich SQLite PRAGMA integrity_check aus.",
+          "manual_verification_cooldown_minutes": "Legt fest, wann der Admin-Button nach einer manuellen Prüfung wieder verwendet werden kann. 0 deaktiviert die Wartezeit."
         }
       },
       "setup_presentation": {
