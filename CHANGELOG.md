@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.6.2
+
+**Stable live-log scrolling**
+
+### Fixed
+
+- The sidebar panel now ignores unrelated Home Assistant state updates instead
+  of rebuilding its complete Shadow DOM for every global state change.
+- Necessary BackupCheckup updates preserve the scroll positions of the panel,
+  its Home Assistant container, and the document. Reading older live-log entries
+  therefore no longer jumps back to the top, including while new progress events
+  arrive.
+- Search-field focus is restored with `preventScroll` so filtering the live log
+  cannot move the viewport either.
+- Live-log timestamps include hours, minutes, and seconds for complete event
+  timing while the compact overview dates remain unchanged.
+- Incremented the internal 2.6.2 frontend asset revision so browsers cannot keep
+  the earlier same-version panel bundle without second-level timestamps.
+
 ## 2.6.1
 
 **Frontend and configuration-description cache fix**
