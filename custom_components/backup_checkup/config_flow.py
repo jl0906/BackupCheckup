@@ -11,6 +11,7 @@ from homeassistant.data_entry_flow import FlowResult
 
 from .configuration import normalize_configuration
 from .const import (
+    CONF_ACTIVITY_LOGGING_ENABLED,
     CONF_ADAPTIVE_POLLING,
     CONF_ENTITY_MODE,
     CONF_EXPOSE_BACKUP_METADATA,
@@ -202,6 +203,12 @@ class _GuidedFlowState:
                 self._draft[CONF_SHOW_SIDEBAR_PANEL],
             )
         )
+        self._draft[CONF_ACTIVITY_LOGGING_ENABLED] = bool(
+            user_input.get(
+                CONF_ACTIVITY_LOGGING_ENABLED,
+                self._draft[CONF_ACTIVITY_LOGGING_ENABLED],
+            )
+        )
         self._draft.update(_notification_values(user_input))
 
 
@@ -210,7 +217,7 @@ class BackupCheckupConfigFlow(
 ):
     """Handle the guided BackupCheckup installation flow."""
 
-    VERSION = 11
+    VERSION = 12
 
     def __init__(self) -> None:
         """Initialize an empty guided flow."""
@@ -540,6 +547,12 @@ class BackupCheckupOptionsFlow(_GuidedFlowState, config_entries.OptionsFlowWithR
                         user_input.get(
                             CONF_SHOW_SIDEBAR_PANEL,
                             values[CONF_SHOW_SIDEBAR_PANEL],
+                        )
+                    ),
+                    CONF_ACTIVITY_LOGGING_ENABLED: bool(
+                        user_input.get(
+                            CONF_ACTIVITY_LOGGING_ENABLED,
+                            values[CONF_ACTIVITY_LOGGING_ENABLED],
                         )
                     ),
                     **_notification_values(user_input),

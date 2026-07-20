@@ -23,6 +23,47 @@ const TEXT = {
     settings: "Settings",
     updated: "Updated",
     actionFailed: "The action could not be completed.",
+    overviewTab: "Overview",
+    logTab: "Live log",
+    logTitle: "BackupCheckup live log",
+    searchLogs: "Search log entries",
+    noLogs: "No matching log entries are available.",
+    loggingDisabled: "Detailed live logging is disabled in the integration options.",
+    live: "Live",
+    activityActions: {
+      verification_prepare: "Preparing integrity verification",
+      storage_copy_prepare: "Preparing storage copy",
+      backup_download: "Downloading backup",
+      backup_extract: "Extracting backup",
+      encrypted_backup_extract: "Extracting encrypted backup",
+      database_read: "Reading and checking database",
+      temporary_data_cleanup: "Removing temporary verification data",
+      inventory_refresh: "Refreshing backup inventory",
+      backup_manager_read: "Reading backup manager",
+      integrity_check: "Running integrity verification",
+      integrity_check_request: "Processing verification request",
+      integrity_result_persist: "Saving verification result",
+      health_state: "Updating backup health",
+      notification_send: "Sending notification",
+      notification_processing: "Processing notifications",
+      config_entry_setup: "Starting integration",
+      entity_platform_setup: "Setting up entities",
+      repair_issue_sync: "Synchronizing repair notices",
+      first_refresh: "Completing first inventory refresh",
+      coordinator_shutdown: "Stopping integration",
+      integrity_state_load: "Loading saved verification state",
+      integrity_check_schedule: "Scheduling automatic verification",
+      integrity_background_task: "Monitoring background verification",
+      post_verification_refresh: "Refreshing status after verification",
+      service_refresh: "Running manual refresh",
+      service_verify_latest_backup: "Starting manual backup verification",
+      service_test_notification: "Testing notification",
+      panel_setup: "Setting up sidebar panel",
+    },
+    activityOutcomes: {
+      started: "started", completed: "completed", changed: "in progress",
+      skipped: "skipped", failed: "failed", cancelled: "cancelled",
+    },
   },
   de: {
     dashboard: "Backup-Übersicht",
@@ -48,6 +89,47 @@ const TEXT = {
     settings: "Einstellungen",
     updated: "Aktualisiert",
     actionFailed: "Die Aktion konnte nicht ausgeführt werden.",
+    overviewTab: "Übersicht",
+    logTab: "Protokoll",
+    logTitle: "BackupCheckup Live-Protokoll",
+    searchLogs: "Protokolle durchsuchen",
+    noLogs: "Keine passenden Protokolleinträge vorhanden.",
+    loggingDisabled: "Das ausführliche Live-Protokoll ist in den Integrationsoptionen deaktiviert.",
+    live: "Live",
+    activityActions: {
+      verification_prepare: "Integritätsprüfung wird vorbereitet",
+      storage_copy_prepare: "Speicherkopie wird vorbereitet",
+      backup_download: "Backup wird heruntergeladen",
+      backup_extract: "Backup wird extrahiert",
+      encrypted_backup_extract: "Verschlüsseltes Backup wird extrahiert",
+      database_read: "Datenbank wird gelesen und geprüft",
+      temporary_data_cleanup: "Temporäre Prüfdaten werden entfernt",
+      inventory_refresh: "Backup-Inventar wird aktualisiert",
+      backup_manager_read: "Backup-Manager wird gelesen",
+      integrity_check: "Integritätsprüfung wird ausgeführt",
+      integrity_check_request: "Prüfauftrag wird verarbeitet",
+      integrity_result_persist: "Prüfergebnis wird gespeichert",
+      health_state: "Backup-Zustand wird aktualisiert",
+      notification_send: "Benachrichtigung wird gesendet",
+      notification_processing: "Benachrichtigungen werden verarbeitet",
+      config_entry_setup: "Integration wird gestartet",
+      entity_platform_setup: "Entitäten werden eingerichtet",
+      repair_issue_sync: "Reparaturhinweise werden synchronisiert",
+      first_refresh: "Erste Inventarabfrage wird abgeschlossen",
+      coordinator_shutdown: "Integration wird beendet",
+      integrity_state_load: "Gespeicherter Prüfstatus wird geladen",
+      integrity_check_schedule: "Automatische Prüfung wird eingeplant",
+      integrity_background_task: "Hintergrundprüfung wird überwacht",
+      post_verification_refresh: "Status wird nach der Prüfung aktualisiert",
+      service_refresh: "Manuelle Aktualisierung wird ausgeführt",
+      service_verify_latest_backup: "Manuelle Backup-Prüfung wird gestartet",
+      service_test_notification: "Benachrichtigung wird getestet",
+      panel_setup: "Seitenleistenansicht wird eingerichtet",
+    },
+    activityOutcomes: {
+      started: "gestartet", completed: "abgeschlossen", changed: "läuft",
+      skipped: "übersprungen", failed: "fehlgeschlagen", cancelled: "abgebrochen",
+    },
   },
   da: {
     dashboard: "Backupoversigt", subtitle: "Livestatus for dine Home Assistant-backups",
@@ -139,6 +221,7 @@ const DEFAULT_ENTITIES = {
   problem: "binary_sensor.backup_checkup_problem",
   verify: "button.backup_checkup_verify_latest_backup",
   refresh: "button.backup_checkup_refresh",
+  activity_log: "sensor.backup_checkup_activity_log",
 };
 
 class BackupCheckupPanel extends HTMLElement {
@@ -149,6 +232,8 @@ class BackupCheckupPanel extends HTMLElement {
     this._panel = undefined;
     this._renderPending = false;
     this._busy = new Set();
+    this._activeTab = "overview";
+    this._logSearch = "";
   }
 
   set hass(value) {
@@ -198,11 +283,18 @@ class BackupCheckupPanel extends HTMLElement {
   }
 
   _text() {
-    return TEXT[this._language()];
+    const selected = TEXT[this._language()];
+    return {
+      ...TEXT.en,
+      ...selected,
+      activityActions: { ...TEXT.en.activityActions, ...selected.activityActions },
+      activityOutcomes: { ...TEXT.en.activityOutcomes, ...selected.activityOutcomes },
+    };
   }
 
   _entities() {
-    return { ...DEFAULT_ENTITIES, ...(this._panel?.config?.entities || {}) };
+    const configured = this._panel?.config?.entities;
+    return configured ? { ...DEFAULT_ENTITIES, ...configured } : DEFAULT_ENTITIES;
   }
 
   _state(key) {
@@ -220,7 +312,8 @@ class BackupCheckupPanel extends HTMLElement {
       // Fall back to the raw value if a frontend formatter is unavailable.
     }
     const unit = state.attributes?.unit_of_measurement;
-    return `${state.state}${unit ? ` ${unit}` : ""}`;
+    const suffix = unit ? ` ${unit}` : "";
+    return `${state.state}${suffix}`;
   }
 
   _localizedStatus(code) {
@@ -262,7 +355,7 @@ class BackupCheckupPanel extends HTMLElement {
   _storageRows(agents, text) {
     if (!agents.length) return `<div class="empty">${this._escape(text.noStorage)}</div>`;
     return agents.map((agent) => {
-      const tone = agent.error ? "danger" : agent.stale ? "warning" : "good";
+      const tone = this._storageTone(agent);
       const latest = agent.latest_backup ? this._date(agent.latest_backup) : "—";
       return `
         <div class="storage-row">
@@ -274,6 +367,11 @@ class BackupCheckupPanel extends HTMLElement {
           <div class="storage-count">${this._escape(agent.backup_count ?? 0)} <span>${this._escape(text.backups)}</span></div>
         </div>`;
     }).join("");
+  }
+
+  _storageTone(agent) {
+    if (agent.error) return "danger";
+    return agent.stale ? "warning" : "good";
   }
 
   _problemRows(problems, text) {
@@ -320,6 +418,7 @@ class BackupCheckupPanel extends HTMLElement {
     const latestAge = this._state("latest_backup_age");
     const latestSize = this._state("latest_backup_size");
     const integrity = this._state("integrity_status");
+    const activity = this._state("activity_log");
     const scoreValue = Number(scoreState?.state);
     const score = Number.isFinite(scoreValue)
       ? Math.min(100, Math.max(0, scoreValue))
@@ -345,77 +444,179 @@ class BackupCheckupPanel extends HTMLElement {
       isAdmin: Boolean(this._hass.user?.is_admin),
       verifyState: this._state("verify"),
       refreshState: this._state("refresh"),
+      activityEntries: Array.isArray(activity?.attributes?.entries)
+        ? activity.attributes.entries : [],
+      activityEnabled: Boolean(activity?.attributes?.enabled),
     };
+  }
+
+  _settingsButton(isAdmin, text) {
+    if (!isAdmin) return "";
+    return `<button class="icon-button" data-nav="settings" title="${this._escape(text.settings)}">
+      <ha-icon icon="mdi:cog-outline"></ha-icon>
+    </button>`;
+  }
+
+  _actionFooter(model) {
+    if (!model.isAdmin) return "";
+    const refreshDisabled = this._buttonDisabled(model.refreshState, "refresh")
+      ? "disabled" : "";
+    const verifyDisabled = this._buttonDisabled(model.verifyState, "verify")
+      ? "disabled" : "";
+    return `<footer>
+      <button class="action secondary" data-action="refresh" ${refreshDisabled}>
+        <ha-icon icon="mdi:refresh"></ha-icon>${this._escape(model.text.refresh)}
+      </button>
+      <button class="action primary" data-action="verify" ${verifyDisabled}>
+        <ha-icon icon="mdi:shield-search"></ha-icon>${this._escape(model.text.verify)}
+      </button>
+    </footer>`;
+  }
+
+  _tabs(text) {
+    const overviewActive = this._activeTab === "overview" ? "active" : "";
+    const logsActive = this._activeTab === "logs" ? "active" : "";
+    return `<nav class="tabs" aria-label="BackupCheckup">
+      <button class="tab ${overviewActive}" data-tab="overview">
+        <ha-icon icon="mdi:view-dashboard-outline"></ha-icon>${this._escape(text.overviewTab)}
+      </button>
+      <button class="tab ${logsActive}" data-tab="logs">
+        <ha-icon icon="mdi:text-box-search-outline"></ha-icon>${this._escape(text.logTab)}
+      </button>
+    </nav>`;
+  }
+
+  _overviewTemplate(model) {
+    return `<section class="hero ${model.tone}">
+      <div class="hero-copy">
+        <div class="eyebrow"><span></span>${this._escape(model.statusLabel)}</div>
+        <h2>${this._escape(model.heroMessage)}</h2>
+        <p>${this._escape(model.text.updated)}: ${this._escape(this._date(model.updated))}</p>
+      </div>
+      <div class="score" style="--score:${model.score ?? 0}">
+        <div><strong>${model.score ?? "—"}</strong><span>${this._escape(model.text.healthScore)}</span></div>
+      </div>
+    </section>
+    <section class="metrics">
+      ${this._metric("mdi:shield-check-outline", model.text.status, model.statusLabel, model.tone)}
+      ${this._metric("mdi:timer-sand", model.text.latestBackup, this._formatState(model.latestAge))}
+      ${this._metric("mdi:database", model.text.backupSize, this._formatState(model.latestSize))}
+      ${this._metric("mdi:archive-multiple", model.text.storedBackups, this._formatState(model.stored))}
+      ${this._metric("mdi:shield-search", model.text.integrity, model.integrityLabel, model.integrityTone)}
+    </section>
+    <section class="content-grid">
+      <article class="card recommendation-card">
+        <div class="card-title"><ha-icon icon="mdi:lightbulb-on-outline"></ha-icon><h3>${this._escape(model.text.recommendation)}</h3></div>
+        <p>${this._escape(model.recommendationLabel)}</p>
+      </article>
+      <article class="card">
+        <div class="card-title"><ha-icon icon="mdi:alert-outline"></ha-icon><h3>${this._escape(model.text.problems)}</h3></div>
+        <div class="rows">${this._problemRows(model.problems, model.text)}</div>
+      </article>
+      <article class="card storage-card">
+        <div class="card-title"><ha-icon icon="mdi:server-network"></ha-icon><h3>${this._escape(model.text.storage)}</h3></div>
+        <div class="rows">${this._storageRows(model.agents, model.text)}</div>
+      </article>
+    </section>
+    ${this._actionFooter(model)}`;
+  }
+
+  _activityMessage(record, text) {
+    const action = text.activityActions[record.action] || this._humanize(record.action);
+    const progress = record.details?.progress_percent;
+    if (progress !== undefined) return `${action} – ${progress}%`;
+    const outcome = text.activityOutcomes[record.outcome] || this._humanize(record.outcome);
+    return `${action} – ${outcome}`;
+  }
+
+  _activityDetails(record) {
+    const details = Object.entries(record.details || {})
+      .filter(([key]) => key !== "progress_percent")
+      .map(([key, value]) => `${this._humanize(key)}=${value}`);
+    return details.join(" · ");
+  }
+
+  _logRows(records, text) {
+    const query = this._logSearch.trim().toLocaleLowerCase(this._language());
+    const filtered = records.filter((record) => {
+      if (!query) return true;
+      const searchable = `${record.action} ${record.outcome} ${this._activityMessage(record, text)} ${this._activityDetails(record)}`;
+      return searchable.toLocaleLowerCase(this._language()).includes(query);
+    });
+    if (!filtered.length) return `<div class="log-empty">${this._escape(text.noLogs)}</div>`;
+    return [...filtered].reverse().map((record) => {
+      const details = this._activityDetails(record);
+      const detailLine = details ? `<span>${this._escape(details)}</span>` : "";
+      const level = ["warning", "error", "critical"].includes(record.level)
+        ? record.level : "info";
+      return `<div class="log-row ${level}">
+        <time>${this._escape(this._date(record.timestamp))}</time>
+        <strong>${this._escape(this._activityMessage(record, text))}</strong>
+        ${detailLine}
+      </div>`;
+    }).join("");
+  }
+
+  _logTemplate(model) {
+    if (!model.activityEnabled) {
+      return `<section class="log-disabled">
+        <ha-icon icon="mdi:text-box-remove-outline"></ha-icon>
+        <p>${this._escape(model.text.loggingDisabled)}</p>
+      </section>`;
+    }
+    return `<section class="log-view">
+      <div class="log-toolbar">
+        <label><ha-icon icon="mdi:magnify"></ha-icon>
+          <input data-log-search type="search" value="${this._escape(this._logSearch)}" placeholder="${this._escape(model.text.searchLogs)}">
+        </label>
+        <span class="live-indicator"><i></i>${this._escape(model.text.live)}</span>
+      </div>
+      <article class="log-console">
+        <h2>${this._escape(model.text.logTitle)}</h2>
+        <div class="log-lines">${this._logRows(model.activityEntries, model.text)}</div>
+      </article>
+    </section>`;
   }
 
   _render() {
     if (!this.shadowRoot || !this._hass) return;
-    const {
-      text, stored, latestAge, latestSize, score, tone,
-      problems, agents, updated, heroMessage, statusLabel, recommendationLabel,
-      integrityLabel, integrityTone, isAdmin, verifyState, refreshState,
-    } = this._renderModel();
+    const restoreSearchFocus = this.shadowRoot.activeElement?.hasAttribute("data-log-search");
+    const model = this._renderModel();
+    const content = this._activeTab === "logs"
+      ? this._logTemplate(model) : this._overviewTemplate(model);
+    const settingsButton = this._settingsButton(model.isAdmin, model.text);
 
     this.shadowRoot.innerHTML = `
       <style>${BackupCheckupPanel.styles}</style>
       <main>
         <header>
           <div class="brand"><ha-icon icon="mdi:backup-restore"></ha-icon></div>
-          <div><h1>${this._escape(text.dashboard)}</h1><p>${this._escape(text.subtitle)}</p></div>
-          ${isAdmin ? `<button class="icon-button" data-nav="settings" title="${this._escape(text.settings)}">
-            <ha-icon icon="mdi:cog-outline"></ha-icon>
-          </button>` : ""}
+          <div><h1>${this._escape(model.text.dashboard)}</h1><p>${this._escape(model.text.subtitle)}</p></div>
+          ${settingsButton}
         </header>
-
-        <section class="hero ${tone}">
-          <div class="hero-copy">
-            <div class="eyebrow"><span></span>${this._escape(statusLabel)}</div>
-            <h2>${this._escape(heroMessage)}</h2>
-            <p>${this._escape(text.updated)}: ${this._escape(this._date(updated))}</p>
-          </div>
-          <div class="score" style="--score:${score ?? 0}">
-            <div><strong>${score ?? "—"}</strong><span>${this._escape(text.healthScore)}</span></div>
-          </div>
-        </section>
-
-        <section class="metrics">
-          ${this._metric("mdi:shield-check-outline", text.status, statusLabel, tone)}
-          ${this._metric("mdi:timer-sand", text.latestBackup, this._formatState(latestAge))}
-          ${this._metric("mdi:database", text.backupSize, this._formatState(latestSize))}
-          ${this._metric("mdi:archive-multiple", text.storedBackups, this._formatState(stored))}
-          ${this._metric("mdi:shield-search", text.integrity, integrityLabel, integrityTone)}
-        </section>
-
-        <section class="content-grid">
-          <article class="card recommendation-card">
-            <div class="card-title"><ha-icon icon="mdi:lightbulb-on-outline"></ha-icon><h3>${this._escape(text.recommendation)}</h3></div>
-            <p>${this._escape(recommendationLabel)}</p>
-          </article>
-          <article class="card">
-            <div class="card-title"><ha-icon icon="mdi:alert-outline"></ha-icon><h3>${this._escape(text.problems)}</h3></div>
-            <div class="rows">${this._problemRows(problems, text)}</div>
-          </article>
-          <article class="card storage-card">
-            <div class="card-title"><ha-icon icon="mdi:server-network"></ha-icon><h3>${this._escape(text.storage)}</h3></div>
-            <div class="rows">${this._storageRows(agents, text)}</div>
-          </article>
-        </section>
-
-        <footer>
-          ${isAdmin ? `
-            <button class="action secondary" data-action="refresh" ${this._buttonDisabled(refreshState, "refresh") ? "disabled" : ""}>
-              <ha-icon icon="mdi:refresh"></ha-icon>${this._escape(text.refresh)}
-            </button>
-            <button class="action primary" data-action="verify" ${this._buttonDisabled(verifyState, "verify") ? "disabled" : ""}>
-              <ha-icon icon="mdi:shield-search"></ha-icon>${this._escape(text.verify)}
-            </button>` : ""}
-        </footer>
+        ${this._tabs(model.text)}
+        ${content}
       </main>`;
 
     this.shadowRoot.querySelector('[data-nav="settings"]')?.addEventListener("click", () => this._openSettings());
+    this.shadowRoot.querySelectorAll("[data-tab]").forEach((button) => {
+      button.addEventListener("click", () => {
+        this._activeTab = button.dataset.tab;
+        this._scheduleRender();
+      });
+    });
     this.shadowRoot.querySelectorAll("[data-action]").forEach((button) => {
       button.addEventListener("click", () => this._runAction(button.dataset.action));
     });
+    const search = this.shadowRoot.querySelector("[data-log-search]");
+    search?.addEventListener("input", (event) => {
+      this._logSearch = event.target.value;
+      this._scheduleRender();
+    });
+    if (restoreSearchFocus && search) {
+      search.focus();
+      search.setSelectionRange(search.value.length, search.value.length);
+    }
   }
 
   _buttonDisabled(state, action) {
@@ -457,6 +658,10 @@ class BackupCheckupPanel extends HTMLElement {
       .brand { width:48px; height:48px; display:grid; place-items:center; border-radius:15px; background:var(--primary-color); color:var(--text-primary-color, white); }
       .brand ha-icon { --mdc-icon-size:27px; }
       .icon-button { margin-left:auto; width:44px; height:44px; display:grid; place-items:center; border:0; border-radius:13px; background:var(--card-background-color); color:var(--primary-text-color); box-shadow:var(--ha-card-box-shadow, 0 2px 8px rgba(0,0,0,.12)); cursor:pointer; }
+      .tabs { display:flex; gap:6px; margin:-6px 0 22px; border-bottom:1px solid var(--divider-color); }
+      .tab { display:flex; align-items:center; gap:8px; min-height:46px; padding:0 16px; border:0; border-bottom:3px solid transparent; background:transparent; color:var(--secondary-text-color); font:inherit; font-weight:600; cursor:pointer; }
+      .tab.active { border-bottom-color:var(--primary-color); color:var(--primary-color); }
+      .tab ha-icon { --mdc-icon-size:20px; }
       .hero { --tone:#607d8b; --tone-soft:rgba(96,125,139,.14); display:flex; align-items:center; justify-content:space-between; min-height:210px; padding:32px 38px; overflow:hidden; border-radius:24px; background:linear-gradient(125deg, var(--tone-soft), var(--card-background-color) 62%); border:1px solid color-mix(in srgb, var(--tone) 28%, var(--divider-color)); position:relative; }
       .hero.good { --tone:#2e9d68; --tone-soft:rgba(46,157,104,.19); }
       .hero.danger { --tone:#d84b55; --tone-soft:rgba(216,75,85,.18); }
@@ -500,13 +705,33 @@ class BackupCheckupPanel extends HTMLElement {
       .storage-count span { display:block; color:var(--secondary-text-color); font-size:11px; font-weight:400; }
       .empty { min-height:52px; display:flex; align-items:center; gap:9px; color:var(--secondary-text-color); }
       .empty.success ha-icon { color:#2e9d68; }
+      .log-view { display:flex; flex-direction:column; gap:16px; }
+      .log-toolbar { display:flex; align-items:center; gap:14px; }
+      .log-toolbar label { flex:1; min-height:44px; display:flex; align-items:center; gap:9px; padding:0 13px; border:1px solid var(--divider-color); border-radius:12px; background:var(--card-background-color); }
+      .log-toolbar label:focus-within { border-color:var(--primary-color); box-shadow:0 0 0 1px var(--primary-color); }
+      .log-toolbar input { width:100%; border:0; outline:0; background:transparent; color:var(--primary-text-color); font:inherit; }
+      .live-indicator { display:flex; align-items:center; gap:7px; color:var(--primary-color); font-size:13px; font-weight:700; }
+      .live-indicator i { width:9px; height:9px; border-radius:50%; background:var(--primary-color); box-shadow:0 0 0 4px color-mix(in srgb, var(--primary-color) 18%, transparent); }
+      .log-console { min-height:520px; overflow:hidden; border:1px solid var(--divider-color); border-radius:16px; background:var(--card-background-color); }
+      .log-console h2 { margin:0; padding:17px 18px; border-bottom:1px solid var(--divider-color); font-size:18px; }
+      .log-lines { max-height:68vh; overflow:auto; padding:8px 0; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+      .log-row { display:grid; grid-template-columns:190px minmax(250px, .9fr) minmax(220px, 1.1fr); gap:14px; padding:8px 18px; border-left:3px solid transparent; font-size:12px; line-height:1.45; }
+      .log-row:hover { background:color-mix(in srgb, var(--primary-color) 7%, transparent); }
+      .log-row time { color:var(--secondary-text-color); }
+      .log-row strong { color:#2e9d68; }
+      .log-row.warning { border-left-color:#e79a24; } .log-row.warning strong { color:#e79a24; }
+      .log-row.error, .log-row.critical { border-left-color:#d84b55; } .log-row.error strong, .log-row.critical strong { color:#d84b55; }
+      .log-row span { color:var(--secondary-text-color); overflow-wrap:anywhere; }
+      .log-empty, .log-disabled { min-height:260px; display:flex; align-items:center; justify-content:center; gap:12px; padding:28px; color:var(--secondary-text-color); text-align:center; }
+      .log-disabled { flex-direction:column; border:1px dashed var(--divider-color); border-radius:16px; background:var(--card-background-color); }
+      .log-disabled ha-icon { color:var(--primary-color); --mdc-icon-size:38px; }
       footer { display:flex; justify-content:flex-end; gap:11px; margin-top:20px; }
       .action { min-height:44px; display:flex; align-items:center; gap:8px; padding:0 17px; border-radius:12px; border:1px solid var(--divider-color); font:inherit; font-weight:600; cursor:pointer; }
       .action.primary { background:var(--primary-color); border-color:var(--primary-color); color:var(--text-primary-color, white); }
       .action.secondary { background:var(--card-background-color); color:var(--primary-text-color); }
       .action:disabled { opacity:.48; cursor:default; }
-      @media (max-width:900px) { .metrics { grid-template-columns:repeat(2, minmax(0, 1fr)); } .content-grid { grid-template-columns:1fr; } .storage-card { grid-column:auto; } }
-      @media (max-width:620px) { main { padding:18px 12px 28px; } header { padding:0 4px; } header p { display:none; } .hero { min-height:0; padding:24px 21px; } .score { width:104px; height:104px; margin-left:14px; } .score::before { inset:8px; } .score strong { font-size:27px; } .hero h2 { font-size:23px; } .metrics { grid-template-columns:1fr 1fr; gap:10px; } .metric { min-height:95px; padding:15px; } .content-grid { gap:12px; } .card { padding:18px; } footer { flex-direction:column-reverse; } .action { justify-content:center; } }
+      @media (max-width:900px) { .metrics { grid-template-columns:repeat(2, minmax(0, 1fr)); } .content-grid { grid-template-columns:1fr; } .storage-card { grid-column:auto; } .log-row { grid-template-columns:165px 1fr; } .log-row span { grid-column:2; } }
+      @media (max-width:620px) { main { padding:18px 12px 28px; } header { padding:0 4px; } header p { display:none; } .tabs { margin-top:0; } .hero { min-height:0; padding:24px 21px; } .score { width:104px; height:104px; margin-left:14px; } .score::before { inset:8px; } .score strong { font-size:27px; } .hero h2 { font-size:23px; } .metrics { grid-template-columns:1fr 1fr; gap:10px; } .metric { min-height:95px; padding:15px; } .content-grid { gap:12px; } .card { padding:18px; } .log-toolbar { align-items:stretch; flex-direction:column; } .live-indicator { align-self:flex-end; } .log-row { grid-template-columns:1fr; gap:3px; padding:10px 13px; } .log-row span { grid-column:auto; } footer { flex-direction:column-reverse; } .action { justify-content:center; } }
       @media (max-width:390px) { .hero { align-items:flex-start; } .score { width:88px; height:88px; } .score span { display:none; } .metrics { grid-template-columns:1fr; } }
     `;
   }

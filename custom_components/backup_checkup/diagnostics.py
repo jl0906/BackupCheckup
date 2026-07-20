@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 from typing import Any
 
@@ -269,6 +270,8 @@ async def async_get_config_entry_diagnostics(
     entry: ConfigEntry,
 ) -> dict[str, Any]:
     """Return privacy-conscious diagnostics for a BackupCheckup config entry."""
+    # Home Assistant requires diagnostics handlers to remain coroutine functions.
+    await asyncio.sleep(0)
     coordinator: BackupCheckupCoordinator = entry.runtime_data
     data = coordinator.data
     configuration = normalize_configuration(entry.data, entry.options)

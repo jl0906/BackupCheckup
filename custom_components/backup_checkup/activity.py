@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from collections import deque
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Final
@@ -28,6 +28,20 @@ _ACTIVITY_BUFFER_SIZE = 250
 _MAX_DETAIL_ITEMS = 12
 _MAX_DETAIL_KEY_LENGTH = 48
 _MAX_DETAIL_VALUE_LENGTH = 120
+_PRIVATE_DETAIL_KEYS = frozenset(
+    {
+        "agent_id",
+        "backup_id",
+        "backup_name",
+        "backup_reference",
+        "entity_id",
+        "file_name",
+        "password",
+        "path",
+        "storage_name",
+        "target",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +51,7 @@ class BackupCheckupActivityRecord:
     timestamp: datetime
     action: str
     outcome: str
+    level: str
     details: tuple[tuple[str, str], ...]
 
     def as_dict(self) -> dict[str, object]:
@@ -45,6 +60,7 @@ class BackupCheckupActivityRecord:
             "timestamp": self.timestamp.isoformat(),
             "action": self.action,
             "outcome": self.outcome,
+            "level": self.level,
             "details": dict(self.details),
         }
 
@@ -60,10 +76,11 @@ class BackupCheckupActivityLog:
             maxlen=_ACTIVITY_BUFFER_SIZE
         )
         self._sequence = 0
+        self._listeners: set[Callable[[], None]] = set()
 
     @property
     def enabled(self) -> bool:
-        """Return whether expert activity logging is enabled."""
+        """Return whether detailed activity logging is enabled."""
         return self._enabled
 
     @property
@@ -77,6 +94,22 @@ class BackupCheckupActivityLog:
         return self._records[-1] if self._records else None
 
     @callback
+    def async_add_listener(self, listener: Callable[[], None]) -> Callable[[], None]:
+        """Subscribe an entity or frontend bridge to live journal changes."""
+        self._listeners.add(listener)
+
+        def _remove() -> None:
+            self._listeners.discard(listener)
+
+        return _remove
+
+    def recent(self, *, limit: int = _ACTIVITY_BUFFER_SIZE) -> list[dict[str, object]]:
+        """Return the newest bounded records for the live frontend."""
+        bounded_limit = max(0, min(limit, _ACTIVITY_BUFFER_SIZE))
+        records = list(self._records)[-bounded_limit:] if bounded_limit else []
+        return [record.as_dict() for record in records]
+
+    @callback
     def record(
         self,
         action: str,
@@ -86,17 +119,23 @@ class BackupCheckupActivityLog:
         activity_visible: bool = True,
         details: Mapping[str, object] | None = None,
     ) -> BackupCheckupActivityRecord | None:
-        """Record one timestamped action when expert logging is enabled."""
+        """Record one timestamped action when detailed logging is enabled."""
         if not self._enabled:
             return None
         record = BackupCheckupActivityRecord(
             timestamp=datetime.now(UTC),
             action=safe_log_value(action, max_length=80),
             outcome=safe_log_value(outcome, max_length=32),
+            level=logging.getLevelName(level).lower(),
             details=self._safe_details(details),
         )
         self._sequence += 1
         self._records.append(record)
+        for listener in tuple(self._listeners):
+            try:
+                listener()
+            except Exception:  # noqa: BLE001 - optional live-view boundary
+                _LOGGER.debug("Unable to update live activity view", exc_info=True)
         fields = " ".join(f"{key}={value}" for key, value in record.details)
         suffix = f" {fields}" if fields else ""
         _LOGGER.log(
@@ -125,13 +164,12 @@ class BackupCheckupActivityLog:
     def diagnostics(self, *, limit: int = 100) -> dict[str, object]:
         """Return bounded recent activity for downloaded diagnostics."""
         bounded_limit = max(0, min(limit, _ACTIVITY_BUFFER_SIZE))
-        records = list(self._records)[-bounded_limit:] if bounded_limit else []
         return {
             "enabled": self._enabled,
             "runtime_event_count": self._sequence,
             "buffered_event_count": len(self._records),
             "latest": self.latest.as_dict() if self.latest else None,
-            "recent": [record.as_dict() for record in records],
+            "recent": self.recent(limit=bounded_limit),
         }
 
     @staticmethod
@@ -149,6 +187,8 @@ class BackupCheckupActivityLog:
             if len(normalized) >= _MAX_DETAIL_ITEMS:
                 break
             base_key = BackupCheckupActivityLog._safe_detail_key(raw_key)
+            if base_key in _PRIVATE_DETAIL_KEYS:
+                continue
             key = base_key
             suffix_number = 2
             while key in used_keys:

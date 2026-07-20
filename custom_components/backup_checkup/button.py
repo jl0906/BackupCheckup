@@ -28,6 +28,7 @@ async def async_setup_entry(
     """Set up BackupCheckup buttons."""
     # Entity-platform setup hooks are coroutine contracts in Home Assistant.
     await asyncio.sleep(0)
+    del hass
     coordinator: BackupCheckupCoordinator = entry.runtime_data
     async_add_entities(
         [

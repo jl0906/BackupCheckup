@@ -48,7 +48,6 @@ from .const import (
     BACKUP_RESULT_PARTIAL,
     BACKUP_RESULT_UNKNOWN,
     DOMAIN,
-    ENTITY_MODE_EXPERT,
     INTEGRITY_DATABASE_NOT_CHECKED,
     INTEGRITY_STATUS_ABORTED,
     INTEGRITY_STATUS_INTERNAL_ERROR,
@@ -160,10 +159,12 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self._apply_settings_compatibility_attributes()
 
         self.activity = BackupCheckupActivityLog(
-            hass, enabled=self.entity_mode == ENTITY_MODE_EXPERT
+            hass, enabled=self.activity_logging_enabled
         )
         self.history = BackupCheckupHistory(hass, entry.entry_id)
-        self.integrity_verifier = BackupIntegrityVerifier(hass, entry.entry_id)
+        self.integrity_verifier = BackupIntegrityVerifier(
+            hass, entry.entry_id, activity=self.activity
+        )
         self.notification_manager = BackupCheckupNotificationManager(
             hass, entry.entry_id, activity=self.activity
         )
@@ -201,6 +202,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         """Expose stable attributes used by entities and existing tests."""
         settings = self.settings
         self.entity_mode = settings.entity_mode
+        self.activity_logging_enabled = settings.activity_logging_enabled
         self.max_age_days = settings.max_age_days
         self.minimum_backup_size_bytes = settings.minimum_backup_size_mb * 1_000_000
         self.maximum_size_drop_percent = settings.maximum_size_drop_percent
@@ -1139,8 +1141,8 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 targets=self.notification_targets,
                 notify_on_recovery=self.notify_on_recovery,
             )
-        except Exception as err:  # noqa: BLE001 - notify integration boundary
-            _LOGGER.error(
+        except Exception as err:
+            _LOGGER.exception(
                 "Unexpected error while processing BackupCheckup notifications: "
                 "error_type=%s",
                 safe_error_type(err),
@@ -1165,14 +1167,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             latest_manual=manual,
         )
         summaries = tuple(
-            replace(
-                summary,
-                latest_backup_age_days=(
-                    age := precise_age_days(now, summary.latest_backup)
-                ),
-                stale=age is None or age > self.max_age_days,
-                problem=bool(summary.error or age is None or age > self.max_age_days),
-            )
+            self._age_agent_summary(summary, now)
             for summary in self.data.agent_summaries
         )
         required_missing = bool(
@@ -1244,6 +1239,19 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             health_score_raw_deductions=health.raw_deductions,
             health_score_suppressed_deductions=health.suppressed_deductions,
             agent_errors={**self.data.agent_errors, "manager": error_code},
+        )
+
+    def _age_agent_summary(
+        self, summary: BackupAgentSummary, now: datetime
+    ) -> BackupAgentSummary:
+        """Return one storage summary aged to the current failed refresh."""
+        age = precise_age_days(now, summary.latest_backup)
+        stale = age is None or age > self.max_age_days
+        return replace(
+            summary,
+            latest_backup_age_days=age,
+            stale=stale,
+            problem=bool(summary.error or stale),
         )
 
     def _schedule_automatic_verification(
@@ -1391,7 +1399,6 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 "integrity_check",
                 ACTIVITY_OUTCOME_STARTED,
                 details={
-                    "backup_reference": record.backup_reference,
                     "source": source,
                 },
             )
@@ -1419,7 +1426,6 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 "integrity_check",
                 ACTIVITY_OUTCOME_COMPLETED,
                 details={
-                    "backup_reference": record.backup_reference,
                     "duration_seconds": result.duration_seconds,
                     "source": source,
                     "status": result.status,
@@ -1432,7 +1438,6 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 "integrity_check",
                 ACTIVITY_OUTCOME_CANCELLED,
                 details={
-                    "backup_reference": record.backup_reference,
                     "source": source,
                 },
             )
@@ -1448,7 +1453,6 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 ACTIVITY_OUTCOME_FAILED,
                 level=logging.ERROR,
                 details={
-                    "backup_reference": record.backup_reference,
                     "error_type": safe_error_type(err),
                     "source": source,
                 },
@@ -1489,7 +1493,6 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 ACTIVITY_OUTCOME_FAILED,
                 level=logging.ERROR,
                 details={
-                    "backup_reference": record.backup_reference,
                     "error_type": safe_error_type(err),
                     "source": source,
                 },

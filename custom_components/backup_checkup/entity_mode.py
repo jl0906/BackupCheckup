@@ -38,6 +38,7 @@ STANDARD_SENSOR_KEYS = frozenset(
         "latest_automatic_backup_size",
         "latest_backup_result",
         "latest_backup_locations",
+        "activity_log",
     }
 )
 

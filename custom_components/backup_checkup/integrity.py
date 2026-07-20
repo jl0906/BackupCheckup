@@ -23,6 +23,14 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 from securetar import InvalidPasswordError, SecureTarArchive, SecureTarError
 
+from .activity import (
+    ACTIVITY_OUTCOME_CANCELLED,
+    ACTIVITY_OUTCOME_CHANGED,
+    ACTIVITY_OUTCOME_COMPLETED,
+    ACTIVITY_OUTCOME_FAILED,
+    ACTIVITY_OUTCOME_STARTED,
+    BackupCheckupActivityLog,
+)
 from .const import (
     DOMAIN,
     INTEGRITY_DATABASE_FAILED,
@@ -431,11 +439,36 @@ class BackupIntegrityStore:
 class BackupIntegrityVerifier:
     """Download and fully read a Home Assistant backup."""
 
-    def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry_id: str,
+        *,
+        activity: BackupCheckupActivityLog | None = None,
+    ) -> None:
         """Initialize the verifier."""
         self.hass = hass
         self._entry_id = entry_id
+        self._activity = activity
         self.store = BackupIntegrityStore(hass, entry_id)
+
+    def _record_activity(
+        self,
+        action: str,
+        outcome: str,
+        *,
+        level: int = logging.INFO,
+        details: Mapping[str, object] | None = None,
+    ) -> None:
+        """Write one privacy-safe verification stage to the live journal."""
+        if self._activity is not None:
+            self._activity.record(
+                action,
+                outcome,
+                level=level,
+                activity_visible=False,
+                details=details,
+            )
 
     async def async_verify(
         self,
@@ -450,6 +483,7 @@ class BackupIntegrityVerifier:
     ) -> BackupIntegrityResult:
         """Verify an available backup copy and fall back to another agent if needed."""
         started = time.monotonic()
+        self._record_activity("verification_prepare", ACTIVITY_OUTCOME_STARTED)
         budget_or_failure = self._verification_budget(
             record,
             started=started,
@@ -477,6 +511,12 @@ class BackupIntegrityVerifier:
                 started,
                 error_code="no_available_storage_agent",
             )
+
+        self._record_activity(
+            "verification_prepare",
+            ACTIVITY_OUTCOME_COMPLETED,
+            details={"available_copy_count": len(candidate_agents)},
+        )
 
         temp_dir = await self._async_create_temp_directory(record, started)
         if isinstance(temp_dir, BackupIntegrityResult):
@@ -619,9 +659,16 @@ class BackupIntegrityVerifier:
         temp_dir: Path,
     ) -> _PreparedCandidate | _CandidateOutcome:
         """Allocate and validate one independent per-copy resource budget."""
+        self._record_activity("storage_copy_prepare", ACTIVITY_OUTCOME_STARTED)
         try:
             copy_budget = overall_budget.for_copy()
         except VerificationLimitError as err:
+            self._record_activity(
+                "storage_copy_prepare",
+                ACTIVITY_OUTCOME_FAILED,
+                level=logging.WARNING,
+                details={"error_code": err.code},
+            )
             return _CandidateOutcome(
                 self._failure(
                     INTEGRITY_STATUS_ABORTED,
@@ -645,6 +692,12 @@ class BackupIntegrityVerifier:
                 copy_budget.check_free_space, temp_dir, expected_size or 0
             )
         except VerificationLimitError as err:
+            self._record_activity(
+                "storage_copy_prepare",
+                ACTIVITY_OUTCOME_FAILED,
+                level=logging.WARNING,
+                details={"error_code": err.code},
+            )
             failure = self._failure(
                 INTEGRITY_STATUS_ABORTED,
                 record,
@@ -653,6 +706,11 @@ class BackupIntegrityVerifier:
                 error_code=err.code,
             )
             return _CandidateOutcome(failure, final=err.code in _GLOBAL_LIMIT_CODES)
+        self._record_activity(
+            "storage_copy_prepare",
+            ACTIVITY_OUTCOME_COMPLETED,
+            details={"encrypted": protected},
+        )
         return _PreparedCandidate(
             agent_id=candidate_id,
             path=candidate_path,
@@ -671,11 +729,26 @@ class BackupIntegrityVerifier:
         previous: BackupIntegrityResult,
     ) -> _DownloadedCandidate | _CandidateOutcome:
         """Download one copy and map controlled boundary failures."""
+        self._record_activity(
+            "backup_download",
+            ACTIVITY_OUTCOME_STARTED,
+            details={"progress_percent": 0},
+        )
         try:
             downloaded_size, digest = await self._async_download(
-                agent, record.backup_id, prepared.path, prepared.budget
+                agent,
+                record.backup_id,
+                prepared.path,
+                prepared.budget,
+                expected_size=prepared.expected_size,
             )
         except VerificationLimitError as err:
+            self._record_activity(
+                "backup_download",
+                ACTIVITY_OUTCOME_FAILED,
+                level=logging.WARNING,
+                details={"error_code": err.code},
+            )
             _LOGGER.warning(
                 "Backup verification download stopped by safety limit: "
                 "agent=%s code=%s",
@@ -694,6 +767,12 @@ class BackupIntegrityVerifier:
                 final=err.code in _GLOBAL_LIMIT_CODES,
             )
         except TimeoutError:
+            self._record_activity(
+                "backup_download",
+                ACTIVITY_OUTCOME_FAILED,
+                level=logging.WARNING,
+                details={"error_code": "verification_timeout"},
+            )
             await self._async_remove_candidate_file(prepared.path)
             return _CandidateOutcome(
                 self._failure(
@@ -706,6 +785,12 @@ class BackupIntegrityVerifier:
                 final=True,
             )
         except Exception as err:  # noqa: BLE001 - backup-agent download boundary
+            self._record_activity(
+                "backup_download",
+                ACTIVITY_OUTCOME_FAILED,
+                level=logging.WARNING,
+                details={"error_type": safe_error_type(err)},
+            )
             _LOGGER.warning(
                 "Unable to download one backup copy; trying another: "
                 "agent=%s error_type=%s",
@@ -714,6 +799,12 @@ class BackupIntegrityVerifier:
             )
             await self._async_remove_candidate_file(prepared.path)
             return _CandidateOutcome(None, download_failed=True)
+
+        self._record_activity(
+            "backup_download",
+            ACTIVITY_OUTCOME_COMPLETED,
+            details={"progress_percent": 100},
+        )
 
         warnings = self._candidate_warnings(
             record,
@@ -833,6 +924,14 @@ class BackupIntegrityVerifier:
     ) -> dict[str, Any] | _CandidateOutcome:
         """Run blocking archive verification and classify its failures."""
         prepared = downloaded.prepared
+        extract_action = (
+            "encrypted_backup_extract"
+            if prepared.protected
+            else "backup_extract"
+        )
+        self._record_activity(extract_action, ACTIVITY_OUTCOME_STARTED)
+        if database_check:
+            self._record_activity("database_read", ACTIVITY_OUTCOME_STARTED)
         archive_future = self.hass.async_add_executor_job(
             self._verify_archive,
             prepared.path,
@@ -844,9 +943,30 @@ class BackupIntegrityVerifier:
             prepared.budget,
         )
         try:
-            return await asyncio.shield(archive_future)
+            details = await asyncio.shield(archive_future)
+            self._record_activity(
+                extract_action,
+                ACTIVITY_OUTCOME_COMPLETED,
+                details={
+                    "archive_count": details["archive_count"],
+                    "file_count": details["file_count"],
+                },
+            )
+            if database_check:
+                self._record_activity(
+                    "database_read",
+                    ACTIVITY_OUTCOME_COMPLETED,
+                    details={"status": details["database_status"]},
+                )
+            return details
         except asyncio.CancelledError:
             prepared.budget.cancel()
+            self._record_archive_end(
+                extract_action,
+                ACTIVITY_OUTCOME_CANCELLED,
+                database_check=database_check,
+                level=logging.WARNING,
+            )
             try:
                 await archive_future
             except Exception as worker_err:  # noqa: BLE001 - worker shutdown boundary
@@ -856,6 +976,13 @@ class BackupIntegrityVerifier:
                 )
             raise
         except (_BackupPasswordRequiredError, InvalidPasswordError) as err:
+            self._record_archive_end(
+                extract_action,
+                ACTIVITY_OUTCOME_FAILED,
+                database_check=database_check,
+                level=logging.WARNING,
+                details={"error_code": "password_required"},
+            )
             _LOGGER.debug(
                 "Backup password validation failed: error_type=%s",
                 safe_error_type(err),
@@ -870,6 +997,13 @@ class BackupIntegrityVerifier:
                 )
             )
         except VerificationLimitError as err:
+            self._record_archive_end(
+                extract_action,
+                ACTIVITY_OUTCOME_FAILED,
+                database_check=database_check,
+                level=logging.WARNING,
+                details={"error_code": err.code},
+            )
             _LOGGER.warning(
                 "Backup verification stopped by safety limit: code=%s", err.code
             )
@@ -883,13 +1017,7 @@ class BackupIntegrityVerifier:
                 ),
                 final=err.code in _GLOBAL_LIMIT_CODES,
             )
-        except (
-            tarfile.TarError,
-            SecureTarError,
-            json.JSONDecodeError,
-            KeyError,
-            ValueError,
-        ) as err:
+        except (tarfile.TarError, SecureTarError, KeyError, ValueError) as err:
             return self._archive_failure_outcome(
                 INTEGRITY_STATUS_CORRUPT,
                 "archive_invalid",
@@ -898,6 +1026,7 @@ class BackupIntegrityVerifier:
                 record=record,
                 started=started,
                 downloaded=downloaded,
+                database_check=database_check,
             )
         except OSError as err:
             return self._archive_failure_outcome(
@@ -908,6 +1037,7 @@ class BackupIntegrityVerifier:
                 record=record,
                 started=started,
                 downloaded=downloaded,
+                database_check=database_check,
             )
         except Exception as err:  # noqa: BLE001 - archive worker boundary
             return self._archive_failure_outcome(
@@ -918,7 +1048,32 @@ class BackupIntegrityVerifier:
                 record=record,
                 started=started,
                 downloaded=downloaded,
+                database_check=database_check,
                 unexpected=True,
+            )
+
+    def _record_archive_end(
+        self,
+        extract_action: str,
+        outcome: str,
+        *,
+        database_check: bool,
+        level: int = logging.INFO,
+        details: Mapping[str, object] | None = None,
+    ) -> None:
+        """Finish the public extraction and optional database log stages."""
+        self._record_activity(
+            extract_action,
+            outcome,
+            level=level,
+            details=details,
+        )
+        if database_check:
+            self._record_activity(
+                "database_read",
+                outcome,
+                level=level,
+                details=details,
             )
 
     def _archive_failure_outcome(
@@ -931,9 +1086,22 @@ class BackupIntegrityVerifier:
         record: BackupRecord,
         started: float,
         downloaded: _DownloadedCandidate,
+        database_check: bool,
         unexpected: bool = False,
     ) -> _CandidateOutcome:
         """Log and return one retryable archive-copy failure."""
+        extract_action = (
+            "encrypted_backup_extract"
+            if downloaded.prepared.protected
+            else "backup_extract"
+        )
+        self._record_archive_end(
+            extract_action,
+            ACTIVITY_OUTCOME_FAILED,
+            database_check=database_check,
+            level=logging.ERROR if unexpected else logging.WARNING,
+            details={"error_code": error_code},
+        )
         logger = _LOGGER.error if unexpected else _LOGGER.warning
         logger(
             "%s: agent=%s error_type=%s",
@@ -989,15 +1157,12 @@ class BackupIntegrityVerifier:
         database_status = details["database_status"]
         if database_status == INTEGRITY_DATABASE_FAILED:
             warnings.append("database_integrity_failed")
-        status = (
-            INTEGRITY_STATUS_CORRUPT
-            if database_status == INTEGRITY_DATABASE_FAILED
-            else (
-                INTEGRITY_STATUS_VALID_WITH_WARNINGS
-                if warnings
-                else INTEGRITY_STATUS_VALID
-            )
-        )
+        if database_status == INTEGRITY_DATABASE_FAILED:
+            status = INTEGRITY_STATUS_CORRUPT
+        elif warnings:
+            status = INTEGRITY_STATUS_VALID_WITH_WARNINGS
+        else:
+            status = INTEGRITY_STATUS_VALID
         prepared = downloaded.prepared
         return BackupIntegrityResult(
             status=status,
@@ -1053,6 +1218,7 @@ class BackupIntegrityVerifier:
         self, temp_dir: Path, *, repair_issues_enabled: bool
     ) -> None:
         """Remove private temporary data without masking verification results."""
+        self._record_activity("temporary_data_cleanup", ACTIVITY_OUTCOME_STARTED)
         issue_active = False
         try:
             cleanup_ok = await self.hass.async_add_executor_job(
@@ -1082,6 +1248,11 @@ class BackupIntegrityVerifier:
             _LOGGER.warning("Temporary verification data could not be removed")
         if repair_issues_enabled:
             async_set_temporary_cleanup_issue(self.hass, active=issue_active)
+        self._record_activity(
+            "temporary_data_cleanup",
+            ACTIVITY_OUTCOME_FAILED if issue_active else ACTIVITY_OUTCOME_COMPLETED,
+            level=logging.WARNING if issue_active else logging.INFO,
+        )
 
     @staticmethod
     def _unlink_missing_ok(path: Path) -> None:
@@ -1104,6 +1275,8 @@ class BackupIntegrityVerifier:
         backup_id: str,
         path: Path,
         budget: VerificationBudget,
+        *,
+        expected_size: int | None = None,
     ) -> tuple[int, str]:
         """Download one backup while enforcing safety limits and calculating SHA-256."""
         digest = hashlib.sha256()
@@ -1113,6 +1286,7 @@ class BackupIntegrityVerifier:
         attempt_downloaded_bytes = 0
         bytes_since_space_check = 0
         stream: Any | None = None
+        last_progress = 0
         try:
             async with asyncio.timeout(budget.remaining_seconds()):
                 stream = await agent.async_download_backup(backup_id)
@@ -1121,6 +1295,19 @@ class BackupIntegrityVerifier:
                         raise TypeError("Backup agent returned a non-bytes chunk")
                     budget.add_downloaded(len(chunk))
                     attempt_downloaded_bytes += len(chunk)
+                    if expected_size:
+                        progress = min(
+                            99,
+                            int(attempt_downloaded_bytes * 100 / expected_size),
+                        )
+                        progress -= progress % 5
+                        if progress > last_progress:
+                            last_progress = progress
+                            self._record_activity(
+                                "backup_download",
+                                ACTIVITY_OUTCOME_CHANGED,
+                                details={"progress_percent": progress},
+                            )
                     digest.update(chunk)
                     await self.hass.async_add_executor_job(file_handle.write, chunk)
                     bytes_since_space_check += len(chunk)

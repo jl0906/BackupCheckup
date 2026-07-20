@@ -9,6 +9,7 @@ from typing import Any
 
 from .const import (
     CONF_ACTIVE_UPDATE_INTERVAL_MINUTES,
+    CONF_ACTIVITY_LOGGING_ENABLED,
     CONF_ADAPTIVE_ERROR_THRESHOLD,
     CONF_ADAPTIVE_POLLING,
     CONF_ANALYTICS_WINDOW_DAYS,
@@ -40,6 +41,7 @@ from .const import (
     CONF_VERIFICATION_POLICY,
     CONF_VERIFICATION_TIMEOUT_MINUTES,
     DEFAULT_ACTIVE_UPDATE_INTERVAL_MINUTES,
+    DEFAULT_ACTIVITY_LOGGING_ENABLED,
     DEFAULT_ADAPTIVE_ERROR_THRESHOLD,
     DEFAULT_ADAPTIVE_POLLING,
     DEFAULT_ANALYTICS_WINDOW_DAYS,
@@ -186,6 +188,7 @@ _INTEGER_OPTIONS: dict[str, tuple[int, int, int]] = {
 }
 
 _BOOLEAN_OPTIONS: dict[str, bool] = {
+    CONF_ACTIVITY_LOGGING_ENABLED: DEFAULT_ACTIVITY_LOGGING_ENABLED,
     CONF_ADAPTIVE_POLLING: DEFAULT_ADAPTIVE_POLLING,
     CONF_REPAIR_ISSUES_ENABLED: DEFAULT_REPAIR_ISSUES_ENABLED,
     CONF_AUTO_VERIFY_NEW_BACKUPS: DEFAULT_AUTO_VERIFY_NEW_BACKUPS,
@@ -327,6 +330,10 @@ def _with_legacy_derivations(merged: dict[str, Any]) -> dict[str, Any]:
         merged[CONF_MONITORING_POLICY] = _legacy_monitoring_policy(merged)
     if CONF_VERIFICATION_POLICY not in merged:
         merged[CONF_VERIFICATION_POLICY] = _legacy_verification_policy(merged)
+    if CONF_ACTIVITY_LOGGING_ENABLED not in merged:
+        merged[CONF_ACTIVITY_LOGGING_ENABLED] = (
+            merged.get(CONF_ENTITY_MODE) == "expert"
+        )
     return merged
 
 
@@ -406,6 +413,7 @@ class PresentationSettings:
     notify_on_recovery: bool
     expose_backup_metadata: bool
     show_sidebar_panel: bool
+    activity_logging_enabled: bool
 
 
 @dataclass(frozen=True)
@@ -465,6 +473,7 @@ class BackupCheckupSettings:
                 notify_on_recovery=values[CONF_NOTIFY_ON_RECOVERY],
                 expose_backup_metadata=values[CONF_EXPOSE_BACKUP_METADATA],
                 show_sidebar_panel=values[CONF_SHOW_SIDEBAR_PANEL],
+                activity_logging_enabled=values[CONF_ACTIVITY_LOGGING_ENABLED],
             ),
         )
 
@@ -511,6 +520,9 @@ class BackupCheckupSettings:
             CONF_NOTIFY_ON_RECOVERY: self.presentation.notify_on_recovery,
             CONF_EXPOSE_BACKUP_METADATA: self.presentation.expose_backup_metadata,
             CONF_SHOW_SIDEBAR_PANEL: self.presentation.show_sidebar_panel,
+            CONF_ACTIVITY_LOGGING_ENABLED: (
+                self.presentation.activity_logging_enabled
+            ),
         }
 
     # Compatibility properties keep runtime consumers simple and stable.
@@ -626,3 +638,8 @@ class BackupCheckupSettings:
     def show_sidebar_panel(self) -> bool:
         """Return whether the optional frontend panel is enabled."""
         return self.presentation.show_sidebar_panel
+
+    @property
+    def activity_logging_enabled(self) -> bool:
+        """Return whether detailed privacy-safe activity logging is enabled."""
+        return self.presentation.activity_logging_enabled

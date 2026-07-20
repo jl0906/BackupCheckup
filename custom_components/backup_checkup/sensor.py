@@ -82,6 +82,24 @@ def _latest_storage_names(data: BackupCheckupData) -> list[str]:
     return sorted(dict.fromkeys(names))
 
 
+def _integrity_status(data: BackupCheckupData) -> str:
+    """Return the current integrity state without nested conditionals."""
+    if data.integrity_check_running:
+        return INTEGRITY_STATUS_CHECKING
+    latest = data.latest_monitored_backup_record
+    if latest and data.integrity.backup_id == latest.backup_id:
+        return data.integrity.status
+    return INTEGRITY_STATUS_NOT_CHECKED
+
+
+def _public_integrity_checksum(data: BackupCheckupData) -> str | None:
+    """Return the full or privacy-shortened checksum when available."""
+    checksum = data.integrity.sha256
+    if checksum is None or data.expose_backup_metadata:
+        return checksum
+    return checksum[:16]
+
+
 SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
     BackupCheckupSensorDescription(
         key="integrity_status",
@@ -89,17 +107,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         icon="mdi:shield-search",
         device_class=SensorDeviceClass.ENUM,
         options=INTEGRITY_STATUS_OPTIONS,
-        value_fn=lambda data: (
-            INTEGRITY_STATUS_CHECKING
-            if data.integrity_check_running
-            else (
-                data.integrity.status
-                if data.latest_monitored_backup_record
-                and data.integrity.backup_id
-                == data.latest_monitored_backup_record.backup_id
-                else INTEGRITY_STATUS_NOT_CHECKED
-            )
-        ),
+        value_fn=_integrity_status,
         attributes_fn=lambda data: {
             "applies_to_latest_backup": bool(
                 data.latest_monitored_backup_record
@@ -144,11 +152,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         entity_registry_enabled_default=False,
         entity_category=EntityCategory.DIAGNOSTIC,
         icon="mdi:fingerprint",
-        value_fn=lambda data: (
-            data.integrity.sha256
-            if data.expose_backup_metadata
-            else (data.integrity.sha256[:16] if data.integrity.sha256 else None)
-        ),
+        value_fn=_public_integrity_checksum,
         attributes_fn=lambda data: {
             "algorithm": "SHA-256",
             "checksum_changed": data.integrity.checksum_changed,
@@ -767,6 +771,7 @@ async def async_setup_entry(
     entities: list[SensorEntity] = [
         BackupCheckupSensor(coordinator, entry, description) for description in SENSORS
     ]
+    entities.append(BackupCheckupActivitySensor(coordinator, entry))
     entities.extend(_flatten_agent_entities(agent_entities))
     async_add_entities(entities)
     missing_counts: dict[str, int] = {}
@@ -832,6 +837,48 @@ class BackupCheckupSensor(BackupCheckupEntity, SensorEntity):
         if self.entity_description.attributes_fn is None:
             return None
         return self.entity_description.attributes_fn(self.coordinator.data)
+
+
+class BackupCheckupActivitySensor(BackupCheckupEntity, SensorEntity):
+    """Expose the bounded privacy-safe journal to the local frontend."""
+
+    _attr_translation_key = "activity_log"
+    _attr_icon = "mdi:text-box-search-outline"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = True
+
+    def __init__(
+        self,
+        coordinator: BackupCheckupCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        """Initialize the live activity sensor."""
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{entry.entry_id}_activity_log"
+        self.entity_id = "sensor.backup_checkup_activity_log"
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to journal updates in addition to coordinator updates."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            self.coordinator.activity.async_add_listener(self.async_write_ha_state)
+        )
+
+    @property
+    def native_value(self) -> int:
+        """Return the runtime sequence number."""
+        return self.coordinator.activity.count
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return bounded privacy-safe entries for the live log tab."""
+        activity = self.coordinator.activity
+        entries = activity.recent()
+        return {
+            "enabled": activity.enabled,
+            "buffered_event_count": len(entries),
+            "entries": entries,
+        }
 
 
 class BackupCheckupAgentSensor(BackupCheckupAgentEntity, SensorEntity):

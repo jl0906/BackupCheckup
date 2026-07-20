@@ -18,6 +18,7 @@ from homeassistant.helpers.selector import (
 
 from .const import (
     CONF_ACTIVE_UPDATE_INTERVAL_MINUTES,
+    CONF_ACTIVITY_LOGGING_ENABLED,
     CONF_ADAPTIVE_ERROR_THRESHOLD,
     CONF_ADAPTIVE_POLLING,
     CONF_ANALYTICS_WINDOW_DAYS,
@@ -269,6 +270,10 @@ def presentation_schema(hass: HomeAssistant, values: dict[str, Any]) -> vol.Sche
             vol.Required(
                 CONF_SHOW_SIDEBAR_PANEL,
                 default=values[CONF_SHOW_SIDEBAR_PANEL],
+            ): BooleanSelector(),
+            vol.Required(
+                CONF_ACTIVITY_LOGGING_ENABLED,
+                default=values[CONF_ACTIVITY_LOGGING_ENABLED],
             ): BooleanSelector(),
             vol.Required(
                 CONF_NOTIFICATIONS_ENABLED,

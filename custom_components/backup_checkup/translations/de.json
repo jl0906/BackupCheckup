@@ -93,15 +93,17 @@
           "notifications_enabled": "Mobile Benachrichtigungen aktivieren",
           "notification_targets": "Zu benachrichtigende Mobilgeräte",
           "notify_on_recovery": "Bei behobenen Problemen benachrichtigen",
-          "show_sidebar_panel": "BackupCheckup in der Seitenleiste anzeigen"
+          "show_sidebar_panel": "BackupCheckup in der Seitenleiste anzeigen",
+          "activity_logging_enabled": "Ausführliches Live-Protokoll aktivieren"
         },
         "data_description": {
-          "entity_mode": "Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert alle Analyse-, Diagnose-, Integritäts-, Zeitplan- und Speicherentitäten sowie das Live-Aktivitätsjournal.",
+          "entity_mode": "Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert alle Analyse-, Diagnose-, Integritäts-, Zeitplan- und Speicherentitäten.",
           "expose_backup_metadata": "Standardmäßig deaktiviert. Aktiviert können ausgewählte Diagnosen und Entitäten benutzerdefinierte Backupnamen und rohe Backup-IDs anzeigen.",
           "notifications_enabled": "Sendet eine mobile Benachrichtigung, wenn sich die aktiven Backupprobleme ändern.",
           "notification_targets": "Es werden nur Benachrichtigungsentitäten der Home Assistant Companion App aufgelistet. Mehrere Geräte sind möglich.",
           "notify_on_recovery": "Sendet eine abschließende Benachrichtigung, wenn alle zuvor gemeldeten Probleme behoben sind.",
-          "show_sidebar_panel": "Fügt der Home-Assistant-Seitenleiste eine optionale BackupCheckup-Übersicht hinzu. Die Seite zeigt Gesundheitswert, aktive Probleme, Integrität, Backup-Kennzahlen und Speicherorte."
+          "show_sidebar_panel": "Fügt der Home-Assistant-Seitenleiste eine optionale BackupCheckup-Übersicht hinzu. Die Seite zeigt Gesundheitswert, aktive Probleme, Integrität, Backup-Kennzahlen und Speicherorte.",
+          "activity_logging_enabled": "Zeichnet ein begrenztes, durchsuchbares und datenschutzfreundliches Protokoll der Integrationsvorgänge auf. Backupnamen, IDs, Pfade, Passwörter und Inhalte werden nie aufgenommen."
         }
       },
       "summary": {
@@ -222,15 +224,17 @@
           "notifications_enabled": "Mobile Benachrichtigungen aktivieren",
           "notification_targets": "Zu benachrichtigende Mobilgeräte",
           "notify_on_recovery": "Bei behobenen Problemen benachrichtigen",
-          "show_sidebar_panel": "BackupCheckup in der Seitenleiste anzeigen"
+          "show_sidebar_panel": "BackupCheckup in der Seitenleiste anzeigen",
+          "activity_logging_enabled": "Ausführliches Live-Protokoll aktivieren"
         },
         "data_description": {
-          "entity_mode": "Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert alle Analyse-, Diagnose-, Integritäts-, Zeitplan- und Speicherentitäten sowie das Live-Aktivitätsjournal.",
+          "entity_mode": "Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert alle Analyse-, Diagnose-, Integritäts-, Zeitplan- und Speicherentitäten.",
           "expose_backup_metadata": "Standardmäßig deaktiviert. Aktiviert können ausgewählte Diagnosen und Entitäten benutzerdefinierte Backupnamen und rohe Backup-IDs anzeigen.",
           "notifications_enabled": "Sendet eine mobile Benachrichtigung, wenn sich die aktiven Backupprobleme ändern.",
           "notification_targets": "Es werden nur Benachrichtigungsentitäten der Home Assistant Companion App aufgelistet. Mehrere Geräte sind möglich.",
           "notify_on_recovery": "Sendet eine abschließende Benachrichtigung, wenn alle zuvor gemeldeten Probleme behoben sind.",
-          "show_sidebar_panel": "Fügt der Home-Assistant-Seitenleiste eine optionale BackupCheckup-Übersicht hinzu. Die Seite zeigt Gesundheitswert, aktive Probleme, Integrität, Backup-Kennzahlen und Speicherorte."
+          "show_sidebar_panel": "Fügt der Home-Assistant-Seitenleiste eine optionale BackupCheckup-Übersicht hinzu. Die Seite zeigt Gesundheitswert, aktive Probleme, Integrität, Backup-Kennzahlen und Speicherorte.",
+          "activity_logging_enabled": "Zeichnet ein begrenztes, durchsuchbares und datenschutzfreundliches Protokoll der Integrationsvorgänge auf. Backupnamen, IDs, Pfade, Passwörter und Inhalte werden nie aufgenommen."
         }
       },
       "setup_assistant": {
@@ -276,15 +280,17 @@
           "notifications_enabled": "Mobile Benachrichtigungen aktivieren",
           "notification_targets": "Zu benachrichtigende Mobilgeräte",
           "notify_on_recovery": "Bei behobenen Problemen benachrichtigen",
-          "show_sidebar_panel": "BackupCheckup in der Seitenleiste anzeigen"
+          "show_sidebar_panel": "BackupCheckup in der Seitenleiste anzeigen",
+          "activity_logging_enabled": "Ausführliches Live-Protokoll aktivieren"
         },
         "data_description": {
-          "entity_mode": "Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert alle Analyse-, Diagnose-, Integritäts-, Zeitplan- und Speicherentitäten sowie das Live-Aktivitätsjournal.",
+          "entity_mode": "Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert alle Analyse-, Diagnose-, Integritäts-, Zeitplan- und Speicherentitäten.",
           "expose_backup_metadata": "Standardmäßig deaktiviert. Aktiviert können ausgewählte Diagnosen und Entitäten benutzerdefinierte Backupnamen und rohe Backup-IDs anzeigen.",
           "notifications_enabled": "Sendet eine mobile Benachrichtigung, wenn sich die aktiven Backupprobleme ändern.",
           "notification_targets": "Es werden nur Benachrichtigungsentitäten der Home Assistant Companion App aufgelistet. Mehrere Geräte sind möglich.",
           "notify_on_recovery": "Sendet eine abschließende Benachrichtigung, wenn alle zuvor gemeldeten Probleme behoben sind.",
-          "show_sidebar_panel": "Fügt der Home-Assistant-Seitenleiste eine optionale BackupCheckup-Übersicht hinzu. Die Seite zeigt Gesundheitswert, aktive Probleme, Integrität, Backup-Kennzahlen und Speicherorte."
+          "show_sidebar_panel": "Fügt der Home-Assistant-Seitenleiste eine optionale BackupCheckup-Übersicht hinzu. Die Seite zeigt Gesundheitswert, aktive Probleme, Integrität, Backup-Kennzahlen und Speicherorte.",
+          "activity_logging_enabled": "Zeichnet ein begrenztes, durchsuchbares und datenschutzfreundliches Protokoll der Integrationsvorgänge auf. Backupnamen, IDs, Pfade, Passwörter und Inhalte werden nie aufgenommen."
         }
       },
       "setup_summary": {
@@ -323,6 +329,9 @@
       },
       "stored_backups": {
         "name": "Gespeicherte Backups"
+      },
+      "activity_log": {
+        "name": "Live-Aktivitätsprotokoll"
       },
       "automatic_backups": {
         "name": "Automatische Backups"

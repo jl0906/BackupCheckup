@@ -93,15 +93,17 @@
           "notifications_enabled": "Enable mobile notifications",
           "notification_targets": "Mobile devices to notify",
           "notify_on_recovery": "Notify when problems are resolved",
-          "show_sidebar_panel": "Visa BackupCheckup i sidofältet"
+          "show_sidebar_panel": "Visa BackupCheckup i sidofältet",
+          "activity_logging_enabled": "Enable detailed live logging"
         },
         "data_description": {
-          "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities and the live activity journal.",
+          "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities.",
           "expose_backup_metadata": "Disabled by default. When enabled, selected diagnostics and entities may expose user-defined backup names and raw backup IDs.",
           "notifications_enabled": "Send a mobile notification when the active backup problems change.",
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
           "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
-          "show_sidebar_panel": "Lägger till en valfri BackupCheckup-översikt i Home Assistant-sidofältet. Sidan visar hälsa, aktiva problem, integritet, säkerhetskopieringsvärden och lagringsplatser."
+          "show_sidebar_panel": "Lägger till en valfri BackupCheckup-översikt i Home Assistant-sidofältet. Sidan visar hälsa, aktiva problem, integritet, säkerhetskopieringsvärden och lagringsplatser.",
+          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included."
         }
       },
       "summary": {
@@ -222,15 +224,17 @@
           "notifications_enabled": "Enable mobile notifications",
           "notification_targets": "Mobile devices to notify",
           "notify_on_recovery": "Notify when problems are resolved",
-          "show_sidebar_panel": "Visa BackupCheckup i sidofältet"
+          "show_sidebar_panel": "Visa BackupCheckup i sidofältet",
+          "activity_logging_enabled": "Enable detailed live logging"
         },
         "data_description": {
-          "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities and the live activity journal.",
+          "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities.",
           "expose_backup_metadata": "Disabled by default. When enabled, selected diagnostics and entities may expose user-defined backup names and raw backup IDs.",
           "notifications_enabled": "Send a mobile notification when the active backup problems change.",
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
           "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
-          "show_sidebar_panel": "Lägger till en valfri BackupCheckup-översikt i Home Assistant-sidofältet. Sidan visar hälsa, aktiva problem, integritet, säkerhetskopieringsvärden och lagringsplatser."
+          "show_sidebar_panel": "Lägger till en valfri BackupCheckup-översikt i Home Assistant-sidofältet. Sidan visar hälsa, aktiva problem, integritet, säkerhetskopieringsvärden och lagringsplatser.",
+          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included."
         }
       },
       "setup_assistant": {
@@ -276,15 +280,17 @@
           "notifications_enabled": "Enable mobile notifications",
           "notification_targets": "Mobile devices to notify",
           "notify_on_recovery": "Notify when problems are resolved",
-          "show_sidebar_panel": "Visa BackupCheckup i sidofältet"
+          "show_sidebar_panel": "Visa BackupCheckup i sidofältet",
+          "activity_logging_enabled": "Enable detailed live logging"
         },
         "data_description": {
-          "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities and the live activity journal.",
+          "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities.",
           "expose_backup_metadata": "Disabled by default. When enabled, selected diagnostics and entities may expose user-defined backup names and raw backup IDs.",
           "notifications_enabled": "Send a mobile notification when the active backup problems change.",
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
           "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
-          "show_sidebar_panel": "Lägger till en valfri BackupCheckup-översikt i Home Assistant-sidofältet. Sidan visar hälsa, aktiva problem, integritet, säkerhetskopieringsvärden och lagringsplatser."
+          "show_sidebar_panel": "Lägger till en valfri BackupCheckup-översikt i Home Assistant-sidofältet. Sidan visar hälsa, aktiva problem, integritet, säkerhetskopieringsvärden och lagringsplatser.",
+          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included."
         }
       },
       "setup_summary": {
@@ -323,6 +329,9 @@
       },
       "stored_backups": {
         "name": "Lagrade säkerhetskopior"
+      },
+      "activity_log": {
+        "name": "Live activity log"
       },
       "automatic_backups": {
         "name": "Automatiska säkerhetskopior"

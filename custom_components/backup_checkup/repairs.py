@@ -209,7 +209,6 @@ def _format_bytes(value: int | None) -> str:
         return "unknown"
     units = ("B", "KiB", "MiB", "GiB", "TiB")
     size = float(value)
-    unit = units[0]
     for unit in units:
         if size < 1024 or unit == units[-1]:
             break

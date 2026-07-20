@@ -21,6 +21,7 @@ from .activity import (
 )
 from .configuration import normalize_configuration
 from .const import (
+    CONF_ACTIVITY_LOGGING_ENABLED,
     CONF_AUTO_VERIFY_NEW_BACKUPS,
     CONF_DATABASE_INTEGRITY_CHECK,
     CONF_DATABASE_TIMEOUT_MINUTES,
@@ -105,9 +106,9 @@ def _record_activity(
 
 
 def _entry_activity_logging_enabled(entry: ConfigEntry) -> bool:
-    """Return whether the config entry selected Expert entity mode."""
+    """Return whether detailed activity logging is enabled."""
     configuration = normalize_configuration(entry.data, entry.options)
-    return configuration[CONF_ENTITY_MODE] == ENTITY_MODE_EXPERT
+    return configuration[CONF_ACTIVITY_LOGGING_ENABLED]
 
 
 def _loaded_coordinator(hass: HomeAssistant) -> BackupCheckupCoordinator:

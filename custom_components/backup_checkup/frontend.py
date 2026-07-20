@@ -33,6 +33,7 @@ _PANEL_ENTITIES: dict[str, tuple[str, str]] = {
     "problem": ("binary_sensor", "problem"),
     "verify": ("button", "verify_latest_backup"),
     "refresh": ("button", "refresh"),
+    "activity_log": ("sensor", "activity_log"),
 }
 
 
