@@ -83,71 +83,28 @@
         }
       },
       "presentation": {
-        "title": "Entities and notifications",
-        "description": "Choose the visible entity scope, privacy behavior, and optional mobile alerts.",
+        "title": "Frontend, entiteiten en meldingen",
+        "description": "Kies het optionele zijbalkfrontend, de zichtbare entiteiten, privacy en mobiele meldingen.",
         "data": {
           "entity_mode": "Entity mode",
           "expose_backup_metadata": "Expose backup names and IDs (expert)",
           "notifications_enabled": "Enable mobile notifications",
           "notification_targets": "Mobile devices to notify",
-          "notify_on_recovery": "Notify when problems are resolved"
+          "notify_on_recovery": "Notify when problems are resolved",
+          "show_sidebar_panel": "BackupCheckup in de zijbalk tonen"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities and the live activity journal.",
           "expose_backup_metadata": "Disabled by default. When enabled, selected diagnostics and entities may expose user-defined backup names and raw backup IDs.",
           "notifications_enabled": "Send a mobile notification when the active backup problems change.",
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
-          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved."
+          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
+          "show_sidebar_panel": "Voegt een optioneel BackupCheckup-overzicht toe aan de Home Assistant-zijbalk. De pagina toont gezondheid, actieve problemen, integriteit, back-upmetingen en opslaglocaties."
         }
       },
       "summary": {
         "title": "Confirm setup",
-        "description": "Controleer de vastgestelde instellingen hieronder. Kies Verzenden om BackupCheckup aan te maken.",
-        "sections": {
-          "summary_system": {
-            "name": "Systeem en prestaties",
-            "data": {
-              "summary_hardware": "Gedetecteerde hardware",
-              "summary_runtime_profile": "Prestatieprofiel"
-            }
-          },
-          "summary_polling": {
-            "name": "Polling en resourcelimieten",
-            "data": {
-              "summary_adaptive_polling": "Intelligent opvragen",
-              "summary_update_interval": "Normaal interval in minuten",
-              "summary_active_interval": "Interval tijdens een back-up in minuten",
-              "summary_error_backoff": "Interval na fouten in minuten",
-              "summary_download_limit": "Maximale downloadgrootte in GB",
-              "summary_expanded_limit": "Maximale uitgepakte grootte in GB"
-            }
-          },
-          "summary_monitoring": {
-            "name": "Back-upbewaking",
-            "data": {
-              "summary_monitoring_policy": "Bewakingsbeleid",
-              "summary_max_age": "Maximale back-upleeftijd in dagen",
-              "summary_redundant_locations": "Vereiste opslaglocaties",
-              "summary_repair_issues": "Reparatiemeldingen"
-            }
-          },
-          "summary_integrity": {
-            "name": "Integriteit en weergave",
-            "data": {
-              "summary_verification_policy": "Integriteitsstrategie",
-              "summary_entity_mode": "Entiteitsmodus",
-              "summary_expose_metadata": "Back-upnamen en ID’s tonen"
-            }
-          },
-          "summary_notifications": {
-            "name": "Meldingen",
-            "data": {
-              "summary_notifications_enabled": "Mobiele meldingen",
-              "summary_notification_count": "Geselecteerde meldingsapparaten",
-              "summary_notify_on_recovery": "Herstelmelding"
-            }
-          }
-        }
+        "description": "De configuratie is gereed. Selecteer Verzenden om BackupCheckup aan te maken."
       }
     },
     "abort": {
@@ -168,7 +125,7 @@
           "runtime": "Performance profile",
           "monitoring": "Monitoring policy",
           "verification": "Integrity checks",
-          "presentation": "Entities and notifications",
+          "presentation": "Frontend, entiteiten en meldingen",
           "setup_assistant": "Run the complete setup assistant"
         }
       },
@@ -253,21 +210,23 @@
         }
       },
       "presentation": {
-        "title": "Entities and notifications",
-        "description": "Choose the visible entity scope, privacy behavior, and optional mobile alerts.",
+        "title": "Frontend, entiteiten en meldingen",
+        "description": "Kies het optionele zijbalkfrontend, de zichtbare entiteiten, privacy en mobiele meldingen.",
         "data": {
           "entity_mode": "Entity mode",
           "expose_backup_metadata": "Expose backup names and IDs (expert)",
           "notifications_enabled": "Enable mobile notifications",
           "notification_targets": "Mobile devices to notify",
-          "notify_on_recovery": "Notify when problems are resolved"
+          "notify_on_recovery": "Notify when problems are resolved",
+          "show_sidebar_panel": "BackupCheckup in de zijbalk tonen"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities and the live activity journal.",
           "expose_backup_metadata": "Disabled by default. When enabled, selected diagnostics and entities may expose user-defined backup names and raw backup IDs.",
           "notifications_enabled": "Send a mobile notification when the active backup problems change.",
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
-          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved."
+          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
+          "show_sidebar_panel": "Voegt een optioneel BackupCheckup-overzicht toe aan de Home Assistant-zijbalk. De pagina toont gezondheid, actieve problemen, integriteit, back-upmetingen en opslaglocaties."
         }
       },
       "setup_assistant": {
@@ -303,71 +262,28 @@
         }
       },
       "setup_presentation": {
-        "title": "Entities and notifications",
-        "description": "Choose the visible entity scope, privacy behavior, and optional mobile alerts.",
+        "title": "Frontend, entiteiten en meldingen",
+        "description": "Kies het optionele zijbalkfrontend, de zichtbare entiteiten, privacy en mobiele meldingen.",
         "data": {
           "entity_mode": "Entity mode",
           "expose_backup_metadata": "Expose backup names and IDs (expert)",
           "notifications_enabled": "Enable mobile notifications",
           "notification_targets": "Mobile devices to notify",
-          "notify_on_recovery": "Notify when problems are resolved"
+          "notify_on_recovery": "Notify when problems are resolved",
+          "show_sidebar_panel": "BackupCheckup in de zijbalk tonen"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities and the live activity journal.",
           "expose_backup_metadata": "Disabled by default. When enabled, selected diagnostics and entities may expose user-defined backup names and raw backup IDs.",
           "notifications_enabled": "Send a mobile notification when the active backup problems change.",
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
-          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved."
+          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
+          "show_sidebar_panel": "Voegt een optioneel BackupCheckup-overzicht toe aan de Home Assistant-zijbalk. De pagina toont gezondheid, actieve problemen, integriteit, back-upmetingen en opslaglocaties."
         }
       },
       "setup_summary": {
         "title": "Confirm updated setup",
-        "description": "Controleer de vastgestelde instellingen hieronder. Kies Verzenden om de configuratie op te slaan.",
-        "sections": {
-          "summary_system": {
-            "name": "Systeem en prestaties",
-            "data": {
-              "summary_hardware": "Gedetecteerde hardware",
-              "summary_runtime_profile": "Prestatieprofiel"
-            }
-          },
-          "summary_polling": {
-            "name": "Polling en resourcelimieten",
-            "data": {
-              "summary_adaptive_polling": "Intelligent opvragen",
-              "summary_update_interval": "Normaal interval in minuten",
-              "summary_active_interval": "Interval tijdens een back-up in minuten",
-              "summary_error_backoff": "Interval na fouten in minuten",
-              "summary_download_limit": "Maximale downloadgrootte in GB",
-              "summary_expanded_limit": "Maximale uitgepakte grootte in GB"
-            }
-          },
-          "summary_monitoring": {
-            "name": "Back-upbewaking",
-            "data": {
-              "summary_monitoring_policy": "Bewakingsbeleid",
-              "summary_max_age": "Maximale back-upleeftijd in dagen",
-              "summary_redundant_locations": "Vereiste opslaglocaties",
-              "summary_repair_issues": "Reparatiemeldingen"
-            }
-          },
-          "summary_integrity": {
-            "name": "Integriteit en weergave",
-            "data": {
-              "summary_verification_policy": "Integriteitsstrategie",
-              "summary_entity_mode": "Entiteitsmodus",
-              "summary_expose_metadata": "Back-upnamen en ID’s tonen"
-            }
-          },
-          "summary_notifications": {
-            "name": "Meldingen",
-            "data": {
-              "summary_notifications_enabled": "Mobiele meldingen",
-              "summary_notification_count": "Geselecteerde meldingsapparaten",
-              "summary_notify_on_recovery": "Herstelmelding"
-            }
-          }
-        }
+        "description": "De bijgewerkte configuratie is gereed. Selecteer Verzenden om deze op te slaan."
       }
     },
     "error": {

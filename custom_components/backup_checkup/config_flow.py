@@ -8,7 +8,6 @@ from typing import Any
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
-from homeassistant.helpers.translation import async_get_translations
 
 from .configuration import normalize_configuration
 from .const import (
@@ -24,6 +23,7 @@ from .const import (
     CONF_NOTIFY_ON_RECOVERY,
     CONF_PRESET_REVISION,
     CONF_RUNTIME_PROFILE,
+    CONF_SHOW_SIDEBAR_PANEL,
     CONF_SIZE_CHECK_MODE,
     CONF_VERIFICATION_POLICY,
     DEFAULT_ENTITY_MODE,
@@ -43,13 +43,12 @@ from .const import (
     SIZE_CHECK_FIXED,
 )
 from .flow_schemas import (
-    SUMMARY_HARDWARE,
+    confirmation_schema,
     monitoring_custom_schema,
     monitoring_policy_schema,
     presentation_schema,
     runtime_custom_schema,
     runtime_profile_schema,
-    summary_schema,
     verification_policy_schema,
 )
 from .hardware_profile import HardwareSnapshot, async_detect_hardware
@@ -64,25 +63,6 @@ _OPTIONS_MENU = (
     "presentation",
     "setup_assistant",
 )
-
-
-def _flow_language(flow: object) -> str:
-    """Return the language selected for the current flow."""
-    context = getattr(flow, "context", None)
-    if isinstance(context, dict) and isinstance(context.get("language"), str):
-        return context["language"]
-    hass = getattr(flow, "hass", None)
-    config = getattr(hass, "config", None)
-    language = getattr(config, "language", "en")
-    return language if isinstance(language, str) else "en"
-
-
-async def _async_summary_translations(flow: object) -> dict[str, str]:
-    """Load valid selector-option translations for compact summary labels."""
-    hass = flow.hass  # type: ignore[attr-defined]
-    return await async_get_translations(
-        hass, _flow_language(flow), "selector", {DOMAIN}
-    )
 
 
 def _notification_values(user_input: dict[str, Any]) -> dict[str, Any]:
@@ -164,21 +144,6 @@ def _hardware_placeholders(snapshot: HardwareSnapshot) -> dict[str, str]:
     }
 
 
-def _summary_values(values: dict[str, Any]) -> dict[str, Any]:
-    """Return a read-only summary snapshot without sensitive identifiers."""
-    hardware = values.get(CONF_HARDWARE_DETECTION, {})
-    board = hardware.get("board")
-    architecture = hardware.get("architecture")
-    hardware_name = (
-        board
-        if isinstance(board, str) and board != "unknown"
-        else architecture
-        if isinstance(architecture, str) and architecture != "unknown"
-        else "—"
-    )
-    return {**values, SUMMARY_HARDWARE: str(hardware_name)}
-
-
 class _GuidedFlowState:
     """Shared state helpers for initial setup and the options setup assistant."""
 
@@ -220,6 +185,12 @@ class _GuidedFlowState:
         self._draft[CONF_EXPOSE_BACKUP_METADATA] = bool(
             user_input[CONF_EXPOSE_BACKUP_METADATA]
         )
+        self._draft[CONF_SHOW_SIDEBAR_PANEL] = bool(
+            user_input.get(
+                CONF_SHOW_SIDEBAR_PANEL,
+                self._draft[CONF_SHOW_SIDEBAR_PANEL],
+            )
+        )
         self._draft.update(_notification_values(user_input))
 
 
@@ -228,7 +199,7 @@ class BackupCheckupConfigFlow(
 ):
     """Handle the guided BackupCheckup installation flow."""
 
-    VERSION = 10
+    VERSION = 11
 
     def __init__(self) -> None:
         """Initialize an empty guided flow."""
@@ -363,10 +334,9 @@ class BackupCheckupConfigFlow(
         if user_input is not None:
             data = normalize_configuration(self._draft)
             return self.async_create_entry(title=NAME, data=data)
-        translations = await _async_summary_translations(self)
         return self.async_show_form(
             step_id="summary",
-            data_schema=summary_schema(_summary_values(self._draft), translations),
+            data_schema=confirmation_schema(),
             last_step=True,
         )
 
@@ -546,6 +516,12 @@ class BackupCheckupOptionsFlow(_GuidedFlowState, config_entries.OptionsFlowWithR
                     CONF_EXPOSE_BACKUP_METADATA: bool(
                         user_input[CONF_EXPOSE_BACKUP_METADATA]
                     ),
+                    CONF_SHOW_SIDEBAR_PANEL: bool(
+                        user_input.get(
+                            CONF_SHOW_SIDEBAR_PANEL,
+                            values[CONF_SHOW_SIDEBAR_PANEL],
+                        )
+                    ),
                     **_notification_values(user_input),
                 }
                 return self._save(patch)
@@ -652,9 +628,8 @@ class BackupCheckupOptionsFlow(_GuidedFlowState, config_entries.OptionsFlowWithR
             return self.async_create_entry(
                 title="", data=normalize_configuration(self._draft)
             )
-        translations = await _async_summary_translations(self)
         return self.async_show_form(
             step_id="setup_summary",
-            data_schema=summary_schema(_summary_values(self._draft), translations),
+            data_schema=confirmation_schema(),
             last_step=True,
         )

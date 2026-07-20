@@ -83,71 +83,28 @@
         }
       },
       "presentation": {
-        "title": "Entities and notifications",
-        "description": "Choose the visible entity scope, privacy behavior, and optional mobile alerts.",
+        "title": "Interface, entités et notifications",
+        "description": "Choisissez l’interface facultative de la barre latérale, les entités visibles, la confidentialité et les alertes mobiles.",
         "data": {
           "entity_mode": "Entity mode",
           "expose_backup_metadata": "Expose backup names and IDs (expert)",
           "notifications_enabled": "Enable mobile notifications",
           "notification_targets": "Mobile devices to notify",
-          "notify_on_recovery": "Notify when problems are resolved"
+          "notify_on_recovery": "Notify when problems are resolved",
+          "show_sidebar_panel": "Afficher BackupCheckup dans la barre latérale"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities and the live activity journal.",
           "expose_backup_metadata": "Disabled by default. When enabled, selected diagnostics and entities may expose user-defined backup names and raw backup IDs.",
           "notifications_enabled": "Send a mobile notification when the active backup problems change.",
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
-          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved."
+          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
+          "show_sidebar_panel": "Ajoute une vue d’ensemble BackupCheckup facultative à la barre latérale de Home Assistant. La page affiche la santé, les problèmes actifs, l’intégrité, les mesures de sauvegarde et les emplacements de stockage."
         }
       },
       "summary": {
         "title": "Confirm setup",
-        "description": "Vérifiez les réglages déterminés ci-dessous. Sélectionnez Envoyer pour créer BackupCheckup.",
-        "sections": {
-          "summary_system": {
-            "name": "Système et performances",
-            "data": {
-              "summary_hardware": "Matériel détecté",
-              "summary_runtime_profile": "Profil de performances"
-            }
-          },
-          "summary_polling": {
-            "name": "Interrogation et limites de ressources",
-            "data": {
-              "summary_adaptive_polling": "Interrogation intelligente",
-              "summary_update_interval": "Intervalle normal en minutes",
-              "summary_active_interval": "Intervalle pendant une sauvegarde en minutes",
-              "summary_error_backoff": "Intervalle après erreurs en minutes",
-              "summary_download_limit": "Taille maximale téléchargée en Go",
-              "summary_expanded_limit": "Taille maximale décompressée en Go"
-            }
-          },
-          "summary_monitoring": {
-            "name": "Surveillance des sauvegardes",
-            "data": {
-              "summary_monitoring_policy": "Politique de surveillance",
-              "summary_max_age": "Âge maximal de la sauvegarde en jours",
-              "summary_redundant_locations": "Emplacements de stockage requis",
-              "summary_repair_issues": "Notifications de réparation"
-            }
-          },
-          "summary_integrity": {
-            "name": "Intégrité et présentation",
-            "data": {
-              "summary_verification_policy": "Stratégie d’intégrité",
-              "summary_entity_mode": "Mode des entités",
-              "summary_expose_metadata": "Afficher les noms et ID des sauvegardes"
-            }
-          },
-          "summary_notifications": {
-            "name": "Notifications",
-            "data": {
-              "summary_notifications_enabled": "Notifications mobiles",
-              "summary_notification_count": "Appareils de notification sélectionnés",
-              "summary_notify_on_recovery": "Notification de rétablissement"
-            }
-          }
-        }
+        "description": "La configuration est prête. Sélectionnez Envoyer pour créer BackupCheckup."
       }
     },
     "abort": {
@@ -168,7 +125,7 @@
           "runtime": "Performance profile",
           "monitoring": "Monitoring policy",
           "verification": "Integrity checks",
-          "presentation": "Entities and notifications",
+          "presentation": "Interface, entités et notifications",
           "setup_assistant": "Run the complete setup assistant"
         }
       },
@@ -253,21 +210,23 @@
         }
       },
       "presentation": {
-        "title": "Entities and notifications",
-        "description": "Choose the visible entity scope, privacy behavior, and optional mobile alerts.",
+        "title": "Interface, entités et notifications",
+        "description": "Choisissez l’interface facultative de la barre latérale, les entités visibles, la confidentialité et les alertes mobiles.",
         "data": {
           "entity_mode": "Entity mode",
           "expose_backup_metadata": "Expose backup names and IDs (expert)",
           "notifications_enabled": "Enable mobile notifications",
           "notification_targets": "Mobile devices to notify",
-          "notify_on_recovery": "Notify when problems are resolved"
+          "notify_on_recovery": "Notify when problems are resolved",
+          "show_sidebar_panel": "Afficher BackupCheckup dans la barre latérale"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities and the live activity journal.",
           "expose_backup_metadata": "Disabled by default. When enabled, selected diagnostics and entities may expose user-defined backup names and raw backup IDs.",
           "notifications_enabled": "Send a mobile notification when the active backup problems change.",
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
-          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved."
+          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
+          "show_sidebar_panel": "Ajoute une vue d’ensemble BackupCheckup facultative à la barre latérale de Home Assistant. La page affiche la santé, les problèmes actifs, l’intégrité, les mesures de sauvegarde et les emplacements de stockage."
         }
       },
       "setup_assistant": {
@@ -303,71 +262,28 @@
         }
       },
       "setup_presentation": {
-        "title": "Entities and notifications",
-        "description": "Choose the visible entity scope, privacy behavior, and optional mobile alerts.",
+        "title": "Interface, entités et notifications",
+        "description": "Choisissez l’interface facultative de la barre latérale, les entités visibles, la confidentialité et les alertes mobiles.",
         "data": {
           "entity_mode": "Entity mode",
           "expose_backup_metadata": "Expose backup names and IDs (expert)",
           "notifications_enabled": "Enable mobile notifications",
           "notification_targets": "Mobile devices to notify",
-          "notify_on_recovery": "Notify when problems are resolved"
+          "notify_on_recovery": "Notify when problems are resolved",
+          "show_sidebar_panel": "Afficher BackupCheckup dans la barre latérale"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities and the live activity journal.",
           "expose_backup_metadata": "Disabled by default. When enabled, selected diagnostics and entities may expose user-defined backup names and raw backup IDs.",
           "notifications_enabled": "Send a mobile notification when the active backup problems change.",
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
-          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved."
+          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
+          "show_sidebar_panel": "Ajoute une vue d’ensemble BackupCheckup facultative à la barre latérale de Home Assistant. La page affiche la santé, les problèmes actifs, l’intégrité, les mesures de sauvegarde et les emplacements de stockage."
         }
       },
       "setup_summary": {
         "title": "Confirm updated setup",
-        "description": "Vérifiez les réglages déterminés ci-dessous. Sélectionnez Envoyer pour enregistrer la configuration.",
-        "sections": {
-          "summary_system": {
-            "name": "Système et performances",
-            "data": {
-              "summary_hardware": "Matériel détecté",
-              "summary_runtime_profile": "Profil de performances"
-            }
-          },
-          "summary_polling": {
-            "name": "Interrogation et limites de ressources",
-            "data": {
-              "summary_adaptive_polling": "Interrogation intelligente",
-              "summary_update_interval": "Intervalle normal en minutes",
-              "summary_active_interval": "Intervalle pendant une sauvegarde en minutes",
-              "summary_error_backoff": "Intervalle après erreurs en minutes",
-              "summary_download_limit": "Taille maximale téléchargée en Go",
-              "summary_expanded_limit": "Taille maximale décompressée en Go"
-            }
-          },
-          "summary_monitoring": {
-            "name": "Surveillance des sauvegardes",
-            "data": {
-              "summary_monitoring_policy": "Politique de surveillance",
-              "summary_max_age": "Âge maximal de la sauvegarde en jours",
-              "summary_redundant_locations": "Emplacements de stockage requis",
-              "summary_repair_issues": "Notifications de réparation"
-            }
-          },
-          "summary_integrity": {
-            "name": "Intégrité et présentation",
-            "data": {
-              "summary_verification_policy": "Stratégie d’intégrité",
-              "summary_entity_mode": "Mode des entités",
-              "summary_expose_metadata": "Afficher les noms et ID des sauvegardes"
-            }
-          },
-          "summary_notifications": {
-            "name": "Notifications",
-            "data": {
-              "summary_notifications_enabled": "Notifications mobiles",
-              "summary_notification_count": "Appareils de notification sélectionnés",
-              "summary_notify_on_recovery": "Notification de rétablissement"
-            }
-          }
-        }
+        "description": "La configuration mise à jour est prête. Sélectionnez Envoyer pour l’enregistrer."
       }
     },
     "error": {

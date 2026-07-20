@@ -83,71 +83,28 @@
         }
       },
       "presentation": {
-        "title": "Entitäten und Benachrichtigungen",
-        "description": "Wähle Entitätsumfang, Datenschutzverhalten und optionale mobile Meldungen.",
+        "title": "Frontend, Entitäten und Benachrichtigungen",
+        "description": "Wähle das optionale Seitenleisten-Frontend, den Entitätsumfang, das Datenschutzverhalten und mobile Meldungen.",
         "data": {
           "entity_mode": "Entitätsmodus",
           "expose_backup_metadata": "Backupnamen und IDs anzeigen (Experte)",
           "notifications_enabled": "Mobile Benachrichtigungen aktivieren",
           "notification_targets": "Zu benachrichtigende Mobilgeräte",
-          "notify_on_recovery": "Bei behobenen Problemen benachrichtigen"
+          "notify_on_recovery": "Bei behobenen Problemen benachrichtigen",
+          "show_sidebar_panel": "BackupCheckup in der Seitenleiste anzeigen"
         },
         "data_description": {
           "entity_mode": "Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert alle Analyse-, Diagnose-, Integritäts-, Zeitplan- und Speicherentitäten sowie das Live-Aktivitätsjournal.",
           "expose_backup_metadata": "Standardmäßig deaktiviert. Aktiviert können ausgewählte Diagnosen und Entitäten benutzerdefinierte Backupnamen und rohe Backup-IDs anzeigen.",
           "notifications_enabled": "Sendet eine mobile Benachrichtigung, wenn sich die aktiven Backupprobleme ändern.",
           "notification_targets": "Es werden nur Benachrichtigungsentitäten der Home Assistant Companion App aufgelistet. Mehrere Geräte sind möglich.",
-          "notify_on_recovery": "Sendet eine abschließende Benachrichtigung, wenn alle zuvor gemeldeten Probleme behoben sind."
+          "notify_on_recovery": "Sendet eine abschließende Benachrichtigung, wenn alle zuvor gemeldeten Probleme behoben sind.",
+          "show_sidebar_panel": "Fügt der Home-Assistant-Seitenleiste eine optionale BackupCheckup-Übersicht hinzu. Die Seite zeigt Gesundheitswert, aktive Probleme, Integrität, Backup-Kennzahlen und Speicherorte."
         }
       },
       "summary": {
         "title": "Einrichtung bestätigen",
-        "description": "Prüfe die unten aufgelösten Einstellungen. Mit Absenden wird BackupCheckup eingerichtet.",
-        "sections": {
-          "summary_system": {
-            "name": "System und Leistung",
-            "data": {
-              "summary_hardware": "Erkannte Hardware",
-              "summary_runtime_profile": "Leistungsprofil"
-            }
-          },
-          "summary_polling": {
-            "name": "Abfrage und Ressourcengrenzen",
-            "data": {
-              "summary_adaptive_polling": "Intelligente Abfrage",
-              "summary_update_interval": "Normales Abfrageintervall in Minuten",
-              "summary_active_interval": "Abfrageintervall während eines Backups in Minuten",
-              "summary_error_backoff": "Fehler-Backoff-Intervall in Minuten",
-              "summary_download_limit": "Maximale Downloadgröße in GB",
-              "summary_expanded_limit": "Maximale entpackte Größe in GB"
-            }
-          },
-          "summary_monitoring": {
-            "name": "Backup-Überwachung",
-            "data": {
-              "summary_monitoring_policy": "Überwachungsrichtlinie",
-              "summary_max_age": "Maximales Backupalter in Tagen",
-              "summary_redundant_locations": "Erforderliche Speicherorte",
-              "summary_repair_issues": "Reparaturmeldungen"
-            }
-          },
-          "summary_integrity": {
-            "name": "Integrität und Darstellung",
-            "data": {
-              "summary_verification_policy": "Integritätsstrategie",
-              "summary_entity_mode": "Entitätsmodus",
-              "summary_expose_metadata": "Backupnamen und IDs anzeigen"
-            }
-          },
-          "summary_notifications": {
-            "name": "Benachrichtigungen",
-            "data": {
-              "summary_notifications_enabled": "Mobile Benachrichtigungen",
-              "summary_notification_count": "Ausgewählte Benachrichtigungsgeräte",
-              "summary_notify_on_recovery": "Benachrichtigung bei Behebung"
-            }
-          }
-        }
+        "description": "Die Einrichtung ist bereit. Mit Absenden wird BackupCheckup eingerichtet."
       }
     },
     "abort": {
@@ -168,7 +125,7 @@
           "runtime": "Leistungsprofil",
           "monitoring": "Überwachungsrichtlinie",
           "verification": "Integritätsprüfungen",
-          "presentation": "Entitäten und Benachrichtigungen",
+          "presentation": "Frontend, Entitäten und Benachrichtigungen",
           "setup_assistant": "Kompletten Einrichtungsassistenten starten"
         }
       },
@@ -253,21 +210,23 @@
         }
       },
       "presentation": {
-        "title": "Entitäten und Benachrichtigungen",
-        "description": "Wähle Entitätsumfang, Datenschutzverhalten und optionale mobile Meldungen.",
+        "title": "Frontend, Entitäten und Benachrichtigungen",
+        "description": "Wähle das optionale Seitenleisten-Frontend, den Entitätsumfang, das Datenschutzverhalten und mobile Meldungen.",
         "data": {
           "entity_mode": "Entitätsmodus",
           "expose_backup_metadata": "Backupnamen und IDs anzeigen (Experte)",
           "notifications_enabled": "Mobile Benachrichtigungen aktivieren",
           "notification_targets": "Zu benachrichtigende Mobilgeräte",
-          "notify_on_recovery": "Bei behobenen Problemen benachrichtigen"
+          "notify_on_recovery": "Bei behobenen Problemen benachrichtigen",
+          "show_sidebar_panel": "BackupCheckup in der Seitenleiste anzeigen"
         },
         "data_description": {
           "entity_mode": "Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert alle Analyse-, Diagnose-, Integritäts-, Zeitplan- und Speicherentitäten sowie das Live-Aktivitätsjournal.",
           "expose_backup_metadata": "Standardmäßig deaktiviert. Aktiviert können ausgewählte Diagnosen und Entitäten benutzerdefinierte Backupnamen und rohe Backup-IDs anzeigen.",
           "notifications_enabled": "Sendet eine mobile Benachrichtigung, wenn sich die aktiven Backupprobleme ändern.",
           "notification_targets": "Es werden nur Benachrichtigungsentitäten der Home Assistant Companion App aufgelistet. Mehrere Geräte sind möglich.",
-          "notify_on_recovery": "Sendet eine abschließende Benachrichtigung, wenn alle zuvor gemeldeten Probleme behoben sind."
+          "notify_on_recovery": "Sendet eine abschließende Benachrichtigung, wenn alle zuvor gemeldeten Probleme behoben sind.",
+          "show_sidebar_panel": "Fügt der Home-Assistant-Seitenleiste eine optionale BackupCheckup-Übersicht hinzu. Die Seite zeigt Gesundheitswert, aktive Probleme, Integrität, Backup-Kennzahlen und Speicherorte."
         }
       },
       "setup_assistant": {
@@ -303,71 +262,28 @@
         }
       },
       "setup_presentation": {
-        "title": "Entitäten und Benachrichtigungen",
-        "description": "Wähle Entitätsumfang, Datenschutzverhalten und optionale mobile Meldungen.",
+        "title": "Frontend, Entitäten und Benachrichtigungen",
+        "description": "Wähle das optionale Seitenleisten-Frontend, den Entitätsumfang, das Datenschutzverhalten und mobile Meldungen.",
         "data": {
           "entity_mode": "Entitätsmodus",
           "expose_backup_metadata": "Backupnamen und IDs anzeigen (Experte)",
           "notifications_enabled": "Mobile Benachrichtigungen aktivieren",
           "notification_targets": "Zu benachrichtigende Mobilgeräte",
-          "notify_on_recovery": "Bei behobenen Problemen benachrichtigen"
+          "notify_on_recovery": "Bei behobenen Problemen benachrichtigen",
+          "show_sidebar_panel": "BackupCheckup in der Seitenleiste anzeigen"
         },
         "data_description": {
           "entity_mode": "Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert alle Analyse-, Diagnose-, Integritäts-, Zeitplan- und Speicherentitäten sowie das Live-Aktivitätsjournal.",
           "expose_backup_metadata": "Standardmäßig deaktiviert. Aktiviert können ausgewählte Diagnosen und Entitäten benutzerdefinierte Backupnamen und rohe Backup-IDs anzeigen.",
           "notifications_enabled": "Sendet eine mobile Benachrichtigung, wenn sich die aktiven Backupprobleme ändern.",
           "notification_targets": "Es werden nur Benachrichtigungsentitäten der Home Assistant Companion App aufgelistet. Mehrere Geräte sind möglich.",
-          "notify_on_recovery": "Sendet eine abschließende Benachrichtigung, wenn alle zuvor gemeldeten Probleme behoben sind."
+          "notify_on_recovery": "Sendet eine abschließende Benachrichtigung, wenn alle zuvor gemeldeten Probleme behoben sind.",
+          "show_sidebar_panel": "Fügt der Home-Assistant-Seitenleiste eine optionale BackupCheckup-Übersicht hinzu. Die Seite zeigt Gesundheitswert, aktive Probleme, Integrität, Backup-Kennzahlen und Speicherorte."
         }
       },
       "setup_summary": {
         "title": "Neue Einrichtung bestätigen",
-        "description": "Prüfe die unten aufgelösten Einstellungen. Mit Absenden wird die geänderte Konfiguration gespeichert.",
-        "sections": {
-          "summary_system": {
-            "name": "System und Leistung",
-            "data": {
-              "summary_hardware": "Erkannte Hardware",
-              "summary_runtime_profile": "Leistungsprofil"
-            }
-          },
-          "summary_polling": {
-            "name": "Abfrage und Ressourcengrenzen",
-            "data": {
-              "summary_adaptive_polling": "Intelligente Abfrage",
-              "summary_update_interval": "Normales Abfrageintervall in Minuten",
-              "summary_active_interval": "Abfrageintervall während eines Backups in Minuten",
-              "summary_error_backoff": "Fehler-Backoff-Intervall in Minuten",
-              "summary_download_limit": "Maximale Downloadgröße in GB",
-              "summary_expanded_limit": "Maximale entpackte Größe in GB"
-            }
-          },
-          "summary_monitoring": {
-            "name": "Backup-Überwachung",
-            "data": {
-              "summary_monitoring_policy": "Überwachungsrichtlinie",
-              "summary_max_age": "Maximales Backupalter in Tagen",
-              "summary_redundant_locations": "Erforderliche Speicherorte",
-              "summary_repair_issues": "Reparaturmeldungen"
-            }
-          },
-          "summary_integrity": {
-            "name": "Integrität und Darstellung",
-            "data": {
-              "summary_verification_policy": "Integritätsstrategie",
-              "summary_entity_mode": "Entitätsmodus",
-              "summary_expose_metadata": "Backupnamen und IDs anzeigen"
-            }
-          },
-          "summary_notifications": {
-            "name": "Benachrichtigungen",
-            "data": {
-              "summary_notifications_enabled": "Mobile Benachrichtigungen",
-              "summary_notification_count": "Ausgewählte Benachrichtigungsgeräte",
-              "summary_notify_on_recovery": "Benachrichtigung bei Behebung"
-            }
-          }
-        }
+        "description": "Die geänderte Einrichtung ist bereit. Mit Absenden wird die Konfiguration gespeichert."
       }
     },
     "error": {

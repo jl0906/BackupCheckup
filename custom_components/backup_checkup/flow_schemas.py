@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
 from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import section
 from homeassistant.helpers.selector import (
     BooleanSelector,
-    ConstantSelector,
-    ConstantSelectorConfig,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -42,11 +38,11 @@ from .const import (
     CONF_NOTIFY_ON_RECOVERY,
     CONF_REPAIR_ISSUES_ENABLED,
     CONF_RUNTIME_PROFILE,
+    CONF_SHOW_SIDEBAR_PANEL,
     CONF_SIZE_CHECK_MODE,
     CONF_UPDATE_INTERVAL_MINUTES,
     CONF_VERIFICATION_POLICY,
     CONF_VERIFICATION_TIMEOUT_MINUTES,
-    DOMAIN,
     ENTITY_MODE_OPTIONS,
     MAX_ACTIVE_UPDATE_INTERVAL_MINUTES,
     MAX_ADAPTIVE_ERROR_THRESHOLD,
@@ -83,31 +79,6 @@ from .const import (
     VERIFICATION_POLICY_OPTIONS,
 )
 from .notification_selection import mobile_notification_options
-
-SUMMARY_SECTION_SYSTEM = "summary_system"
-SUMMARY_SECTION_POLLING = "summary_polling"
-SUMMARY_SECTION_MONITORING = "summary_monitoring"
-SUMMARY_SECTION_INTEGRITY = "summary_integrity"
-SUMMARY_SECTION_NOTIFICATIONS = "summary_notifications"
-
-SUMMARY_HARDWARE = "summary_hardware"
-SUMMARY_RUNTIME_PROFILE = "summary_runtime_profile"
-SUMMARY_UPDATE_INTERVAL = "summary_update_interval"
-SUMMARY_ACTIVE_INTERVAL = "summary_active_interval"
-SUMMARY_ERROR_BACKOFF = "summary_error_backoff"
-SUMMARY_ADAPTIVE_POLLING = "summary_adaptive_polling"
-SUMMARY_DOWNLOAD_LIMIT = "summary_download_limit"
-SUMMARY_EXPANDED_LIMIT = "summary_expanded_limit"
-SUMMARY_MONITORING_POLICY = "summary_monitoring_policy"
-SUMMARY_MAX_AGE = "summary_max_age"
-SUMMARY_REDUNDANT_LOCATIONS = "summary_redundant_locations"
-SUMMARY_REPAIR_ISSUES = "summary_repair_issues"
-SUMMARY_VERIFICATION_POLICY = "summary_verification_policy"
-SUMMARY_ENTITY_MODE = "summary_entity_mode"
-SUMMARY_EXPOSE_METADATA = "summary_expose_metadata"
-SUMMARY_NOTIFICATIONS_ENABLED = "summary_notifications_enabled"
-SUMMARY_NOTIFICATION_COUNT = "summary_notification_count"
-SUMMARY_NOTIFY_ON_RECOVERY = "summary_notify_on_recovery"
 
 
 def integer_selector(minimum: int, maximum: int) -> NumberSelector:
@@ -289,6 +260,10 @@ def presentation_schema(hass: HomeAssistant, values: dict[str, Any]) -> vol.Sche
                 default=values[CONF_EXPOSE_BACKUP_METADATA],
             ): BooleanSelector(),
             vol.Required(
+                CONF_SHOW_SIDEBAR_PANEL,
+                default=values[CONF_SHOW_SIDEBAR_PANEL],
+            ): BooleanSelector(),
+            vol.Required(
                 CONF_NOTIFICATIONS_ENABLED,
                 default=values[CONF_NOTIFICATIONS_ENABLED],
             ): BooleanSelector(),
@@ -314,189 +289,6 @@ def presentation_schema(hass: HomeAssistant, values: dict[str, Any]) -> vol.Sche
     )
 
 
-_SUMMARY_LABEL_FALLBACKS: dict[str, dict[str, str]] = {
-    "runtime_profile": {
-        "energy_saving": "Energy saving",
-        "home_assistant_appliance": "Home Assistant appliance",
-        "performance": "High performance",
-        "server": "Server",
-        "custom": "Custom",
-        "legacy_custom": "Keep existing custom settings",
-    },
-    "monitoring_policy": {
-        "balanced": "Balanced",
-        "strict": "Strict",
-        "custom": "Custom",
-    },
-    "verification_policy": {
-        "manual": "Manual only",
-        "automatic": "Automatically verify new backups",
-        "deep": "Deep verification including database",
-        "custom": "Keep existing custom settings",
-    },
-    "entity_mode": {
-        "standard": "Standard mode",
-        "expert": "Expert mode",
-    },
-    "enabled_state": {
-        "enabled": "Enabled",
-        "disabled": "Disabled",
-    },
-}
-
-
-def _summary_constant(
-    value: str | int | bool, *, label: str | None = None
-) -> ConstantSelector:
-    """Return a compact, non-editable value for the final summary."""
-    config: ConstantSelectorConfig = {"value": value}
-    if label is not None:
-        config["label"] = label
-    return ConstantSelector(config)
-
-
-def _summary_label(group: str, value: str, translations: Mapping[str, str]) -> str:
-    """Return a localized label from a hassfest-supported select translation."""
-    key = f"component.{DOMAIN}.selector.{group}.options.{value}"
-    return translations.get(
-        key, _SUMMARY_LABEL_FALLBACKS.get(group, {}).get(value, value)
-    )
-
-
-def _translated_summary_constant(
-    group: str, value: str, translations: Mapping[str, str]
-) -> ConstantSelector:
-    """Return a localized constant using an existing select-option translation."""
-    return _summary_constant(value, label=_summary_label(group, value, translations))
-
-
-def summary_schema(
-    values: dict[str, Any], translations: Mapping[str, str] | None = None
-) -> vol.Schema:
-    """Return a compact, grouped, non-editable setup summary."""
-    labels = translations or {}
-    enabled_state = "enabled" if values[CONF_ADAPTIVE_POLLING] else "disabled"
-    repair_state = "enabled" if values[CONF_REPAIR_ISSUES_ENABLED] else "disabled"
-    metadata_state = "enabled" if values[CONF_EXPOSE_BACKUP_METADATA] else "disabled"
-    notification_state = "enabled" if values[CONF_NOTIFICATIONS_ENABLED] else "disabled"
-    recovery_state = "enabled" if values[CONF_NOTIFY_ON_RECOVERY] else "disabled"
-
-    return vol.Schema(
-        {
-            vol.Optional(SUMMARY_SECTION_SYSTEM): section(
-                vol.Schema(
-                    {
-                        vol.Optional(SUMMARY_HARDWARE): _summary_constant(
-                            str(values[SUMMARY_HARDWARE])
-                        ),
-                        vol.Optional(SUMMARY_RUNTIME_PROFILE): (
-                            _translated_summary_constant(
-                                "runtime_profile",
-                                values[CONF_RUNTIME_PROFILE],
-                                labels,
-                            )
-                        ),
-                    }
-                ),
-                {"collapsed": False},
-            ),
-            vol.Optional(SUMMARY_SECTION_POLLING): section(
-                vol.Schema(
-                    {
-                        vol.Optional(SUMMARY_ADAPTIVE_POLLING): (
-                            _translated_summary_constant(
-                                "enabled_state", enabled_state, labels
-                            )
-                        ),
-                        vol.Optional(SUMMARY_UPDATE_INTERVAL): _summary_constant(
-                            int(values[CONF_UPDATE_INTERVAL_MINUTES])
-                        ),
-                        vol.Optional(SUMMARY_ACTIVE_INTERVAL): _summary_constant(
-                            int(values[CONF_ACTIVE_UPDATE_INTERVAL_MINUTES])
-                        ),
-                        vol.Optional(SUMMARY_ERROR_BACKOFF): _summary_constant(
-                            int(values[CONF_ERROR_BACKOFF_INTERVAL_MINUTES])
-                        ),
-                        vol.Optional(SUMMARY_DOWNLOAD_LIMIT): _summary_constant(
-                            int(values[CONF_MAX_VERIFICATION_SIZE_GB])
-                        ),
-                        vol.Optional(SUMMARY_EXPANDED_LIMIT): _summary_constant(
-                            int(values[CONF_MAX_EXPANDED_SIZE_GB])
-                        ),
-                    }
-                ),
-                {"collapsed": False},
-            ),
-            vol.Optional(SUMMARY_SECTION_MONITORING): section(
-                vol.Schema(
-                    {
-                        vol.Optional(SUMMARY_MONITORING_POLICY): (
-                            _translated_summary_constant(
-                                "monitoring_policy",
-                                values[CONF_MONITORING_POLICY],
-                                labels,
-                            )
-                        ),
-                        vol.Optional(SUMMARY_MAX_AGE): _summary_constant(
-                            int(values[CONF_MAX_AGE_DAYS])
-                        ),
-                        vol.Optional(SUMMARY_REDUNDANT_LOCATIONS): (
-                            _summary_constant(
-                                int(values[CONF_MINIMUM_REDUNDANT_LOCATIONS])
-                            )
-                        ),
-                        vol.Optional(SUMMARY_REPAIR_ISSUES): (
-                            _translated_summary_constant(
-                                "enabled_state", repair_state, labels
-                            )
-                        ),
-                    }
-                ),
-                {"collapsed": False},
-            ),
-            vol.Optional(SUMMARY_SECTION_INTEGRITY): section(
-                vol.Schema(
-                    {
-                        vol.Optional(SUMMARY_VERIFICATION_POLICY): (
-                            _translated_summary_constant(
-                                "verification_policy",
-                                values[CONF_VERIFICATION_POLICY],
-                                labels,
-                            )
-                        ),
-                        vol.Optional(SUMMARY_ENTITY_MODE): (
-                            _translated_summary_constant(
-                                "entity_mode", values[CONF_ENTITY_MODE], labels
-                            )
-                        ),
-                        vol.Optional(SUMMARY_EXPOSE_METADATA): (
-                            _translated_summary_constant(
-                                "enabled_state", metadata_state, labels
-                            )
-                        ),
-                    }
-                ),
-                {"collapsed": False},
-            ),
-            vol.Optional(SUMMARY_SECTION_NOTIFICATIONS): section(
-                vol.Schema(
-                    {
-                        vol.Optional(SUMMARY_NOTIFICATIONS_ENABLED): (
-                            _translated_summary_constant(
-                                "enabled_state", notification_state, labels
-                            )
-                        ),
-                        vol.Optional(SUMMARY_NOTIFICATION_COUNT): (
-                            _summary_constant(len(values[CONF_NOTIFICATION_TARGETS]))
-                        ),
-                        vol.Optional(SUMMARY_NOTIFY_ON_RECOVERY): (
-                            _translated_summary_constant(
-                                "enabled_state", recovery_state, labels
-                            )
-                        ),
-                    }
-                ),
-                {"collapsed": not values[CONF_NOTIFICATIONS_ENABLED]},
-            ),
-        }
-    )
+def confirmation_schema() -> vol.Schema:
+    """Return a value-free final confirmation form."""
+    return vol.Schema({})

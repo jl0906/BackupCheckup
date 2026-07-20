@@ -3,9 +3,9 @@
 from homeassistant.const import Platform
 
 DOMAIN = "backup_checkup"
-CONFIG_ENTRY_VERSION = 10
+CONFIG_ENTRY_VERSION = 11
 NAME = "BackupCheckup"
-VERSION = "2.4.3"
+VERSION = "2.5.0"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -46,6 +46,7 @@ CONF_VERIFICATION_TIMEOUT_MINUTES = "verification_timeout_minutes"
 CONF_DATABASE_TIMEOUT_MINUTES = "database_timeout_minutes"
 CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES = "manual_verification_cooldown_minutes"
 CONF_EXPOSE_BACKUP_METADATA = "expose_backup_metadata"
+CONF_SHOW_SIDEBAR_PANEL = "show_sidebar_panel"
 
 # Legacy monitoring-profile values retained for migration.
 PROFILE_STANDARD = "standard"
@@ -121,6 +122,7 @@ DEFAULT_VERIFICATION_TIMEOUT_MINUTES = 60
 DEFAULT_DATABASE_TIMEOUT_MINUTES = 15
 DEFAULT_MANUAL_VERIFICATION_COOLDOWN_MINUTES = 15
 DEFAULT_EXPOSE_BACKUP_METADATA = False
+DEFAULT_SHOW_SIDEBAR_PANEL = False
 
 BACKUP_PURPOSE_AUTOMATIC = "automatic"
 BACKUP_PURPOSE_MANUAL = "manual"

@@ -34,6 +34,7 @@ from .const import (
     CONF_PRESET_REVISION,
     CONF_REPAIR_ISSUES_ENABLED,
     CONF_RUNTIME_PROFILE,
+    CONF_SHOW_SIDEBAR_PANEL,
     CONF_SIZE_CHECK_MODE,
     CONF_UPDATE_INTERVAL_MINUTES,
     CONF_VERIFICATION_POLICY,
@@ -62,6 +63,7 @@ from .const import (
     DEFAULT_NOTIFY_ON_RECOVERY,
     DEFAULT_REPAIR_ISSUES_ENABLED,
     DEFAULT_RUNTIME_PROFILE,
+    DEFAULT_SHOW_SIDEBAR_PANEL,
     DEFAULT_SIZE_CHECK_MODE,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
     DEFAULT_VERIFICATION_POLICY,
@@ -191,6 +193,7 @@ _BOOLEAN_OPTIONS: dict[str, bool] = {
     CONF_NOTIFICATIONS_ENABLED: DEFAULT_NOTIFICATIONS_ENABLED,
     CONF_NOTIFY_ON_RECOVERY: DEFAULT_NOTIFY_ON_RECOVERY,
     CONF_EXPOSE_BACKUP_METADATA: DEFAULT_EXPOSE_BACKUP_METADATA,
+    CONF_SHOW_SIDEBAR_PANEL: DEFAULT_SHOW_SIDEBAR_PANEL,
 }
 
 _ENUM_OPTIONS: dict[str, tuple[str, tuple[str, ...]]] = {
@@ -402,6 +405,7 @@ class PresentationSettings:
     notification_targets: tuple[str, ...]
     notify_on_recovery: bool
     expose_backup_metadata: bool
+    show_sidebar_panel: bool
 
 
 @dataclass(frozen=True)
@@ -460,6 +464,7 @@ class BackupCheckupSettings:
                 notification_targets=tuple(values[CONF_NOTIFICATION_TARGETS]),
                 notify_on_recovery=values[CONF_NOTIFY_ON_RECOVERY],
                 expose_backup_metadata=values[CONF_EXPOSE_BACKUP_METADATA],
+                show_sidebar_panel=values[CONF_SHOW_SIDEBAR_PANEL],
             ),
         )
 
@@ -505,6 +510,7 @@ class BackupCheckupSettings:
             CONF_NOTIFICATION_TARGETS: list(self.presentation.notification_targets),
             CONF_NOTIFY_ON_RECOVERY: self.presentation.notify_on_recovery,
             CONF_EXPOSE_BACKUP_METADATA: self.presentation.expose_backup_metadata,
+            CONF_SHOW_SIDEBAR_PANEL: self.presentation.show_sidebar_panel,
         }
 
     # Compatibility properties keep runtime consumers simple and stable.
@@ -615,3 +621,8 @@ class BackupCheckupSettings:
     @property
     def expose_backup_metadata(self) -> bool:
         return self.presentation.expose_backup_metadata
+
+    @property
+    def show_sidebar_panel(self) -> bool:
+        """Return whether the optional frontend panel is enabled."""
+        return self.presentation.show_sidebar_panel

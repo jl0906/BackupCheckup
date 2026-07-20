@@ -83,71 +83,28 @@
         }
       },
       "presentation": {
-        "title": "Entities and notifications",
-        "description": "Choose the visible entity scope, privacy behavior, and optional mobile alerts.",
+        "title": "Frontend, entiteter og notifikationer",
+        "description": "Vælg det valgfrie frontend i sidepanelet, synlige entiteter, privatliv og mobilnotifikationer.",
         "data": {
           "entity_mode": "Entity mode",
           "expose_backup_metadata": "Expose backup names and IDs (expert)",
           "notifications_enabled": "Enable mobile notifications",
           "notification_targets": "Mobile devices to notify",
-          "notify_on_recovery": "Notify when problems are resolved"
+          "notify_on_recovery": "Notify when problems are resolved",
+          "show_sidebar_panel": "Vis BackupCheckup i sidepanelet"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities and the live activity journal.",
           "expose_backup_metadata": "Disabled by default. When enabled, selected diagnostics and entities may expose user-defined backup names and raw backup IDs.",
           "notifications_enabled": "Send a mobile notification when the active backup problems change.",
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
-          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved."
+          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
+          "show_sidebar_panel": "Føjer en valgfri BackupCheckup-oversigt til Home Assistant-sidepanelet. Siden viser sundhed, aktive problemer, integritet, backupmålinger og lagerplaceringer."
         }
       },
       "summary": {
         "title": "Confirm setup",
-        "description": "Gennemgå de valgte indstillinger nedenfor. Vælg Send for at oprette BackupCheckup.",
-        "sections": {
-          "summary_system": {
-            "name": "System og ydeevne",
-            "data": {
-              "summary_hardware": "Registreret hardware",
-              "summary_runtime_profile": "Ydelsesprofil"
-            }
-          },
-          "summary_polling": {
-            "name": "Forespørgsler og ressourcegrænser",
-            "data": {
-              "summary_adaptive_polling": "Intelligent forespørgsel",
-              "summary_update_interval": "Normalt forespørgselsinterval i minutter",
-              "summary_active_interval": "Forespørgselsinterval under backup i minutter",
-              "summary_error_backoff": "Fejl-backoff i minutter",
-              "summary_download_limit": "Maksimal downloadstørrelse i GB",
-              "summary_expanded_limit": "Maksimal udpakket størrelse i GB"
-            }
-          },
-          "summary_monitoring": {
-            "name": "Backupovervågning",
-            "data": {
-              "summary_monitoring_policy": "Overvågningspolitik",
-              "summary_max_age": "Maksimal backupalder i dage",
-              "summary_redundant_locations": "Krævede lagerplaceringer",
-              "summary_repair_issues": "Reparationsmeddelelser"
-            }
-          },
-          "summary_integrity": {
-            "name": "Integritet og visning",
-            "data": {
-              "summary_verification_policy": "Integritetsstrategi",
-              "summary_entity_mode": "Entitetstilstand",
-              "summary_expose_metadata": "Vis backupnavne og id’er"
-            }
-          },
-          "summary_notifications": {
-            "name": "Notifikationer",
-            "data": {
-              "summary_notifications_enabled": "Mobilnotifikationer",
-              "summary_notification_count": "Valgte notifikationsenheder",
-              "summary_notify_on_recovery": "Notifikation ved gendannelse"
-            }
-          }
-        }
+        "description": "Opsætningen er klar. Vælg Send for at oprette BackupCheckup."
       }
     },
     "abort": {
@@ -168,7 +125,7 @@
           "runtime": "Performance profile",
           "monitoring": "Monitoring policy",
           "verification": "Integrity checks",
-          "presentation": "Entities and notifications",
+          "presentation": "Frontend, entiteter og notifikationer",
           "setup_assistant": "Run the complete setup assistant"
         }
       },
@@ -253,21 +210,23 @@
         }
       },
       "presentation": {
-        "title": "Entities and notifications",
-        "description": "Choose the visible entity scope, privacy behavior, and optional mobile alerts.",
+        "title": "Frontend, entiteter og notifikationer",
+        "description": "Vælg det valgfrie frontend i sidepanelet, synlige entiteter, privatliv og mobilnotifikationer.",
         "data": {
           "entity_mode": "Entity mode",
           "expose_backup_metadata": "Expose backup names and IDs (expert)",
           "notifications_enabled": "Enable mobile notifications",
           "notification_targets": "Mobile devices to notify",
-          "notify_on_recovery": "Notify when problems are resolved"
+          "notify_on_recovery": "Notify when problems are resolved",
+          "show_sidebar_panel": "Vis BackupCheckup i sidepanelet"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities and the live activity journal.",
           "expose_backup_metadata": "Disabled by default. When enabled, selected diagnostics and entities may expose user-defined backup names and raw backup IDs.",
           "notifications_enabled": "Send a mobile notification when the active backup problems change.",
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
-          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved."
+          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
+          "show_sidebar_panel": "Føjer en valgfri BackupCheckup-oversigt til Home Assistant-sidepanelet. Siden viser sundhed, aktive problemer, integritet, backupmålinger og lagerplaceringer."
         }
       },
       "setup_assistant": {
@@ -303,71 +262,28 @@
         }
       },
       "setup_presentation": {
-        "title": "Entities and notifications",
-        "description": "Choose the visible entity scope, privacy behavior, and optional mobile alerts.",
+        "title": "Frontend, entiteter og notifikationer",
+        "description": "Vælg det valgfrie frontend i sidepanelet, synlige entiteter, privatliv og mobilnotifikationer.",
         "data": {
           "entity_mode": "Entity mode",
           "expose_backup_metadata": "Expose backup names and IDs (expert)",
           "notifications_enabled": "Enable mobile notifications",
           "notification_targets": "Mobile devices to notify",
-          "notify_on_recovery": "Notify when problems are resolved"
+          "notify_on_recovery": "Notify when problems are resolved",
+          "show_sidebar_panel": "Vis BackupCheckup i sidepanelet"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities and the live activity journal.",
           "expose_backup_metadata": "Disabled by default. When enabled, selected diagnostics and entities may expose user-defined backup names and raw backup IDs.",
           "notifications_enabled": "Send a mobile notification when the active backup problems change.",
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
-          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved."
+          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
+          "show_sidebar_panel": "Føjer en valgfri BackupCheckup-oversigt til Home Assistant-sidepanelet. Siden viser sundhed, aktive problemer, integritet, backupmålinger og lagerplaceringer."
         }
       },
       "setup_summary": {
         "title": "Confirm updated setup",
-        "description": "Gennemgå de valgte indstillinger nedenfor. Vælg Send for at gemme konfigurationen.",
-        "sections": {
-          "summary_system": {
-            "name": "System og ydeevne",
-            "data": {
-              "summary_hardware": "Registreret hardware",
-              "summary_runtime_profile": "Ydelsesprofil"
-            }
-          },
-          "summary_polling": {
-            "name": "Forespørgsler og ressourcegrænser",
-            "data": {
-              "summary_adaptive_polling": "Intelligent forespørgsel",
-              "summary_update_interval": "Normalt forespørgselsinterval i minutter",
-              "summary_active_interval": "Forespørgselsinterval under backup i minutter",
-              "summary_error_backoff": "Fejl-backoff i minutter",
-              "summary_download_limit": "Maksimal downloadstørrelse i GB",
-              "summary_expanded_limit": "Maksimal udpakket størrelse i GB"
-            }
-          },
-          "summary_monitoring": {
-            "name": "Backupovervågning",
-            "data": {
-              "summary_monitoring_policy": "Overvågningspolitik",
-              "summary_max_age": "Maksimal backupalder i dage",
-              "summary_redundant_locations": "Krævede lagerplaceringer",
-              "summary_repair_issues": "Reparationsmeddelelser"
-            }
-          },
-          "summary_integrity": {
-            "name": "Integritet og visning",
-            "data": {
-              "summary_verification_policy": "Integritetsstrategi",
-              "summary_entity_mode": "Entitetstilstand",
-              "summary_expose_metadata": "Vis backupnavne og id’er"
-            }
-          },
-          "summary_notifications": {
-            "name": "Notifikationer",
-            "data": {
-              "summary_notifications_enabled": "Mobilnotifikationer",
-              "summary_notification_count": "Valgte notifikationsenheder",
-              "summary_notify_on_recovery": "Notifikation ved gendannelse"
-            }
-          }
-        }
+        "description": "Den opdaterede opsætning er klar. Vælg Send for at gemme konfigurationen."
       }
     },
     "error": {

@@ -83,71 +83,28 @@
         }
       },
       "presentation": {
-        "title": "Entities and notifications",
-        "description": "Choose the visible entity scope, privacy behavior, and optional mobile alerts.",
+        "title": "Frontend, entiteter och aviseringar",
+        "description": "Välj det valfria sidofältsgränssnittet, synliga entiteter, integritet och mobilaviseringar.",
         "data": {
           "entity_mode": "Entity mode",
           "expose_backup_metadata": "Expose backup names and IDs (expert)",
           "notifications_enabled": "Enable mobile notifications",
           "notification_targets": "Mobile devices to notify",
-          "notify_on_recovery": "Notify when problems are resolved"
+          "notify_on_recovery": "Notify when problems are resolved",
+          "show_sidebar_panel": "Visa BackupCheckup i sidofältet"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities and the live activity journal.",
           "expose_backup_metadata": "Disabled by default. When enabled, selected diagnostics and entities may expose user-defined backup names and raw backup IDs.",
           "notifications_enabled": "Send a mobile notification when the active backup problems change.",
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
-          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved."
+          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
+          "show_sidebar_panel": "Lägger till en valfri BackupCheckup-översikt i Home Assistant-sidofältet. Sidan visar hälsa, aktiva problem, integritet, säkerhetskopieringsvärden och lagringsplatser."
         }
       },
       "summary": {
         "title": "Confirm setup",
-        "description": "Granska de fastställda inställningarna nedan. Välj Skicka för att skapa BackupCheckup.",
-        "sections": {
-          "summary_system": {
-            "name": "System och prestanda",
-            "data": {
-              "summary_hardware": "Identifierad hårdvara",
-              "summary_runtime_profile": "Prestandaprofil"
-            }
-          },
-          "summary_polling": {
-            "name": "Avläsning och resursgränser",
-            "data": {
-              "summary_adaptive_polling": "Intelligent avfrågning",
-              "summary_update_interval": "Normalt intervall i minuter",
-              "summary_active_interval": "Intervall under säkerhetskopiering i minuter",
-              "summary_error_backoff": "Intervall efter fel i minuter",
-              "summary_download_limit": "Maximal nedladdningsstorlek i GB",
-              "summary_expanded_limit": "Maximal uppackad storlek i GB"
-            }
-          },
-          "summary_monitoring": {
-            "name": "Säkerhetskopieringsövervakning",
-            "data": {
-              "summary_monitoring_policy": "Övervakningspolicy",
-              "summary_max_age": "Maximal ålder i dagar",
-              "summary_redundant_locations": "Krävda lagringsplatser",
-              "summary_repair_issues": "Reparationsmeddelanden"
-            }
-          },
-          "summary_integrity": {
-            "name": "Integritet och visning",
-            "data": {
-              "summary_verification_policy": "Integritetsstrategi",
-              "summary_entity_mode": "Entitetsläge",
-              "summary_expose_metadata": "Visa namn och ID för säkerhetskopior"
-            }
-          },
-          "summary_notifications": {
-            "name": "Aviseringar",
-            "data": {
-              "summary_notifications_enabled": "Mobilaviseringar",
-              "summary_notification_count": "Valda aviseringsenheter",
-              "summary_notify_on_recovery": "Återställningsavisering"
-            }
-          }
-        }
+        "description": "Konfigurationen är klar. Välj Skicka för att skapa BackupCheckup."
       }
     },
     "abort": {
@@ -168,7 +125,7 @@
           "runtime": "Performance profile",
           "monitoring": "Monitoring policy",
           "verification": "Integrity checks",
-          "presentation": "Entities and notifications",
+          "presentation": "Frontend, entiteter och aviseringar",
           "setup_assistant": "Run the complete setup assistant"
         }
       },
@@ -253,21 +210,23 @@
         }
       },
       "presentation": {
-        "title": "Entities and notifications",
-        "description": "Choose the visible entity scope, privacy behavior, and optional mobile alerts.",
+        "title": "Frontend, entiteter och aviseringar",
+        "description": "Välj det valfria sidofältsgränssnittet, synliga entiteter, integritet och mobilaviseringar.",
         "data": {
           "entity_mode": "Entity mode",
           "expose_backup_metadata": "Expose backup names and IDs (expert)",
           "notifications_enabled": "Enable mobile notifications",
           "notification_targets": "Mobile devices to notify",
-          "notify_on_recovery": "Notify when problems are resolved"
+          "notify_on_recovery": "Notify when problems are resolved",
+          "show_sidebar_panel": "Visa BackupCheckup i sidofältet"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities and the live activity journal.",
           "expose_backup_metadata": "Disabled by default. When enabled, selected diagnostics and entities may expose user-defined backup names and raw backup IDs.",
           "notifications_enabled": "Send a mobile notification when the active backup problems change.",
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
-          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved."
+          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
+          "show_sidebar_panel": "Lägger till en valfri BackupCheckup-översikt i Home Assistant-sidofältet. Sidan visar hälsa, aktiva problem, integritet, säkerhetskopieringsvärden och lagringsplatser."
         }
       },
       "setup_assistant": {
@@ -303,71 +262,28 @@
         }
       },
       "setup_presentation": {
-        "title": "Entities and notifications",
-        "description": "Choose the visible entity scope, privacy behavior, and optional mobile alerts.",
+        "title": "Frontend, entiteter och aviseringar",
+        "description": "Välj det valfria sidofältsgränssnittet, synliga entiteter, integritet och mobilaviseringar.",
         "data": {
           "entity_mode": "Entity mode",
           "expose_backup_metadata": "Expose backup names and IDs (expert)",
           "notifications_enabled": "Enable mobile notifications",
           "notification_targets": "Mobile devices to notify",
-          "notify_on_recovery": "Notify when problems are resolved"
+          "notify_on_recovery": "Notify when problems are resolved",
+          "show_sidebar_panel": "Visa BackupCheckup i sidofältet"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities and the live activity journal.",
           "expose_backup_metadata": "Disabled by default. When enabled, selected diagnostics and entities may expose user-defined backup names and raw backup IDs.",
           "notifications_enabled": "Send a mobile notification when the active backup problems change.",
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
-          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved."
+          "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
+          "show_sidebar_panel": "Lägger till en valfri BackupCheckup-översikt i Home Assistant-sidofältet. Sidan visar hälsa, aktiva problem, integritet, säkerhetskopieringsvärden och lagringsplatser."
         }
       },
       "setup_summary": {
         "title": "Confirm updated setup",
-        "description": "Granska de fastställda inställningarna nedan. Välj Skicka för att spara konfigurationen.",
-        "sections": {
-          "summary_system": {
-            "name": "System och prestanda",
-            "data": {
-              "summary_hardware": "Identifierad hårdvara",
-              "summary_runtime_profile": "Prestandaprofil"
-            }
-          },
-          "summary_polling": {
-            "name": "Avläsning och resursgränser",
-            "data": {
-              "summary_adaptive_polling": "Intelligent avfrågning",
-              "summary_update_interval": "Normalt intervall i minuter",
-              "summary_active_interval": "Intervall under säkerhetskopiering i minuter",
-              "summary_error_backoff": "Intervall efter fel i minuter",
-              "summary_download_limit": "Maximal nedladdningsstorlek i GB",
-              "summary_expanded_limit": "Maximal uppackad storlek i GB"
-            }
-          },
-          "summary_monitoring": {
-            "name": "Säkerhetskopieringsövervakning",
-            "data": {
-              "summary_monitoring_policy": "Övervakningspolicy",
-              "summary_max_age": "Maximal ålder i dagar",
-              "summary_redundant_locations": "Krävda lagringsplatser",
-              "summary_repair_issues": "Reparationsmeddelanden"
-            }
-          },
-          "summary_integrity": {
-            "name": "Integritet och visning",
-            "data": {
-              "summary_verification_policy": "Integritetsstrategi",
-              "summary_entity_mode": "Entitetsläge",
-              "summary_expose_metadata": "Visa namn och ID för säkerhetskopior"
-            }
-          },
-          "summary_notifications": {
-            "name": "Aviseringar",
-            "data": {
-              "summary_notifications_enabled": "Mobilaviseringar",
-              "summary_notification_count": "Valda aviseringsenheter",
-              "summary_notify_on_recovery": "Återställningsavisering"
-            }
-          }
-        }
+        "description": "Den uppdaterade konfigurationen är klar. Välj Skicka för att spara den."
       }
     },
     "error": {
