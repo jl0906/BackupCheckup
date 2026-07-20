@@ -185,7 +185,7 @@ class BackupRecordNormalizer:
             return tuple(item for _key, item in ThirdPartyBoundary.mapping_items(value))
         if isinstance(value, str):
             return (value,)
-        return ThirdPartyBoundary.iterable(value)
+        return tuple(ThirdPartyBoundary.iterable(value))
 
     @staticmethod
     def _addon_slug(addon: Any) -> str | None:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -753,6 +754,8 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up BackupCheckup sensors."""
+    # Entity-platform setup hooks are coroutine contracts in Home Assistant.
+    await asyncio.sleep(0)
     coordinator: BackupCheckupCoordinator = entry.runtime_data
     _migrate_enum_translation_keys(hass, entry)
     _migrate_size_sensor_units(hass, entry)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -178,6 +179,8 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up BackupCheckup binary sensors."""
+    # Entity-platform setup hooks are coroutine contracts in Home Assistant.
+    await asyncio.sleep(0)
     coordinator: BackupCheckupCoordinator = entry.runtime_data
     entities: list[BinarySensorEntity] = [
         BackupCheckupBinarySensor(coordinator, entry, description)

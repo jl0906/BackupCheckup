@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.5.2
+
+**Code-quality fixes only**
+
+### Fixed
+
+- Preserved exception tracebacks for unexpected notification-service failures.
+- Normalized every add-on metadata input shape to the same tuple return type.
+- Kept Home Assistant coroutine hooks explicitly asynchronous while preserving
+  their existing behavior and API contracts.
+- Reduced frontend rendering and inner-archive reader complexity by extracting
+  focused helpers.
+- Replaced repeated backup metadata filename literals with one shared constant.
+
 ## 2.5.1
 
 **Storage-state and manual verification controls**

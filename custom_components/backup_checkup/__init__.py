@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from pathlib import Path
 
@@ -261,6 +262,8 @@ def _legacy_schema_defaults(version: int) -> dict[str, object]:
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate data atomically without changing the entity registry."""
+    # Home Assistant requires this migration hook to remain a coroutine.
+    await asyncio.sleep(0)
     if entry.version > CONFIG_ENTRY_VERSION:
         if _entry_activity_logging_enabled(entry):
             _LOGGER.warning(
@@ -484,6 +487,8 @@ async def async_remove_config_entry_device(
     device_entry: dr.DeviceEntry,
 ) -> bool:
     """Allow removal of a storage device only after its agent disappeared."""
+    # Home Assistant requires this device-removal hook to remain a coroutine.
+    await asyncio.sleep(0)
     del hass
     coordinator = getattr(entry, "runtime_data", None)
     if not isinstance(coordinator, BackupCheckupCoordinator):

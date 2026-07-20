@@ -295,8 +295,22 @@ class BackupCheckupPanel extends HTMLElement {
       </article>`;
   }
 
-  _render() {
-    if (!this.shadowRoot || !this._hass) return;
+  _heroMessage(tone, text) {
+    if (tone === "good") return text.healthy;
+    if (tone === "danger") return text.attention;
+    return text.unavailable;
+  }
+
+  _integrityTone(integrity) {
+    if (!integrity) return "";
+    if (integrity.state === "valid") return "good";
+    if (["valid_with_warnings", "not_checked", "checking"].includes(integrity.state)) {
+      return "warning";
+    }
+    return "danger";
+  }
+
+  _renderModel() {
     const text = this._text();
     const status = this._state("status");
     const problem = this._state("problem");
@@ -307,23 +321,40 @@ class BackupCheckupPanel extends HTMLElement {
     const latestSize = this._state("latest_backup_size");
     const integrity = this._state("integrity_status");
     const scoreValue = Number(scoreState?.state);
-    const score = Number.isFinite(scoreValue) ? Math.min(100, Math.max(0, scoreValue)) : null;
+    const score = Number.isFinite(scoreValue)
+      ? Math.min(100, Math.max(0, scoreValue))
+      : null;
     const hasProblem = problem?.state === "on" || Boolean(status?.attributes?.problem);
     const tone = this._tone(status?.state, hasProblem);
-    const problems = Array.isArray(status?.attributes?.active_problems)
-      ? status.attributes.active_problems : [];
-    const agents = Array.isArray(stored?.attributes?.agents) ? stored.attributes.agents : [];
-    const updated = status?.attributes?.checked_at || status?.last_updated;
-    const heroMessage = tone === "good" ? text.healthy : tone === "danger" ? text.attention : text.unavailable;
-    const statusLabel = this._formatState(status);
-    const recommendationLabel = this._formatState(recommendation);
-    const integrityLabel = this._formatState(integrity);
-    const integrityTone = ["valid"].includes(integrity?.state) ? "good"
-      : ["valid_with_warnings", "not_checked", "checking"].includes(integrity?.state) ? "warning"
-      : integrity ? "danger" : "";
-    const isAdmin = Boolean(this._hass.user?.is_admin);
-    const verifyState = this._state("verify");
-    const refreshState = this._state("refresh");
+    return {
+      text,
+      stored,
+      latestAge,
+      latestSize,
+      score,
+      tone,
+      problems: Array.isArray(status?.attributes?.active_problems)
+        ? status.attributes.active_problems : [],
+      agents: Array.isArray(stored?.attributes?.agents) ? stored.attributes.agents : [],
+      updated: status?.attributes?.checked_at || status?.last_updated,
+      heroMessage: this._heroMessage(tone, text),
+      statusLabel: this._formatState(status),
+      recommendationLabel: this._formatState(recommendation),
+      integrityLabel: this._formatState(integrity),
+      integrityTone: this._integrityTone(integrity),
+      isAdmin: Boolean(this._hass.user?.is_admin),
+      verifyState: this._state("verify"),
+      refreshState: this._state("refresh"),
+    };
+  }
+
+  _render() {
+    if (!this.shadowRoot || !this._hass) return;
+    const {
+      text, stored, latestAge, latestSize, score, tone,
+      problems, agents, updated, heroMessage, statusLabel, recommendationLabel,
+      integrityLabel, integrityTone, isAdmin, verifyState, refreshState,
+    } = this._renderModel();
 
     this.shadowRoot.innerHTML = `
       <style>${BackupCheckupPanel.styles}</style>

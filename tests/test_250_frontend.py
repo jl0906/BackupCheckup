@@ -128,7 +128,7 @@ async def test_static_module_and_enabled_panel_are_registered(
     kwargs: dict[str, Any] = register_panel.await_args.kwargs
     assert kwargs["frontend_url_path"] == "backup-checkup"
     assert kwargs["webcomponent_name"] == "backup-checkup-panel"
-    assert kwargs["module_url"].endswith("?v=2.5.1")
+    assert kwargs["module_url"].endswith("?v=2.5.2")
     assert kwargs["sidebar_icon"] == "mdi:backup-restore"
     assert kwargs["config"]["entry_id"] == "entry"
     assert kwargs["config"]["entities"]["status"].startswith("sensor.renamed_")

@@ -61,7 +61,8 @@ _INNER_SUFFIXES = (".tar", ".tgz", ".tar.gz")
 _KNOWN_OPTIONAL_INNER_ARCHIVES = frozenset({"supervisor"})
 _DATABASE_FILENAME = "home-assistant_v2.db"
 _DATABASE_PATH = PurePosixPath("data/home-assistant_v2.db")
-_METADATA_PATH = PurePosixPath("backup.json")
+_METADATA_FILENAME = "backup.json"
+_METADATA_PATH = PurePosixPath(_METADATA_FILENAME)
 _FAILURE_RANKS = {
     INTEGRITY_STATUS_ABORTED: 1,
     INTEGRITY_STATUS_UNREADABLE: 1,
@@ -1264,7 +1265,7 @@ class BackupIntegrityVerifier:
 
         member_path = PurePosixPath(member.name)
         normalized_name = member_path.name
-        if normalized_name == "backup.json" and member_path != _METADATA_PATH:
+        if normalized_name == _METADATA_FILENAME and member_path != _METADATA_PATH:
             raise KeyError("backup_metadata_path_invalid")
         if member_path == _METADATA_PATH:
             cls._consume_outer_member(
@@ -1425,7 +1426,7 @@ class BackupIntegrityVerifier:
         budget.add_member()
         cls._validate_member_path(member.name)
         member_path = PurePosixPath(member.name)
-        if member_path.name == "backup.json" and member_path != _METADATA_PATH:
+        if member_path.name == _METADATA_FILENAME and member_path != _METADATA_PATH:
             raise KeyError("backup_metadata_path_invalid")
         if not member.isfile() or member_path != _METADATA_PATH:
             return None
@@ -1562,30 +1563,52 @@ class BackupIntegrityVerifier:
                 cls._validate_member_path(inner_member.name)
                 if not inner_member.isfile():
                     continue
-                budget.ensure_expanded_capacity(inner_member.size)
                 file_count += 1
-                reader = inner.extractfile(inner_member)
-                if reader is None:
-                    raise tarfile.ReadError("inner_archive_member_unreadable")
-                inner_path = PurePosixPath(inner_member.name)
-                is_database_name = inner_path.name == _DATABASE_FILENAME
-                with closing(reader):
-                    if database_check and is_database_name:
-                        database_candidates += 1
-                        if inner_path != _DATABASE_PATH:
-                            raise KeyError("database_path_invalid")
-                        if database_candidates > 1 or database_path.exists():
-                            raise KeyError("database_duplicate")
-                        with open_private_binary_writer(database_path) as db_file:
-                            cls._copy_all(
-                                reader,
-                                db_file,
-                                budget=budget,
-                                free_space_path=database_path.parent,
-                            )
-                    else:
-                        cls._consume_all(reader, budget=budget, count_expanded=True)
+                database_candidates = cls._consume_inner_file(
+                    inner,
+                    inner_member,
+                    database_check=database_check,
+                    database_path=database_path,
+                    database_candidates=database_candidates,
+                    budget=budget,
+                )
         return file_count
+
+    @classmethod
+    def _consume_inner_file(
+        cls,
+        inner: tarfile.TarFile,
+        member: tarfile.TarInfo,
+        *,
+        database_check: bool,
+        database_path: Path,
+        database_candidates: int,
+        budget: VerificationBudget,
+    ) -> int:
+        """Consume one regular inner member and track database candidates."""
+        budget.ensure_expanded_capacity(member.size)
+        reader = inner.extractfile(member)
+        if reader is None:
+            raise tarfile.ReadError("inner_archive_member_unreadable")
+        member_path = PurePosixPath(member.name)
+        is_database = database_check and member_path.name == _DATABASE_FILENAME
+        with closing(reader):
+            if not is_database:
+                cls._consume_all(reader, budget=budget, count_expanded=True)
+                return database_candidates
+            database_candidates += 1
+            if member_path != _DATABASE_PATH:
+                raise KeyError("database_path_invalid")
+            if database_candidates > 1 or database_path.exists():
+                raise KeyError("database_duplicate")
+            with open_private_binary_writer(database_path) as db_file:
+                cls._copy_all(
+                    reader,
+                    db_file,
+                    budget=budget,
+                    free_space_path=database_path.parent,
+                )
+        return database_candidates
 
     @staticmethod
     def _archive_prefix(name: str) -> str:

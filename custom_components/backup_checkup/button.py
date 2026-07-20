@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
@@ -24,6 +26,8 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up BackupCheckup buttons."""
+    # Entity-platform setup hooks are coroutine contracts in Home Assistant.
+    await asyncio.sleep(0)
     coordinator: BackupCheckupCoordinator = entry.runtime_data
     async_add_entities(
         [

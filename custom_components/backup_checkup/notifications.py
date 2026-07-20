@@ -308,7 +308,7 @@ class BackupCheckupNotificationManager:
                 "entity",
                 integrations={DOMAIN},
             )
-        except Exception as err:  # noqa: BLE001
+        except Exception as err:  # noqa: BLE001 - translation subsystem boundary
             _LOGGER.warning(
                 "Unable to load localized notification states: error_type=%s",
                 safe_error_type(err),
@@ -389,9 +389,9 @@ class BackupCheckupNotificationManager:
                 },
             )
             return False
-        except Exception as err:  # noqa: BLE001
+        except Exception as err:
             self.last_error = classify_exception(err)
-            _LOGGER.error(
+            _LOGGER.exception(
                 "Unexpected BackupCheckup notification error: error_type=%s "
                 "error_code=%s",
                 safe_error_type(err),
