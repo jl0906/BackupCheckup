@@ -10,7 +10,7 @@
 
 <p align="center">
   <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-orange.svg">
-  <img alt="Version 2.6.0" src="https://img.shields.io/badge/version-2.6.0-blue.svg">
+  <img alt="Version 2.6.1" src="https://img.shields.io/badge/version-2.6.1-blue.svg">
   <img alt="AI Coded and Maintained" src="https://img.shields.io/badge/AI-Coded_and_Maintained-8A2BE2.svg">
   <img alt="Home Assistant 2026.3 or newer" src="https://img.shields.io/badge/Home_Assistant-2026.3_or_newer-41BDF5.svg">
   <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg">
@@ -100,6 +100,10 @@ Deep verification is never enabled only because powerful hardware was detected.
 | **Expert** | Every available entity, per-storage metrics, and advanced diagnostics. |
 
 Detailed live logging is selected independently from the entity mode. All settings remain available later under **Settings → Devices & services → BackupCheckup → Configure**.
+
+After updating BackupCheckup files, restart Home Assistant once. This reloads
+the integration's backend translations and activates the versioned frontend
+module; reloading only the config entry is not sufficient after a file update.
 
 ## Intelligent polling
 

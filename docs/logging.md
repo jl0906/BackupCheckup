@@ -1,6 +1,6 @@
 # Logging and live activity
 
-BackupCheckup 2.6.0 provides one central, privacy-safe activity journal. Each
+BackupCheckup 2.6.1 provides one central, privacy-safe activity journal. Each
 record contains a UTC timestamp, a stable action name, an outcome, a severity,
 and a small set of bounded details.
 

@@ -1,5 +1,21 @@
 # Changelog
 
+## 2.6.1
+
+**Frontend and configuration-description cache fix**
+
+### Fixed
+
+- Versioned the custom-element name and the complete frontend asset path so an
+  already open Home Assistant browser session cannot keep rendering the 2.5.x
+  panel after an integration reload. The **Live log** tab is now loaded with the
+  2.6.1 panel implementation.
+- Added regression coverage for the German and English labels and field
+  descriptions of the sidebar and detailed-live-logging switches in both the
+  focused options flow and the complete setup assistant.
+- Documented the required Home Assistant restart after replacing custom
+  integration files so backend translations are reloaded as well.
+
 ## 2.6.0
 
 **Dedicated, detailed and privacy-safe live logging**
