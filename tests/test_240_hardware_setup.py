@@ -35,6 +35,7 @@ from custom_components.backup_checkup.const import (
     CONF_ERROR_BACKOFF_INTERVAL_MINUTES,
     CONF_EXPOSE_BACKUP_METADATA,
     CONF_HARDWARE_DETECTION,
+    CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
     CONF_MAX_AGE_DAYS,
     CONF_MAX_EXPANDED_SIZE_GB,
     CONF_MAX_VERIFICATION_SIZE_GB,
@@ -267,8 +268,18 @@ def test_presets_and_legacy_normalization_preserve_existing_values() -> None:
     )
     assert custom_verification[CONF_VERIFICATION_POLICY] == VERIFICATION_POLICY_CUSTOM
     custom_schema = flow_schemas.verification_policy_schema(custom_verification)
-    selector = next(iter(custom_schema.schema.values()))
+    selector = custom_schema.schema[
+        next(
+            marker
+            for marker in custom_schema.schema
+            if marker.key == CONF_VERIFICATION_POLICY
+        )
+    ]
     assert VERIFICATION_POLICY_CUSTOM in selector.config.options
+    assert any(
+        marker.key == CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES
+        for marker in custom_schema.schema
+    )
 
     migrated = normalize_configuration(
         {
@@ -379,12 +390,16 @@ async def test_every_options_flow_category_and_custom_assistant_path(
         saved_monitoring["data"][CONF_MONITORING_POLICY] == MONITORING_POLICY_BALANCED
     )
     saved_verification = await options.async_step_verification(
-        {CONF_VERIFICATION_POLICY: VERIFICATION_POLICY_MANUAL}
+        {
+            CONF_VERIFICATION_POLICY: VERIFICATION_POLICY_MANUAL,
+            CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES: 0,
+        }
     )
     assert (
         saved_verification["data"][CONF_VERIFICATION_POLICY]
         == VERIFICATION_POLICY_MANUAL
     )
+    assert saved_verification["data"][CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES] == 0
 
     invalid_presentation = _presentation()
     invalid_presentation[CONF_NOTIFICATIONS_ENABLED] = True

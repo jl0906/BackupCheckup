@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -20,6 +21,19 @@ from custom_components.backup_checkup.const import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_manifest_declares_every_direct_frontend_dependency() -> None:
+    """Hassfest requires direct component imports to be declared explicitly."""
+    manifest = json.loads(
+        (
+            ROOT
+            / "custom_components"
+            / "backup_checkup"
+            / "manifest.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert manifest["dependencies"] == ["backup", "http", "panel_custom"]
 
 
 def test_sidebar_panel_setting_is_normalized_and_exposed_in_flow_schema(
@@ -114,7 +128,7 @@ async def test_static_module_and_enabled_panel_are_registered(
     kwargs: dict[str, Any] = register_panel.await_args.kwargs
     assert kwargs["frontend_url_path"] == "backup-checkup"
     assert kwargs["webcomponent_name"] == "backup-checkup-panel"
-    assert kwargs["module_url"].endswith("?v=2.5.0")
+    assert kwargs["module_url"].endswith("?v=2.5.1")
     assert kwargs["sidebar_icon"] == "mdi:backup-restore"
     assert kwargs["config"]["entry_id"] == "entry"
     assert kwargs["config"]["entities"]["status"].startswith("sensor.renamed_")
@@ -163,5 +177,6 @@ def test_frontend_bundle_is_local_responsive_and_escapes_dynamic_content() -> No
     assert 'customElements.define("backup-checkup-panel"' in source
     assert "https://" not in source
     assert "replaceAll(\"&\", \"&amp;\")" in source
+    assert 'agent.error ? "danger" : agent.stale ? "warning" : "good"' in source
     assert "@media (max-width:620px)" in source
     assert 'callService("button", "press"' in source

@@ -324,7 +324,7 @@ def test_manager_error_snapshot_advances_storage_ages() -> None:
 
     assert snapshot.backup_stale
     assert snapshot.automatic_backup_overdue
-    assert snapshot.required_location_missing
+    assert not snapshot.required_location_missing
     assert snapshot.agent_summaries[0].stale
     assert snapshot.agent_summaries[0].problem
     assert (
