@@ -28,6 +28,7 @@ from custom_components.backup_checkup.const import (
     CONF_NOTIFICATIONS_ENABLED,
     CONF_NOTIFY_ON_RECOVERY,
     CONF_RUNTIME_PROFILE,
+    CONF_SHOW_SIDEBAR_PANEL,
     CONF_SIZE_CHECK_MODE,
     CONF_VERIFICATION_POLICY,
     ENTITY_MODE_EXPERT,
@@ -65,6 +66,7 @@ def _presentation_input() -> dict[str, Any]:
     return {
         CONF_ENTITY_MODE: ENTITY_MODE_EXPERT,
         CONF_EXPOSE_BACKUP_METADATA: False,
+        CONF_SHOW_SIDEBAR_PANEL: True,
         CONF_NOTIFICATIONS_ENABLED: False,
         CONF_NOTIFICATION_TARGETS: [],
         CONF_NOTIFY_ON_RECOVERY: True,
@@ -174,6 +176,7 @@ async def test_guided_config_flow_and_custom_validation(
     assert created["data"][CONF_RUNTIME_PROFILE] == RUNTIME_PROFILE_APPLIANCE
     assert created["data"][CONF_MONITORING_POLICY] == MONITORING_POLICY_BALANCED
     assert created["data"][CONF_VERIFICATION_POLICY] == VERIFICATION_POLICY_MANUAL
+    assert created["data"][CONF_SHOW_SIDEBAR_PANEL] is True
 
     custom = config_flow.BackupCheckupConfigFlow()
     custom.hass = SimpleNamespace()

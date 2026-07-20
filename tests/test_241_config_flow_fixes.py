@@ -14,7 +14,6 @@ from homeassistant.config_entries import ConfigEntry
 
 from custom_components.backup_checkup import (
     config_flow,
-    flow_schemas,
     hardware_profile,
     setup_recommendation,
 )
@@ -59,13 +58,13 @@ def _options_flow(*, adaptive: bool) -> config_flow.BackupCheckupOptionsFlow:
             CONF_RUNTIME_PROFILE: RUNTIME_PROFILE_APPLIANCE,
             CONF_ADAPTIVE_POLLING: adaptive,
         },
-        version=10,
+        version=11,
     )
     return flow
 
 
 @pytest.mark.asyncio
-async def test_summary_uses_compact_grouped_constant_rows(
+async def test_summary_is_a_value_free_confirmation_page(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
@@ -76,69 +75,13 @@ async def test_summary_uses_compact_grouped_constant_rows(
         "async_recommended_verification_size_gb",
         AsyncMock(return_value=None),
     )
-    monkeypatch.setattr(
-        config_flow,
-        "async_get_translations",
-        AsyncMock(
-            return_value={
-                (
-                    "component.backup_checkup.selector.runtime_profile.options."
-                    "home_assistant_appliance"
-                ): "Home Assistant Appliance",
-                (
-                    "component.backup_checkup.selector.enabled_state.options.enabled"
-                ): "Aktiviert",
-            }
-        ),
-    )
     flow = config_flow.BackupCheckupConfigFlow()
     flow.hass = SimpleNamespace()
     await flow._async_prepare()
 
     form = await flow.async_step_summary()
-    sections = form["data_schema"].schema
-    section_keys = [marker.key for marker in sections]
-    assert section_keys == [
-        flow_schemas.SUMMARY_SECTION_SYSTEM,
-        flow_schemas.SUMMARY_SECTION_POLLING,
-        flow_schemas.SUMMARY_SECTION_MONITORING,
-        flow_schemas.SUMMARY_SECTION_INTEGRITY,
-        flow_schemas.SUMMARY_SECTION_NOTIFICATIONS,
-    ]
+    assert form["data_schema"].schema == {}
     assert form["last_step"] is True
-
-    system = next(
-        value
-        for marker, value in sections.items()
-        if marker.key == flow_schemas.SUMMARY_SECTION_SYSTEM
-    )
-    system_fields = system.schema.schema
-    profile_selector = next(
-        selector
-        for marker, selector in system_fields.items()
-        if marker.key == flow_schemas.SUMMARY_RUNTIME_PROFILE
-    )
-    assert profile_selector.config["value"] == RUNTIME_PROFILE_APPLIANCE
-    assert profile_selector.config["label"] == "Home Assistant Appliance"
-    assert "translation_key" not in profile_selector.config
-
-    polling = next(
-        value
-        for marker, value in sections.items()
-        if marker.key == flow_schemas.SUMMARY_SECTION_POLLING
-    )
-    adaptive_selector = next(
-        selector
-        for marker, selector in polling.schema.schema.items()
-        if marker.key == flow_schemas.SUMMARY_ADAPTIVE_POLLING
-    )
-    assert adaptive_selector.config["label"] == "Aktiviert"
-    assert "translation_key" not in adaptive_selector.config
-    assert all(
-        selector.__class__.__name__ == "ConstantSelector"
-        for summary_section in sections.values()
-        for selector in summary_section.schema.schema.values()
-    )
 
     created = await flow.async_step_summary({})
     assert created["type"] == "create_entry"
@@ -297,7 +240,7 @@ async def test_options_setup_summary_saves_with_normal_submit() -> None:
     assert saved["type"] == "create_entry"
 
 
-def test_summary_translation_values_and_badges_are_release_safe() -> None:
+def test_summary_translation_and_badges_are_release_safe() -> None:
     de = json.loads(
         (ROOT / "custom_components/backup_checkup/translations/de.json").read_text(
             encoding="utf-8"
@@ -305,12 +248,8 @@ def test_summary_translation_values_and_badges_are_release_safe() -> None:
     )
     summary = de["config"]["step"]["summary"]
     assert "{runtime_profile}" not in summary["description"]
-    assert (
-        summary["sections"][flow_schemas.SUMMARY_SECTION_SYSTEM]["data"][
-            flow_schemas.SUMMARY_RUNTIME_PROFILE
-        ]
-        == "Leistungsprofil"
-    )
+    assert "sections" not in summary
+    assert "unten" not in summary["description"]
     assert (
         de["selector"]["runtime_profile"]["options"][RUNTIME_PROFILE_APPLIANCE]
         == "Home Assistant Appliance"

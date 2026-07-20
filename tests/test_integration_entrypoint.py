@@ -75,6 +75,7 @@ class _Hass:
     def __init__(self, entries: list[Any] | None = None) -> None:
         self.config_entries = _ConfigEntries(entries)
         self.config = SimpleNamespace(path=lambda value: f"/config/{value}")
+        self.http = SimpleNamespace(async_register_static_paths=AsyncMock())
         self.executor_result: Any = SimpleNamespace(removed=0, failed=0)
         self.executor_error: Exception | None = None
 

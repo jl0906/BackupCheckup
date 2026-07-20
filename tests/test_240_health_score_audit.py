@@ -10,21 +10,8 @@ import pytest
 from homeassistant.config_entries import ConfigEntry
 
 from custom_components.backup_checkup.analytics import calculate_health_score
-from custom_components.backup_checkup.config_flow import _summary_values
-from custom_components.backup_checkup.configuration import normalize_configuration
-from custom_components.backup_checkup.const import (
-    CONF_ADAPTIVE_POLLING,
-    CONF_ENTITY_MODE,
-    CONF_HARDWARE_DETECTION,
-    CONF_MAX_VERIFICATION_SIZE_GB,
-    CONF_MONITORING_POLICY,
-    CONF_NOTIFICATION_TARGETS,
-    CONF_RUNTIME_PROFILE,
-    CONF_UPDATE_INTERVAL_MINUTES,
-    CONF_VERIFICATION_POLICY,
-)
+from custom_components.backup_checkup.const import CONF_ADAPTIVE_POLLING
 from custom_components.backup_checkup.coordinator import BackupCheckupCoordinator
-from custom_components.backup_checkup.flow_schemas import SUMMARY_HARDWARE
 
 
 def _score(flags: dict[str, bool], **kwargs: object):
@@ -132,27 +119,6 @@ def test_health_score_rejects_impossible_history_combinations() -> None:
     )
     assert result.score == 100
     assert result.raw_deductions == {}
-
-
-def test_setup_summary_uses_architecture_when_board_is_unknown() -> None:
-    values = normalize_configuration(
-        {
-            CONF_HARDWARE_DETECTION: {
-                "board": "unknown",
-                "architecture": "x86_64",
-            },
-            CONF_RUNTIME_PROFILE: "performance",
-            CONF_UPDATE_INTERVAL_MINUTES: 5,
-            CONF_MAX_VERIFICATION_SIZE_GB: 100,
-            CONF_ADAPTIVE_POLLING: True,
-            CONF_MONITORING_POLICY: "balanced",
-            CONF_VERIFICATION_POLICY: "manual",
-            CONF_ENTITY_MODE: "standard",
-            CONF_NOTIFICATION_TARGETS: (),
-        }
-    )
-    summary = _summary_values(values)
-    assert summary[SUMMARY_HARDWARE] == "x86_64"
 
 
 @pytest.mark.asyncio

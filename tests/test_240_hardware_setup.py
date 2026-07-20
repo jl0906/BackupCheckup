@@ -45,6 +45,7 @@ from custom_components.backup_checkup.const import (
     CONF_NOTIFICATIONS_ENABLED,
     CONF_NOTIFY_ON_RECOVERY,
     CONF_RUNTIME_PROFILE,
+    CONF_SHOW_SIDEBAR_PANEL,
     CONF_SIZE_CHECK_MODE,
     CONF_UPDATE_INTERVAL_MINUTES,
     CONF_VERIFICATION_POLICY,
@@ -114,6 +115,7 @@ def _presentation() -> dict[str, Any]:
     return {
         CONF_ENTITY_MODE: ENTITY_MODE_STANDARD,
         CONF_EXPOSE_BACKUP_METADATA: False,
+        CONF_SHOW_SIDEBAR_PANEL: False,
         CONF_NOTIFICATIONS_ENABLED: False,
         CONF_NOTIFICATION_TARGETS: [],
         CONF_NOTIFY_ON_RECOVERY: True,
@@ -625,7 +627,7 @@ async def test_version_9_migration_preserves_resolved_values() -> None:
 
     assert await integration.async_migrate_entry(hass, entry) is True
     migrated = updates[0]
-    assert migrated["version"] == 10
+    assert migrated["version"] == 11
     assert migrated["data"][CONF_RUNTIME_PROFILE] == RUNTIME_PROFILE_LEGACY
     assert migrated["data"][CONF_ADAPTIVE_POLLING] is False
     assert migrated["data"][CONF_UPDATE_INTERVAL_MINUTES] == 7

@@ -326,6 +326,9 @@ def test_orphan_cleanup_failure_does_not_block_setup() -> None:
     class Hass:
         config_entries = ConfigEntries()
         config = SimpleNamespace(path=lambda _name: "/tmp/.storage")
+        http = SimpleNamespace(
+            async_register_static_paths=lambda _paths: asyncio.sleep(0)
+        )
 
         @staticmethod
         async def async_add_executor_job(*_args, **_kwargs):
@@ -355,7 +358,7 @@ def test_migration_updates_once_without_entity_registry_side_effects(
 
     assert asyncio.run(integration.async_migrate_entry(hass, entry)) is True
     assert len(updates) == 1
-    assert updates[0]["version"] == 10
+    assert updates[0]["version"] == 11
 
 
 def test_health_score_ignores_invalid_history_metrics() -> None:
