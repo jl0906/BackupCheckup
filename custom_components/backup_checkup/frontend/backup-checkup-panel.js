@@ -1,3 +1,5 @@
+const PANEL_ELEMENT_NAME = "backup-checkup-panel-v2-6-1";
+
 const TEXT = {
   en: {
     dashboard: "Backup overview",
@@ -737,6 +739,6 @@ class BackupCheckupPanel extends HTMLElement {
   }
 }
 
-if (!customElements.get("backup-checkup-panel")) {
-  customElements.define("backup-checkup-panel", BackupCheckupPanel);
+if (!customElements.get(PANEL_ELEMENT_NAME)) {
+  customElements.define(PANEL_ELEMENT_NAME, BackupCheckupPanel);
 }

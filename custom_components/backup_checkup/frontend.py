@@ -17,9 +17,12 @@ from .const import CONF_SHOW_SIDEBAR_PANEL, DOMAIN, VERSION
 _LOGGER = logging.getLogger(__name__)
 
 PANEL_URL_PATH = "backup-checkup"
-PANEL_WEB_COMPONENT = "backup-checkup-panel"
-PANEL_MODULE_PATH = "/backup_checkup/frontend/backup-checkup-panel.js"
-PANEL_MODULE_URL = f"{PANEL_MODULE_PATH}?v={VERSION}"
+PANEL_VERSION_TAG = VERSION.replace(".", "-")
+PANEL_WEB_COMPONENT = f"backup-checkup-panel-v{PANEL_VERSION_TAG}"
+PANEL_MODULE_PATH = (
+    f"/backup_checkup/frontend/backup-checkup-panel-{VERSION}.js"
+)
+PANEL_MODULE_URL = PANEL_MODULE_PATH
 PANEL_MODULE_FILE = Path(__file__).parent / "frontend" / "backup-checkup-panel.js"
 
 _PANEL_ENTITIES: dict[str, tuple[str, str]] = {
