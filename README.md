@@ -20,9 +20,6 @@ BackupCheckup is a local Home Assistant custom integration that monitors the **a
 
 It warns you when backups are missing, outdated, incomplete, unexpectedly small, stored on too few locations, or no longer readable. No separate helpers or automations are required.
 
-> [!NOTE]
-> BackupCheckup is AI-coded and AI-maintained under human direction, testing, and release control.
-
 ## Install with HACS
 
 [![Open your Home Assistant instance and add BackupCheckup to HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jl0906&repository=BackupCheckup&category=integration)
