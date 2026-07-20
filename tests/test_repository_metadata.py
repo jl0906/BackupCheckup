@@ -34,21 +34,23 @@ def test_release_versions_are_consistent() -> None:
     readme = (ROOT / "README.md").read_text()
     changelog = (ROOT / "CHANGELOG.md").read_text()
 
-    assert manifest["version"] == "2.5.1"
-    assert 'VERSION = "2.5.1"' in constants
-    assert "2.5.1" in readme
-    assert "version-2.5.1-blue.svg" in readme
+    assert manifest["version"] == "2.6.0"
+    assert 'VERSION = "2.6.0"' in constants
+    assert "2.6.0" in readme
+    assert "version-2.6.0-blue.svg" in readme
     assert "docs/function-coverage-2.3.0.md" in readme
     assert "docs/security-hardening-2.3.1.md" in readme
     assert "docs/hardware-aware-setup-2.4.0.md" in readme
     assert (ROOT / "docs" / "hardware-aware-setup-2.4.0.md").is_file()
+    assert "## 2.6.0" in changelog
+    assert "## 2.5.2" in changelog
     assert "## 2.5.1" in changelog
     assert "## 2.5.0" in changelog
     assert "## 2.4.3" in changelog
     assert "## 2.4.1" in changelog
     assert "## 2.4.0" in changelog
     assert "## 2.3.1" in changelog
-    assert "VERSION = 11" in (INTEGRATION / "config_flow.py").read_text()
+    assert "VERSION = 12" in (INTEGRATION / "config_flow.py").read_text()
 
 
 def test_manifest_keys_follow_home_assistant_order() -> None:

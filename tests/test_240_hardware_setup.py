@@ -642,7 +642,7 @@ async def test_version_9_migration_preserves_resolved_values() -> None:
 
     assert await integration.async_migrate_entry(hass, entry) is True
     migrated = updates[0]
-    assert migrated["version"] == 11
+    assert migrated["version"] == 12
     assert migrated["data"][CONF_RUNTIME_PROFILE] == RUNTIME_PROFILE_LEGACY
     assert migrated["data"][CONF_ADAPTIVE_POLLING] is False
     assert migrated["data"][CONF_UPDATE_INTERVAL_MINUTES] == 7

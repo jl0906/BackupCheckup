@@ -10,7 +10,7 @@
 
 <p align="center">
   <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-orange.svg">
-  <img alt="Version 2.5.2" src="https://img.shields.io/badge/version-2.5.2-blue.svg">
+  <img alt="Version 2.6.0" src="https://img.shields.io/badge/version-2.6.0-blue.svg">
   <img alt="AI Coded and Maintained" src="https://img.shields.io/badge/AI-Coded_and_Maintained-8A2BE2.svg">
   <img alt="Home Assistant 2026.3 or newer" src="https://img.shields.io/badge/Home_Assistant-2026.3_or_newer-41BDF5.svg">
   <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg">
@@ -19,6 +19,9 @@
 BackupCheckup is a local Home Assistant custom integration that monitors the **actual backup inventory** reported by Home Assistant's native backup manager.
 
 It warns you when backups are missing, outdated, incomplete, unexpectedly small, stored on too few locations, or no longer readable. No separate helpers or automations are required.
+
+> [!NOTE]
+> BackupCheckup is AI-coded and AI-maintained under human direction, testing, and release control.
 
 ## Install with HACS
 
@@ -94,9 +97,9 @@ Deep verification is never enabled only because powerful hardware was detected.
 | Entity mode | Best for |
 | --- | --- |
 | **Standard** | A focused set of useful status, health, integrity, and problem entities. |
-| **Expert** | Every available entity, per-storage metrics, advanced diagnostics, and activity logging. |
+| **Expert** | Every available entity, per-storage metrics, and advanced diagnostics. |
 
-All settings remain available later under **Settings → Devices & services → BackupCheckup → Configure**. The options menu is split into performance, monitoring, integrity, entities and notifications, plus an option to run the complete assistant again.
+Detailed live logging is selected independently from the entity mode. All settings remain available later under **Settings → Devices & services → BackupCheckup → Configure**.
 
 ## Intelligent polling
 
@@ -183,9 +186,9 @@ Manual refreshes, integrity verification, and test notifications are administrat
 
 ## Advanced users
 
-Expert mode additionally enables detailed per-storage entities and a privacy-safe activity journal for setup, refreshes, health changes, integrity checks, notifications, and cleanup operations.
+Expert mode additionally enables detailed per-storage entities. The separate **Enable detailed live logging** option records a privacy-safe journal for setup, refreshes, health changes, downloads, archive extraction, database checks, notifications, progress, and cleanup operations.
 
-The journal appears live under Home Assistant **Activity**, in structured system logs, and in integration diagnostics. It is completely disabled in Standard mode.
+The sidebar frontend contains separate **Overview** and **Live log** tabs. The log is searchable, updates live, retains at most 250 runtime entries, and is also available in Home Assistant **Activity**, structured system logs, and integration diagnostics. It never includes backup names, raw IDs, paths, passwords, or backup contents.
 
 ## Documentation
 

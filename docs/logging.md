@@ -1,26 +1,34 @@
 # Logging and live activity
 
-BackupCheckup 2.3.0 provides one central, privacy-safe activity journal
-exclusively in **Expert entity mode**. Each record contains a UTC timestamp, a
-stable action name, an outcome, and a small set of bounded details.
+BackupCheckup 2.6.0 provides one central, privacy-safe activity journal. Each
+record contains a UTC timestamp, a stable action name, an outcome, a severity,
+and a small set of bounded details.
 
 ## Enable or disable logging
 
-Open **Settings → Devices & services → BackupCheckup → Configure** and select the
-entity mode:
+Open **Settings → Devices & services → BackupCheckup → Configure → Frontend,
+entities, and notifications** and select **Enable detailed live logging**.
 
-- **Expert mode:** live Activity entries, structured activity logs, and the bounded
-  diagnostics journal are enabled.
-- **Standard mode:** the complete activity-logging feature is disabled. No live
-  Activity entries are published, no structured activity records are emitted, and no
-  events are retained in the runtime journal.
+- Enabled: live Activity entries, the searchable sidebar log, structured Core
+  records, and the bounded diagnostics journal are active.
+- Disabled: no activity records are emitted or retained.
 
-Changing the entity mode reloads BackupCheckup, so the new logging state applies
-immediately. The config-entry schema remains version 9 and no migration is required.
+Logging is independent of Standard or Expert entity mode. Changing the switch reloads
+BackupCheckup so the new state applies immediately. Existing Expert installations are
+migrated with logging enabled to preserve their previous behavior.
+
+## Sidebar live log
+
+When the optional BackupCheckup sidebar frontend is enabled, use its **Live log**
+tab for a dedicated, searchable operational view. It updates while BackupCheckup
+works and reports inventory reads, storage preparation, download progress,
+encrypted or unencrypted archive extraction, database verification, result storage,
+notifications, cleanup, and failures. The in-memory list retains at most 250 entries
+and resets when Home Assistant restarts.
 
 ## Home Assistant Activity
 
-With Expert mode enabled, open **Activity** in Home Assistant and filter for
+With detailed logging enabled, open **Activity** in Home Assistant and filter for
 **BackupCheckup**. Relevant workflow events appear live, including integration setup
 and unloading, inventory refresh results, health-state changes, integrity
 verification, notification delivery, manual services, and cleanup operations.
@@ -35,7 +43,7 @@ only when user intervention is required.
 
 ## Core log
 
-In Expert mode, structured records use the logger
+When enabled, structured records use the logger
 `custom_components.backup_checkup.activity` and the format:
 
 ```text
@@ -57,14 +65,16 @@ detail.
 
 ## Downloaded diagnostics
 
-In Expert mode, the latest 100 activity records are included in integration
+When enabled, the latest 100 activity records are included in integration
 diagnostics. The in-memory journal retains at most 250 records and is reset when Home
-Assistant restarts. In Standard mode, diagnostics report `enabled: false` with empty
+Assistant restarts. When disabled, diagnostics report `enabled: false` with empty
 event counters and no recent records.
 
 ## Privacy and limits
 
 BackupCheckup does not place notification entity IDs, raw backup IDs, backup names,
-file paths, passwords, or raw storage-agent IDs in the central journal. Storage
-references are anonymized. Detail keys and values, record count, and message lengths
-are bounded to prevent accidental log amplification.
+file paths, passwords, raw storage-agent IDs, or backup contents in the central
+journal. Sensitive detail keys are dropped centrally. Private operations use general
+phrases such as “Extracting encrypted backup” or “Reading and checking database”.
+Detail keys and values, record count, and message lengths are bounded to prevent
+accidental log amplification.

@@ -370,7 +370,7 @@ async def test_sensor_platform_tracks_added_and_removed_agents(
     await sensor.async_setup_entry(
         hass, entry, lambda entities: batches.append(list(entities))
     )
-    assert len(batches[0]) == len(sensor.SENSORS) + len(sensor.AGENT_METRICS)
+    assert len(batches[0]) == len(sensor.SENSORS) + len(sensor.AGENT_METRICS) + 1
 
     coordinator.data.agent_summaries = (first, second)
     coordinator.listener()

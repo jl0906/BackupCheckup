@@ -1,5 +1,44 @@
 # Changelog
 
+## 2.6.0
+
+**Dedicated, detailed and privacy-safe live logging**
+
+### Added
+
+- Added separate **Overview** and **Live log** tabs to the optional sidebar
+  frontend. The live log is searchable, responsive, severity-aware, and updates
+  from a bounded 250-entry runtime journal.
+- Added an independent **Enable detailed live logging** option. Logging no longer
+  depends on Standard or Expert entity mode.
+- Added detailed workflow stages for inventory processing, storage-copy
+  preparation, backup download, five-percent download progress, encrypted and
+  unencrypted archive extraction, database verification, result persistence,
+  notifications, and temporary-data cleanup.
+- Added a diagnostic live-log sensor used as the local bridge between the runtime
+  journal and sidebar frontend.
+
+### Privacy
+
+- The live journal centrally excludes backup names, raw backup and storage IDs,
+  entity IDs, file paths, passwords, notification targets, and file contents.
+  Sensitive work is described only through generic operational phrases.
+- Log attributes are bounded and the journal is memory-only; it resets when Home
+  Assistant restarts.
+
+### Changed
+
+- Existing Expert-mode installations migrate with detailed logging enabled to
+  preserve their prior behavior. New installations choose logging independently.
+- Increased the config-entry schema to version 12.
+
+### Fixed
+
+- Resolved the remaining reported Python and frontend code smells: redundant
+  exception types, nested conditionals and templates, unused values and API
+  parameters, missing coroutine work, traceback logging, confusing assignment
+  expressions, and overly broad return annotations.
+
 ## 2.5.2
 
 **Code-quality fixes only**

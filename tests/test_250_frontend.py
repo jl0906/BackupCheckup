@@ -81,7 +81,7 @@ async def test_version_10_migration_adds_disabled_sidebar_default() -> None:
     )
 
     assert await integration.async_migrate_entry(hass, entry) is True
-    assert updates[0]["version"] == 11
+    assert updates[0]["version"] == 12
     assert updates[0]["data"]["max_age_days"] == 7
     assert updates[0]["data"]["notifications_enabled"] is True
     assert updates[0]["data"][CONF_SHOW_SIDEBAR_PANEL] is False
@@ -128,7 +128,7 @@ async def test_static_module_and_enabled_panel_are_registered(
     kwargs: dict[str, Any] = register_panel.await_args.kwargs
     assert kwargs["frontend_url_path"] == "backup-checkup"
     assert kwargs["webcomponent_name"] == "backup-checkup-panel"
-    assert kwargs["module_url"].endswith("?v=2.5.2")
+    assert kwargs["module_url"].endswith("?v=2.6.0")
     assert kwargs["sidebar_icon"] == "mdi:backup-restore"
     assert kwargs["config"]["entry_id"] == "entry"
     assert kwargs["config"]["entities"]["status"].startswith("sensor.renamed_")
@@ -177,6 +177,8 @@ def test_frontend_bundle_is_local_responsive_and_escapes_dynamic_content() -> No
     assert 'customElements.define("backup-checkup-panel"' in source
     assert "https://" not in source
     assert "replaceAll(\"&\", \"&amp;\")" in source
-    assert 'agent.error ? "danger" : agent.stale ? "warning" : "good"' in source
+    assert 'if (agent.error) return "danger"' in source
+    assert 'data-tab="logs"' in source
+    assert 'data-log-search' in source
     assert "@media (max-width:620px)" in source
     assert 'callService("button", "press"' in source
