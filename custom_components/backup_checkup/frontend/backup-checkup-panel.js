@@ -1,4 +1,4 @@
-const PANEL_ELEMENT_NAME = "backup-checkup-panel-v2-6-1";
+const PANEL_ELEMENT_NAME = "backup-checkup-panel-v2-6-2-r2";
 
 const TEXT = {
   en: {
@@ -236,11 +236,15 @@ class BackupCheckupPanel extends HTMLElement {
     this._busy = new Set();
     this._activeTab = "overview";
     this._logSearch = "";
+    this._relevantStateRefs = new Map();
+    this._viewContext = "";
+    this._panelEntitySignature = "";
   }
 
   set hass(value) {
+    const shouldRender = this._relevantStateChanged(value);
     this._hass = value;
-    this._scheduleRender();
+    if (shouldRender) this._scheduleRender();
   }
 
   get hass() {
@@ -248,7 +252,12 @@ class BackupCheckupPanel extends HTMLElement {
   }
 
   set panel(value) {
+    const entitySignature = JSON.stringify(value?.config?.entities || {});
     this._panel = value;
+    if (entitySignature === this._panelEntitySignature) return;
+    this._panelEntitySignature = entitySignature;
+    this._relevantStateRefs = new Map();
+    if (this._hass) this._relevantStateChanged(this._hass);
     this._scheduleRender();
   }
 
@@ -297,6 +306,62 @@ class BackupCheckupPanel extends HTMLElement {
   _entities() {
     const configured = this._panel?.config?.entities;
     return configured ? { ...DEFAULT_ENTITIES, ...configured } : DEFAULT_ENTITIES;
+  }
+
+  _relevantStateChanged(hass) {
+    const nextRefs = new Map();
+    this._relevantEntityIds().forEach((entityId) => {
+      nextRefs.set(entityId, hass?.states?.[entityId]);
+    });
+    const context = [
+      hass?.locale?.language || hass?.language || "en",
+      Boolean(hass?.user?.is_admin),
+    ].join("|");
+    const stateChanged = nextRefs.size !== this._relevantStateRefs.size
+      || [...nextRefs].some(
+        ([entityId, state]) => this._relevantStateRefs.get(entityId) !== state
+      );
+    const changed = stateChanged || context !== this._viewContext;
+    this._relevantStateRefs = nextRefs;
+    this._viewContext = context;
+    return changed;
+  }
+
+  _relevantEntityIds() {
+    const entities = this._entities();
+    if (this._activeTab === "logs") return [entities.activity_log];
+    return Object.entries(entities)
+      .filter(([key]) => key !== "activity_log")
+      .map(([, entityId]) => entityId);
+  }
+
+  _captureScrollPositions() {
+    const positions = [];
+    const seen = new Set();
+    const remember = (element) => {
+      if (!element || seen.has(element)) return;
+      seen.add(element);
+      positions.push({
+        element,
+        left: Number(element.scrollLeft) || 0,
+        top: Number(element.scrollTop) || 0,
+      });
+    };
+    let current = this;
+    while (current) {
+      remember(current);
+      const root = current.getRootNode?.();
+      current = current.parentElement || root?.host || null;
+    }
+    remember(document.scrollingElement);
+    return positions;
+  }
+
+  _restoreScrollPositions(positions) {
+    positions.forEach(({ element, left, top }) => {
+      element.scrollLeft = left;
+      element.scrollTop = top;
+    });
   }
 
   _state(key) {
@@ -351,6 +416,20 @@ class BackupCheckupPanel extends HTMLElement {
     return new Intl.DateTimeFormat(this._language(), {
       dateStyle: "medium",
       timeStyle: "short",
+    }).format(date);
+  }
+
+  _logTimestamp(value) {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    return new Intl.DateTimeFormat(this._language(), {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
     }).format(date);
   }
 
@@ -552,7 +631,7 @@ class BackupCheckupPanel extends HTMLElement {
       const level = ["warning", "error", "critical"].includes(record.level)
         ? record.level : "info";
       return `<div class="log-row ${level}">
-        <time>${this._escape(this._date(record.timestamp))}</time>
+        <time>${this._escape(this._logTimestamp(record.timestamp))}</time>
         <strong>${this._escape(this._activityMessage(record, text))}</strong>
         ${detailLine}
       </div>`;
@@ -582,6 +661,7 @@ class BackupCheckupPanel extends HTMLElement {
 
   _render() {
     if (!this.shadowRoot || !this._hass) return;
+    const scrollPositions = this._captureScrollPositions();
     const restoreSearchFocus = this.shadowRoot.activeElement?.hasAttribute("data-log-search");
     const model = this._renderModel();
     const content = this._activeTab === "logs"
@@ -604,6 +684,7 @@ class BackupCheckupPanel extends HTMLElement {
     this.shadowRoot.querySelectorAll("[data-tab]").forEach((button) => {
       button.addEventListener("click", () => {
         this._activeTab = button.dataset.tab;
+        this._relevantStateChanged(this._hass);
         this._scheduleRender();
       });
     });
@@ -616,9 +697,10 @@ class BackupCheckupPanel extends HTMLElement {
       this._scheduleRender();
     });
     if (restoreSearchFocus && search) {
-      search.focus();
+      search.focus({ preventScroll: true });
       search.setSelectionRange(search.value.length, search.value.length);
     }
+    this._restoreScrollPositions(scrollPositions);
   }
 
   _buttonDisabled(state, action) {
