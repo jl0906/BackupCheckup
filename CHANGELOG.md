@@ -1,5 +1,46 @@
 # Changelog
 
+## 2.5.0
+
+**Optional BackupCheckup frontend**
+
+BackupCheckup 2.5.0 adds an optional, responsive overview page that can be placed
+directly in the Home Assistant sidebar. Existing installations keep the panel
+disabled until it is explicitly enabled.
+
+### Added
+
+- Added **Show BackupCheckup in the sidebar** to the initial setup flow, the
+  complete setup assistant, and the focused presentation options.
+- Added a self-contained frontend with overall status, Health Score,
+  recommendation, latest-backup age and size, stored-backup count, integrity
+  status, active problems, and per-storage summaries.
+- Added administrator-only frontend actions for refreshing BackupCheckup and
+  verifying the latest backup. The actions respect the availability and cooldown
+  state of the existing Home Assistant button entities.
+- Added automatic resolution of renamed BackupCheckup entities when the panel is
+  registered, responsive layouts for desktop and mobile, Home Assistant theme
+  support, and interface text for every language shipped by the integration.
+
+### Changed
+
+- Removed all resolved configuration values and grouped value sections from the
+  final page of both the initial config flow and the complete options assistant.
+  The page is now a short, value-free final confirmation.
+- Renamed the presentation options group to **Frontend, entities, and
+  notifications**.
+- Updated the config-entry schema from version 10 to version 11. Migration adds
+  the new sidebar preference with the safe default `false` and preserves every
+  existing setting.
+
+### Security and privacy
+
+- The frontend module is bundled locally and loads no third-party resources.
+- Dynamic backup and storage labels are escaped before rendering.
+- The panel consumes only the existing privacy-filtered entity states and
+  attributes; raw backup names and IDs remain governed by the existing metadata
+  exposure option.
+
 ## 2.4.3
 
 ### Fixed

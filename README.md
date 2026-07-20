@@ -10,7 +10,7 @@
 
 <p align="center">
   <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-orange.svg">
-  <img alt="Version 2.4.3" src="https://img.shields.io/badge/version-2.4.3-blue.svg">
+  <img alt="Version 2.5.0" src="https://img.shields.io/badge/version-2.5.0-blue.svg">
   <img alt="AI Coded and Maintained" src="https://img.shields.io/badge/AI-Coded_and_Maintained-8A2BE2.svg">
   <img alt="Home Assistant 2026.3 or newer" src="https://img.shields.io/badge/Home_Assistant-2026.3_or_newer-41BDF5.svg">
   <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg">
@@ -19,6 +19,9 @@
 BackupCheckup is a local Home Assistant custom integration that monitors the **actual backup inventory** reported by Home Assistant's native backup manager.
 
 It warns you when backups are missing, outdated, incomplete, unexpectedly small, stored on too few locations, or no longer readable. No separate helpers or automations are required.
+
+> [!NOTE]
+> BackupCheckup is AI-coded and AI-maintained under human direction, testing, and release control.
 
 ## Install with HACS
 
@@ -35,17 +38,29 @@ It warns you when backups are missing, outdated, incomplete, unexpectedly small,
 
 Copy `custom_components/backup_checkup` to `/config/custom_components/backup_checkup`, restart Home Assistant, and add the integration through **Settings → Devices & services**.
 
-## Guided setup in 2.4.x
+## Guided setup in 2.5.0
 
 BackupCheckup now separates system performance from backup safety. The assistant guides you through five focused steps:
 
 1. **Performance profile** based on the detected Home Assistant system
 2. **Monitoring policy** for backup age, size, and redundancy
 3. **Integrity strategy** for manual or automatic archive checks
-4. **Entity mode and notifications**
-5. **Summary** of the resolved settings before they are saved
+4. **Frontend, entity mode, and notifications**
+5. **Final confirmation** without repeating technical configuration values
 
 Hardware detection is only a recommendation. BackupCheckup never changes your selected profile later without confirmation.
+
+### Optional sidebar frontend
+
+Enable **Show BackupCheckup in the sidebar** during setup to add a responsive overview page directly to Home Assistant. It provides:
+
+- overall backup status and Health Score
+- the recommended next action and active problems
+- latest backup age and size, stored-backup count, and integrity status
+- a compact overview of every configured backup storage location
+- administrator actions to refresh the data or verify the latest backup
+
+The panel is bundled with BackupCheckup, uses the integration's existing privacy setting, and does not load external frontend resources. It is disabled by default and can be enabled or removed later under **Configure → Frontend, entities, and notifications**.
 
 ### Performance profiles
 
