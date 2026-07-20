@@ -10,6 +10,7 @@
   "config_flow": true,
   "dependencies": [
     "backup",
+    "http",
     "panel_custom"
   ],
   "documentation": "https://github.com/jl0906/BackupCheckup",
