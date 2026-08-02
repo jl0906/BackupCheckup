@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.7.1
+
+**SonarCloud duplication cleanup**
+
+### Fixed
+
+- Reworked the sidebar panel's multilingual text definitions around one shared
+  translation schema instead of repeating the same object structure for every
+  supported language.
+- Reduced duplicated JavaScript blocks below the SonarCloud quality-gate limit
+  while preserving every 2.7.0 label, message, and activity description.
+- Added a regression guard for the compact translation structure and refreshed
+  the frontend cache identifier so browsers load the corrected panel asset.
+
 ## 2.7.0
 
 **Understandable status details and a complete live-log workspace**

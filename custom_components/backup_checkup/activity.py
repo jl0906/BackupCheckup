@@ -231,7 +231,7 @@ class BackupCheckupActivityLog:
                     self._activity_message(record),
                     DOMAIN,
                 )
-            except Exception:
+            except Exception:  # noqa: BLE001 - logging must never break operations
                 _LOGGER.debug(
                     "Unable to publish BackupCheckup Activity entry",
                     exc_info=True,
@@ -243,7 +243,7 @@ class BackupCheckupActivityLog:
         for listener in tuple(self._listeners):
             try:
                 listener()
-            except Exception:
+            except Exception:  # noqa: BLE001 - isolate third-party listeners
                 _LOGGER.debug("Unable to update live activity view", exc_info=True)
 
     def _schedule_save(self) -> None:
