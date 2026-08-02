@@ -16,3 +16,9 @@ test_notification:
   description: >-
     Sends one localized test notification to the configured notification targets.
     Administrator access is required.
+
+clear_activity_log:
+  name: Clear live log
+  description: >-
+    Clears all buffered and, when enabled, persisted privacy-safe activity records.
+    Administrator access is required.

@@ -94,7 +94,9 @@
           "notification_targets": "Mobile devices to notify",
           "notify_on_recovery": "Notify when problems are resolved",
           "show_sidebar_panel": "BackupCheckup in de zijbalk tonen",
-          "activity_logging_enabled": "Enable detailed live logging"
+          "activity_logging_enabled": "Gedetailleerd live-logboek inschakelen",
+          "activity_log_persistence": "Live-logboek bewaren na herstart",
+          "activity_log_retention_days": "Bewaartermijn live-logboek in dagen"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities.",
@@ -103,7 +105,9 @@
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
           "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
           "show_sidebar_panel": "Voegt een optioneel BackupCheckup-overzicht toe aan de Home Assistant-zijbalk. De pagina toont gezondheid, actieve problemen, integriteit, back-upmetingen en opslaglocaties.",
-          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included."
+          "activity_logging_enabled": "Houdt een begrensd, doorzoekbaar en privacyveilig logboek van integratiehandelingen bij. Back-upnamen, ID's, paden, wachtwoorden en inhoud worden nooit opgenomen.",
+          "activity_log_persistence": "Slaat het privacyveilige logboek optioneel op in Home Assistant. Standaard uitgeschakeld; namen, ID's, paden, wachtwoorden en inhoud worden niet opgeslagen.",
+          "activity_log_retention_days": "Bewaart maximaal 250 items gedurende dit aantal dagen. Oudere items worden automatisch verwijderd."
         }
       },
       "summary": {
@@ -225,7 +229,9 @@
           "notification_targets": "Mobile devices to notify",
           "notify_on_recovery": "Notify when problems are resolved",
           "show_sidebar_panel": "BackupCheckup in de zijbalk tonen",
-          "activity_logging_enabled": "Enable detailed live logging"
+          "activity_logging_enabled": "Gedetailleerd live-logboek inschakelen",
+          "activity_log_persistence": "Live-logboek bewaren na herstart",
+          "activity_log_retention_days": "Bewaartermijn live-logboek in dagen"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities.",
@@ -234,7 +240,9 @@
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
           "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
           "show_sidebar_panel": "Voegt een optioneel BackupCheckup-overzicht toe aan de Home Assistant-zijbalk. De pagina toont gezondheid, actieve problemen, integriteit, back-upmetingen en opslaglocaties.",
-          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included."
+          "activity_logging_enabled": "Houdt een begrensd, doorzoekbaar en privacyveilig logboek van integratiehandelingen bij. Back-upnamen, ID's, paden, wachtwoorden en inhoud worden nooit opgenomen.",
+          "activity_log_persistence": "Slaat het privacyveilige logboek optioneel op in Home Assistant. Standaard uitgeschakeld; namen, ID's, paden, wachtwoorden en inhoud worden niet opgeslagen.",
+          "activity_log_retention_days": "Bewaart maximaal 250 items gedurende dit aantal dagen. Oudere items worden automatisch verwijderd."
         }
       },
       "setup_assistant": {
@@ -281,7 +289,9 @@
           "notification_targets": "Mobile devices to notify",
           "notify_on_recovery": "Notify when problems are resolved",
           "show_sidebar_panel": "BackupCheckup in de zijbalk tonen",
-          "activity_logging_enabled": "Enable detailed live logging"
+          "activity_logging_enabled": "Gedetailleerd live-logboek inschakelen",
+          "activity_log_persistence": "Live-logboek bewaren na herstart",
+          "activity_log_retention_days": "Bewaartermijn live-logboek in dagen"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities.",
@@ -290,7 +300,9 @@
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
           "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
           "show_sidebar_panel": "Voegt een optioneel BackupCheckup-overzicht toe aan de Home Assistant-zijbalk. De pagina toont gezondheid, actieve problemen, integriteit, back-upmetingen en opslaglocaties.",
-          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included."
+          "activity_logging_enabled": "Houdt een begrensd, doorzoekbaar en privacyveilig logboek van integratiehandelingen bij. Back-upnamen, ID's, paden, wachtwoorden en inhoud worden nooit opgenomen.",
+          "activity_log_persistence": "Slaat het privacyveilige logboek optioneel op in Home Assistant. Standaard uitgeschakeld; namen, ID's, paden, wachtwoorden en inhoud worden niet opgeslagen.",
+          "activity_log_retention_days": "Bewaart maximaal 250 items gedurende dit aantal dagen. Oudere items worden automatisch verwijderd."
         }
       },
       "setup_summary": {
@@ -553,6 +565,9 @@
       },
       "test_notification": {
         "name": "Testmelding verzenden"
+      },
+      "clear_activity_log": {
+        "name": "Live-logboek wissen"
       }
     }
   },

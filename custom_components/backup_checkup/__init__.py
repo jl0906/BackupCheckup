@@ -18,6 +18,7 @@ from .activity import (
     ACTIVITY_OUTCOME_COMPLETED,
     ACTIVITY_OUTCOME_FAILED,
     ACTIVITY_OUTCOME_STARTED,
+    BackupCheckupActivityLog,
 )
 from .configuration import normalize_configuration
 from .const import (
@@ -62,6 +63,7 @@ from .const import (
     ENTITY_MODE_EXPERT,
     PLATFORMS,
     PROFILE_CUSTOM,
+    SERVICE_CLEAR_ACTIVITY_LOG,
     SERVICE_REFRESH,
     SERVICE_TEST_NOTIFICATION,
     SERVICE_VERIFY_LATEST_BACKUP,
@@ -216,10 +218,15 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
             coordinator, "service_test_notification", ACTIVITY_OUTCOME_COMPLETED
         )
 
+    async def _async_clear_activity_log(_call: ServiceCall) -> None:
+        coordinator = _loaded_coordinator(hass)
+        await coordinator.activity.async_clear()
+
     for service, handler in (
         (SERVICE_VERIFY_LATEST_BACKUP, _async_verify_latest_backup),
         (SERVICE_REFRESH, _async_refresh),
         (SERVICE_TEST_NOTIFICATION, _async_test_notification),
+        (SERVICE_CLEAR_ACTIVITY_LOG, _async_clear_activity_log),
     ):
         async_register_admin_service(hass, DOMAIN, service, handler)
     return True
@@ -319,6 +326,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register shutdown before the first await so Home Assistant can clean up
     # coordinator-owned tasks even when setup fails partway through.
     entry.async_on_unload(coordinator.async_shutdown)
+    await coordinator.activity.async_load()
     _record_activity(
         coordinator,
         "config_entry_setup",
@@ -423,12 +431,14 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
             coordinator.history.async_remove,
             coordinator.integrity_verifier.store.async_remove,
             coordinator.notification_manager.async_remove,
+            coordinator.activity.async_remove,
         )
     else:
         removers = (
             BackupCheckupHistory(hass, entry.entry_id).async_remove,
             BackupIntegrityStore(hass, entry.entry_id).async_remove,
             BackupCheckupNotificationManager(hass, entry.entry_id).async_remove,
+            BackupCheckupActivityLog(hass, entry.entry_id).async_remove,
         )
 
     for remove in removers:

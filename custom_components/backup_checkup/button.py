@@ -12,6 +12,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
     DOMAIN,
+    SERVICE_CLEAR_ACTIVITY_LOG,
     SERVICE_REFRESH,
     SERVICE_TEST_NOTIFICATION,
     SERVICE_VERIFY_LATEST_BACKUP,
@@ -35,6 +36,7 @@ async def async_setup_entry(
             BackupCheckupVerifyButton(coordinator, entry),
             BackupCheckupRefreshButton(coordinator, entry),
             BackupCheckupTestNotificationButton(coordinator, entry),
+            BackupCheckupClearActivityLogButton(coordinator, entry),
         ]
     )
 
@@ -133,6 +135,42 @@ class BackupCheckupTestNotificationButton(BackupCheckupEntity, ButtonEntity):
         await self.hass.services.async_call(
             DOMAIN,
             SERVICE_TEST_NOTIFICATION,
+            blocking=True,
+            context=self._context,
+        )
+
+
+class BackupCheckupClearActivityLogButton(BackupCheckupEntity, ButtonEntity):
+    """Clear the bounded privacy-safe live activity journal."""
+
+    _attr_translation_key = "clear_activity_log"
+    _attr_icon = "mdi:delete-sweep-outline"
+    _attr_entity_category = EntityCategory.CONFIG
+
+    def __init__(
+        self,
+        coordinator: BackupCheckupCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        """Initialize the clear-live-log button."""
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{entry.entry_id}_clear_activity_log"
+        self.entity_id = "button.backup_checkup_clear_activity_log"
+
+    @property
+    def available(self) -> bool:
+        """Only allow clearing an enabled journal containing records."""
+        return bool(
+            super().available
+            and self.coordinator.activity.enabled
+            and self.coordinator.activity.recent(limit=1)
+        )
+
+    async def async_press(self) -> None:
+        """Clear the activity journal through the admin-protected service."""
+        await self.hass.services.async_call(
+            DOMAIN,
+            SERVICE_CLEAR_ACTIVITY_LOG,
             blocking=True,
             context=self._context,
         )

@@ -159,7 +159,11 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self._apply_settings_compatibility_attributes()
 
         self.activity = BackupCheckupActivityLog(
-            hass, enabled=self.activity_logging_enabled
+            hass,
+            entry.entry_id,
+            enabled=self.activity_logging_enabled,
+            persistent=self.settings.activity_log_persistence,
+            retention_days=self.settings.activity_log_retention_days,
         )
         self.history = BackupCheckupHistory(hass, entry.entry_id)
         self.integrity_verifier = BackupIntegrityVerifier(
@@ -203,6 +207,8 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         settings = self.settings
         self.entity_mode = settings.entity_mode
         self.activity_logging_enabled = settings.activity_logging_enabled
+        self.activity_log_persistence = settings.activity_log_persistence
+        self.activity_log_retention_days = settings.activity_log_retention_days
         self.max_age_days = settings.max_age_days
         self.minimum_backup_size_bytes = settings.minimum_backup_size_mb * 1_000_000
         self.maximum_size_drop_percent = settings.maximum_size_drop_percent
@@ -345,6 +351,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self._adaptive_refresh_pending = False
         await super().async_shutdown()
         self._record_activity("coordinator_shutdown", ACTIVITY_OUTCOME_COMPLETED)
+        await self.activity.async_shutdown()
 
     async def _async_fetch_inventory(
         self,

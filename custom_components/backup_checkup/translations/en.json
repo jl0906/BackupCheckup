@@ -94,7 +94,9 @@
           "notification_targets": "Mobile devices to notify",
           "notify_on_recovery": "Notify when problems are resolved",
           "show_sidebar_panel": "Show BackupCheckup in the sidebar",
-          "activity_logging_enabled": "Enable detailed live logging"
+          "activity_logging_enabled": "Enable detailed live logging",
+          "activity_log_persistence": "Keep live log after restarts",
+          "activity_log_retention_days": "Live-log retention in days"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities.",
@@ -103,7 +105,9 @@
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
           "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
           "show_sidebar_panel": "Adds an optional BackupCheckup overview page to the Home Assistant sidebar. The page shows health, active problems, integrity, backup metrics, and storage locations.",
-          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included."
+          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included.",
+          "activity_log_persistence": "Optionally saves the privacy-safe journal in Home Assistant. Disabled by default; no backup names, IDs, paths, passwords, or content are stored.",
+          "activity_log_retention_days": "Keeps at most 250 entries for this many days. Older entries are discarded automatically."
         }
       },
       "summary": {
@@ -225,7 +229,9 @@
           "notification_targets": "Mobile devices to notify",
           "notify_on_recovery": "Notify when problems are resolved",
           "show_sidebar_panel": "Show BackupCheckup in the sidebar",
-          "activity_logging_enabled": "Enable detailed live logging"
+          "activity_logging_enabled": "Enable detailed live logging",
+          "activity_log_persistence": "Keep live log after restarts",
+          "activity_log_retention_days": "Live-log retention in days"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities.",
@@ -234,7 +240,9 @@
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
           "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
           "show_sidebar_panel": "Adds an optional BackupCheckup overview page to the Home Assistant sidebar. The page shows health, active problems, integrity, backup metrics, and storage locations.",
-          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included."
+          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included.",
+          "activity_log_persistence": "Optionally saves the privacy-safe journal in Home Assistant. Disabled by default; no backup names, IDs, paths, passwords, or content are stored.",
+          "activity_log_retention_days": "Keeps at most 250 entries for this many days. Older entries are discarded automatically."
         }
       },
       "setup_assistant": {
@@ -281,7 +289,9 @@
           "notification_targets": "Mobile devices to notify",
           "notify_on_recovery": "Notify when problems are resolved",
           "show_sidebar_panel": "Show BackupCheckup in the sidebar",
-          "activity_logging_enabled": "Enable detailed live logging"
+          "activity_logging_enabled": "Enable detailed live logging",
+          "activity_log_persistence": "Keep live log after restarts",
+          "activity_log_retention_days": "Live-log retention in days"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities.",
@@ -290,7 +300,9 @@
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
           "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
           "show_sidebar_panel": "Adds an optional BackupCheckup overview page to the Home Assistant sidebar. The page shows health, active problems, integrity, backup metrics, and storage locations.",
-          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included."
+          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included.",
+          "activity_log_persistence": "Optionally saves the privacy-safe journal in Home Assistant. Disabled by default; no backup names, IDs, paths, passwords, or content are stored.",
+          "activity_log_retention_days": "Keeps at most 250 entries for this many days. Older entries are discarded automatically."
         }
       },
       "setup_summary": {
@@ -553,6 +565,9 @@
       },
       "test_notification": {
         "name": "Send test notification"
+      },
+      "clear_activity_log": {
+        "name": "Clear live log"
       }
     }
   },

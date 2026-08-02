@@ -1,4 +1,4 @@
-const PANEL_ELEMENT_NAME = "backup-checkup-panel-v2-6-2-r2";
+const PANEL_ELEMENT_NAME = "backup-checkup-panel-v2-7-0-r3";
 
 const TEXT = {
   en: {
@@ -25,6 +25,34 @@ const TEXT = {
     settings: "Settings",
     updated: "Updated",
     actionFailed: "The action could not be completed.",
+    unknownError: "The operation could not be completed.",
+    unknownRecommendation: "Check Home Assistant and the storage location, then retry.",
+    healthDetails: "Why this score?",
+    noDeductions: "No health-score deductions are active.",
+    pointsDeducted: "points deducted",
+    integrityDetails: "Latest verification result",
+    checkedAt: "Checked",
+    duration: "Duration",
+    verifiedSize: "Verified size",
+    filesChecked: "Files checked",
+    warnings: "Warnings",
+    nextStep: "Recommended next step",
+    statusLabel: "Status",
+    newEntries: "New entries available",
+    clearLog: "Clear log",
+    exportLog: "Export log",
+    clearConfirm: "Clear all live-log entries?",
+    persistentLog: "Persistent",
+    runtimeLog: "Until restart",
+    filterLabel: "Filter",
+    levelLabels: { all: "All", info: "Info", warning: "Warnings", error: "Errors" },
+    typeLabels: { all: "All operations", check: "Checks", backup: "Backups", notification: "Notifications", system: "System" },
+    storageStates: { online: "Online", stale: "Outdated", offline: "Offline" },
+    detailLabels: { error_code: "Reason", error_type: "Error type", reason: "Reason", source: "Trigger", status: "Status", version: "Version", target_count: "Recipients", notification_type: "Notification", retry_attempts: "Retry attempts", remaining: "Remaining", failures: "Failures", enabled: "Enabled", platform_count: "Platforms" },
+    detailValues: { manual: "Manual", automatic: "Automatic", cooldown: "Waiting period active", not_configured: "Not configured", true: "Yes", false: "No", test: "Test" },
+    errorMessages: { timeout: "The operation exceeded its time limit.", connection_error: "The storage location could not be reached.", not_configured: "The required function is not configured.", cooldown: "The safety waiting period is still active.", password_required: "The backup password is required.", unavailable: "The requested service is currently unavailable." },
+    errorRecommendations: { timeout: "Try again and review the configured time limit.", connection_error: "Check the storage connection and retry the operation.", not_configured: "Complete the integration options before retrying.", cooldown: "Wait until the displayed waiting period ends.", password_required: "Store the backup password in Home Assistant and retry.", unavailable: "Check Home Assistant and the storage location, then retry." },
+    healthComponents: { availability: "Backup availability", freshness: "Backup age", backup_quality: "Backup quality", integrity: "Integrity verification", storage: "Storage and redundancy", automation: "Automatic backups and schedule" },
     overviewTab: "Overview",
     logTab: "Live log",
     logTitle: "BackupCheckup live log",
@@ -61,6 +89,8 @@ const TEXT = {
       service_verify_latest_backup: "Starting manual backup verification",
       service_test_notification: "Testing notification",
       panel_setup: "Setting up sidebar panel",
+      config_entry_unload: "Stopping integration entry",
+      config_entry_remove: "Removing integration data",
     },
     activityOutcomes: {
       started: "started", completed: "completed", changed: "in progress",
@@ -91,6 +121,34 @@ const TEXT = {
     settings: "Einstellungen",
     updated: "Aktualisiert",
     actionFailed: "Die Aktion konnte nicht ausgeführt werden.",
+    unknownError: "Der Vorgang konnte nicht abgeschlossen werden.",
+    unknownRecommendation: "Home Assistant und den Speicherort prüfen und den Vorgang wiederholen.",
+    healthDetails: "Warum dieser Wert?",
+    noDeductions: "Es sind keine Abzüge beim Gesundheitswert aktiv.",
+    pointsDeducted: "Punkte Abzug",
+    integrityDetails: "Ergebnis der letzten Prüfung",
+    checkedAt: "Geprüft",
+    duration: "Dauer",
+    verifiedSize: "Geprüfte Größe",
+    filesChecked: "Geprüfte Dateien",
+    warnings: "Warnungen",
+    nextStep: "Empfohlener nächster Schritt",
+    statusLabel: "Status",
+    newEntries: "Neue Einträge verfügbar",
+    clearLog: "Protokoll leeren",
+    exportLog: "Protokoll exportieren",
+    clearConfirm: "Alle Einträge des Live-Protokolls löschen?",
+    persistentLog: "Dauerhaft gespeichert",
+    runtimeLog: "Bis zum Neustart",
+    filterLabel: "Filter",
+    levelLabels: { all: "Alle", info: "Info", warning: "Warnungen", error: "Fehler" },
+    typeLabels: { all: "Alle Vorgänge", check: "Prüfungen", backup: "Backups", notification: "Benachrichtigungen", system: "System" },
+    storageStates: { online: "Online", stale: "Veraltet", offline: "Offline" },
+    detailLabels: { error_code: "Grund", error_type: "Fehlerart", reason: "Grund", source: "Auslöser", status: "Status", version: "Version", target_count: "Empfänger", notification_type: "Benachrichtigung", retry_attempts: "Wiederholungen", remaining: "Verbleibend", failures: "Fehler", enabled: "Aktiviert", platform_count: "Plattformen" },
+    detailValues: { manual: "Manuell", automatic: "Automatisch", cooldown: "Sicherheitswartezeit aktiv", not_configured: "Nicht eingerichtet", true: "Ja", false: "Nein", test: "Test" },
+    errorMessages: { timeout: "Der Vorgang hat das Zeitlimit überschritten.", connection_error: "Der Speicherort konnte nicht erreicht werden.", not_configured: "Die benötigte Funktion ist nicht eingerichtet.", cooldown: "Die Sicherheitswartezeit ist noch aktiv.", password_required: "Das Backup-Passwort wird benötigt.", unavailable: "Der angeforderte Dienst ist derzeit nicht verfügbar." },
+    errorRecommendations: { timeout: "Erneut versuchen und das eingestellte Zeitlimit prüfen.", connection_error: "Verbindung zum Speicherort prüfen und den Vorgang wiederholen.", not_configured: "Integrationsoptionen vervollständigen und erneut versuchen.", cooldown: "Bis zum Ende der angezeigten Wartezeit warten.", password_required: "Backup-Passwort in Home Assistant hinterlegen und erneut prüfen.", unavailable: "Home Assistant und den Speicherort prüfen und erneut versuchen." },
+    healthComponents: { availability: "Backup-Verfügbarkeit", freshness: "Backup-Alter", backup_quality: "Backup-Qualität", integrity: "Integritätsprüfung", storage: "Speicher und Redundanz", automation: "Automatische Backups und Zeitplan" },
     overviewTab: "Übersicht",
     logTab: "Protokoll",
     logTitle: "BackupCheckup Live-Protokoll",
@@ -127,6 +185,8 @@ const TEXT = {
       service_verify_latest_backup: "Manuelle Backup-Prüfung wird gestartet",
       service_test_notification: "Benachrichtigung wird getestet",
       panel_setup: "Seitenleistenansicht wird eingerichtet",
+      config_entry_unload: "Integrationseintrag wird beendet",
+      config_entry_remove: "Integrationsdaten werden entfernt",
     },
     activityOutcomes: {
       started: "gestartet", completed: "abgeschlossen", changed: "läuft",
@@ -143,6 +203,74 @@ const TEXT = {
     noStorage: "Ingen lageroplysninger er tilgængelige.", backups: "backups", lastBackup: "Seneste backup",
     refresh: "Opdater", verify: "Kontrollér seneste backup", settings: "Indstillinger", updated: "Opdateret",
     actionFailed: "Handlingen kunne ikke gennemføres.",
+    unknownError: "Handlingen kunne ikke gennemføres.",
+    unknownRecommendation: "Kontrollér Home Assistant og lagerplaceringen, og prøv igen.",
+    overviewTab: "Oversigt",
+    logTab: "Livelog",
+    logTitle: "BackupCheckup-livelog",
+    searchLogs: "Søg i logposter",
+    noLogs: "Ingen matchende logposter.",
+    loggingDisabled: "Detaljeret livelog er deaktiveret i integrationsindstillingerne.",
+    live: "Live",
+    healthDetails: "Hvorfor denne score?",
+    noDeductions: "Ingen fradrag i sundhedsscoren er aktive.",
+    pointsDeducted: "point trukket fra",
+    integrityDetails: "Seneste kontrolresultat",
+    checkedAt: "Kontrolleret",
+    duration: "Varighed",
+    verifiedSize: "Kontrolleret størrelse",
+    filesChecked: "Kontrollerede filer",
+    warnings: "Advarsler",
+    nextStep: "Anbefalet næste trin",
+    statusLabel: "Status",
+    newEntries: "Nye poster tilgængelige",
+    clearLog: "Ryd log",
+    exportLog: "Eksportér log",
+    clearConfirm: "Ryd alle poster i liveloggen?",
+    persistentLog: "Permanent",
+    runtimeLog: "Indtil genstart",
+    filterLabel: "Filter",
+    levelLabels: { all: "Alle", info: "Info", warning: "Advarsler", error: "Fejl" },
+    typeLabels: { all: "Alle handlinger", check: "Kontroller", backup: "Backups", notification: "Notifikationer", system: "System" },
+    storageStates: { online: "Online", stale: "Forældet", offline: "Offline" },
+    detailLabels: { error_code: "Årsag", error_type: "Fejltype", reason: "Årsag", source: "Udløser", status: "Status", version: "Version", target_count: "Modtagere", notification_type: "Notifikation", retry_attempts: "Forsøg", remaining: "Resterende", failures: "Fejl", enabled: "Aktiveret", platform_count: "Platforme" },
+    detailValues: { manual: "Manuel", automatic: "Automatisk", cooldown: "Ventetid aktiv", not_configured: "Ikke konfigureret", true: "Ja", false: "Nej", test: "Test" },
+    errorMessages: { timeout: "Handlingen overskred tidsgrænsen.", connection_error: "Lagerplaceringen kunne ikke nås.", not_configured: "Den nødvendige funktion er ikke konfigureret.", cooldown: "Sikkerhedsventetiden er stadig aktiv.", password_required: "Backupadgangskoden er nødvendig.", unavailable: "Tjenesten er ikke tilgængelig." },
+    errorRecommendations: { timeout: "Prøv igen, og kontrollér tidsgrænsen.", connection_error: "Kontrollér lagerforbindelsen, og prøv igen.", not_configured: "Fuldfør integrationsindstillingerne.", cooldown: "Vent, til den viste ventetid er udløbet.", password_required: "Gem backupadgangskoden, og prøv igen.", unavailable: "Kontrollér Home Assistant og lagerplaceringen." },
+    healthComponents: { availability: "Backuptilgængelighed", freshness: "Backupalder", backup_quality: "Backupkvalitet", integrity: "Integritetskontrol", storage: "Lager og redundans", automation: "Automatiske backups og tidsplan" },
+    activityActions: {
+      verification_prepare: "Forbereder integritetskontrol",
+      storage_copy_prepare: "Forbereder lagerkopi",
+      backup_download: "Downloader backup",
+      backup_extract: "Udpakker backup",
+      encrypted_backup_extract: "Udpakker krypteret backup",
+      database_read: "Læser og kontrollerer database",
+      temporary_data_cleanup: "Fjerner midlertidige kontroldata",
+      inventory_refresh: "Opdaterer backupoversigt",
+      backup_manager_read: "Læser backupmanager",
+      integrity_check: "Kører integritetskontrol",
+      integrity_check_request: "Behandler kontrolanmodning",
+      integrity_result_persist: "Gemmer kontrolresultat",
+      health_state: "Opdaterer backuptilstand",
+      notification_send: "Sender notifikation",
+      notification_processing: "Behandler notifikationer",
+      config_entry_setup: "Starter integration",
+      entity_platform_setup: "Konfigurerer enheder",
+      repair_issue_sync: "Synkroniserer reparationsmeddelelser",
+      first_refresh: "Afslutter første opdatering",
+      coordinator_shutdown: "Stopper integration",
+      integrity_state_load: "Indlæser gemt kontrolstatus",
+      integrity_check_schedule: "Planlægger automatisk kontrol",
+      integrity_background_task: "Overvåger baggrundskontrol",
+      post_verification_refresh: "Opdaterer status efter kontrol",
+      service_refresh: "Kører manuel opdatering",
+      service_verify_latest_backup: "Starter manuel backupkontrol",
+      service_test_notification: "Tester notifikation",
+      panel_setup: "Konfigurerer sidepanel",
+      config_entry_unload: "Stopper integrationspost",
+      config_entry_remove: "Fjerner integrationsdata",
+    },
+    activityOutcomes: { started: "startet", completed: "afsluttet", changed: "i gang", skipped: "sprunget over", failed: "mislykket", cancelled: "annulleret" },
   },
   es: {
     dashboard: "Resumen de copias", subtitle: "Estado en vivo de tus copias de Home Assistant",
@@ -154,6 +282,74 @@ const TEXT = {
     noStorage: "No hay información de almacenamiento.", backups: "copias", lastBackup: "Última copia",
     refresh: "Actualizar", verify: "Verificar última copia", settings: "Ajustes", updated: "Actualizado",
     actionFailed: "No se pudo completar la acción.",
+    unknownError: "No se pudo completar la operación.",
+    unknownRecommendation: "Comprueba Home Assistant y el almacenamiento y reintenta.",
+    overviewTab: "Resumen",
+    logTab: "Registro en vivo",
+    logTitle: "Registro en vivo de BackupCheckup",
+    searchLogs: "Buscar entradas",
+    noLogs: "No hay entradas coincidentes.",
+    loggingDisabled: "El registro detallado está desactivado en las opciones de la integración.",
+    live: "En vivo",
+    healthDetails: "¿Por qué esta puntuación?",
+    noDeductions: "No hay deducciones activas.",
+    pointsDeducted: "puntos descontados",
+    integrityDetails: "Último resultado de verificación",
+    checkedAt: "Verificado",
+    duration: "Duración",
+    verifiedSize: "Tamaño verificado",
+    filesChecked: "Archivos verificados",
+    warnings: "Advertencias",
+    nextStep: "Siguiente paso recomendado",
+    statusLabel: "Estado",
+    newEntries: "Hay entradas nuevas",
+    clearLog: "Borrar registro",
+    exportLog: "Exportar registro",
+    clearConfirm: "¿Borrar todas las entradas del registro?",
+    persistentLog: "Persistente",
+    runtimeLog: "Hasta reiniciar",
+    filterLabel: "Filtro",
+    levelLabels: { all: "Todo", info: "Info", warning: "Advertencias", error: "Errores" },
+    typeLabels: { all: "Todas las operaciones", check: "Verificaciones", backup: "Copias", notification: "Notificaciones", system: "Sistema" },
+    storageStates: { online: "En línea", stale: "Desactualizado", offline: "Sin conexión" },
+    detailLabels: { error_code: "Motivo", error_type: "Tipo de error", reason: "Motivo", source: "Activador", status: "Estado", version: "Versión", target_count: "Destinatarios", notification_type: "Notificación", retry_attempts: "Reintentos", remaining: "Restante", failures: "Errores", enabled: "Activado", platform_count: "Plataformas" },
+    detailValues: { manual: "Manual", automatic: "Automático", cooldown: "Espera de seguridad activa", not_configured: "Sin configurar", true: "Sí", false: "No", test: "Prueba" },
+    errorMessages: { timeout: "La operación superó el tiempo límite.", connection_error: "No se pudo acceder al almacenamiento.", not_configured: "La función necesaria no está configurada.", cooldown: "La espera de seguridad sigue activa.", password_required: "Se necesita la contraseña de la copia.", unavailable: "El servicio no está disponible." },
+    errorRecommendations: { timeout: "Vuelve a intentarlo y revisa el límite de tiempo.", connection_error: "Comprueba la conexión del almacenamiento y reintenta.", not_configured: "Completa las opciones de la integración.", cooldown: "Espera hasta que finalice el periodo indicado.", password_required: "Guarda la contraseña y vuelve a intentarlo.", unavailable: "Comprueba Home Assistant y el almacenamiento." },
+    healthComponents: { availability: "Disponibilidad de copias", freshness: "Antigüedad de la copia", backup_quality: "Calidad de la copia", integrity: "Verificación de integridad", storage: "Almacenamiento y redundancia", automation: "Copias automáticas y programación" },
+    activityActions: {
+      verification_prepare: "Preparando verificación de integridad",
+      storage_copy_prepare: "Preparando copia de almacenamiento",
+      backup_download: "Descargando copia",
+      backup_extract: "Extrayendo copia",
+      encrypted_backup_extract: "Extrayendo copia cifrada",
+      database_read: "Leyendo y comprobando la base de datos",
+      temporary_data_cleanup: "Eliminando datos temporales",
+      inventory_refresh: "Actualizando inventario de copias",
+      backup_manager_read: "Leyendo gestor de copias",
+      integrity_check: "Ejecutando verificación de integridad",
+      integrity_check_request: "Procesando solicitud de verificación",
+      integrity_result_persist: "Guardando resultado",
+      health_state: "Actualizando estado de protección",
+      notification_send: "Enviando notificación",
+      notification_processing: "Procesando notificaciones",
+      config_entry_setup: "Iniciando integración",
+      entity_platform_setup: "Configurando entidades",
+      repair_issue_sync: "Sincronizando avisos de reparación",
+      first_refresh: "Completando primera actualización",
+      coordinator_shutdown: "Deteniendo integración",
+      integrity_state_load: "Cargando estado guardado",
+      integrity_check_schedule: "Programando verificación automática",
+      integrity_background_task: "Supervisando verificación en segundo plano",
+      post_verification_refresh: "Actualizando estado tras la verificación",
+      service_refresh: "Ejecutando actualización manual",
+      service_verify_latest_backup: "Iniciando verificación manual",
+      service_test_notification: "Probando notificación",
+      panel_setup: "Configurando panel lateral",
+      config_entry_unload: "Deteniendo entrada de integración",
+      config_entry_remove: "Eliminando datos de integración",
+    },
+    activityOutcomes: { started: "iniciado", completed: "completado", changed: "en curso", skipped: "omitido", failed: "fallido", cancelled: "cancelado" },
   },
   fr: {
     dashboard: "Vue d’ensemble des sauvegardes", subtitle: "État en direct des sauvegardes Home Assistant",
@@ -165,6 +361,74 @@ const TEXT = {
     noStorage: "Aucune information de stockage disponible.", backups: "sauvegardes", lastBackup: "Dernière sauvegarde",
     refresh: "Actualiser", verify: "Vérifier la dernière sauvegarde", settings: "Paramètres", updated: "Actualisé",
     actionFailed: "L’action n’a pas pu être effectuée.",
+    unknownError: "L’opération n’a pas pu être terminée.",
+    unknownRecommendation: "Vérifiez Home Assistant et le stockage puis réessayez.",
+    overviewTab: "Vue d’ensemble",
+    logTab: "Journal en direct",
+    logTitle: "Journal en direct BackupCheckup",
+    searchLogs: "Rechercher dans le journal",
+    noLogs: "Aucune entrée correspondante.",
+    loggingDisabled: "Le journal détaillé est désactivé dans les options de l’intégration.",
+    live: "Direct",
+    healthDetails: "Pourquoi ce score ?",
+    noDeductions: "Aucune déduction du score n’est active.",
+    pointsDeducted: "points déduits",
+    integrityDetails: "Dernier résultat de vérification",
+    checkedAt: "Vérifié",
+    duration: "Durée",
+    verifiedSize: "Taille vérifiée",
+    filesChecked: "Fichiers vérifiés",
+    warnings: "Avertissements",
+    nextStep: "Prochaine étape recommandée",
+    statusLabel: "État",
+    newEntries: "Nouvelles entrées disponibles",
+    clearLog: "Effacer le journal",
+    exportLog: "Exporter le journal",
+    clearConfirm: "Effacer toutes les entrées du journal ?",
+    persistentLog: "Persistant",
+    runtimeLog: "Jusqu’au redémarrage",
+    filterLabel: "Filtre",
+    levelLabels: { all: "Tout", info: "Info", warning: "Avertissements", error: "Erreurs" },
+    typeLabels: { all: "Toutes les opérations", check: "Vérifications", backup: "Sauvegardes", notification: "Notifications", system: "Système" },
+    storageStates: { online: "En ligne", stale: "Obsolète", offline: "Hors ligne" },
+    detailLabels: { error_code: "Cause", error_type: "Type d’erreur", reason: "Cause", source: "Déclencheur", status: "État", version: "Version", target_count: "Destinataires", notification_type: "Notification", retry_attempts: "Tentatives", remaining: "Restant", failures: "Erreurs", enabled: "Activé", platform_count: "Plateformes" },
+    detailValues: { manual: "Manuel", automatic: "Automatique", cooldown: "Délai de sécurité actif", not_configured: "Non configuré", true: "Oui", false: "Non", test: "Test" },
+    errorMessages: { timeout: "L’opération a dépassé le délai.", connection_error: "Le stockage est inaccessible.", not_configured: "La fonction requise n’est pas configurée.", cooldown: "Le délai de sécurité est encore actif.", password_required: "Le mot de passe de sauvegarde est requis.", unavailable: "Le service est indisponible." },
+    errorRecommendations: { timeout: "Réessayez et vérifiez le délai configuré.", connection_error: "Vérifiez la connexion au stockage puis réessayez.", not_configured: "Complétez les options de l’intégration.", cooldown: "Attendez la fin du délai affiché.", password_required: "Enregistrez le mot de passe puis réessayez.", unavailable: "Vérifiez Home Assistant et le stockage." },
+    healthComponents: { availability: "Disponibilité des sauvegardes", freshness: "Âge de la sauvegarde", backup_quality: "Qualité de la sauvegarde", integrity: "Vérification d’intégrité", storage: "Stockage et redondance", automation: "Sauvegardes automatiques et planning" },
+    activityActions: {
+      verification_prepare: "Préparation de la vérification d’intégrité",
+      storage_copy_prepare: "Préparation de la copie de stockage",
+      backup_download: "Téléchargement de la sauvegarde",
+      backup_extract: "Extraction de la sauvegarde",
+      encrypted_backup_extract: "Extraction de la sauvegarde chiffrée",
+      database_read: "Lecture et vérification de la base de données",
+      temporary_data_cleanup: "Suppression des données temporaires",
+      inventory_refresh: "Actualisation de l’inventaire",
+      backup_manager_read: "Lecture du gestionnaire de sauvegardes",
+      integrity_check: "Exécution de la vérification d’intégrité",
+      integrity_check_request: "Traitement de la demande de vérification",
+      integrity_result_persist: "Enregistrement du résultat",
+      health_state: "Actualisation de l’état de protection",
+      notification_send: "Envoi de la notification",
+      notification_processing: "Traitement des notifications",
+      config_entry_setup: "Démarrage de l’intégration",
+      entity_platform_setup: "Configuration des entités",
+      repair_issue_sync: "Synchronisation des réparations",
+      first_refresh: "Fin de la première actualisation",
+      coordinator_shutdown: "Arrêt de l’intégration",
+      integrity_state_load: "Chargement de l’état enregistré",
+      integrity_check_schedule: "Planification de la vérification automatique",
+      integrity_background_task: "Surveillance de la vérification en arrière-plan",
+      post_verification_refresh: "Actualisation après vérification",
+      service_refresh: "Actualisation manuelle",
+      service_verify_latest_backup: "Démarrage de la vérification manuelle",
+      service_test_notification: "Test de la notification",
+      panel_setup: "Configuration du panneau latéral",
+      config_entry_unload: "Arrêt de l’entrée d’intégration",
+      config_entry_remove: "Suppression des données d’intégration",
+    },
+    activityOutcomes: { started: "démarré", completed: "terminé", changed: "en cours", skipped: "ignoré", failed: "échoué", cancelled: "annulé" },
   },
   it: {
     dashboard: "Panoramica backup", subtitle: "Stato in tempo reale dei backup di Home Assistant",
@@ -176,6 +440,74 @@ const TEXT = {
     noStorage: "Nessuna informazione di archiviazione disponibile.", backups: "backup", lastBackup: "Ultimo backup",
     refresh: "Aggiorna", verify: "Verifica ultimo backup", settings: "Impostazioni", updated: "Aggiornato",
     actionFailed: "Impossibile completare l’azione.",
+    unknownError: "Impossibile completare l’operazione.",
+    unknownRecommendation: "Controlla Home Assistant e l’archiviazione e riprova.",
+    overviewTab: "Panoramica",
+    logTab: "Registro live",
+    logTitle: "Registro live BackupCheckup",
+    searchLogs: "Cerca nel registro",
+    noLogs: "Nessuna voce corrispondente.",
+    loggingDisabled: "Il registro dettagliato è disattivato nelle opzioni dell’integrazione.",
+    live: "Live",
+    healthDetails: "Perché questo punteggio?",
+    noDeductions: "Non ci sono detrazioni attive.",
+    pointsDeducted: "punti detratti",
+    integrityDetails: "Ultimo risultato della verifica",
+    checkedAt: "Verificato",
+    duration: "Durata",
+    verifiedSize: "Dimensione verificata",
+    filesChecked: "File verificati",
+    warnings: "Avvisi",
+    nextStep: "Passaggio successivo consigliato",
+    statusLabel: "Stato",
+    newEntries: "Nuove voci disponibili",
+    clearLog: "Cancella registro",
+    exportLog: "Esporta registro",
+    clearConfirm: "Cancellare tutte le voci del registro?",
+    persistentLog: "Persistente",
+    runtimeLog: "Fino al riavvio",
+    filterLabel: "Filtro",
+    levelLabels: { all: "Tutto", info: "Info", warning: "Avvisi", error: "Errori" },
+    typeLabels: { all: "Tutte le operazioni", check: "Verifiche", backup: "Backup", notification: "Notifiche", system: "Sistema" },
+    storageStates: { online: "Online", stale: "Obsoleto", offline: "Offline" },
+    detailLabels: { error_code: "Motivo", error_type: "Tipo di errore", reason: "Motivo", source: "Attivazione", status: "Stato", version: "Versione", target_count: "Destinatari", notification_type: "Notifica", retry_attempts: "Tentativi", remaining: "Rimanenti", failures: "Errori", enabled: "Attivato", platform_count: "Piattaforme" },
+    detailValues: { manual: "Manuale", automatic: "Automatico", cooldown: "Attesa di sicurezza attiva", not_configured: "Non configurato", true: "Sì", false: "No", test: "Test" },
+    errorMessages: { timeout: "L’operazione ha superato il tempo limite.", connection_error: "Impossibile raggiungere l’archiviazione.", not_configured: "La funzione richiesta non è configurata.", cooldown: "L’attesa di sicurezza è ancora attiva.", password_required: "È richiesta la password del backup.", unavailable: "Il servizio non è disponibile." },
+    errorRecommendations: { timeout: "Riprova e controlla il limite di tempo.", connection_error: "Controlla la connessione e riprova.", not_configured: "Completa le opzioni dell’integrazione.", cooldown: "Attendi la fine del periodo indicato.", password_required: "Salva la password e riprova.", unavailable: "Controlla Home Assistant e l’archiviazione." },
+    healthComponents: { availability: "Disponibilità backup", freshness: "Età del backup", backup_quality: "Qualità backup", integrity: "Verifica integrità", storage: "Archiviazione e ridondanza", automation: "Backup automatici e pianificazione" },
+    activityActions: {
+      verification_prepare: "Preparazione verifica integrità",
+      storage_copy_prepare: "Preparazione copia di archiviazione",
+      backup_download: "Download backup",
+      backup_extract: "Estrazione backup",
+      encrypted_backup_extract: "Estrazione backup crittografato",
+      database_read: "Lettura e verifica database",
+      temporary_data_cleanup: "Rimozione dati temporanei",
+      inventory_refresh: "Aggiornamento inventario backup",
+      backup_manager_read: "Lettura gestore backup",
+      integrity_check: "Esecuzione verifica integrità",
+      integrity_check_request: "Elaborazione richiesta di verifica",
+      integrity_result_persist: "Salvataggio risultato",
+      health_state: "Aggiornamento stato protezione",
+      notification_send: "Invio notifica",
+      notification_processing: "Elaborazione notifiche",
+      config_entry_setup: "Avvio integrazione",
+      entity_platform_setup: "Configurazione entità",
+      repair_issue_sync: "Sincronizzazione riparazioni",
+      first_refresh: "Completamento primo aggiornamento",
+      coordinator_shutdown: "Arresto integrazione",
+      integrity_state_load: "Caricamento stato salvato",
+      integrity_check_schedule: "Pianificazione verifica automatica",
+      integrity_background_task: "Monitoraggio verifica in background",
+      post_verification_refresh: "Aggiornamento dopo verifica",
+      service_refresh: "Aggiornamento manuale",
+      service_verify_latest_backup: "Avvio verifica manuale",
+      service_test_notification: "Test notifica",
+      panel_setup: "Configurazione pannello laterale",
+      config_entry_unload: "Arresto voce integrazione",
+      config_entry_remove: "Rimozione dati integrazione",
+    },
+    activityOutcomes: { started: "avviato", completed: "completato", changed: "in corso", skipped: "saltato", failed: "non riuscito", cancelled: "annullato" },
   },
   nl: {
     dashboard: "Back-upoverzicht", subtitle: "Livestatus van je Home Assistant-back-ups",
@@ -187,6 +519,74 @@ const TEXT = {
     noStorage: "Geen opslaginformatie beschikbaar.", backups: "back-ups", lastBackup: "Laatste back-up",
     refresh: "Vernieuwen", verify: "Laatste back-up controleren", settings: "Instellingen", updated: "Bijgewerkt",
     actionFailed: "De actie kon niet worden voltooid.",
+    unknownError: "De bewerking kon niet worden voltooid.",
+    unknownRecommendation: "Controleer Home Assistant en de opslaglocatie en probeer opnieuw.",
+    overviewTab: "Overzicht",
+    logTab: "Live-logboek",
+    logTitle: "BackupCheckup live-logboek",
+    searchLogs: "Logboek doorzoeken",
+    noLogs: "Geen overeenkomende logboekitems.",
+    loggingDisabled: "Gedetailleerde livelogging is uitgeschakeld in de integratieopties.",
+    live: "Live",
+    healthDetails: "Waarom deze score?",
+    noDeductions: "Er zijn geen aftrekpunten actief.",
+    pointsDeducted: "punten afgetrokken",
+    integrityDetails: "Laatste controleresultaat",
+    checkedAt: "Gecontroleerd",
+    duration: "Duur",
+    verifiedSize: "Gecontroleerde grootte",
+    filesChecked: "Gecontroleerde bestanden",
+    warnings: "Waarschuwingen",
+    nextStep: "Aanbevolen volgende stap",
+    statusLabel: "Status",
+    newEntries: "Nieuwe items beschikbaar",
+    clearLog: "Logboek wissen",
+    exportLog: "Logboek exporteren",
+    clearConfirm: "Alle live-logboekitems wissen?",
+    persistentLog: "Permanent",
+    runtimeLog: "Tot herstart",
+    filterLabel: "Filter",
+    levelLabels: { all: "Alles", info: "Info", warning: "Waarschuwingen", error: "Fouten" },
+    typeLabels: { all: "Alle bewerkingen", check: "Controles", backup: "Back-ups", notification: "Meldingen", system: "Systeem" },
+    storageStates: { online: "Online", stale: "Verouderd", offline: "Offline" },
+    detailLabels: { error_code: "Reden", error_type: "Fouttype", reason: "Reden", source: "Trigger", status: "Status", version: "Versie", target_count: "Ontvangers", notification_type: "Melding", retry_attempts: "Pogingen", remaining: "Resterend", failures: "Fouten", enabled: "Ingeschakeld", platform_count: "Platformen" },
+    detailValues: { manual: "Handmatig", automatic: "Automatisch", cooldown: "Veiligheidswachttijd actief", not_configured: "Niet ingesteld", true: "Ja", false: "Nee", test: "Test" },
+    errorMessages: { timeout: "De bewerking overschreed de tijdslimiet.", connection_error: "De opslaglocatie kon niet worden bereikt.", not_configured: "De vereiste functie is niet ingesteld.", cooldown: "De veiligheidswachttijd is nog actief.", password_required: "Het back-upwachtwoord is vereist.", unavailable: "De dienst is niet beschikbaar." },
+    errorRecommendations: { timeout: "Probeer opnieuw en controleer de tijdslimiet.", connection_error: "Controleer de opslagverbinding en probeer opnieuw.", not_configured: "Vul de integratieopties aan.", cooldown: "Wacht tot de getoonde periode voorbij is.", password_required: "Sla het wachtwoord op en probeer opnieuw.", unavailable: "Controleer Home Assistant en de opslaglocatie." },
+    healthComponents: { availability: "Beschikbaarheid back-up", freshness: "Leeftijd back-up", backup_quality: "Kwaliteit back-up", integrity: "Integriteitscontrole", storage: "Opslag en redundantie", automation: "Automatische back-ups en planning" },
+    activityActions: {
+      verification_prepare: "Integriteitscontrole voorbereiden",
+      storage_copy_prepare: "Opslagkopie voorbereiden",
+      backup_download: "Back-up downloaden",
+      backup_extract: "Back-up uitpakken",
+      encrypted_backup_extract: "Versleutelde back-up uitpakken",
+      database_read: "Database lezen en controleren",
+      temporary_data_cleanup: "Tijdelijke controlegegevens verwijderen",
+      inventory_refresh: "Back-upinventaris vernieuwen",
+      backup_manager_read: "Back-upbeheer lezen",
+      integrity_check: "Integriteitscontrole uitvoeren",
+      integrity_check_request: "Controleverzoek verwerken",
+      integrity_result_persist: "Controleresultaat opslaan",
+      health_state: "Back-upstatus bijwerken",
+      notification_send: "Melding verzenden",
+      notification_processing: "Meldingen verwerken",
+      config_entry_setup: "Integratie starten",
+      entity_platform_setup: "Entiteiten instellen",
+      repair_issue_sync: "Reparatiemeldingen synchroniseren",
+      first_refresh: "Eerste vernieuwing afronden",
+      coordinator_shutdown: "Integratie stoppen",
+      integrity_state_load: "Opgeslagen controlestatus laden",
+      integrity_check_schedule: "Automatische controle plannen",
+      integrity_background_task: "Achtergrondcontrole bewaken",
+      post_verification_refresh: "Status na controle vernieuwen",
+      service_refresh: "Handmatig vernieuwen",
+      service_verify_latest_backup: "Handmatige controle starten",
+      service_test_notification: "Melding testen",
+      panel_setup: "Zijpaneel instellen",
+      config_entry_unload: "Integratie-item stoppen",
+      config_entry_remove: "Integratiegegevens verwijderen",
+    },
+    activityOutcomes: { started: "gestart", completed: "voltooid", changed: "bezig", skipped: "overgeslagen", failed: "mislukt", cancelled: "geannuleerd" },
   },
   pl: {
     dashboard: "Przegląd kopii", subtitle: "Bieżący stan kopii zapasowych Home Assistant",
@@ -198,6 +598,74 @@ const TEXT = {
     noStorage: "Brak informacji o lokalizacjach.", backups: "kopii", lastBackup: "Najnowsza kopia",
     refresh: "Odśwież", verify: "Sprawdź najnowszą kopię", settings: "Ustawienia", updated: "Zaktualizowano",
     actionFailed: "Nie udało się wykonać działania.",
+    unknownError: "Nie udało się zakończyć operacji.",
+    unknownRecommendation: "Sprawdź Home Assistant i magazyn, a następnie ponów.",
+    overviewTab: "Przegląd",
+    logTab: "Dziennik na żywo",
+    logTitle: "Dziennik BackupCheckup na żywo",
+    searchLogs: "Przeszukaj dziennik",
+    noLogs: "Brak pasujących wpisów.",
+    loggingDisabled: "Szczegółowy dziennik jest wyłączony w opcjach integracji.",
+    live: "Na żywo",
+    healthDetails: "Skąd ten wynik?",
+    noDeductions: "Brak aktywnych odliczeń od wyniku.",
+    pointsDeducted: "odjętych punktów",
+    integrityDetails: "Najnowszy wynik weryfikacji",
+    checkedAt: "Sprawdzono",
+    duration: "Czas trwania",
+    verifiedSize: "Sprawdzony rozmiar",
+    filesChecked: "Sprawdzone pliki",
+    warnings: "Ostrzeżenia",
+    nextStep: "Zalecany następny krok",
+    statusLabel: "Stan",
+    newEntries: "Dostępne są nowe wpisy",
+    clearLog: "Wyczyść dziennik",
+    exportLog: "Eksportuj dziennik",
+    clearConfirm: "Wyczyścić wszystkie wpisy dziennika?",
+    persistentLog: "Trwały",
+    runtimeLog: "Do ponownego uruchomienia",
+    filterLabel: "Filtr",
+    levelLabels: { all: "Wszystkie", info: "Info", warning: "Ostrzeżenia", error: "Błędy" },
+    typeLabels: { all: "Wszystkie operacje", check: "Kontrole", backup: "Kopie", notification: "Powiadomienia", system: "System" },
+    storageStates: { online: "Online", stale: "Nieaktualny", offline: "Offline" },
+    detailLabels: { error_code: "Powód", error_type: "Typ błędu", reason: "Powód", source: "Wyzwalacz", status: "Stan", version: "Wersja", target_count: "Odbiorcy", notification_type: "Powiadomienie", retry_attempts: "Próby", remaining: "Pozostało", failures: "Błędy", enabled: "Włączone", platform_count: "Platformy" },
+    detailValues: { manual: "Ręcznie", automatic: "Automatycznie", cooldown: "Trwa okres oczekiwania", not_configured: "Nie skonfigurowano", true: "Tak", false: "Nie", test: "Test" },
+    errorMessages: { timeout: "Operacja przekroczyła limit czasu.", connection_error: "Nie udało się połączyć z magazynem.", not_configured: "Wymagana funkcja nie jest skonfigurowana.", cooldown: "Okres bezpieczeństwa nadal trwa.", password_required: "Wymagane jest hasło kopii.", unavailable: "Usługa jest niedostępna." },
+    errorRecommendations: { timeout: "Spróbuj ponownie i sprawdź limit czasu.", connection_error: "Sprawdź połączenie z magazynem i ponów.", not_configured: "Uzupełnij opcje integracji.", cooldown: "Poczekaj do końca wskazanego okresu.", password_required: "Zapisz hasło i spróbuj ponownie.", unavailable: "Sprawdź Home Assistant i magazyn." },
+    healthComponents: { availability: "Dostępność kopii", freshness: "Wiek kopii", backup_quality: "Jakość kopii", integrity: "Kontrola integralności", storage: "Magazyn i nadmiarowość", automation: "Automatyczne kopie i harmonogram" },
+    activityActions: {
+      verification_prepare: "Przygotowanie kontroli integralności",
+      storage_copy_prepare: "Przygotowanie kopii magazynu",
+      backup_download: "Pobieranie kopii",
+      backup_extract: "Rozpakowywanie kopii",
+      encrypted_backup_extract: "Rozpakowywanie zaszyfrowanej kopii",
+      database_read: "Odczyt i kontrola bazy danych",
+      temporary_data_cleanup: "Usuwanie danych tymczasowych",
+      inventory_refresh: "Odświeżanie spisu kopii",
+      backup_manager_read: "Odczyt menedżera kopii",
+      integrity_check: "Kontrola integralności",
+      integrity_check_request: "Przetwarzanie żądania kontroli",
+      integrity_result_persist: "Zapisywanie wyniku",
+      health_state: "Aktualizowanie stanu ochrony",
+      notification_send: "Wysyłanie powiadomienia",
+      notification_processing: "Przetwarzanie powiadomień",
+      config_entry_setup: "Uruchamianie integracji",
+      entity_platform_setup: "Konfigurowanie encji",
+      repair_issue_sync: "Synchronizowanie napraw",
+      first_refresh: "Kończenie pierwszego odświeżenia",
+      coordinator_shutdown: "Zatrzymywanie integracji",
+      integrity_state_load: "Wczytywanie zapisanego stanu",
+      integrity_check_schedule: "Planowanie automatycznej kontroli",
+      integrity_background_task: "Monitorowanie kontroli w tle",
+      post_verification_refresh: "Odświeżanie po kontroli",
+      service_refresh: "Ręczne odświeżanie",
+      service_verify_latest_backup: "Uruchamianie ręcznej kontroli",
+      service_test_notification: "Testowanie powiadomienia",
+      panel_setup: "Konfigurowanie panelu bocznego",
+      config_entry_unload: "Zatrzymywanie wpisu integracji",
+      config_entry_remove: "Usuwanie danych integracji",
+    },
+    activityOutcomes: { started: "uruchomiono", completed: "zakończono", changed: "w toku", skipped: "pominięto", failed: "niepowodzenie", cancelled: "anulowano" },
   },
   sv: {
     dashboard: "Säkerhetskopieöversikt", subtitle: "Livestatus för dina Home Assistant-säkerhetskopior",
@@ -209,6 +677,74 @@ const TEXT = {
     noStorage: "Ingen lagringsinformation är tillgänglig.", backups: "säkerhetskopior", lastBackup: "Senaste säkerhetskopian",
     refresh: "Uppdatera", verify: "Kontrollera senaste säkerhetskopian", settings: "Inställningar", updated: "Uppdaterad",
     actionFailed: "Åtgärden kunde inte slutföras.",
+    unknownError: "Åtgärden kunde inte slutföras.",
+    unknownRecommendation: "Kontrollera Home Assistant och lagringsplatsen och försök igen.",
+    overviewTab: "Översikt",
+    logTab: "Livelogg",
+    logTitle: "BackupCheckup-livelogg",
+    searchLogs: "Sök i loggen",
+    noLogs: "Inga matchande loggposter.",
+    loggingDisabled: "Detaljerad liveloggning är inaktiverad i integrationsalternativen.",
+    live: "Live",
+    healthDetails: "Varför detta värde?",
+    noDeductions: "Inga avdrag från hälsopoängen är aktiva.",
+    pointsDeducted: "poäng avdrag",
+    integrityDetails: "Senaste verifieringsresultat",
+    checkedAt: "Kontrollerad",
+    duration: "Varaktighet",
+    verifiedSize: "Verifierad storlek",
+    filesChecked: "Verifierade filer",
+    warnings: "Varningar",
+    nextStep: "Rekommenderat nästa steg",
+    statusLabel: "Status",
+    newEntries: "Nya poster tillgängliga",
+    clearLog: "Rensa logg",
+    exportLog: "Exportera logg",
+    clearConfirm: "Rensa alla poster i liveloggen?",
+    persistentLog: "Permanent",
+    runtimeLog: "Till omstart",
+    filterLabel: "Filter",
+    levelLabels: { all: "Alla", info: "Info", warning: "Varningar", error: "Fel" },
+    typeLabels: { all: "Alla åtgärder", check: "Kontroller", backup: "Säkerhetskopior", notification: "Aviseringar", system: "System" },
+    storageStates: { online: "Online", stale: "Föråldrad", offline: "Offline" },
+    detailLabels: { error_code: "Orsak", error_type: "Feltyp", reason: "Orsak", source: "Utlösare", status: "Status", version: "Version", target_count: "Mottagare", notification_type: "Avisering", retry_attempts: "Försök", remaining: "Återstår", failures: "Fel", enabled: "Aktiverad", platform_count: "Plattformar" },
+    detailValues: { manual: "Manuell", automatic: "Automatisk", cooldown: "Säkerhetsväntetid aktiv", not_configured: "Inte konfigurerad", true: "Ja", false: "Nej", test: "Test" },
+    errorMessages: { timeout: "Åtgärden överskred tidsgränsen.", connection_error: "Lagringsplatsen kunde inte nås.", not_configured: "Den nödvändiga funktionen är inte konfigurerad.", cooldown: "Säkerhetsväntetiden är fortfarande aktiv.", password_required: "Säkerhetskopians lösenord krävs.", unavailable: "Tjänsten är inte tillgänglig." },
+    errorRecommendations: { timeout: "Försök igen och kontrollera tidsgränsen.", connection_error: "Kontrollera lagringsanslutningen och försök igen.", not_configured: "Slutför integrationsalternativen.", cooldown: "Vänta tills den visade tiden har löpt ut.", password_required: "Spara lösenordet och försök igen.", unavailable: "Kontrollera Home Assistant och lagringsplatsen." },
+    healthComponents: { availability: "Tillgänglighet", freshness: "Säkerhetskopians ålder", backup_quality: "Kvalitet", integrity: "Integritetskontroll", storage: "Lagring och redundans", automation: "Automatiska kopior och schema" },
+    activityActions: {
+      verification_prepare: "Förbereder integritetskontroll",
+      storage_copy_prepare: "Förbereder lagringskopia",
+      backup_download: "Hämtar säkerhetskopia",
+      backup_extract: "Packar upp säkerhetskopia",
+      encrypted_backup_extract: "Packar upp krypterad säkerhetskopia",
+      database_read: "Läser och kontrollerar databasen",
+      temporary_data_cleanup: "Tar bort tillfälliga kontrolldata",
+      inventory_refresh: "Uppdaterar säkerhetskopielistan",
+      backup_manager_read: "Läser säkerhetskopiehanteraren",
+      integrity_check: "Kör integritetskontroll",
+      integrity_check_request: "Behandlar kontrollbegäran",
+      integrity_result_persist: "Sparar kontrollresultat",
+      health_state: "Uppdaterar skyddsstatus",
+      notification_send: "Skickar avisering",
+      notification_processing: "Behandlar aviseringar",
+      config_entry_setup: "Startar integration",
+      entity_platform_setup: "Konfigurerar entiteter",
+      repair_issue_sync: "Synkroniserar reparationsmeddelanden",
+      first_refresh: "Slutför första uppdateringen",
+      coordinator_shutdown: "Stoppar integration",
+      integrity_state_load: "Läser sparad kontrollstatus",
+      integrity_check_schedule: "Schemalägger automatisk kontroll",
+      integrity_background_task: "Övervakar bakgrundskontroll",
+      post_verification_refresh: "Uppdaterar status efter kontroll",
+      service_refresh: "Kör manuell uppdatering",
+      service_verify_latest_backup: "Startar manuell kontroll",
+      service_test_notification: "Testar avisering",
+      panel_setup: "Konfigurerar sidopanel",
+      config_entry_unload: "Stoppar integrationspost",
+      config_entry_remove: "Tar bort integrationsdata",
+    },
+    activityOutcomes: { started: "startad", completed: "slutförd", changed: "pågår", skipped: "överhoppad", failed: "misslyckad", cancelled: "avbruten" },
   },
 };
 
@@ -224,6 +760,7 @@ const DEFAULT_ENTITIES = {
   verify: "button.backup_checkup_verify_latest_backup",
   refresh: "button.backup_checkup_refresh",
   activity_log: "sensor.backup_checkup_activity_log",
+  clear_activity_log: "button.backup_checkup_clear_activity_log",
 };
 
 class BackupCheckupPanel extends HTMLElement {
@@ -236,6 +773,12 @@ class BackupCheckupPanel extends HTMLElement {
     this._busy = new Set();
     this._activeTab = "overview";
     this._logSearch = "";
+    this._logLevelFilter = "all";
+    this._logTypeFilter = "all";
+    this._lastActivitySequence = null;
+    this._lastActivityEntryCount = 0;
+    this._pendingLogEntries = 0;
+    this._scrollLogToBottom = false;
     this._relevantStateRefs = new Map();
     this._viewContext = "";
     this._panelEntitySignature = "";
@@ -329,9 +872,11 @@ class BackupCheckupPanel extends HTMLElement {
 
   _relevantEntityIds() {
     const entities = this._entities();
-    if (this._activeTab === "logs") return [entities.activity_log];
+    if (this._activeTab === "logs") {
+      return [entities.activity_log, entities.clear_activity_log];
+    }
     return Object.entries(entities)
-      .filter(([key]) => key !== "activity_log")
+      .filter(([key]) => !["activity_log", "clear_activity_log"].includes(key))
       .map(([, entityId]) => entityId);
   }
 
@@ -437,14 +982,18 @@ class BackupCheckupPanel extends HTMLElement {
     if (!agents.length) return `<div class="empty">${this._escape(text.noStorage)}</div>`;
     return agents.map((agent) => {
       const tone = this._storageTone(agent);
+      const state = agent.error ? "offline" : agent.stale ? "stale" : "online";
       const latest = agent.latest_backup ? this._date(agent.latest_backup) : "—";
+      const reason = agent.error ? this._friendlyError(agent.error, text) : "";
       return `
         <div class="storage-row">
           <div class="storage-icon ${tone}"><ha-icon icon="mdi:database"></ha-icon></div>
           <div class="storage-copy">
             <strong>${this._escape(agent.storage_name || agent.storage_reference || "—")}</strong>
             <span>${this._escape(text.lastBackup)}: ${this._escape(latest)}</span>
+            ${reason ? `<small>${this._escape(reason)}</small>` : ""}
           </div>
+          <span class="status-badge ${tone}">${this._escape(text.storageStates?.[state] || this._humanize(state))}</span>
           <div class="storage-count">${this._escape(agent.backup_count ?? 0)} <span>${this._escape(text.backups)}</span></div>
         </div>`;
     }).join("");
@@ -453,6 +1002,55 @@ class BackupCheckupPanel extends HTMLElement {
   _storageTone(agent) {
     if (agent.error) return "danger";
     return agent.stale ? "warning" : "good";
+  }
+
+  _errorKey(value) {
+    const code = String(value || "").toLowerCase();
+    if (code.includes("timeout")) return "timeout";
+    if (code.includes("connection") || code.includes("network")) return "connection_error";
+    if (code.includes("config")) return "not_configured";
+    if (code.includes("cooldown")) return "cooldown";
+    if (code.includes("password")) return "password_required";
+    if (code.includes("unavailable") || code.includes("not_ready")) return "unavailable";
+    return code;
+  }
+
+  _friendlyError(value, text) {
+    const key = this._errorKey(value);
+    return text.errorMessages?.[key] || text.unknownError || this._humanize(value);
+  }
+
+  _friendlyRecommendation(value, text) {
+    const key = this._errorKey(value);
+    return text.errorRecommendations?.[key] || text.unknownRecommendation || "";
+  }
+
+  _healthRows(deductions, text) {
+    const rows = Object.entries(deductions || {})
+      .filter(([, value]) => Number(value) > 0)
+      .sort((left, right) => Number(right[1]) - Number(left[1]));
+    if (!rows.length) return `<div class="empty success"><ha-icon icon="mdi:check-circle-outline"></ha-icon>${this._escape(text.noDeductions)}</div>`;
+    return rows.map(([key, value]) => `<div class="explanation-row">
+      <span>${this._escape(text.healthComponents?.[key] || this._humanize(key))}</span>
+      <strong>−${this._escape(value)} ${this._escape(text.pointsDeducted)}</strong>
+    </div>`).join("");
+  }
+
+  _integrityRows(integrity, text) {
+    const attributes = integrity?.attributes || {};
+    const values = [
+      [text.statusLabel, this._formatState(integrity)],
+      [text.checkedAt, this._date(attributes.checked_at)],
+      [text.duration, attributes.duration_seconds == null ? "—" : `${attributes.duration_seconds} s`],
+      [text.verifiedSize, attributes.verified_size_mb == null ? "—" : `${attributes.verified_size_mb} MB`],
+      [text.filesChecked, attributes.file_count ?? "—"],
+      [text.warnings, Array.isArray(attributes.warnings) ? attributes.warnings.length : 0],
+    ];
+    const error = attributes.error_code;
+    const detailRows = values.map(([label, value]) => `<div class="explanation-row"><span>${this._escape(label)}</span><strong>${this._escape(value)}</strong></div>`).join("");
+    if (!error) return detailRows;
+    const recommendation = this._friendlyRecommendation(error, text);
+    return `${detailRows}<div class="result-advice"><strong>${this._escape(this._friendlyError(error, text))}</strong>${recommendation ? `<span>${this._escape(text.nextStep)}: ${this._escape(recommendation)}</span>` : ""}</div>`;
   }
 
   _problemRows(problems, text) {
@@ -522,12 +1120,18 @@ class BackupCheckupPanel extends HTMLElement {
       recommendationLabel: this._formatState(recommendation),
       integrityLabel: this._formatState(integrity),
       integrityTone: this._integrityTone(integrity),
+      integrityState: integrity,
+      healthDeductions: scoreState?.attributes?.component_deductions || {},
       isAdmin: Boolean(this._hass.user?.is_admin),
       verifyState: this._state("verify"),
       refreshState: this._state("refresh"),
       activityEntries: Array.isArray(activity?.attributes?.entries)
         ? activity.attributes.entries : [],
       activityEnabled: Boolean(activity?.attributes?.enabled),
+      activityPersistent: Boolean(activity?.attributes?.persistent),
+      activityRetentionDays: activity?.attributes?.retention_days,
+      activitySequence: Number(activity?.state) || 0,
+      clearActivityState: this._state("clear_activity_log"),
     };
   }
 
@@ -598,6 +1202,14 @@ class BackupCheckupPanel extends HTMLElement {
         <div class="card-title"><ha-icon icon="mdi:server-network"></ha-icon><h3>${this._escape(model.text.storage)}</h3></div>
         <div class="rows">${this._storageRows(model.agents, model.text)}</div>
       </article>
+      <article class="card">
+        <div class="card-title"><ha-icon icon="mdi:chart-donut"></ha-icon><h3>${this._escape(model.text.healthDetails)}</h3></div>
+        <div class="rows">${this._healthRows(model.healthDeductions, model.text)}</div>
+      </article>
+      <article class="card">
+        <div class="card-title"><ha-icon icon="mdi:shield-search"></ha-icon><h3>${this._escape(model.text.integrityDetails)}</h3></div>
+        <div class="rows">${this._integrityRows(model.integrityState, model.text)}</div>
+      </article>
     </section>
     ${this._actionFooter(model)}`;
   }
@@ -610,29 +1222,66 @@ class BackupCheckupPanel extends HTMLElement {
     return `${action} – ${outcome}`;
   }
 
-  _activityDetails(record) {
+  _activityDetails(record, text) {
     const details = Object.entries(record.details || {})
       .filter(([key]) => key !== "progress_percent")
-      .map(([key, value]) => `${this._humanize(key)}=${value}`);
+      .filter(([key]) => key !== "error_type" || !record.details?.error_code)
+      .map(([key, value]) => {
+        const label = text.detailLabels?.[key] || this._humanize(key);
+        const translatedValue = ["error_code", "reason", "error_type"].includes(key)
+          ? this._friendlyError(value, text)
+          : text.detailValues?.[String(value)] || value;
+        return `${label}: ${translatedValue}`;
+      });
     return details.join(" · ");
+  }
+
+  _activityType(record) {
+    const action = String(record.action || "");
+    if (action.includes("notification")) return "notification";
+    if (action.includes("backup") || action.includes("storage_copy")) return "backup";
+    if (action.includes("integrity") || action.includes("verification")) return "check";
+    return "system";
+  }
+
+  _activityAdvice(record, text) {
+    if (!["failed", "skipped", "cancelled"].includes(record.outcome)) return "";
+    const code = record.details?.error_code || record.details?.reason || record.details?.error_type;
+    if (!code) return "";
+    const message = this._friendlyError(code, text);
+    const recommendation = this._friendlyRecommendation(code, text);
+    return `<div class="log-advice"><strong>${this._escape(message)}</strong>${recommendation ? `<span>${this._escape(text.nextStep)}: ${this._escape(recommendation)}</span>` : ""}</div>`;
+  }
+
+  _levelMatches(record) {
+    if (this._logLevelFilter === "all") return true;
+    if (this._logLevelFilter === "error") {
+      return ["error", "critical"].includes(record.level) || record.outcome === "failed";
+    }
+    return record.level === this._logLevelFilter;
+  }
+
+  _filterButtons(values, selected, attribute, labels) {
+    return values.map((value) => `<button class="filter-chip ${selected === value ? "active" : ""}" ${attribute}="${value}">${this._escape(labels[value])}</button>`).join("");
   }
 
   _logRows(records, text) {
     const query = this._logSearch.trim().toLocaleLowerCase(this._language());
     const filtered = records.filter((record) => {
-      if (!query) return true;
-      const searchable = `${record.action} ${record.outcome} ${this._activityMessage(record, text)} ${this._activityDetails(record)}`;
-      return searchable.toLocaleLowerCase(this._language()).includes(query);
+      if (!this._levelMatches(record)) return false;
+      if (this._logTypeFilter !== "all" && this._activityType(record) !== this._logTypeFilter) return false;
+      const searchable = `${record.action} ${record.outcome} ${this._activityMessage(record, text)} ${this._activityDetails(record, text)}`;
+      return !query || searchable.toLocaleLowerCase(this._language()).includes(query);
     });
     if (!filtered.length) return `<div class="log-empty">${this._escape(text.noLogs)}</div>`;
-    return [...filtered].reverse().map((record) => {
-      const details = this._activityDetails(record);
+    return filtered.map((record) => {
+      const details = this._activityDetails(record, text);
       const detailLine = details ? `<span>${this._escape(details)}</span>` : "";
       const level = ["warning", "error", "critical"].includes(record.level)
         ? record.level : "info";
       return `<div class="log-row ${level}">
         <time>${this._escape(this._logTimestamp(record.timestamp))}</time>
-        <strong>${this._escape(this._activityMessage(record, text))}</strong>
+        <div class="log-message"><strong>${this._escape(this._activityMessage(record, text))}</strong>${this._activityAdvice(record, text)}</div>
         ${detailLine}
       </div>`;
     }).join("");
@@ -650,10 +1299,18 @@ class BackupCheckupPanel extends HTMLElement {
         <label><ha-icon icon="mdi:magnify"></ha-icon>
           <input data-log-search type="search" value="${this._escape(this._logSearch)}" placeholder="${this._escape(model.text.searchLogs)}">
         </label>
-        <span class="live-indicator"><i></i>${this._escape(model.text.live)}</span>
+        <span class="live-indicator"><i></i>${this._escape(model.text.live)} · ${this._escape(model.activityPersistent ? model.text.persistentLog : model.text.runtimeLog)}</span>
       </div>
+      <div class="log-filters" aria-label="${this._escape(model.text.filterLabel)}">
+        <div>${this._filterButtons(["all", "info", "warning", "error"], this._logLevelFilter, "data-level-filter", model.text.levelLabels)}</div>
+        <div>${this._filterButtons(["all", "check", "backup", "notification", "system"], this._logTypeFilter, "data-type-filter", model.text.typeLabels)}</div>
+      </div>
+      ${this._pendingLogEntries ? `<button class="new-entries" data-new-entries><ha-icon icon="mdi:arrow-down"></ha-icon>${this._escape(model.text.newEntries)} (${this._pendingLogEntries})</button>` : ""}
       <article class="log-console">
-        <h2>${this._escape(model.text.logTitle)}</h2>
+        <div class="log-heading"><h2>${this._escape(model.text.logTitle)}</h2><div>
+          <button class="log-action" data-export-log><ha-icon icon="mdi:download-outline"></ha-icon>${this._escape(model.text.exportLog)}</button>
+          ${model.isAdmin ? `<button class="log-action danger" data-action="clear_activity_log" ${this._buttonDisabled(model.clearActivityState, "clear_activity_log") ? "disabled" : ""}><ha-icon icon="mdi:delete-sweep-outline"></ha-icon>${this._escape(model.text.clearLog)}</button>` : ""}
+        </div></div>
         <div class="log-lines">${this._logRows(model.activityEntries, model.text)}</div>
       </article>
     </section>`;
@@ -662,8 +1319,26 @@ class BackupCheckupPanel extends HTMLElement {
   _render() {
     if (!this.shadowRoot || !this._hass) return;
     const scrollPositions = this._captureScrollPositions();
+    const previousLog = this.shadowRoot.querySelector(".log-lines");
+    const previousLogState = previousLog ? {
+      top: previousLog.scrollTop,
+      atBottom: previousLog.scrollHeight - previousLog.scrollTop - previousLog.clientHeight < 48,
+    } : null;
     const restoreSearchFocus = this.shadowRoot.activeElement?.hasAttribute("data-log-search");
     const model = this._renderModel();
+    if (this._activeTab === "logs") {
+      const entryCount = model.activityEntries.length;
+      if (this._lastActivitySequence === null) {
+        this._scrollLogToBottom = true;
+      } else if (model.activitySequence > this._lastActivitySequence && entryCount >= this._lastActivityEntryCount) {
+        const added = Math.max(1, entryCount - this._lastActivityEntryCount);
+        if (previousLogState?.atBottom) this._scrollLogToBottom = true;
+        else this._pendingLogEntries += added;
+      }
+      if (entryCount < this._lastActivityEntryCount) this._pendingLogEntries = 0;
+      this._lastActivitySequence = model.activitySequence;
+      this._lastActivityEntryCount = entryCount;
+    }
     const content = this._activeTab === "logs"
       ? this._logTemplate(model) : this._overviewTemplate(model);
     const settingsButton = this._settingsButton(model.isAdmin, model.text);
@@ -684,12 +1359,39 @@ class BackupCheckupPanel extends HTMLElement {
     this.shadowRoot.querySelectorAll("[data-tab]").forEach((button) => {
       button.addEventListener("click", () => {
         this._activeTab = button.dataset.tab;
+        if (this._activeTab === "logs") {
+          this._scrollLogToBottom = true;
+          this._pendingLogEntries = 0;
+        }
         this._relevantStateChanged(this._hass);
         this._scheduleRender();
       });
     });
     this.shadowRoot.querySelectorAll("[data-action]").forEach((button) => {
-      button.addEventListener("click", () => this._runAction(button.dataset.action));
+      button.addEventListener("click", () => {
+        const action = button.dataset.action;
+        if (action === "clear_activity_log" && !window.confirm(model.text.clearConfirm)) return;
+        this._runAction(action);
+      });
+    });
+    this.shadowRoot.querySelectorAll("[data-level-filter]").forEach((button) => {
+      button.addEventListener("click", () => {
+        this._logLevelFilter = button.dataset.levelFilter;
+        this._scheduleRender();
+      });
+    });
+    this.shadowRoot.querySelectorAll("[data-type-filter]").forEach((button) => {
+      button.addEventListener("click", () => {
+        this._logTypeFilter = button.dataset.typeFilter;
+        this._scheduleRender();
+      });
+    });
+    this.shadowRoot.querySelector("[data-export-log]")?.addEventListener("click", () => this._exportActivityLog(model));
+    this.shadowRoot.querySelector("[data-new-entries]")?.addEventListener("click", () => {
+      const log = this.shadowRoot.querySelector(".log-lines");
+      if (log) log.scrollTo({ top: log.scrollHeight, behavior: "smooth" });
+      this._pendingLogEntries = 0;
+      this._scheduleRender();
     });
     const search = this.shadowRoot.querySelector("[data-log-search]");
     search?.addEventListener("input", (event) => {
@@ -700,7 +1402,40 @@ class BackupCheckupPanel extends HTMLElement {
       search.focus({ preventScroll: true });
       search.setSelectionRange(search.value.length, search.value.length);
     }
+    const currentLog = this.shadowRoot.querySelector(".log-lines");
+    if (currentLog) {
+      if (this._scrollLogToBottom || !previousLogState) {
+        currentLog.scrollTop = currentLog.scrollHeight;
+        this._scrollLogToBottom = false;
+      } else {
+        currentLog.scrollTop = previousLogState.top;
+      }
+      currentLog.addEventListener("scroll", () => {
+        const atBottom = currentLog.scrollHeight - currentLog.scrollTop - currentLog.clientHeight < 48;
+        if (atBottom && this._pendingLogEntries) {
+          this._pendingLogEntries = 0;
+          this._scheduleRender();
+        }
+      }, { passive: true });
+    }
     this._restoreScrollPositions(scrollPositions);
+  }
+
+  _exportActivityLog(model) {
+    const payload = {
+      exported_at: new Date().toISOString(),
+      privacy: "Backup names, IDs, paths, passwords and content are excluded.",
+      persistent: model.activityPersistent,
+      retention_days: model.activityRetentionDays,
+      entries: model.activityEntries,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `backup-checkup-live-log-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   _buttonDisabled(state, action) {
@@ -785,24 +1520,51 @@ class BackupCheckupPanel extends HTMLElement {
       .storage-copy { min-width:0; flex:1; display:flex; flex-direction:column; gap:3px; }
       .storage-copy strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
       .storage-copy span { color:var(--secondary-text-color); font-size:12px; }
+      .storage-copy small { color:#d84b55; font-size:11px; line-height:1.35; }
+      .status-badge { flex:0 0 auto; padding:5px 9px; border-radius:999px; background:rgba(96,125,139,.13); color:#607d8b; font-size:11px; font-weight:700; }
+      .status-badge.good { background:rgba(46,157,104,.13); color:#2e9d68; }
+      .status-badge.warning { background:rgba(231,154,36,.13); color:#b87300; }
+      .status-badge.danger { background:rgba(216,75,85,.13); color:#d84b55; }
       .storage-count { text-align:right; font-size:17px; font-weight:650; }
       .storage-count span { display:block; color:var(--secondary-text-color); font-size:11px; font-weight:400; }
       .empty { min-height:52px; display:flex; align-items:center; gap:9px; color:var(--secondary-text-color); }
       .empty.success ha-icon { color:#2e9d68; }
+      .explanation-row { min-height:44px; display:flex; align-items:center; justify-content:space-between; gap:16px; border-top:1px solid var(--divider-color); }
+      .explanation-row:first-child { border-top:0; }
+      .explanation-row span { color:var(--secondary-text-color); font-size:12px; }
+      .explanation-row strong { text-align:right; font-size:13px; }
+      .result-advice { display:flex; flex-direction:column; gap:5px; margin-top:12px; padding:12px; border-radius:11px; background:rgba(216,75,85,.10); }
+      .result-advice strong { color:#d84b55; }
+      .result-advice span { color:var(--secondary-text-color); font-size:12px; line-height:1.4; }
       .log-view { display:flex; flex-direction:column; gap:16px; }
       .log-toolbar { display:flex; align-items:center; gap:14px; }
       .log-toolbar label { flex:1; min-height:44px; display:flex; align-items:center; gap:9px; padding:0 13px; border:1px solid var(--divider-color); border-radius:12px; background:var(--card-background-color); }
       .log-toolbar label:focus-within { border-color:var(--primary-color); box-shadow:0 0 0 1px var(--primary-color); }
       .log-toolbar input { width:100%; border:0; outline:0; background:transparent; color:var(--primary-text-color); font:inherit; }
+      .log-filters { display:flex; flex-direction:column; gap:8px; }
+      .log-filters > div { display:flex; flex-wrap:wrap; gap:7px; }
+      .filter-chip, .log-action, .new-entries { border:1px solid var(--divider-color); background:var(--card-background-color); color:var(--primary-text-color); font:inherit; cursor:pointer; }
+      .filter-chip { min-height:34px; padding:0 12px; border-radius:999px; font-size:12px; }
+      .filter-chip.active { border-color:var(--primary-color); background:color-mix(in srgb, var(--primary-color) 12%, var(--card-background-color)); color:var(--primary-color); font-weight:700; }
+      .new-entries { align-self:center; min-height:38px; display:flex; align-items:center; gap:7px; padding:0 14px; border-radius:999px; color:var(--primary-color); font-size:12px; font-weight:700; }
       .live-indicator { display:flex; align-items:center; gap:7px; color:var(--primary-color); font-size:13px; font-weight:700; }
       .live-indicator i { width:9px; height:9px; border-radius:50%; background:var(--primary-color); box-shadow:0 0 0 4px color-mix(in srgb, var(--primary-color) 18%, transparent); }
       .log-console { min-height:520px; overflow:hidden; border:1px solid var(--divider-color); border-radius:16px; background:var(--card-background-color); }
-      .log-console h2 { margin:0; padding:17px 18px; border-bottom:1px solid var(--divider-color); font-size:18px; }
+      .log-heading { min-height:58px; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 14px 10px 18px; border-bottom:1px solid var(--divider-color); }
+      .log-heading h2 { margin:0; font-size:18px; }
+      .log-heading > div { display:flex; flex-wrap:wrap; gap:7px; justify-content:flex-end; }
+      .log-action { min-height:36px; display:flex; align-items:center; gap:6px; padding:0 10px; border-radius:9px; font-size:12px; }
+      .log-action.danger { color:#d84b55; }
+      .log-action:disabled { opacity:.45; cursor:default; }
       .log-lines { max-height:68vh; overflow:auto; padding:8px 0; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
       .log-row { display:grid; grid-template-columns:190px minmax(250px, .9fr) minmax(220px, 1.1fr); gap:14px; padding:8px 18px; border-left:3px solid transparent; font-size:12px; line-height:1.45; }
       .log-row:hover { background:color-mix(in srgb, var(--primary-color) 7%, transparent); }
       .log-row time { color:var(--secondary-text-color); }
       .log-row strong { color:#2e9d68; }
+      .log-message { display:flex; flex-direction:column; gap:5px; }
+      .log-advice { display:flex; flex-direction:column; gap:3px; padding:7px 9px; border-radius:8px; background:rgba(216,75,85,.10); }
+      .log-advice strong { color:#d84b55 !important; }
+      .log-advice span { color:var(--secondary-text-color); font-family:var(--paper-font-body1_-_font-family, system-ui, sans-serif); font-size:11px; }
       .log-row.warning { border-left-color:#e79a24; } .log-row.warning strong { color:#e79a24; }
       .log-row.error, .log-row.critical { border-left-color:#d84b55; } .log-row.error strong, .log-row.critical strong { color:#d84b55; }
       .log-row span { color:var(--secondary-text-color); overflow-wrap:anywhere; }

@@ -18,6 +18,8 @@ from homeassistant.helpers.selector import (
 
 from .const import (
     CONF_ACTIVE_UPDATE_INTERVAL_MINUTES,
+    CONF_ACTIVITY_LOG_PERSISTENCE,
+    CONF_ACTIVITY_LOG_RETENTION_DAYS,
     CONF_ACTIVITY_LOGGING_ENABLED,
     CONF_ADAPTIVE_ERROR_THRESHOLD,
     CONF_ADAPTIVE_POLLING,
@@ -46,6 +48,7 @@ from .const import (
     CONF_VERIFICATION_TIMEOUT_MINUTES,
     ENTITY_MODE_OPTIONS,
     MAX_ACTIVE_UPDATE_INTERVAL_MINUTES,
+    MAX_ACTIVITY_LOG_RETENTION_DAYS,
     MAX_ADAPTIVE_ERROR_THRESHOLD,
     MAX_ANALYTICS_WINDOW_DAYS,
     MAX_DATABASE_TIMEOUT_MINUTES,
@@ -60,6 +63,7 @@ from .const import (
     MAX_UPDATE_INTERVAL_MINUTES,
     MAX_VERIFICATION_TIMEOUT_MINUTES,
     MIN_ACTIVE_UPDATE_INTERVAL_MINUTES,
+    MIN_ACTIVITY_LOG_RETENTION_DAYS,
     MIN_ADAPTIVE_ERROR_THRESHOLD,
     MIN_ANALYTICS_WINDOW_DAYS,
     MIN_DATABASE_TIMEOUT_MINUTES,
@@ -275,6 +279,17 @@ def presentation_schema(hass: HomeAssistant, values: dict[str, Any]) -> vol.Sche
                 CONF_ACTIVITY_LOGGING_ENABLED,
                 default=values[CONF_ACTIVITY_LOGGING_ENABLED],
             ): BooleanSelector(),
+            vol.Required(
+                CONF_ACTIVITY_LOG_PERSISTENCE,
+                default=values[CONF_ACTIVITY_LOG_PERSISTENCE],
+            ): BooleanSelector(),
+            vol.Required(
+                CONF_ACTIVITY_LOG_RETENTION_DAYS,
+                default=values[CONF_ACTIVITY_LOG_RETENTION_DAYS],
+            ): integer_selector(
+                MIN_ACTIVITY_LOG_RETENTION_DAYS,
+                MAX_ACTIVITY_LOG_RETENTION_DAYS,
+            ),
             vol.Required(
                 CONF_NOTIFICATIONS_ENABLED,
                 default=values[CONF_NOTIFICATIONS_ENABLED],

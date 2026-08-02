@@ -1,5 +1,46 @@
 # Changelog
 
+## 2.7.0
+
+**Understandable status details and a complete live-log workspace**
+
+### Added
+
+- Added clear Online, Offline, and Outdated badges to every storage location,
+  including a readable cause when a location cannot be reached.
+- Added a Health Score explanation card showing each active component deduction
+  and its point value.
+- Added an integrity-result card with status, timestamp, duration, verified size,
+  checked files, warning count, understandable failure reason, and recommended
+  next step.
+- Added live-log filter chips for severity and operation type, a privacy-safe JSON
+  export, and an administrator-protected clear action.
+- Added an unobtrusive **New entries available** control. New events scroll into
+  view only while the reader is already at the newest entry.
+- Added optional private live-log persistence with configurable 1–30 day
+  retention. Persistence is disabled by default and remains bounded to 250
+  centrally sanitized records.
+
+### Changed
+
+- Replaced technical error and detail keys in the sidebar with localized labels,
+  understandable reasons, and actionable recommendations.
+- Completed sidebar and live-log interface translations for Danish, Dutch,
+  English, French, German, Italian, Polish, Spanish, and Swedish, including all
+  activity action names.
+- Changed live-log presentation to chronological order so live updates naturally
+  continue at the bottom while preserving an older reading position.
+- Increased the config-entry schema to version 13 and the frontend cache revision
+  to `2.7.0-r3`.
+
+### Privacy and cleanup
+
+- Persistent records use a private atomic Home Assistant Store and pass through
+  the same central filtering as runtime records. Backup names, IDs, paths,
+  passwords, notification targets, and contents remain excluded.
+- Deleting the config entry now removes the optional activity store together with
+  history, integrity, and notification stores.
+
 ## 2.6.2
 
 **Stable live-log scrolling**

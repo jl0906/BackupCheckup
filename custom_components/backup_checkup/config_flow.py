@@ -217,7 +217,7 @@ class BackupCheckupConfigFlow(
 ):
     """Handle the guided BackupCheckup installation flow."""
 
-    VERSION = 12
+    VERSION = 13
 
     def __init__(self) -> None:
         """Initialize an empty guided flow."""

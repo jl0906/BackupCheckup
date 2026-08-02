@@ -94,7 +94,9 @@
           "notification_targets": "Zu benachrichtigende Mobilgeräte",
           "notify_on_recovery": "Bei behobenen Problemen benachrichtigen",
           "show_sidebar_panel": "BackupCheckup in der Seitenleiste anzeigen",
-          "activity_logging_enabled": "Ausführliches Live-Protokoll aktivieren"
+          "activity_logging_enabled": "Ausführliches Live-Protokoll aktivieren",
+          "activity_log_persistence": "Live-Protokoll nach Neustarts behalten",
+          "activity_log_retention_days": "Aufbewahrung des Live-Protokolls in Tagen"
         },
         "data_description": {
           "entity_mode": "Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert alle Analyse-, Diagnose-, Integritäts-, Zeitplan- und Speicherentitäten.",
@@ -103,7 +105,9 @@
           "notification_targets": "Es werden nur Benachrichtigungsentitäten der Home Assistant Companion App aufgelistet. Mehrere Geräte sind möglich.",
           "notify_on_recovery": "Sendet eine abschließende Benachrichtigung, wenn alle zuvor gemeldeten Probleme behoben sind.",
           "show_sidebar_panel": "Fügt der Home-Assistant-Seitenleiste eine optionale BackupCheckup-Übersicht hinzu. Die Seite zeigt Gesundheitswert, aktive Probleme, Integrität, Backup-Kennzahlen und Speicherorte.",
-          "activity_logging_enabled": "Zeichnet ein begrenztes, durchsuchbares und datenschutzfreundliches Protokoll der Integrationsvorgänge auf. Backupnamen, IDs, Pfade, Passwörter und Inhalte werden nie aufgenommen."
+          "activity_logging_enabled": "Zeichnet ein begrenztes, durchsuchbares und datenschutzfreundliches Protokoll der Integrationsvorgänge auf. Backupnamen, IDs, Pfade, Passwörter und Inhalte werden nie aufgenommen.",
+          "activity_log_persistence": "Speichert das datenschutzfreundliche Protokoll optional in Home Assistant. Standardmäßig deaktiviert; Backupnamen, IDs, Pfade, Passwörter und Inhalte werden nicht gespeichert.",
+          "activity_log_retention_days": "Behält höchstens 250 Einträge für diese Anzahl von Tagen. Ältere Einträge werden automatisch verworfen."
         }
       },
       "summary": {
@@ -225,7 +229,9 @@
           "notification_targets": "Zu benachrichtigende Mobilgeräte",
           "notify_on_recovery": "Bei behobenen Problemen benachrichtigen",
           "show_sidebar_panel": "BackupCheckup in der Seitenleiste anzeigen",
-          "activity_logging_enabled": "Ausführliches Live-Protokoll aktivieren"
+          "activity_logging_enabled": "Ausführliches Live-Protokoll aktivieren",
+          "activity_log_persistence": "Live-Protokoll nach Neustarts behalten",
+          "activity_log_retention_days": "Aufbewahrung des Live-Protokolls in Tagen"
         },
         "data_description": {
           "entity_mode": "Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert alle Analyse-, Diagnose-, Integritäts-, Zeitplan- und Speicherentitäten.",
@@ -234,7 +240,9 @@
           "notification_targets": "Es werden nur Benachrichtigungsentitäten der Home Assistant Companion App aufgelistet. Mehrere Geräte sind möglich.",
           "notify_on_recovery": "Sendet eine abschließende Benachrichtigung, wenn alle zuvor gemeldeten Probleme behoben sind.",
           "show_sidebar_panel": "Fügt der Home-Assistant-Seitenleiste eine optionale BackupCheckup-Übersicht hinzu. Die Seite zeigt Gesundheitswert, aktive Probleme, Integrität, Backup-Kennzahlen und Speicherorte.",
-          "activity_logging_enabled": "Zeichnet ein begrenztes, durchsuchbares und datenschutzfreundliches Protokoll der Integrationsvorgänge auf. Backupnamen, IDs, Pfade, Passwörter und Inhalte werden nie aufgenommen."
+          "activity_logging_enabled": "Zeichnet ein begrenztes, durchsuchbares und datenschutzfreundliches Protokoll der Integrationsvorgänge auf. Backupnamen, IDs, Pfade, Passwörter und Inhalte werden nie aufgenommen.",
+          "activity_log_persistence": "Speichert das datenschutzfreundliche Protokoll optional in Home Assistant. Standardmäßig deaktiviert; Backupnamen, IDs, Pfade, Passwörter und Inhalte werden nicht gespeichert.",
+          "activity_log_retention_days": "Behält höchstens 250 Einträge für diese Anzahl von Tagen. Ältere Einträge werden automatisch verworfen."
         }
       },
       "setup_assistant": {
@@ -281,7 +289,9 @@
           "notification_targets": "Zu benachrichtigende Mobilgeräte",
           "notify_on_recovery": "Bei behobenen Problemen benachrichtigen",
           "show_sidebar_panel": "BackupCheckup in der Seitenleiste anzeigen",
-          "activity_logging_enabled": "Ausführliches Live-Protokoll aktivieren"
+          "activity_logging_enabled": "Ausführliches Live-Protokoll aktivieren",
+          "activity_log_persistence": "Live-Protokoll nach Neustarts behalten",
+          "activity_log_retention_days": "Aufbewahrung des Live-Protokolls in Tagen"
         },
         "data_description": {
           "entity_mode": "Standard aktiviert die wichtigsten Überwachungs- und Problementitäten. Experte aktiviert alle Analyse-, Diagnose-, Integritäts-, Zeitplan- und Speicherentitäten.",
@@ -290,7 +300,9 @@
           "notification_targets": "Es werden nur Benachrichtigungsentitäten der Home Assistant Companion App aufgelistet. Mehrere Geräte sind möglich.",
           "notify_on_recovery": "Sendet eine abschließende Benachrichtigung, wenn alle zuvor gemeldeten Probleme behoben sind.",
           "show_sidebar_panel": "Fügt der Home-Assistant-Seitenleiste eine optionale BackupCheckup-Übersicht hinzu. Die Seite zeigt Gesundheitswert, aktive Probleme, Integrität, Backup-Kennzahlen und Speicherorte.",
-          "activity_logging_enabled": "Zeichnet ein begrenztes, durchsuchbares und datenschutzfreundliches Protokoll der Integrationsvorgänge auf. Backupnamen, IDs, Pfade, Passwörter und Inhalte werden nie aufgenommen."
+          "activity_logging_enabled": "Zeichnet ein begrenztes, durchsuchbares und datenschutzfreundliches Protokoll der Integrationsvorgänge auf. Backupnamen, IDs, Pfade, Passwörter und Inhalte werden nie aufgenommen.",
+          "activity_log_persistence": "Speichert das datenschutzfreundliche Protokoll optional in Home Assistant. Standardmäßig deaktiviert; Backupnamen, IDs, Pfade, Passwörter und Inhalte werden nicht gespeichert.",
+          "activity_log_retention_days": "Behält höchstens 250 Einträge für diese Anzahl von Tagen. Ältere Einträge werden automatisch verworfen."
         }
       },
       "setup_summary": {
@@ -553,6 +565,9 @@
       },
       "test_notification": {
         "name": "Testbenachrichtigung senden"
+      },
+      "clear_activity_log": {
+        "name": "Live-Protokoll leeren"
       }
     }
   },

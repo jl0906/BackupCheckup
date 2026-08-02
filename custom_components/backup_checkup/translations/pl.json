@@ -94,7 +94,9 @@
           "notification_targets": "Mobile devices to notify",
           "notify_on_recovery": "Notify when problems are resolved",
           "show_sidebar_panel": "Pokaż BackupCheckup na pasku bocznym",
-          "activity_logging_enabled": "Enable detailed live logging"
+          "activity_logging_enabled": "Włącz szczegółowy dziennik na żywo",
+          "activity_log_persistence": "Zachowaj dziennik po restarcie",
+          "activity_log_retention_days": "Okres przechowywania dziennika w dniach"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities.",
@@ -103,7 +105,9 @@
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
           "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
           "show_sidebar_panel": "Dodaje opcjonalny przegląd BackupCheckup do paska bocznego Home Assistant. Strona pokazuje kondycję, aktywne problemy, integralność, parametry kopii i lokalizacje przechowywania.",
-          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included."
+          "activity_logging_enabled": "Prowadzi ograniczony, przeszukiwalny i bezpieczny dla prywatności dziennik działań integracji. Nazwy, identyfikatory, ścieżki, hasła i zawartość kopii nie są uwzględniane.",
+          "activity_log_persistence": "Opcjonalnie zapisuje bezpieczny dziennik w Home Assistant. Domyślnie wyłączone; nazwy, identyfikatory, ścieżki, hasła i zawartość nie są przechowywane.",
+          "activity_log_retention_days": "Przechowuje maksymalnie 250 wpisów przez podaną liczbę dni. Starsze wpisy są usuwane automatycznie."
         }
       },
       "summary": {
@@ -225,7 +229,9 @@
           "notification_targets": "Mobile devices to notify",
           "notify_on_recovery": "Notify when problems are resolved",
           "show_sidebar_panel": "Pokaż BackupCheckup na pasku bocznym",
-          "activity_logging_enabled": "Enable detailed live logging"
+          "activity_logging_enabled": "Włącz szczegółowy dziennik na żywo",
+          "activity_log_persistence": "Zachowaj dziennik po restarcie",
+          "activity_log_retention_days": "Okres przechowywania dziennika w dniach"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities.",
@@ -234,7 +240,9 @@
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
           "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
           "show_sidebar_panel": "Dodaje opcjonalny przegląd BackupCheckup do paska bocznego Home Assistant. Strona pokazuje kondycję, aktywne problemy, integralność, parametry kopii i lokalizacje przechowywania.",
-          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included."
+          "activity_logging_enabled": "Prowadzi ograniczony, przeszukiwalny i bezpieczny dla prywatności dziennik działań integracji. Nazwy, identyfikatory, ścieżki, hasła i zawartość kopii nie są uwzględniane.",
+          "activity_log_persistence": "Opcjonalnie zapisuje bezpieczny dziennik w Home Assistant. Domyślnie wyłączone; nazwy, identyfikatory, ścieżki, hasła i zawartość nie są przechowywane.",
+          "activity_log_retention_days": "Przechowuje maksymalnie 250 wpisów przez podaną liczbę dni. Starsze wpisy są usuwane automatycznie."
         }
       },
       "setup_assistant": {
@@ -281,7 +289,9 @@
           "notification_targets": "Mobile devices to notify",
           "notify_on_recovery": "Notify when problems are resolved",
           "show_sidebar_panel": "Pokaż BackupCheckup na pasku bocznym",
-          "activity_logging_enabled": "Enable detailed live logging"
+          "activity_logging_enabled": "Włącz szczegółowy dziennik na żywo",
+          "activity_log_persistence": "Zachowaj dziennik po restarcie",
+          "activity_log_retention_days": "Okres przechowywania dziennika w dniach"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities.",
@@ -290,7 +300,9 @@
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
           "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
           "show_sidebar_panel": "Dodaje opcjonalny przegląd BackupCheckup do paska bocznego Home Assistant. Strona pokazuje kondycję, aktywne problemy, integralność, parametry kopii i lokalizacje przechowywania.",
-          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included."
+          "activity_logging_enabled": "Prowadzi ograniczony, przeszukiwalny i bezpieczny dla prywatności dziennik działań integracji. Nazwy, identyfikatory, ścieżki, hasła i zawartość kopii nie są uwzględniane.",
+          "activity_log_persistence": "Opcjonalnie zapisuje bezpieczny dziennik w Home Assistant. Domyślnie wyłączone; nazwy, identyfikatory, ścieżki, hasła i zawartość nie są przechowywane.",
+          "activity_log_retention_days": "Przechowuje maksymalnie 250 wpisów przez podaną liczbę dni. Starsze wpisy są usuwane automatycznie."
         }
       },
       "setup_summary": {
@@ -553,6 +565,9 @@
       },
       "test_notification": {
         "name": "Wyślij powiadomienie testowe"
+      },
+      "clear_activity_log": {
+        "name": "Wyczyść dziennik na żywo"
       }
     }
   },

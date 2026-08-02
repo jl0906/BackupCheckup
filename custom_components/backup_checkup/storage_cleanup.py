@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .const import DOMAIN
 
-STORE_KINDS = ("history", "integrity", "notifications")
+STORE_KINDS = ("activity", "history", "integrity", "notifications")
 _STORE_PATTERN = re.compile(
     rf"^{re.escape(DOMAIN)}\.(?P<entry_id>[A-Za-z0-9_-]+)\."
     rf"(?P<kind>{'|'.join(STORE_KINDS)})$"
@@ -61,7 +61,7 @@ def cleanup_entry_store_files(
     storage_dir: Path,
     entry_id: str,
 ) -> StoreCleanupResult:
-    """Remove the three exact private stores belonging to one config entry."""
+    """Remove the exact private stores belonging to one config entry."""
     if not isinstance(entry_id, str) or not re.fullmatch(r"[A-Za-z0-9_-]+", entry_id):
         return StoreCleanupResult(failed=1)
 

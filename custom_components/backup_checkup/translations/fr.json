@@ -94,7 +94,9 @@
           "notification_targets": "Mobile devices to notify",
           "notify_on_recovery": "Notify when problems are resolved",
           "show_sidebar_panel": "Afficher BackupCheckup dans la barre latérale",
-          "activity_logging_enabled": "Enable detailed live logging"
+          "activity_logging_enabled": "Activer le journal en direct détaillé",
+          "activity_log_persistence": "Conserver le journal après redémarrage",
+          "activity_log_retention_days": "Conservation du journal en jours"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities.",
@@ -103,7 +105,9 @@
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
           "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
           "show_sidebar_panel": "Ajoute une vue d’ensemble BackupCheckup facultative à la barre latérale de Home Assistant. La page affiche la santé, les problèmes actifs, l’intégrité, les mesures de sauvegarde et les emplacements de stockage.",
-          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included."
+          "activity_logging_enabled": "Enregistre un journal limité, consultable et respectueux de la vie privée. Les noms, identifiants, chemins, mots de passe et contenus ne sont jamais inclus.",
+          "activity_log_persistence": "Enregistre facultativement le journal protégé dans Home Assistant. Désactivé par défaut, sans noms, identifiants, chemins, mots de passe ni contenus.",
+          "activity_log_retention_days": "Conserve au maximum 250 entrées pendant ce nombre de jours. Les entrées plus anciennes sont supprimées automatiquement."
         }
       },
       "summary": {
@@ -225,7 +229,9 @@
           "notification_targets": "Mobile devices to notify",
           "notify_on_recovery": "Notify when problems are resolved",
           "show_sidebar_panel": "Afficher BackupCheckup dans la barre latérale",
-          "activity_logging_enabled": "Enable detailed live logging"
+          "activity_logging_enabled": "Activer le journal en direct détaillé",
+          "activity_log_persistence": "Conserver le journal après redémarrage",
+          "activity_log_retention_days": "Conservation du journal en jours"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities.",
@@ -234,7 +240,9 @@
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
           "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
           "show_sidebar_panel": "Ajoute une vue d’ensemble BackupCheckup facultative à la barre latérale de Home Assistant. La page affiche la santé, les problèmes actifs, l’intégrité, les mesures de sauvegarde et les emplacements de stockage.",
-          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included."
+          "activity_logging_enabled": "Enregistre un journal limité, consultable et respectueux de la vie privée. Les noms, identifiants, chemins, mots de passe et contenus ne sont jamais inclus.",
+          "activity_log_persistence": "Enregistre facultativement le journal protégé dans Home Assistant. Désactivé par défaut, sans noms, identifiants, chemins, mots de passe ni contenus.",
+          "activity_log_retention_days": "Conserve au maximum 250 entrées pendant ce nombre de jours. Les entrées plus anciennes sont supprimées automatiquement."
         }
       },
       "setup_assistant": {
@@ -281,7 +289,9 @@
           "notification_targets": "Mobile devices to notify",
           "notify_on_recovery": "Notify when problems are resolved",
           "show_sidebar_panel": "Afficher BackupCheckup dans la barre latérale",
-          "activity_logging_enabled": "Enable detailed live logging"
+          "activity_logging_enabled": "Activer le journal en direct détaillé",
+          "activity_log_persistence": "Conserver le journal après redémarrage",
+          "activity_log_retention_days": "Conservation du journal en jours"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities.",
@@ -290,7 +300,9 @@
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
           "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
           "show_sidebar_panel": "Ajoute une vue d’ensemble BackupCheckup facultative à la barre latérale de Home Assistant. La page affiche la santé, les problèmes actifs, l’intégrité, les mesures de sauvegarde et les emplacements de stockage.",
-          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included."
+          "activity_logging_enabled": "Enregistre un journal limité, consultable et respectueux de la vie privée. Les noms, identifiants, chemins, mots de passe et contenus ne sont jamais inclus.",
+          "activity_log_persistence": "Enregistre facultativement le journal protégé dans Home Assistant. Désactivé par défaut, sans noms, identifiants, chemins, mots de passe ni contenus.",
+          "activity_log_retention_days": "Conserve au maximum 250 entrées pendant ce nombre de jours. Les entrées plus anciennes sont supprimées automatiquement."
         }
       },
       "setup_summary": {
@@ -553,6 +565,9 @@
       },
       "test_notification": {
         "name": "Envoyer une notification de test"
+      },
+      "clear_activity_log": {
+        "name": "Effacer le journal en direct"
       }
     }
   },

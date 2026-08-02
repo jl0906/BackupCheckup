@@ -1,6 +1,6 @@
 # Logging and live activity
 
-BackupCheckup 2.6.2 provides one central, privacy-safe activity journal. Each
+BackupCheckup 2.7.0 provides one central, privacy-safe activity journal. Each
 record contains a UTC timestamp, a stable action name, an outcome, a severity,
 and a small set of bounded details.
 
@@ -13,6 +13,10 @@ entities, and notifications** and select **Enable detailed live logging**.
   records, and the bounded diagnostics journal are active.
 - Disabled: no activity records are emitted or retained.
 
+Enable **Keep live log after restarts** only when restart-spanning history is
+useful. Persistence is disabled by default. The retention setting accepts 1–30
+days, and both runtime and persistent history remain bounded to 250 entries.
+
 Logging is independent of Standard or Expert entity mode. Changing the switch reloads
 BackupCheckup so the new state applies immediately. Existing Expert installations are
 migrated with logging enabled to preserve their previous behavior.
@@ -20,11 +24,17 @@ migrated with logging enabled to preserve their previous behavior.
 ## Sidebar live log
 
 When the optional BackupCheckup sidebar frontend is enabled, use its **Live log**
-tab for a dedicated, searchable operational view. It updates while BackupCheckup
+tab for a dedicated, searchable and filterable operational view. It updates while BackupCheckup
 works and reports inventory reads, storage preparation, download progress,
 encrypted or unencrypted archive extraction, database verification, result storage,
-notifications, cleanup, and failures. The in-memory list retains at most 250 entries
-and resets when Home Assistant restarts.
+notifications, cleanup, and failures. Filters cover severity and operation types.
+The list retains at most 250 entries. It resets when Home Assistant restarts unless
+optional persistence is enabled.
+
+When new events arrive while you are reading older entries, your scroll position
+is preserved and **New entries available** appears. Automatic scrolling occurs only
+when the view is already at the newest entry. The toolbar can export the complete
+privacy-safe buffer as JSON; administrators can also clear it.
 
 ## Home Assistant Activity
 
@@ -35,7 +45,7 @@ verification, notification delivery, manual services, and cleanup operations.
 
 Routine high-frequency start events are kept out of Activity to avoid flooding the
 timeline. They are still written to the structured Core log and retained in the
-runtime diagnostics journal while Expert mode is active.
+runtime diagnostics journal while detailed logging is enabled.
 
 Activity is the correct surface for operational history. Home Assistant Repairs is
 reserved for actionable problems, so BackupCheckup continues to create Repair issues
@@ -66,8 +76,8 @@ detail.
 ## Downloaded diagnostics
 
 When enabled, the latest 100 activity records are included in integration
-diagnostics. The in-memory journal retains at most 250 records and is reset when Home
-Assistant restarts. When disabled, diagnostics report `enabled: false` with empty
+diagnostics. The journal retains at most 250 records and reports whether persistence
+is active and how many retention days are configured. When disabled, diagnostics report `enabled: false` with empty
 event counters and no recent records.
 
 ## Privacy and limits

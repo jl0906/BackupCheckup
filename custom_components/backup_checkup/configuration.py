@@ -9,6 +9,8 @@ from typing import Any
 
 from .const import (
     CONF_ACTIVE_UPDATE_INTERVAL_MINUTES,
+    CONF_ACTIVITY_LOG_PERSISTENCE,
+    CONF_ACTIVITY_LOG_RETENTION_DAYS,
     CONF_ACTIVITY_LOGGING_ENABLED,
     CONF_ADAPTIVE_ERROR_THRESHOLD,
     CONF_ADAPTIVE_POLLING,
@@ -41,6 +43,8 @@ from .const import (
     CONF_VERIFICATION_POLICY,
     CONF_VERIFICATION_TIMEOUT_MINUTES,
     DEFAULT_ACTIVE_UPDATE_INTERVAL_MINUTES,
+    DEFAULT_ACTIVITY_LOG_PERSISTENCE,
+    DEFAULT_ACTIVITY_LOG_RETENTION_DAYS,
     DEFAULT_ACTIVITY_LOGGING_ENABLED,
     DEFAULT_ADAPTIVE_ERROR_THRESHOLD,
     DEFAULT_ADAPTIVE_POLLING,
@@ -72,6 +76,7 @@ from .const import (
     DEFAULT_VERIFICATION_TIMEOUT_MINUTES,
     ENTITY_MODE_OPTIONS,
     MAX_ACTIVE_UPDATE_INTERVAL_MINUTES,
+    MAX_ACTIVITY_LOG_RETENTION_DAYS,
     MAX_ADAPTIVE_ERROR_THRESHOLD,
     MAX_ANALYTICS_WINDOW_DAYS,
     MAX_DATABASE_TIMEOUT_MINUTES,
@@ -86,6 +91,7 @@ from .const import (
     MAX_UPDATE_INTERVAL_MINUTES,
     MAX_VERIFICATION_TIMEOUT_MINUTES,
     MIN_ACTIVE_UPDATE_INTERVAL_MINUTES,
+    MIN_ACTIVITY_LOG_RETENTION_DAYS,
     MIN_ADAPTIVE_ERROR_THRESHOLD,
     MIN_ANALYTICS_WINDOW_DAYS,
     MIN_DATABASE_TIMEOUT_MINUTES,
@@ -118,6 +124,11 @@ from .const import (
 from .notification_selection import normalize_notification_targets
 
 _INTEGER_OPTIONS: dict[str, tuple[int, int, int]] = {
+    CONF_ACTIVITY_LOG_RETENTION_DAYS: (
+        DEFAULT_ACTIVITY_LOG_RETENTION_DAYS,
+        MIN_ACTIVITY_LOG_RETENTION_DAYS,
+        MAX_ACTIVITY_LOG_RETENTION_DAYS,
+    ),
     CONF_MAX_AGE_DAYS: (DEFAULT_MAX_AGE_DAYS, MIN_MAX_AGE_DAYS, MAX_MAX_AGE_DAYS),
     CONF_UPDATE_INTERVAL_MINUTES: (
         DEFAULT_UPDATE_INTERVAL_MINUTES,
@@ -188,6 +199,7 @@ _INTEGER_OPTIONS: dict[str, tuple[int, int, int]] = {
 }
 
 _BOOLEAN_OPTIONS: dict[str, bool] = {
+    CONF_ACTIVITY_LOG_PERSISTENCE: DEFAULT_ACTIVITY_LOG_PERSISTENCE,
     CONF_ACTIVITY_LOGGING_ENABLED: DEFAULT_ACTIVITY_LOGGING_ENABLED,
     CONF_ADAPTIVE_POLLING: DEFAULT_ADAPTIVE_POLLING,
     CONF_REPAIR_ISSUES_ENABLED: DEFAULT_REPAIR_ISSUES_ENABLED,
@@ -414,6 +426,8 @@ class PresentationSettings:
     expose_backup_metadata: bool
     show_sidebar_panel: bool
     activity_logging_enabled: bool
+    activity_log_persistence: bool
+    activity_log_retention_days: int
 
 
 @dataclass(frozen=True)
@@ -474,6 +488,10 @@ class BackupCheckupSettings:
                 expose_backup_metadata=values[CONF_EXPOSE_BACKUP_METADATA],
                 show_sidebar_panel=values[CONF_SHOW_SIDEBAR_PANEL],
                 activity_logging_enabled=values[CONF_ACTIVITY_LOGGING_ENABLED],
+                activity_log_persistence=values[CONF_ACTIVITY_LOG_PERSISTENCE],
+                activity_log_retention_days=values[
+                    CONF_ACTIVITY_LOG_RETENTION_DAYS
+                ],
             ),
         )
 
@@ -522,6 +540,12 @@ class BackupCheckupSettings:
             CONF_SHOW_SIDEBAR_PANEL: self.presentation.show_sidebar_panel,
             CONF_ACTIVITY_LOGGING_ENABLED: (
                 self.presentation.activity_logging_enabled
+            ),
+            CONF_ACTIVITY_LOG_PERSISTENCE: (
+                self.presentation.activity_log_persistence
+            ),
+            CONF_ACTIVITY_LOG_RETENTION_DAYS: (
+                self.presentation.activity_log_retention_days
             ),
         }
 
@@ -643,3 +667,13 @@ class BackupCheckupSettings:
     def activity_logging_enabled(self) -> bool:
         """Return whether detailed privacy-safe activity logging is enabled."""
         return self.presentation.activity_logging_enabled
+
+    @property
+    def activity_log_persistence(self) -> bool:
+        """Return whether the privacy-safe live log survives restarts."""
+        return self.presentation.activity_log_persistence
+
+    @property
+    def activity_log_retention_days(self) -> int:
+        """Return the configured persistent live-log retention period."""
+        return self.presentation.activity_log_retention_days

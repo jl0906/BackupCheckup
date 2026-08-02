@@ -94,7 +94,9 @@
           "notification_targets": "Mobile devices to notify",
           "notify_on_recovery": "Notify when problems are resolved",
           "show_sidebar_panel": "Vis BackupCheckup i sidepanelet",
-          "activity_logging_enabled": "Enable detailed live logging"
+          "activity_logging_enabled": "Aktivér detaljeret live-log",
+          "activity_log_persistence": "Bevar live-log efter genstart",
+          "activity_log_retention_days": "Opbevaring af live-log i dage"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities.",
@@ -103,7 +105,9 @@
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
           "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
           "show_sidebar_panel": "Føjer en valgfri BackupCheckup-oversigt til Home Assistant-sidepanelet. Siden viser sundhed, aktive problemer, integritet, backupmålinger og lagerplaceringer.",
-          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included."
+          "activity_logging_enabled": "Registrerer en begrænset, søgbar og privatlivssikker log over integrationens handlinger. Backupnavne, ID'er, stier, adgangskoder og indhold medtages aldrig.",
+          "activity_log_persistence": "Gemmer valgfrit den privatlivssikre log i Home Assistant. Deaktiveret som standard; backupnavne, ID'er, stier, adgangskoder og indhold gemmes ikke.",
+          "activity_log_retention_days": "Bevarer højst 250 poster i dette antal dage. Ældre poster slettes automatisk."
         }
       },
       "summary": {
@@ -225,7 +229,9 @@
           "notification_targets": "Mobile devices to notify",
           "notify_on_recovery": "Notify when problems are resolved",
           "show_sidebar_panel": "Vis BackupCheckup i sidepanelet",
-          "activity_logging_enabled": "Enable detailed live logging"
+          "activity_logging_enabled": "Aktivér detaljeret live-log",
+          "activity_log_persistence": "Bevar live-log efter genstart",
+          "activity_log_retention_days": "Opbevaring af live-log i dage"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities.",
@@ -234,7 +240,9 @@
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
           "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
           "show_sidebar_panel": "Føjer en valgfri BackupCheckup-oversigt til Home Assistant-sidepanelet. Siden viser sundhed, aktive problemer, integritet, backupmålinger og lagerplaceringer.",
-          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included."
+          "activity_logging_enabled": "Registrerer en begrænset, søgbar og privatlivssikker log over integrationens handlinger. Backupnavne, ID'er, stier, adgangskoder og indhold medtages aldrig.",
+          "activity_log_persistence": "Gemmer valgfrit den privatlivssikre log i Home Assistant. Deaktiveret som standard; backupnavne, ID'er, stier, adgangskoder og indhold gemmes ikke.",
+          "activity_log_retention_days": "Bevarer højst 250 poster i dette antal dage. Ældre poster slettes automatisk."
         }
       },
       "setup_assistant": {
@@ -281,7 +289,9 @@
           "notification_targets": "Mobile devices to notify",
           "notify_on_recovery": "Notify when problems are resolved",
           "show_sidebar_panel": "Vis BackupCheckup i sidepanelet",
-          "activity_logging_enabled": "Enable detailed live logging"
+          "activity_logging_enabled": "Aktivér detaljeret live-log",
+          "activity_log_persistence": "Bevar live-log efter genstart",
+          "activity_log_retention_days": "Opbevaring af live-log i dage"
         },
         "data_description": {
           "entity_mode": "Standard enables the most useful monitoring and problem entities. Expert enables all analytics, diagnostic, integrity, schedule, and storage entities.",
@@ -290,7 +300,9 @@
           "notification_targets": "Only Home Assistant Companion App notification entities are listed. Multiple devices can be selected.",
           "notify_on_recovery": "Send one final notification after all previously reported backup problems are resolved.",
           "show_sidebar_panel": "Føjer en valgfri BackupCheckup-oversigt til Home Assistant-sidepanelet. Siden viser sundhed, aktive problemer, integritet, backupmålinger og lagerplaceringer.",
-          "activity_logging_enabled": "Records a bounded, searchable and privacy-safe journal of integration operations. Backup names, IDs, paths, passwords, and content are never included."
+          "activity_logging_enabled": "Registrerer en begrænset, søgbar og privatlivssikker log over integrationens handlinger. Backupnavne, ID'er, stier, adgangskoder og indhold medtages aldrig.",
+          "activity_log_persistence": "Gemmer valgfrit den privatlivssikre log i Home Assistant. Deaktiveret som standard; backupnavne, ID'er, stier, adgangskoder og indhold gemmes ikke.",
+          "activity_log_retention_days": "Bevarer højst 250 poster i dette antal dage. Ældre poster slettes automatisk."
         }
       },
       "setup_summary": {
@@ -553,6 +565,9 @@
       },
       "test_notification": {
         "name": "Send testnotifikation"
+      },
+      "clear_activity_log": {
+        "name": "Ryd live-log"
       }
     }
   },

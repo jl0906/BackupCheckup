@@ -131,6 +131,12 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
             ),
             "archive_count": data.integrity.archive_count,
             "file_count": data.integrity.file_count,
+            "verified_size_mb": (
+                round(data.integrity.verified_size / 1_000_000, 2)
+                if data.integrity.verified_size is not None
+                else None
+            ),
+            "duration_seconds": data.integrity.duration_seconds,
             "protected": data.integrity.protected,
             "database_status": data.integrity.database_status,
             "warnings": list(data.integrity.warnings),
@@ -876,6 +882,8 @@ class BackupCheckupActivitySensor(BackupCheckupEntity, SensorEntity):
         entries = activity.recent()
         return {
             "enabled": activity.enabled,
+            "persistent": activity.persistent,
+            "retention_days": activity.retention_days,
             "buffered_event_count": len(entries),
             "entries": entries,
         }
