@@ -93,7 +93,7 @@ def assess_recovery_readiness(
     }
 
     weights = {
-        "backup_available": 25,
+        "backup_available": 20,
         "backup_current": 15,
         "backup_complete": 15,
         "homeassistant_included": 10,
@@ -103,18 +103,21 @@ def assess_recovery_readiness(
         "independent_copy": 10,
         "copy_sizes_consistent": 5,
     }
-    deductions = {
-        key: weight
-        for key, weight in weights.items()
-        if checks[key] is False
-    }
-    # Unknown optional metadata should not claim readiness, but is penalized less
-    # than a confirmed missing component.
-    for key in ("homeassistant_included", "database_included"):
-        if checks[key] is None and latest is not None:
-            deductions[key] = weights[key] // 2
-
-    score = max(0, 100 - sum(deductions.values()))
+    if latest is None:
+        deductions = {"backup_available": 100}
+        score = 0
+    else:
+        deductions = {
+            key: weight
+            for key, weight in weights.items()
+            if checks[key] is False
+        }
+        # Unknown optional metadata should not claim readiness, but is penalized less
+        # than a confirmed missing component.
+        for key in ("homeassistant_included", "database_included"):
+            if checks[key] is None:
+                deductions[key] = weights[key] // 2
+        score = max(0, 100 - sum(deductions.values()))
     recommendation = RECOVERY_RECOMMENDATION_NONE
     if latest is None or latest.incomplete:
         recommendation = RECOVERY_RECOMMENDATION_COMPLETE_BACKUP
