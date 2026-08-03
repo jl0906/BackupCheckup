@@ -1,5 +1,38 @@
 # Changelog
 
+## 3.0.0-alpha1
+
+**Recovery Readiness foundation**
+
+### Added
+
+- Added a dedicated **Recovery Readiness** assessment that is intentionally
+  separate from the existing Backup Health Score.
+- Added three new standard entities: recovery readiness percentage, recovery
+  status, and the highest-priority recovery recommendation.
+- The assessment checks backup availability, age, completeness, inclusion of
+  Home Assistant and database data, archive verification, optional database
+  verification, independent storage copies, and copy-size consistency.
+- Added privacy-safe check results and weighted deductions as entity attributes
+  so dashboards and automations can explain every score.
+- Added the complete recovery assessment to integration diagnostics without
+  exposing backup names, paths, identifiers, passwords, or file contents.
+- Added German and English recovery terminology and compatible fallback
+  translations for all currently supported languages.
+
+### Changed
+
+- Raised the config-entry schema to version 14 and the integration version to
+  `3.0.0-alpha1`.
+- Added the recovery entities to Standard and Expert entity presets.
+- Versioned the optional sidebar frontend asset for the 3.0.0 alpha series.
+
+### Alpha scope
+
+- This release is read-only and does not restore, modify, or delete backups.
+- A guided recovery checklist, persisted restore-test confirmations, and an
+  exportable emergency plan are planned for subsequent 3.0.0 alpha releases.
+
 ## 2.7.1
 
 **SonarCloud duplication cleanup**
