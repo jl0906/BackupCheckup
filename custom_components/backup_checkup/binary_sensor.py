@@ -196,6 +196,25 @@ BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
         attributes_fn=lambda data: data.recovery_preparedness,
     ),
     BackupCheckupBinarySensorDescription(
+        key="restore_test_overdue",
+        translation_key="restore_test_overdue",
+        icon="mdi:restore-alert",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda data: data.restore_test_overdue,
+        attributes_fn=lambda data: data.recovery_restore_test,
+    ),
+    BackupCheckupBinarySensorDescription(
+        key="recovery_plan_incomplete",
+        translation_key="recovery_plan_incomplete",
+        icon="mdi:file-document-alert-outline",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda data: data.recovery_plan_incomplete,
+        attributes_fn=lambda data: {
+            "warnings": data.recovery_plan.get("warnings", []),
+            "generated_at": data.recovery_plan.get("generated_at"),
+        },
+    ),
+    BackupCheckupBinarySensorDescription(
         key="required_location_missing",
         translation_key="required_location_missing",
         entity_registry_enabled_default=False,

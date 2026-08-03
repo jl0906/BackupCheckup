@@ -78,6 +78,7 @@ from .recovery_preparedness import (
     RecoveryPreparednessStore,
     detect_recovery_dependencies,
 )
+from .recovery_restore import RecoveryRestoreTestStore
 from .security import (
     anonymous_agent_reference,
     classify_exception,
@@ -178,6 +179,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             hass, entry.entry_id, activity=self.activity
         )
         self.recovery_preparedness = RecoveryPreparednessStore(hass, entry.entry_id)
+        self.recovery_restore_tests = RecoveryRestoreTestStore(hass, entry.entry_id)
         self._normalizer = BackupRecordNormalizer(entry.entry_id)
 
         self.integrity_result = BackupIntegrityResult.not_checked()
@@ -602,6 +604,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 self.hass, latest, storage.summaries
             ),
         )
+        restore_test = self.recovery_restore_tests.snapshot(now=now)
         recovery = assess_recovery_readiness(
             latest,
             self.integrity_result,
@@ -611,6 +614,12 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             backups=monitoring_records,
             agent_summaries=storage.summaries,
             preparedness=preparedness,
+            restore_test=restore_test,
+            generated_at=now,
+            installation_type=self.settings.runtime.hardware_detection.get(
+                "installation_type"
+            ),
+            language=getattr(getattr(self.hass, "config", None), "language", "en"),
         )
 
         public_locations = self._public_location_ids(latest_locations)
@@ -692,6 +701,14 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             recovery_content_comparison=recovery.content_comparison,
             recovery_storage_resilience=recovery.storage_resilience,
             recovery_preparedness=recovery.preparedness,
+            recovery_restore_simulation=recovery.restore_simulation,
+            recovery_restore_test=recovery.restore_test,
+            recovery_plan=recovery.recovery_plan,
+            last_restore_test=restore_test.tested_at,
+            restore_test_result=restore_test.result,
+            restore_test_scope=restore_test.scope,
+            restore_test_overdue=(restore_test.passed is not True and latest is not None),
+            recovery_plan_incomplete=bool(recovery.recovery_plan.get("warnings")),
             recovery_checklist_incomplete=(
                 recovery.checks.get("preparedness_checklist_complete") is not True
                 and latest is not None
@@ -1266,6 +1283,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 self.hass, self.data.latest_monitored_backup_record, summaries
             ),
         )
+        restore_test = self.recovery_restore_tests.snapshot(now=now)
         recovery = assess_recovery_readiness(
             self.data.latest_monitored_backup_record,
             self.data.integrity,
@@ -1279,6 +1297,12 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             backups=self.data.monitored_backups,
             agent_summaries=summaries,
             preparedness=preparedness,
+            restore_test=restore_test,
+            generated_at=now,
+            installation_type=self.settings.runtime.hardware_detection.get(
+                "installation_type"
+            ),
+            language=getattr(getattr(self.hass, "config", None), "language", "en"),
         )
         return replace(
             self.data,
@@ -1315,6 +1339,17 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             recovery_content_comparison=recovery.content_comparison,
             recovery_storage_resilience=recovery.storage_resilience,
             recovery_preparedness=recovery.preparedness,
+            recovery_restore_simulation=recovery.restore_simulation,
+            recovery_restore_test=recovery.restore_test,
+            recovery_plan=recovery.recovery_plan,
+            last_restore_test=restore_test.tested_at,
+            restore_test_result=restore_test.result,
+            restore_test_scope=restore_test.scope,
+            restore_test_overdue=(
+                restore_test.passed is not True
+                and self.data.latest_monitored_backup_record is not None
+            ),
+            recovery_plan_incomplete=bool(recovery.recovery_plan.get("warnings")),
             recovery_checklist_incomplete=(
                 recovery.checks.get("preparedness_checklist_complete") is not True
                 and self.data.latest_monitored_backup_record is not None

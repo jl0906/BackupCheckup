@@ -1,5 +1,69 @@
 # Changelog
 
+## 3.0.0-alpha6
+
+**Restore testing and exportable emergency recovery plans**
+
+### Added
+
+- Added a fully non-destructive simulated restore assessment derived from the
+  latest backup metadata and integrity result. It checks backup selection,
+  completeness, Home Assistant contents, archive structure, verified size,
+  optional database integrity, encrypted-backup readability, and storage-copy
+  availability without starting or emulating a destructive restore.
+- Added the administrator-only `backup_checkup.record_restore_test` action for
+  documenting a restore test performed outside the production Home Assistant
+  instance. It accepts only the fixed result (`successful` or `failed`) and scope
+  (`full` or `partial`) enums and automatically links the confirmation to the
+  anonymous reference of the newest monitored backup.
+- Added a private per-config-entry restore-test Store. A successful full test is
+  considered current for 365 days; failed, partial, expired, malformed, or absent
+  records never satisfy the Recovery Readiness requirement.
+- Added an automatically generated localized emergency recovery plan containing
+  prerequisites, restore sequence, external dependencies, post-restore checks,
+  and open risks.
+- Added local Markdown, HTML, and JSON plan exports. The exports intentionally
+  exclude passwords, tokens, paths, hostnames, IP addresses, raw backup names,
+  notes, and integration configuration.
+- Added `sensor.backup_checkup_restore_simulation_status`,
+  `sensor.backup_checkup_last_restore_test`,
+  `binary_sensor.backup_checkup_restore_test_overdue`,
+  `binary_sensor.backup_checkup_recovery_plan_incomplete`, and
+  `button.backup_checkup_run_recovery_assessment`.
+
+### Changed
+
+- Expanded Recovery Readiness from thirteen to fifteen checks by adding the
+  simulated restore result and a current successful full documented test restore.
+- The `ready` status now additionally requires both new restore checks. A verified
+  simulation that completes with non-blocking warnings still counts as passed and
+  remains visibly marked as a warning.
+- Added the priority recommendations `run_restore_simulation` and
+  `document_restore_test` in every supported backend translation.
+- Extended the Recovery / Notfallvorsorge frontend with separate simulation,
+  documented test-restore, and emergency-plan cards plus administrator controls.
+- Extended diagnostics while deliberately omitting rendered plan export contents.
+- Added exact-path cleanup and orphan recognition for the private restore-test
+  Store.
+- Increased the config-entry schema to version 15 and the frontend asset revision
+  to `r7`.
+
+### Privacy and safety
+
+- Alpha6 remains read-only toward Home Assistant backups. It never restores,
+  modifies, creates, uploads, or deletes a backup.
+- Test-restore documentation contains no free text and stores no secrets.
+- Plan generation and export run locally inside the frontend and contain only
+  privacy-safe assessment data and anonymous backup references.
+
+### Quality assurance
+
+- Added expiry, malformed-store, result/scope validation, simulation-state,
+  localized export, HTML escaping, recommendation, entity, translation, cleanup,
+  and executable frontend action tests.
+- Alpha6 result: 88 tests passed, 60/60 functions, 724/724 statements, and 166/166
+  branches covered in the complete 3.0 recovery production-module set.
+
 ## 3.0.0-alpha5
 
 **Guided emergency preparedness and external dependencies**

@@ -1,13 +1,13 @@
 # Recovery Readiness
 
-BackupCheckup 3.0.0-alpha5 provides a separate disaster-recovery assessment. It
+BackupCheckup 3.0.0-alpha6 provides a separate disaster-recovery assessment. It
 answers whether the newest monitored backup and the surrounding recovery
 preparation provide a credible basis for restoring Home Assistant after a total
 system failure. It remains separate from the normal backup Health Score.
 
 ## Readiness checks
 
-The score evaluates thirteen points:
+The score evaluates fifteen points:
 
 - a monitored backup exists;
 - the backup is current;
@@ -22,7 +22,11 @@ The score evaluates thirteen points:
 - the latest backup has not lost contents that were present in the previous
   complete backup;
 - the guided emergency checklist is complete;
-- external dependencies have been reviewed and are protected or not applicable.
+- external dependencies have been reviewed and are protected or not applicable;
+- the non-destructive structural restore simulation passed, optionally with
+  non-blocking warnings;
+- a current successful full test restore performed outside production is
+  documented.
 
 Confirmed missing items receive their full deduction. Unknown Home Assistant,
 database, storage, checklist, or dependency information receives a smaller
@@ -31,8 +35,9 @@ A missing content-comparison baseline is shown as **Not assessed** and does not
 reduce the score.
 
 A numeric score of at least 85 is not sufficient by itself for the `ready` status.
-Both the guided checklist and the external-dependency review must also be complete.
-Otherwise the status remains `limited` and the next required action is shown.
+The guided checklist, external-dependency review, simulated restore assessment,
+and documented test restore must also be complete. Otherwise the status remains
+`limited` and the next required action is shown.
 
 ## Guided emergency checklist
 
@@ -94,6 +99,71 @@ It accepts exactly three fixed fields: `section`, `item`, and `status`. Both the
 action schema and the handler validate the values. Normal users can view the
 privacy-safe assessment but cannot change it.
 
+
+## Simulated restore assessment
+
+Alpha6 derives a non-destructive restore assessment from the latest monitored
+backup and the most recent integrity result. It checks:
+
+- the integrity result applies to the newest backup;
+- backup metadata and the anonymous backup reference are available;
+- the backup is complete and includes Home Assistant data;
+- verified archives and files were found;
+- the verified size is plausible;
+- the optional database integrity check passed when enabled;
+- an encrypted backup was readable when encryption applies;
+- at least one storage copy is available.
+
+The simulation never creates a temporary Home Assistant installation and never
+invokes Home Assistant's restore operation. A result can be `passed`, `warning`,
+`failed`, or `not_run`. A warning means the structural assessment passed but
+non-blocking information remains unknown or the underlying integrity result
+contained warnings. Failed blocking checks do not satisfy Recovery Readiness.
+
+The administrator button `button.backup_checkup_run_recovery_assessment` starts the
+existing protected verification workflow for the latest backup. The structural
+simulation is recalculated from the new result.
+
+## Documented test restore
+
+A real test restore must be performed outside the productive Home Assistant
+instance. Alpha6 can document its bounded result through the administrator-only
+action:
+
+`backup_checkup.record_restore_test`
+
+It accepts exactly:
+
+- `result`: `successful` or `failed`;
+- `scope`: `full` or `partial`.
+
+BackupCheckup automatically records the current timestamp and the anonymous
+reference of the newest monitored backup. It accepts no free text, notes, paths,
+hostnames, account names, passwords, or tokens.
+
+Only a successful full test that is not older than 365 days satisfies the
+readiness check. Failed, partial, expired, absent, or malformed records keep the
+check incomplete. The private Store is removed together with the config entry.
+
+## Emergency recovery plan and exports
+
+Alpha6 generates a localized recovery plan from the current privacy-safe
+assessment. It contains:
+
+- the detected or configured Home Assistant installation type;
+- the anonymous backup reference and backup date;
+- items needed before recovery;
+- a recommended restore sequence;
+- reviewed external-dependency categories;
+- checks to perform after Home Assistant starts;
+- unresolved simulation, test-restore, checklist, dependency, and integrity
+  risks.
+
+The sidebar can export the plan locally as Markdown, standalone HTML, or JSON.
+The generated files intentionally exclude passwords, tokens, paths, hostnames, IP
+addresses, raw backup names, notes, and integration configuration. Rendered export
+contents are also omitted from Home Assistant diagnostics.
+
 ## Backup content inventory
 
 The Recovery tab shows a privacy-safe inventory of the latest monitored backup:
@@ -146,8 +216,9 @@ or definitely missing.
 
 ## Status thresholds
 
-- Ready: score 85–100 and both preparedness reviews complete
-- Limited: score 55–100 with a remaining preparedness gap, or score 55–84
+- Ready: score 85–100 with checklist, dependency review, simulated restore,
+  and documented test restore complete
+- Limited: score 55–100 with any remaining readiness prerequisite, or score 55–84
 - Insufficient: score 0–54 or no backup
 
 ## Entities
@@ -160,7 +231,12 @@ The main Recovery Readiness entities are:
 - `binary_sensor.backup_checkup_external_copy_missing`;
 - `binary_sensor.backup_checkup_backup_content_changed`;
 - `binary_sensor.backup_checkup_recovery_checklist_incomplete`;
-- `binary_sensor.backup_checkup_external_dependency_unprotected`.
+- `binary_sensor.backup_checkup_external_dependency_unprotected`;
+- `sensor.backup_checkup_restore_simulation_status`;
+- `sensor.backup_checkup_last_restore_test`;
+- `binary_sensor.backup_checkup_restore_test_overdue`;
+- `binary_sensor.backup_checkup_recovery_plan_incomplete`;
+- `button.backup_checkup_run_recovery_assessment`.
 
 The readiness sensor includes the complete privacy-safe checklist and dependency
 snapshot as attributes. Diagnostics contain the same bounded enum states and
@@ -173,12 +249,8 @@ delete backups. Normal entities and diagnostics contain only anonymous reference
 booleans, fixed enum states, generic storage/dependency classes, aggregate counts,
 scores, timestamps, and recommendations.
 
-Removing the config entry removes the dedicated private preparedness Store together
-with BackupCheckup's other private stores. Orphan cleanup also recognizes the new
-store type.
+Removing the config entry removes the dedicated private preparedness and
+restore-test Stores together with BackupCheckup's other private stores. Orphan
+cleanup recognizes both recovery store types.
 
-## Planned later alphas
-
-Later 3.0 alphas can add persisted confirmation of manual test restores, an expanded
-simulated restore assessment, and exportable recovery plans. A destructive restore
-action remains intentionally outside the planned integration scope.
+A destructive restore action remains intentionally outside the integration scope.

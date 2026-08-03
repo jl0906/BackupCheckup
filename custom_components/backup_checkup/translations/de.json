@@ -524,8 +524,22 @@
           "enable_database_check": "Datenbankprüfung aktivieren oder ausführen",
           "review_backup_contents": "Veränderten Backup-Inhalt prüfen",
           "complete_recovery_checklist": "Geführten Notfallcheck vervollständigen",
-          "protect_external_dependencies": "Externe Abhängigkeiten absichern"
+          "protect_external_dependencies": "Externe Abhängigkeiten absichern",
+          "run_restore_simulation": "Simulierten Wiederherstellungstest ausführen",
+          "document_restore_test": "Erfolgreichen Test-Restore dokumentieren"
         }
+      },
+      "restore_simulation_status": {
+        "name": "Simulierter Wiederherstellungstest",
+        "state": {
+          "passed": "Bestanden",
+          "warning": "Mit Hinweisen",
+          "failed": "Fehlgeschlagen",
+          "not_run": "Nicht ausgeführt"
+        }
+      },
+      "last_restore_test": {
+        "name": "Letzter Test-Restore"
       }
     },
     "binary_sensor": {
@@ -591,6 +605,12 @@
       },
       "external_dependency_unprotected": {
         "name": "Externe Abhängigkeit nicht abgesichert"
+      },
+      "restore_test_overdue": {
+        "name": "Test-Restore fehlt oder ist abgelaufen"
+      },
+      "recovery_plan_incomplete": {
+        "name": "Notfallplan unvollständig"
       }
     },
     "button": {
@@ -605,6 +625,9 @@
       },
       "clear_activity_log": {
         "name": "Live-Protokoll leeren"
+      },
+      "run_recovery_assessment": {
+        "name": "Wiederherstellungstest ausführen"
       }
     }
   },
@@ -745,6 +768,9 @@
     },
     "invalid_recovery_preparedness": {
       "message": "Der ausgewählte Notfallvorsorge-Eintrag oder Status ist ungültig."
+    },
+    "invalid_restore_test": {
+      "message": "Der Test-Restore konnte nicht dokumentiert werden. Prüfe, ob ein Backup vorhanden ist und nur zulässige Werte verwendet wurden."
     }
   }
 }

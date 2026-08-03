@@ -46,6 +46,7 @@ from .entity import BackupCheckupAgentEntity, BackupCheckupEntity
 from .entity_mode import entity_enabled_by_default
 from .models import BackupAgentSummary, BackupCheckupData
 from .recovery import RECOVERY_RECOMMENDATION_OPTIONS, RECOVERY_STATUS_OPTIONS
+from .recovery_simulation import SIMULATION_STATUS_OPTIONS
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -222,6 +223,9 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
             "content_comparison": data.recovery_content_comparison,
             "storage_resilience": data.recovery_storage_resilience,
             "preparedness": data.recovery_preparedness,
+            "restore_simulation": data.recovery_restore_simulation,
+            "restore_test": data.recovery_restore_test,
+            "recovery_plan": data.recovery_plan,
         },
     ),
     BackupCheckupSensorDescription(
@@ -247,6 +251,23 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
             "score": data.recovery_readiness_score,
             "deductions": data.recovery_deductions,
         },
+    ),
+    BackupCheckupSensorDescription(
+        key="restore_simulation_status",
+        translation_key="restore_simulation_status",
+        icon="mdi:test-tube",
+        device_class=SensorDeviceClass.ENUM,
+        options=SIMULATION_STATUS_OPTIONS,
+        value_fn=lambda data: data.recovery_restore_simulation.get("status", "not_run"),
+        attributes_fn=lambda data: data.recovery_restore_simulation,
+    ),
+    BackupCheckupSensorDescription(
+        key="last_restore_test",
+        translation_key="last_restore_test",
+        icon="mdi:history",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        value_fn=lambda data: data.last_restore_test,
+        attributes_fn=lambda data: data.recovery_restore_test,
     ),
     BackupCheckupSensorDescription(
         key="health_score",

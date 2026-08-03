@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from pathlib import Path
 
 import voluptuous as vol
-from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -25,6 +25,8 @@ from .activity import (
 from .configuration import normalize_configuration
 from .const import (
     ATTR_PREPAREDNESS_ITEM,
+    ATTR_RESTORE_TEST_RESULT,
+    ATTR_RESTORE_TEST_SCOPE,
     ATTR_PREPAREDNESS_SECTION,
     ATTR_PREPAREDNESS_STATUS,
     CONF_ACTIVITY_LOGGING_ENABLED,
@@ -70,6 +72,7 @@ from .const import (
     PROFILE_CUSTOM,
     SERVICE_CLEAR_ACTIVITY_LOG,
     SERVICE_REFRESH,
+    SERVICE_RECORD_RESTORE_TEST,
     SERVICE_TEST_NOTIFICATION,
     SERVICE_VERIFY_LATEST_BACKUP,
     SERVICE_SET_RECOVERY_PREPAREDNESS,
@@ -90,6 +93,11 @@ from .recovery_preparedness import (
     SECTION_DEPENDENCIES,
     SECTION_OPTIONS,
     RecoveryPreparednessStore,
+)
+from .recovery_restore import (
+    RESTORE_TEST_RESULT_OPTIONS,
+    RESTORE_TEST_SCOPE_OPTIONS,
+    RecoveryRestoreTestStore,
 )
 from .repairs import (
     async_remove_issues,
@@ -112,6 +120,13 @@ _RECOVERY_PREPAREDNESS_SCHEMA = vol.Schema(
         vol.Required(ATTR_PREPAREDNESS_SECTION): vol.In(SECTION_OPTIONS),
         vol.Required(ATTR_PREPAREDNESS_ITEM): cv.string,
         vol.Required(ATTR_PREPAREDNESS_STATUS): cv.string,
+    }
+)
+
+_RECOVERY_RESTORE_TEST_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_RESTORE_TEST_RESULT): vol.In(RESTORE_TEST_RESULT_OPTIONS),
+        vol.Required(ATTR_RESTORE_TEST_SCOPE): vol.In(RESTORE_TEST_SCOPE_OPTIONS),
     }
 )
 
@@ -267,6 +282,31 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
         )
         await coordinator.async_request_refresh()
 
+    async def _async_record_restore_test(call: ServiceCall) -> None:
+        coordinator = _loaded_coordinator(hass)
+        latest = coordinator.data.latest_monitored_backup_record
+        try:
+            await coordinator.recovery_restore_tests.async_record(
+                latest,
+                call.data[ATTR_RESTORE_TEST_RESULT],
+                call.data[ATTR_RESTORE_TEST_SCOPE],
+            )
+        except ValueError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_restore_test",
+            ) from err
+        _record_activity(
+            coordinator,
+            "restore_test_documented",
+            ACTIVITY_OUTCOME_COMPLETED,
+            details={
+                "result": call.data[ATTR_RESTORE_TEST_RESULT],
+                "scope": call.data[ATTR_RESTORE_TEST_SCOPE],
+            },
+        )
+        await coordinator.async_request_refresh()
+
     async def _async_clear_activity_log(_call: ServiceCall) -> None:
         coordinator = _loaded_coordinator(hass)
         await coordinator.activity.async_clear()
@@ -284,6 +324,13 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
         SERVICE_SET_RECOVERY_PREPAREDNESS,
         _async_set_recovery_preparedness,
         _RECOVERY_PREPAREDNESS_SCHEMA,
+    )
+    async_register_admin_service(
+        hass,
+        DOMAIN,
+        SERVICE_RECORD_RESTORE_TEST,
+        _async_record_restore_test,
+        _RECOVERY_RESTORE_TEST_SCHEMA,
     )
     return True
 
@@ -384,6 +431,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(coordinator.async_shutdown)
     await coordinator.activity.async_load()
     await coordinator.recovery_preparedness.async_load()
+    await coordinator.recovery_restore_tests.async_load()
     _record_activity(
         coordinator,
         "config_entry_setup",
@@ -490,6 +538,7 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
             coordinator.notification_manager.async_remove,
             coordinator.activity.async_remove,
             coordinator.recovery_preparedness.async_remove,
+            coordinator.recovery_restore_tests.async_remove,
         )
     else:
         removers = (
@@ -498,6 +547,7 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
             BackupCheckupNotificationManager(hass, entry.entry_id).async_remove,
             BackupCheckupActivityLog(hass, entry.entry_id).async_remove,
             RecoveryPreparednessStore(hass, entry.entry_id).async_remove,
+            RecoveryRestoreTestStore(hass, entry.entry_id).async_remove,
         )
 
     for remove in removers:

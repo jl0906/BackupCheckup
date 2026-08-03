@@ -25,6 +25,8 @@ STANDARD_SENSOR_KEYS = frozenset(
         "recovery_readiness",
         "recovery_status",
         "recovery_recommendation",
+        "restore_simulation_status",
+        "last_restore_test",
         "health_rating",
         "size_trend",
         "average_backup_size",
@@ -63,6 +65,8 @@ STANDARD_BINARY_SENSOR_KEYS = frozenset(
         "backup_content_changed",
         "recovery_checklist_incomplete",
         "external_dependency_unprotected",
+        "restore_test_overdue",
+        "recovery_plan_incomplete",
         "backup_integrity_problem",
         "backup_integrity_warning",
         "backup_checksum_changed",
@@ -72,6 +76,7 @@ STANDARD_BINARY_SENSOR_KEYS = frozenset(
 STANDARD_BUTTON_KEYS = frozenset(
     {
         "verify_latest_backup",
+        "run_recovery_assessment",
         "refresh",
         "test_notification",
     }

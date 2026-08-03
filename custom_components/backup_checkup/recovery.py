@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 from .const import (
@@ -12,7 +13,10 @@ from .const import (
 )
 from .models import BackupAgentSummary, BackupIntegrityResult, BackupRecord
 from .recovery_inventory import RecoveryInventory, build_recovery_inventory
+from .recovery_plan import build_recovery_plan
 from .recovery_preparedness import RecoveryPreparednessSnapshot
+from .recovery_restore import RestoreTestSnapshot
+from .recovery_simulation import simulate_restore
 
 RECOVERY_STATUS_READY = "ready"
 RECOVERY_STATUS_LIMITED = "limited"
@@ -32,6 +36,8 @@ RECOVERY_RECOMMENDATION_REVIEW_CONTENTS = "review_backup_contents"
 RECOVERY_RECOMMENDATION_DATABASE = "enable_database_check"
 RECOVERY_RECOMMENDATION_CHECKLIST = "complete_recovery_checklist"
 RECOVERY_RECOMMENDATION_DEPENDENCIES = "protect_external_dependencies"
+RECOVERY_RECOMMENDATION_SIMULATION = "run_restore_simulation"
+RECOVERY_RECOMMENDATION_RESTORE_TEST = "document_restore_test"
 RECOVERY_RECOMMENDATION_NONE = "none"
 RECOVERY_RECOMMENDATION_OPTIONS = (
     RECOVERY_RECOMMENDATION_NONE,
@@ -42,6 +48,8 @@ RECOVERY_RECOMMENDATION_OPTIONS = (
     RECOVERY_RECOMMENDATION_DATABASE,
     RECOVERY_RECOMMENDATION_CHECKLIST,
     RECOVERY_RECOMMENDATION_DEPENDENCIES,
+    RECOVERY_RECOMMENDATION_SIMULATION,
+    RECOVERY_RECOMMENDATION_RESTORE_TEST,
 )
 
 
@@ -58,6 +66,9 @@ class RecoveryReadiness:
     content_comparison: dict[str, Any]
     storage_resilience: dict[str, Any]
     preparedness: dict[str, Any]
+    restore_simulation: dict[str, Any]
+    restore_test: dict[str, Any]
+    recovery_plan: dict[str, Any]
     backup_content_changed: bool
     external_copy_missing: bool
 
@@ -85,6 +96,8 @@ def _checks(
     backup_stale: bool,
     database_check_enabled: bool,
     preparedness: RecoveryPreparednessSnapshot,
+    simulated_restore_passed: bool | None,
+    restore_test_passed: bool | None,
 ) -> dict[str, bool | None]:
     """Return all recovery checks from current inventory and verification state."""
     applies_to_latest = bool(latest and integrity.backup_id == latest.backup_id)
@@ -120,6 +133,8 @@ def _checks(
         ),
         "preparedness_checklist_complete": preparedness.checklist_complete,
         "external_dependencies_protected": preparedness.dependencies_protected,
+        "simulated_restore_passed": simulated_restore_passed,
+        "test_restore_documented": restore_test_passed,
     }
 
 
@@ -127,35 +142,39 @@ def _deductions(
     latest: BackupRecord | None,
     checks: dict[str, bool | None],
 ) -> dict[str, int]:
-    """Return weighted deductions while treating uncertain metadata conservatively."""
+    """Return a balanced 100-point recovery model with conservative uncertainty."""
     if latest is None:
         return {"backup_available": 100}
     weights = {
-        "backup_available": 20,
-        "backup_current": 12,
-        "backup_complete": 12,
-        "homeassistant_included": 10,
-        "database_included": 5,
-        "integrity_verified": 15,
-        "database_verified": 5,
+        "backup_current": 8,
+        "backup_complete": 10,
+        "homeassistant_included": 8,
+        "database_included": 4,
+        "integrity_verified": 12,
+        "database_verified": 4,
         "independent_copy": 8,
         "multiple_failure_domains": 4,
-        "copy_sizes_consistent": 4,
-        "content_stable": 5,
+        "copy_sizes_consistent": 3,
+        "content_stable": 4,
         "preparedness_checklist_complete": 7,
         "external_dependencies_protected": 5,
+        "simulated_restore_passed": 10,
+        "test_restore_documented": 7,
     }
     deductions = {
         key: weight for key, weight in weights.items() if checks[key] is False
     }
-    for key in (
+    uncertain = (
         "homeassistant_included",
         "database_included",
         "independent_copy",
         "multiple_failure_domains",
         "preparedness_checklist_complete",
         "external_dependencies_protected",
-    ):
+        "simulated_restore_passed",
+        "test_restore_documented",
+    )
+    for key in uncertain:
         if checks[key] is None:
             deductions[key] = max(1, weights[key] // 2)
     return deductions
@@ -183,6 +202,10 @@ def _recommendation(
         return RECOVERY_RECOMMENDATION_CHECKLIST
     if checks["external_dependencies_protected"] is not True:
         return RECOVERY_RECOMMENDATION_DEPENDENCIES
+    if checks["simulated_restore_passed"] is not True:
+        return RECOVERY_RECOMMENDATION_SIMULATION
+    if checks["test_restore_documented"] is not True:
+        return RECOVERY_RECOMMENDATION_RESTORE_TEST
     return RECOVERY_RECOMMENDATION_NONE
 
 
@@ -196,11 +219,19 @@ def assess_recovery_readiness(
     backups: tuple[BackupRecord, ...] = (),
     agent_summaries: tuple[BackupAgentSummary, ...] = (),
     preparedness: RecoveryPreparednessSnapshot | None = None,
+    restore_test: RestoreTestSnapshot | None = None,
+    generated_at: datetime | None = None,
+    installation_type: str | None = None,
+    language: str = "en",
 ) -> RecoveryReadiness:
     """Assess whether the latest backup is suitable for disaster recovery."""
     del required_locations  # Replaced by failure-domain-aware redundancy in alpha4.
     inventory = build_recovery_inventory(latest, backups, agent_summaries)
     preparedness_snapshot = preparedness or RecoveryPreparednessSnapshot.empty()
+    restore_test_snapshot = restore_test or RestoreTestSnapshot.empty()
+    simulation = simulate_restore(
+        latest, integrity, database_check_enabled=database_check_enabled
+    )
     checks = _checks(
         latest,
         inventory,
@@ -208,9 +239,21 @@ def assess_recovery_readiness(
         backup_stale=backup_stale,
         database_check_enabled=database_check_enabled,
         preparedness=preparedness_snapshot,
+        simulated_restore_passed=simulation.passed,
+        restore_test_passed=restore_test_snapshot.passed,
     )
     deductions = _deductions(latest, checks)
     score = max(0, 100 - sum(deductions.values()))
+    plan = build_recovery_plan(
+        latest,
+        integrity,
+        preparedness_snapshot,
+        simulation,
+        restore_test_snapshot,
+        generated_at=generated_at or datetime.now(UTC),
+        installation_type=installation_type,
+        language=language,
+    )
     recommendation = _recommendation(
         latest,
         checks,
@@ -225,6 +268,8 @@ def assess_recovery_readiness(
             preparedness_complete=(
                 checks["preparedness_checklist_complete"] is True
                 and checks["external_dependencies_protected"] is True
+                and checks["simulated_restore_passed"] is True
+                and checks["test_restore_documented"] is True
             ),
         ),
         recommendation=recommendation,
@@ -234,6 +279,9 @@ def assess_recovery_readiness(
         content_comparison=inventory.comparison.as_dict(),
         storage_resilience=inventory.storage.as_dict(),
         preparedness=preparedness_snapshot.as_dict(),
+        restore_simulation=simulation.as_dict(),
+        restore_test=restore_test_snapshot.as_dict(),
+        recovery_plan=plan.as_dict(),
         backup_content_changed=inventory.comparison.material_regression is True,
         external_copy_missing=bool(
             latest is not None and inventory.storage.independent_copy is False

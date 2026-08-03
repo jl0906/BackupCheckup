@@ -498,6 +498,14 @@ class BackupCheckupData:
     recovery_content_comparison: dict[str, Any] = field(default_factory=dict)
     recovery_storage_resilience: dict[str, Any] = field(default_factory=dict)
     recovery_preparedness: dict[str, Any] = field(default_factory=dict)
+    recovery_restore_simulation: dict[str, Any] = field(default_factory=dict)
+    recovery_restore_test: dict[str, Any] = field(default_factory=dict)
+    recovery_plan: dict[str, Any] = field(default_factory=dict)
+    last_restore_test: datetime | None = None
+    restore_test_result: str | None = None
+    restore_test_scope: str | None = None
+    restore_test_overdue: bool = False
+    recovery_plan_incomplete: bool = False
     recovery_checklist_incomplete: bool = False
     external_dependency_unprotected: bool = False
     backup_content_changed: bool = False

@@ -76,3 +76,30 @@ set_recovery_preparedness:
             - protected
             - unprotected
             - not_applicable
+
+record_restore_test:
+  name: Document test restore
+  description: >-
+    Records the outcome of a restore test performed outside the productive Home
+    Assistant instance. The action stores only the current backup reference, fixed
+    enum values, and the current timestamp. No notes or secrets are accepted.
+    Administrator access is required.
+  fields:
+    result:
+      name: Result
+      description: Whether the tested restore completed successfully.
+      required: true
+      selector:
+        select:
+          options:
+            - successful
+            - failed
+    scope:
+      name: Scope
+      description: Whether a full or partial restore was tested.
+      required: true
+      selector:
+        select:
+          options:
+            - full
+            - partial

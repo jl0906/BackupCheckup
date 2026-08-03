@@ -181,6 +181,13 @@ def _recovery_diagnostics(data: BackupCheckupData) -> dict[str, Any]:
         "content_comparison": data.recovery_content_comparison,
         "storage_resilience": data.recovery_storage_resilience,
         "preparedness": data.recovery_preparedness,
+        "restore_simulation": data.recovery_restore_simulation,
+        "restore_test": data.recovery_restore_test,
+        "recovery_plan": {
+            key: value
+            for key, value in data.recovery_plan.items()
+            if key != "exports"
+        },
         "backup_content_changed": data.backup_content_changed,
         "external_copy_missing": data.external_copy_missing,
     }

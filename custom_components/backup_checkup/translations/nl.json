@@ -524,8 +524,22 @@
           "enable_database_check": "Enable or run the database check",
           "review_backup_contents": "Gewijzigde back-upinhoud controleren",
           "complete_recovery_checklist": "Complete the guided recovery checklist",
-          "protect_external_dependencies": "Protect external dependencies"
+          "protect_external_dependencies": "Protect external dependencies",
+          "run_restore_simulation": "Run the simulated restore assessment",
+          "document_restore_test": "Document a successful test restore"
         }
+      },
+      "restore_simulation_status": {
+        "name": "Simulated restore test",
+        "state": {
+          "passed": "Passed",
+          "warning": "Passed with warnings",
+          "failed": "Failed",
+          "not_run": "Not run"
+        }
+      },
+      "last_restore_test": {
+        "name": "Last test restore"
       }
     },
     "binary_sensor": {
@@ -591,6 +605,12 @@
       },
       "external_dependency_unprotected": {
         "name": "External dependency unprotected"
+      },
+      "restore_test_overdue": {
+        "name": "Test restore missing or expired"
+      },
+      "recovery_plan_incomplete": {
+        "name": "Recovery plan incomplete"
       }
     },
     "button": {
@@ -605,6 +625,9 @@
       },
       "clear_activity_log": {
         "name": "Live-logboek wissen"
+      },
+      "run_recovery_assessment": {
+        "name": "Run recovery assessment"
       }
     }
   },
@@ -745,6 +768,9 @@
     },
     "invalid_recovery_preparedness": {
       "message": "The selected recovery-preparedness item or status is invalid."
+    },
+    "invalid_restore_test": {
+      "message": "The restore test could not be documented. Make sure a backup exists and only supported values are used."
     }
   }
 }

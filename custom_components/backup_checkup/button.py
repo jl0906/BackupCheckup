@@ -34,6 +34,7 @@ async def async_setup_entry(
     async_add_entities(
         [
             BackupCheckupVerifyButton(coordinator, entry),
+            BackupCheckupRecoveryAssessmentButton(coordinator, entry),
             BackupCheckupRefreshButton(coordinator, entry),
             BackupCheckupTestNotificationButton(coordinator, entry),
             BackupCheckupClearActivityLogButton(coordinator, entry),
@@ -69,6 +70,42 @@ class BackupCheckupVerifyButton(BackupCheckupEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         """Start the administrator-protected integrity-check action."""
+        await self.hass.services.async_call(
+            DOMAIN,
+            SERVICE_VERIFY_LATEST_BACKUP,
+            blocking=True,
+            context=self._context,
+        )
+
+
+class BackupCheckupRecoveryAssessmentButton(BackupCheckupEntity, ButtonEntity):
+    """Run the non-destructive recovery assessment for the newest backup."""
+
+    _attr_translation_key = "run_recovery_assessment"
+    _attr_icon = "mdi:home-search-outline"
+
+    def __init__(
+        self,
+        coordinator: BackupCheckupCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        """Initialize the recovery-assessment button."""
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{entry.entry_id}_run_recovery_assessment"
+        self.entity_id = "button.backup_checkup_run_recovery_assessment"
+
+    @property
+    def available(self) -> bool:
+        """Use the same safety gates as the full backup verification."""
+        return (
+            super().available
+            and bool(self.coordinator.data.monitored_backups)
+            and not self.coordinator.integrity_check_pending_or_running
+            and not self.coordinator.manual_verification_cooldown_active
+        )
+
+    async def async_press(self) -> None:
+        """Verify the latest backup; the simulation is derived after refresh."""
         await self.hass.services.async_call(
             DOMAIN,
             SERVICE_VERIFY_LATEST_BACKUP,
