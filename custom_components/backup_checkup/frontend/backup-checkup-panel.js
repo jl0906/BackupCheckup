@@ -1,4 +1,4 @@
-const PANEL_ELEMENT_NAME = "backup-checkup-panel-v3-0-0-alpha2-r3";
+const PANEL_ELEMENT_NAME = "backup-checkup-panel-v3-0-0-alpha3-r4";
 
 const TRANSLATION_SEPARATOR = "\u001f";
 const TRANSLATION_KEYS = Object.freeze({
@@ -199,9 +199,94 @@ const TEXT = {
   sv: createLocale(["Säkerhetskopieöversikt\u001fLivestatus för dina Home Assistant-säkerhetskopior\u001fSäkerhetskopieringen fungerar korrekt\u001fSäkerhetskopieringen behöver uppmärksamhet\u001fSäkerhetskopiedata är ännu inte tillgängliga\u001fHälsopoäng\u001fAktuell status\u001fRekommendation\u001fSenaste säkerhetskopian\u001fStorlek på senaste säkerhetskopian\u001fLagrade säkerhetskopior\u001fIntegritet\u001fAktiva problem\u001fInga aktiva säkerhetskopieringsproblem.\u001fLagringsplatser\u001fIngen lagringsinformation är tillgänglig.\u001fsäkerhetskopior\u001fSenaste säkerhetskopian\u001fUppdatera\u001fKontrollera senaste säkerhetskopian\u001fInställningar\u001fUppdaterad\u001fÅtgärden kunde inte slutföras.\u001fÅtgärden kunde inte slutföras.\u001fKontrollera Home Assistant och lagringsplatsen och försök igen.\u001fVarför detta värde?\u001fInga avdrag från hälsopoängen är aktiva.\u001fpoäng avdrag\u001fSenaste verifieringsresultat\u001fKontrollerad\u001fVaraktighet\u001fVerifierad storlek\u001fVerifierade filer\u001fVarningar\u001fRekommenderat nästa steg\u001fStatus\u001fNya poster tillgängliga\u001fRensa logg\u001fExportera logg\u001fRensa alla poster i liveloggen?\u001fPermanent\u001fTill omstart\u001fFilter\u001fÖversikt\u001fLivelogg\u001fBackupCheckup-livelogg\u001fSök i loggen\u001fInga matchande loggposter.\u001fDetaljerad liveloggning är inaktiverad i integrationsalternativen.\u001fLive","Alla\u001fInfo\u001fVarningar\u001fFel","Alla åtgärder\u001fKontroller\u001fSäkerhetskopior\u001fAviseringar\u001fSystem","Online\u001fFöråldrad\u001fOffline","Orsak\u001fFeltyp\u001fOrsak\u001fUtlösare\u001fStatus\u001fVersion\u001fMottagare\u001fAvisering\u001fFörsök\u001fÅterstår\u001fFel\u001fAktiverad\u001fPlattformar","Manuell\u001fAutomatisk\u001fSäkerhetsväntetid aktiv\u001fInte konfigurerad\u001fJa\u001fNej\u001fTest","Åtgärden överskred tidsgränsen.\u001fLagringsplatsen kunde inte nås.\u001fDen nödvändiga funktionen är inte konfigurerad.\u001fSäkerhetsväntetiden är fortfarande aktiv.\u001fSäkerhetskopians lösenord krävs.\u001fTjänsten är inte tillgänglig.","Försök igen och kontrollera tidsgränsen.\u001fKontrollera lagringsanslutningen och försök igen.\u001fSlutför integrationsalternativen.\u001fVänta tills den visade tiden har löpt ut.\u001fSpara lösenordet och försök igen.\u001fKontrollera Home Assistant och lagringsplatsen.","Tillgänglighet\u001fSäkerhetskopians ålder\u001fKvalitet\u001fIntegritetskontroll\u001fLagring och redundans\u001fAutomatiska kopior och schema","Förbereder integritetskontroll\u001fFörbereder lagringskopia\u001fHämtar säkerhetskopia\u001fPackar upp säkerhetskopia\u001fPackar upp krypterad säkerhetskopia\u001fLäser och kontrollerar databasen\u001fTar bort tillfälliga kontrolldata\u001fUppdaterar säkerhetskopielistan\u001fLäser säkerhetskopiehanteraren\u001fKör integritetskontroll\u001fBehandlar kontrollbegäran\u001fSparar kontrollresultat\u001fUppdaterar skyddsstatus\u001fSkickar avisering\u001fBehandlar aviseringar\u001fStartar integration\u001fKonfigurerar entiteter\u001fSynkroniserar reparationsmeddelanden\u001fSlutför första uppdateringen\u001fStoppar integration\u001fLäser sparad kontrollstatus\u001fSchemalägger automatisk kontroll\u001fÖvervakar bakgrundskontroll\u001fUppdaterar status efter kontroll\u001fKör manuell uppdatering\u001fStartar manuell kontroll\u001fTestar avisering\u001fKonfigurerar sidopanel\u001fStoppar integrationspost\u001fTar bort integrationsdata","startad\u001fslutförd\u001fpågår\u001föverhoppad\u001fmisslyckad\u001favbruten"]),
 };
 
+const RECOVERY_CHECK_KEYS = Object.freeze([
+  "backup_available",
+  "backup_current",
+  "backup_complete",
+  "homeassistant_included",
+  "database_included",
+  "integrity_verified",
+  "database_verified",
+  "independent_copy",
+  "copy_sizes_consistent",
+]);
+
+const RECOVERY_TEXT = Object.freeze({
+  en: {
+    tab: "Recovery",
+    title: "Recovery readiness",
+    subtitle: "Can Home Assistant be restored after a total system failure?",
+    score: "Recovery score",
+    status: "Recovery status",
+    recommendation: "Priority action",
+    checks: "Recovery checks",
+    deductions: "Score deductions",
+    noDeductions: "No recovery-score deductions are active.",
+    pointsDeducted: "points deducted",
+    passed: "Passed",
+    failed: "Needs action",
+    unknown: "Not assessed",
+    readyMessage: "The recovery foundation is ready.",
+    limitedMessage: "Recovery is possible, but important gaps remain.",
+    insufficientMessage: "Recovery readiness is insufficient.",
+    unknownMessage: "Recovery readiness cannot be assessed yet.",
+    checkLabels: {
+      backup_available: "Backup available",
+      backup_current: "Backup is current",
+      backup_complete: "Backup is complete",
+      homeassistant_included: "Home Assistant data included",
+      database_included: "Database included",
+      integrity_verified: "Integrity verified",
+      database_verified: "Database verified",
+      independent_copy: "Independent copy available",
+      copy_sizes_consistent: "Copy sizes are consistent",
+    },
+  },
+  de: {
+    tab: "Notfallvorsorge",
+    title: "Wiederherstellungsbereitschaft",
+    subtitle: "Kann Home Assistant nach einem vollständigen Systemausfall wiederhergestellt werden?",
+    score: "Recovery Readiness Score",
+    status: "Wiederherstellungsstatus",
+    recommendation: "Wichtigste Maßnahme",
+    checks: "Prüfpunkte der Notfallvorsorge",
+    deductions: "Punktabzüge",
+    noDeductions: "Für die Wiederherstellungsbereitschaft sind keine Punktabzüge aktiv.",
+    pointsDeducted: "Punkte abgezogen",
+    passed: "Erfüllt",
+    failed: "Handlungsbedarf",
+    unknown: "Nicht bewertet",
+    readyMessage: "Die Grundlage für eine Wiederherstellung ist bereit.",
+    limitedMessage: "Eine Wiederherstellung ist möglich, aber wichtige Lücken bestehen.",
+    insufficientMessage: "Die Wiederherstellungsbereitschaft ist unzureichend.",
+    unknownMessage: "Die Wiederherstellungsbereitschaft kann noch nicht bewertet werden.",
+    checkLabels: {
+      backup_available: "Backup vorhanden",
+      backup_current: "Backup aktuell",
+      backup_complete: "Backup vollständig",
+      homeassistant_included: "Home-Assistant-Daten enthalten",
+      database_included: "Datenbank enthalten",
+      integrity_verified: "Integrität geprüft",
+      database_verified: "Datenbank geprüft",
+      independent_copy: "Unabhängige Kopie vorhanden",
+      copy_sizes_consistent: "Kopiergrößen stimmen überein",
+    },
+  },
+  da: { tab: "Gendannelse", title: "Gendannelsesberedskab", score: "Gendannelsesscore", status: "Gendannelsesstatus", recommendation: "Vigtigste handling", checks: "Gendannelseskontroller", deductions: "Pointfradrag" },
+  es: { tab: "Recuperación", title: "Preparación para la recuperación", score: "Puntuación de recuperación", status: "Estado de recuperación", recommendation: "Acción prioritaria", checks: "Comprobaciones de recuperación", deductions: "Deducciones de puntos" },
+  fr: { tab: "Restauration", title: "Préparation à la restauration", score: "Score de restauration", status: "État de restauration", recommendation: "Action prioritaire", checks: "Contrôles de restauration", deductions: "Déductions de points" },
+  it: { tab: "Ripristino", title: "Preparazione al ripristino", score: "Punteggio di ripristino", status: "Stato di ripristino", recommendation: "Azione prioritaria", checks: "Controlli di ripristino", deductions: "Detrazioni di punti" },
+  nl: { tab: "Herstel", title: "Herstelgereedheid", score: "Herstelscore", status: "Herstelstatus", recommendation: "Belangrijkste actie", checks: "Herstelcontroles", deductions: "Puntaftrek" },
+  pl: { tab: "Odzyskiwanie", title: "Gotowość do odzyskiwania", score: "Wynik odzyskiwania", status: "Stan odzyskiwania", recommendation: "Najważniejsze działanie", checks: "Kontrole odzyskiwania", deductions: "Odjęte punkty" },
+  sv: { tab: "Återställning", title: "Återställningsberedskap", score: "Återställningspoäng", status: "Återställningsstatus", recommendation: "Viktigaste åtgärd", checks: "Återställningskontroller", deductions: "Poängavdrag" },
+});
+
 const DEFAULT_ENTITIES = {
   status: "sensor.backup_checkup_status",
   health_score: "sensor.backup_checkup_health_score",
+  recovery_readiness: "sensor.backup_checkup_recovery_readiness",
+  recovery_status: "sensor.backup_checkup_recovery_status",
+  recovery_recommendation: "sensor.backup_checkup_recovery_recommendation",
   recommendation: "sensor.backup_checkup_recommendation",
   stored_backups: "sensor.backup_checkup_stored_backups",
   latest_backup_age: "sensor.backup_checkup_latest_backup_age",
@@ -288,12 +373,22 @@ class BackupCheckupPanel extends HTMLElement {
   }
 
   _text() {
-    const selected = TEXT[this._language()];
+    const language = this._language();
+    const selected = TEXT[language];
+    const recovery = RECOVERY_TEXT[language] || {};
     return {
       ...TEXT.en,
       ...selected,
       activityActions: { ...TEXT.en.activityActions, ...selected.activityActions },
       activityOutcomes: { ...TEXT.en.activityOutcomes, ...selected.activityOutcomes },
+      recovery: {
+        ...RECOVERY_TEXT.en,
+        ...recovery,
+        checkLabels: {
+          ...RECOVERY_TEXT.en.checkLabels,
+          ...(recovery.checkLabels || {}),
+        },
+      },
     };
   }
 
@@ -325,6 +420,15 @@ class BackupCheckupPanel extends HTMLElement {
     const entities = this._entities();
     if (this._activeTab === "logs") {
       return [entities.activity_log, entities.clear_activity_log];
+    }
+    if (this._activeTab === "recovery") {
+      return [
+        entities.recovery_readiness,
+        entities.recovery_status,
+        entities.recovery_recommendation,
+        entities.verify,
+        entities.refresh,
+      ];
     }
     return Object.entries(entities)
       .filter(([key]) => !["activity_log", "clear_activity_log"].includes(key))
@@ -428,6 +532,61 @@ class BackupCheckupPanel extends HTMLElement {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "—";
     return new Intl.DateTimeFormat(this._language(), options).format(date);
+  }
+
+  _localizedRecoveryStatus(code) {
+    if (!code) return "—";
+    const key = `component.backup_checkup.entity.sensor.recovery_status.state.${code}`;
+    return this._hass?.localize?.(key) || this._humanize(code);
+  }
+
+  _localizedRecoveryRecommendation(code) {
+    if (!code) return "—";
+    const key = `component.backup_checkup.entity.sensor.recovery_recommendation.state.${code}`;
+    return this._hass?.localize?.(key) || this._humanize(code);
+  }
+
+  _recoveryTone(status) {
+    if (status === "ready") return "good";
+    if (status === "limited") return "warning";
+    if (status === "insufficient") return "danger";
+    return "neutral";
+  }
+
+  _recoveryMessage(status, text) {
+    if (status === "ready") return text.readyMessage;
+    if (status === "limited") return text.limitedMessage;
+    if (status === "insufficient") return text.insufficientMessage;
+    return text.unknownMessage;
+  }
+
+  _recoveryCheckRows(checks, text) {
+    return RECOVERY_CHECK_KEYS.map((key) => {
+      const value = Object.prototype.hasOwnProperty.call(checks || {}, key)
+        ? checks[key] : null;
+      const tone = value === true ? "good" : value === false ? "danger" : "neutral";
+      const icon = value === true
+        ? "mdi:check-circle-outline"
+        : value === false ? "mdi:alert-circle-outline" : "mdi:help-circle-outline";
+      const result = value === true ? text.passed : value === false ? text.failed : text.unknown;
+      return `<div class="recovery-check ${tone}">
+        <ha-icon icon="${icon}"></ha-icon>
+        <div><strong>${this._escape(text.checkLabels?.[key] || this._humanize(key))}</strong><span>${this._escape(result)}</span></div>
+      </div>`;
+    }).join("");
+  }
+
+  _recoveryDeductionRows(deductions, text) {
+    const rows = Object.entries(deductions || {})
+      .filter(([, value]) => Number(value) > 0)
+      .sort((left, right) => Number(right[1]) - Number(left[1]));
+    if (!rows.length) {
+      return `<div class="empty success"><ha-icon icon="mdi:check-circle-outline"></ha-icon>${this._escape(text.noDeductions)}</div>`;
+    }
+    return rows.map(([key, value]) => `<div class="explanation-row">
+      <span>${this._escape(text.checkLabels?.[key] || this._humanize(key))}</span>
+      <strong>−${this._escape(value)} ${this._escape(text.pointsDeducted)}</strong>
+    </div>`).join("");
   }
 
   _storageRows(agents, text) {
@@ -544,6 +703,9 @@ class BackupCheckupPanel extends HTMLElement {
     const status = this._state("status");
     const problem = this._state("problem");
     const scoreState = this._state("health_score");
+    const recoveryReadiness = this._state("recovery_readiness");
+    const recoveryStatus = this._state("recovery_status");
+    const recoveryRecommendation = this._state("recovery_recommendation");
     const recommendation = this._state("recommendation");
     const stored = this._state("stored_backups");
     const latestAge = this._state("latest_backup_age");
@@ -554,6 +716,16 @@ class BackupCheckupPanel extends HTMLElement {
     const score = Number.isFinite(scoreValue)
       ? Math.min(100, Math.max(0, scoreValue))
       : null;
+    const recoveryScoreValue = Number(recoveryReadiness?.state);
+    const recoveryScore = Number.isFinite(recoveryScoreValue)
+      ? Math.min(100, Math.max(0, recoveryScoreValue))
+      : null;
+    const recoveryStatusCode = recoveryStatus?.state
+      || recoveryReadiness?.attributes?.status
+      || "unknown";
+    const recoveryRecommendationCode = recoveryRecommendation?.state
+      || recoveryReadiness?.attributes?.recommendation
+      || "none";
     const hasProblem = problem?.state === "on" || Boolean(status?.attributes?.problem);
     const tone = this._tone(status?.state, hasProblem);
     return {
@@ -574,6 +746,22 @@ class BackupCheckupPanel extends HTMLElement {
       integrityTone: this._integrityTone(integrity),
       integrityState: integrity,
       healthDeductions: scoreState?.attributes?.component_deductions || {},
+      recoveryScore,
+      recoveryScoreLabel: this._formatState(recoveryReadiness),
+      recoveryStatusCode,
+      recoveryStatusLabel: this._localizedRecoveryStatus(recoveryStatusCode),
+      recoveryRecommendationCode,
+      recoveryRecommendationLabel: this._localizedRecoveryRecommendation(
+        recoveryRecommendationCode
+      ),
+      recoveryTone: this._recoveryTone(recoveryStatusCode),
+      recoveryMessage: this._recoveryMessage(recoveryStatusCode, text.recovery),
+      recoveryChecks: recoveryReadiness?.attributes?.checks
+        || recoveryStatus?.attributes?.checks
+        || {},
+      recoveryDeductions: recoveryReadiness?.attributes?.deductions
+        || recoveryRecommendation?.attributes?.deductions
+        || {},
       isAdmin: Boolean(this._hass.user?.is_admin),
       verifyState: this._state("verify"),
       refreshState: this._state("refresh"),
@@ -612,10 +800,14 @@ class BackupCheckupPanel extends HTMLElement {
 
   _tabs(text) {
     const overviewActive = this._activeTab === "overview" ? "active" : "";
+    const recoveryActive = this._activeTab === "recovery" ? "active" : "";
     const logsActive = this._activeTab === "logs" ? "active" : "";
     return `<nav class="tabs" aria-label="BackupCheckup">
       <button class="tab ${overviewActive}" data-tab="overview">
         <ha-icon icon="mdi:view-dashboard-outline"></ha-icon>${this._escape(text.overviewTab)}
+      </button>
+      <button class="tab ${recoveryActive}" data-tab="recovery">
+        <ha-icon icon="mdi:lifebuoy"></ha-icon>${this._escape(text.recovery.tab)}
       </button>
       <button class="tab ${logsActive}" data-tab="logs">
         <ha-icon icon="mdi:text-box-search-outline"></ha-icon>${this._escape(text.logTab)}
@@ -636,6 +828,7 @@ class BackupCheckupPanel extends HTMLElement {
     </section>
     <section class="metrics">
       ${this._metric("mdi:shield-check-outline", model.text.status, model.statusLabel, model.tone)}
+      ${this._metric("mdi:lifebuoy", model.text.recovery.score, model.recoveryScoreLabel, model.recoveryTone)}
       ${this._metric("mdi:timer-sand", model.text.latestBackup, this._formatState(model.latestAge))}
       ${this._metric("mdi:database", model.text.backupSize, this._formatState(model.latestSize))}
       ${this._metric("mdi:archive-multiple", model.text.storedBackups, this._formatState(model.stored))}
@@ -661,6 +854,35 @@ class BackupCheckupPanel extends HTMLElement {
       <article class="card">
         <div class="card-title"><ha-icon icon="mdi:shield-search"></ha-icon><h3>${this._escape(model.text.integrityDetails)}</h3></div>
         <div class="rows">${this._integrityRows(model.integrityState, model.text)}</div>
+      </article>
+    </section>
+    ${this._actionFooter(model)}`;
+  }
+
+  _recoveryTemplate(model) {
+    const text = model.text.recovery;
+    return `<section class="hero ${model.recoveryTone}">
+      <div class="hero-copy">
+        <div class="eyebrow"><span></span>${this._escape(model.recoveryStatusLabel)}</div>
+        <h2>${this._escape(model.recoveryMessage)}</h2>
+        <p>${this._escape(text.subtitle)}</p>
+      </div>
+      <div class="score" style="--score:${model.recoveryScore ?? 0}">
+        <div><strong>${model.recoveryScore ?? "—"}</strong><span>${this._escape(text.score)}</span></div>
+      </div>
+    </section>
+    <section class="metrics recovery-summary">
+      ${this._metric("mdi:lifebuoy", text.status, model.recoveryStatusLabel, model.recoveryTone)}
+      ${this._metric("mdi:clipboard-check-outline", text.recommendation, model.recoveryRecommendationLabel, model.recoveryRecommendationCode === "none" ? "good" : "warning")}
+    </section>
+    <section class="content-grid recovery-grid">
+      <article class="card recovery-checks-card">
+        <div class="card-title"><ha-icon icon="mdi:clipboard-list-outline"></ha-icon><h3>${this._escape(text.checks)}</h3></div>
+        <div class="recovery-check-grid">${this._recoveryCheckRows(model.recoveryChecks, text)}</div>
+      </article>
+      <article class="card recovery-deductions-card">
+        <div class="card-title"><ha-icon icon="mdi:chart-donut"></ha-icon><h3>${this._escape(text.deductions)}</h3></div>
+        <div class="rows">${this._recoveryDeductionRows(model.recoveryDeductions, text)}</div>
       </article>
     </section>
     ${this._actionFooter(model)}`;
@@ -792,7 +1014,10 @@ class BackupCheckupPanel extends HTMLElement {
       this._lastActivityEntryCount = entryCount;
     }
     const content = this._activeTab === "logs"
-      ? this._logTemplate(model) : this._overviewTemplate(model);
+      ? this._logTemplate(model)
+      : this._activeTab === "recovery"
+        ? this._recoveryTemplate(model)
+        : this._overviewTemplate(model);
     const settingsButton = this._settingsButton(model.isAdmin, model.text);
 
     this.shadowRoot.innerHTML = `
@@ -947,7 +1172,7 @@ class BackupCheckupPanel extends HTMLElement {
       .score div { position:relative; display:flex; flex-direction:column; align-items:center; }
       .score strong { font-size:35px; line-height:1; }
       .score span { margin-top:7px; max-width:90px; text-align:center; color:var(--secondary-text-color); font-size:11px; }
-      .metrics { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:13px; margin:18px 0; }
+      .metrics { display:grid; grid-template-columns:repeat(auto-fit, minmax(175px, 1fr)); gap:13px; margin:18px 0; }
       .metric { --metric:#607d8b; min-height:105px; display:flex; align-items:flex-start; gap:12px; padding:18px; border-radius:17px; background:var(--card-background-color); box-shadow:var(--ha-card-box-shadow, 0 2px 8px rgba(0,0,0,.08)); }
       .metric.good { --metric:#2e9d68; } .metric.warning { --metric:#e79a24; } .metric.danger { --metric:#d84b55; }
       .metric > ha-icon { flex:0 0 auto; color:var(--metric); --mdc-icon-size:24px; }
@@ -961,6 +1186,17 @@ class BackupCheckupPanel extends HTMLElement {
       .card-title ha-icon { color:var(--primary-color); --mdc-icon-size:22px; }
       .card-title h3 { margin:0; font-size:16px; }
       .recommendation-card p { margin:0; font-size:19px; line-height:1.45; font-weight:550; }
+      .recovery-summary { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+      .recovery-grid { grid-template-columns:1fr; }
+      .recovery-checks-card, .recovery-deductions-card { grid-column:1 / -1; }
+      .recovery-check-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; }
+      .recovery-check { min-height:72px; display:flex; align-items:center; gap:11px; padding:13px; border:1px solid var(--divider-color); border-radius:13px; background:color-mix(in srgb, var(--card-background-color) 94%, var(--primary-color)); }
+      .recovery-check ha-icon { flex:0 0 auto; color:#607d8b; --mdc-icon-size:23px; }
+      .recovery-check.good ha-icon { color:#2e9d68; }
+      .recovery-check.danger ha-icon { color:#d84b55; }
+      .recovery-check div { min-width:0; display:flex; flex-direction:column; gap:4px; }
+      .recovery-check strong { font-size:13px; line-height:1.3; }
+      .recovery-check span { color:var(--secondary-text-color); font-size:11px; }
       .rows { display:flex; flex-direction:column; }
       .problem-row, .storage-row { display:flex; align-items:center; gap:12px; min-height:52px; border-top:1px solid var(--divider-color); }
       .problem-row:first-child, .storage-row:first-child { border-top:0; }
@@ -1028,8 +1264,8 @@ class BackupCheckupPanel extends HTMLElement {
       .action.primary { background:var(--primary-color); border-color:var(--primary-color); color:var(--text-primary-color, white); }
       .action.secondary { background:var(--card-background-color); color:var(--primary-text-color); }
       .action:disabled { opacity:.48; cursor:default; }
-      @media (max-width:900px) { .metrics { grid-template-columns:repeat(2, minmax(0, 1fr)); } .content-grid { grid-template-columns:1fr; } .storage-card { grid-column:auto; } .log-row { grid-template-columns:165px 1fr; } .log-row span { grid-column:2; } }
-      @media (max-width:620px) { main { padding:18px 12px 28px; } header { padding:0 4px; } header p { display:none; } .tabs { margin-top:0; } .hero { min-height:0; padding:24px 21px; } .score { width:104px; height:104px; margin-left:14px; } .score::before { inset:8px; } .score strong { font-size:27px; } .hero h2 { font-size:23px; } .metrics { grid-template-columns:1fr 1fr; gap:10px; } .metric { min-height:95px; padding:15px; } .content-grid { gap:12px; } .card { padding:18px; } .log-toolbar { align-items:stretch; flex-direction:column; } .live-indicator { align-self:flex-end; } .log-row { grid-template-columns:1fr; gap:3px; padding:10px 13px; } .log-row span { grid-column:auto; } footer { flex-direction:column-reverse; } .action { justify-content:center; } }
+      @media (max-width:900px) { .metrics { grid-template-columns:repeat(2, minmax(0, 1fr)); } .recovery-check-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .content-grid { grid-template-columns:1fr; } .storage-card { grid-column:auto; } .log-row { grid-template-columns:165px 1fr; } .log-row span { grid-column:2; } }
+      @media (max-width:620px) { main { padding:18px 12px 28px; } header { padding:0 4px; } header p { display:none; } .tabs { margin-top:0; } .hero { min-height:0; padding:24px 21px; } .score { width:104px; height:104px; margin-left:14px; } .score::before { inset:8px; } .score strong { font-size:27px; } .hero h2 { font-size:23px; } .metrics { grid-template-columns:1fr 1fr; gap:10px; } .metrics.recovery-summary, .recovery-check-grid { grid-template-columns:1fr; } .metric { min-height:95px; padding:15px; } .content-grid { gap:12px; } .card { padding:18px; } .log-toolbar { align-items:stretch; flex-direction:column; } .live-indicator { align-self:flex-end; } .log-row { grid-template-columns:1fr; gap:3px; padding:10px 13px; } .log-row span { grid-column:auto; } footer { flex-direction:column-reverse; } .action { justify-content:center; } }
       @media (max-width:390px) { .hero { align-items:flex-start; } .score { width:88px; height:88px; } .score span { display:none; } .metrics { grid-template-columns:1fr; } }
     `;
   }

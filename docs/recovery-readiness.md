@@ -1,6 +1,6 @@
 # Recovery Readiness
 
-BackupCheckup 3.0.0-alpha2 provides a separate recovery assessment. It answers
+BackupCheckup 3.0.0-alpha3 provides a separate recovery assessment. It answers
 whether the latest monitored backup provides a credible basis for recovery, not
 only whether normal backup operation is healthy.
 
@@ -17,6 +17,15 @@ deduction so the integration does not claim readiness without evidence.
 - Ready: 85–100
 - Limited: 55–84
 - Insufficient: 0–54 or no backup
+
+## Sidebar frontend
+
+The optional sidebar panel shows the Recovery Readiness Score in the main
+overview and provides a dedicated **Recovery / Notfallvorsorge** tab. The tab
+contains the localized recovery status, the highest-priority recommendation, all
+nine checks with Passed / Needs action / Not assessed states, and every active
+weighted deduction. The frontend consumes only the privacy-safe recovery entity
+states and attributes.
 
 ## Safety and privacy
 

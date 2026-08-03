@@ -1,5 +1,35 @@
 # Changelog
 
+## 3.0.0-alpha3
+
+**Recovery Readiness frontend**
+
+### Fixed
+
+- Fixed the Recovery Readiness features being available only as entities and
+  diagnostics while remaining invisible in the optional sidebar frontend.
+- Added the Recovery Readiness Score directly to the main overview so the new
+  3.0 assessment is visible without opening another page.
+- Added a dedicated **Recovery / Notfallvorsorge** tab with the recovery score,
+  localized status, highest-priority action, all nine readiness checks, and
+  every active weighted deduction.
+- Added clear Passed, Needs action, and Not assessed states without exposing
+  backup names, identifiers, paths, passwords, or archive contents.
+- Increased the versioned frontend asset revision again so Home Assistant cannot
+  reuse an alpha2 browser cache that lacks the recovery interface.
+
+### Quality assurance
+
+- Replaced the load-only frontend regression with an executable JavaScript view
+  test that reads simulated Home Assistant entity states and verifies the actual
+  German Recovery Readiness output in both the overview and dedicated tab.
+- Added source guards requiring the recovery entities, tab, score, checks, and
+  deductions to remain connected to visible frontend templates.
+- Alpha3 result: 24 tests passed, 6/6 Python functions executed, 94/94 Python
+  statements and 26/26 Python branches covered. The JavaScript bundle also passes
+  syntax, custom-element registration, localized model, fallback, and visible-view
+  execution tests.
+
 ## 3.0.0-alpha2
 
 **Frontend recovery and coverage hardening**

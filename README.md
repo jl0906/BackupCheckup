@@ -10,7 +10,7 @@
 
 <p align="center">
   <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-orange.svg">
-  <img alt="Version 3.0.0-alpha2" src="https://img.shields.io/badge/version-3.0.0--alpha2-blue.svg">
+  <img alt="Version 3.0.0-alpha3" src="https://img.shields.io/badge/version-3.0.0--alpha3-blue.svg">
   <img alt="AI Coded and Maintained" src="https://img.shields.io/badge/AI-Coded_and_Maintained-8A2BE2.svg">
   <img alt="Home Assistant 2026.3 or newer" src="https://img.shields.io/badge/Home_Assistant-2026.3_or_newer-41BDF5.svg">
   <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg">
@@ -59,7 +59,8 @@ Hardware detection is only a recommendation. BackupCheckup never changes your se
 
 Enable **Show BackupCheckup in the sidebar** during setup to add a responsive overview page directly to Home Assistant. It provides:
 
-- overall backup status and Health Score
+- overall backup status, Health Score, and Recovery Readiness Score
+- a dedicated **Recovery / Notfallvorsorge** tab with status, priority action, all nine checks, and weighted deductions
 - the recommended next action and active problems
 - latest backup age and size, stored-backup count, and integrity status
 - a compact overview of every configured backup storage location
@@ -199,18 +200,20 @@ Manual refreshes, integrity verification, and test notifications are administrat
 
 Expert mode additionally enables detailed per-storage entities. The separate **Enable detailed live logging** option records a privacy-safe journal for setup, refreshes, health changes, downloads, archive extraction, database checks, notifications, progress, and cleanup operations.
 
-The sidebar frontend contains separate **Overview** and **Live log** tabs. The log is searchable, filterable by severity and operation type, updates live without interrupting reading, and retains at most 250 entries. It can be exported as a privacy-safe JSON file or cleared by an administrator. Optional persistence keeps the same bounded, filtered entries for 1–30 days across restarts; it is disabled by default. The journal never includes backup names, raw IDs, paths, passwords, or backup contents.
+The sidebar frontend contains separate **Overview**, **Recovery / Notfallvorsorge**, and **Live log** tabs. The log is searchable, filterable by severity and operation type, updates live without interrupting reading, and retains at most 250 entries. It can be exported as a privacy-safe JSON file or cleared by an administrator. Optional persistence keeps the same bounded, filtered entries for 1–30 days across restarts; it is disabled by default. The journal never includes backup names, raw IDs, paths, passwords, or backup contents.
 
 ## Documentation
 
 - [Hardware-aware setup](docs/hardware-aware-setup-2.4.0.md)
 - [Entity reference](docs/entities.md)
 - [Integrity verification](docs/integrity.md)
+- [Recovery Readiness](docs/recovery-readiness.md)
 - [Activity logging](docs/logging.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [FAQ](docs/faq.md)
 - [Dashboard example](docs/examples/dashboard.yaml)
 - [Automation example](docs/examples/automation.yaml)
+- [Alpha3 coverage report](docs/coverage-3.0.0-alpha3.md)
 - [Function coverage report](docs/function-coverage-2.3.0.md)
 - [Security hardening report](docs/security-hardening-2.3.1.md)
 - [2.4.0 quality and Health Score audit](docs/quality-audit-health-score-2.4.0.md)
