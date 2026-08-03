@@ -1,5 +1,33 @@
 # Changelog
 
+## 3.0.0-alpha2
+
+**Frontend recovery and coverage hardening**
+
+### Fixed
+
+- Fixed the optional sidebar panel no longer loading after the alpha1 update.
+  The Python panel registration and bundled JavaScript now use the identical
+  versioned custom-element name.
+- Increased the panel asset revision so Home Assistant browsers cannot reuse the
+  broken alpha1 frontend module from cache.
+- Fixed Recovery Readiness reporting a non-zero percentage when no backup exists.
+  A missing backup now produces an unambiguous score of 0%, an insufficient
+  status, and the recommendation to create a complete backup.
+- Normalized the recovery weights to a 100-point model while retaining explicit
+  priority for completeness, verification, redundancy, and database checks.
+
+### Quality assurance
+
+- Added a Node-based frontend registration smoke test that executes the bundled
+  JavaScript and verifies the exact custom-element name registered for alpha2.
+- Added focused positive, negative, threshold, metadata, recommendation, and
+  duplicate-panel tests for every new or changed alpha2 production path.
+- Added AST-based function coverage and separate statement/branch gates for the
+  Recovery Readiness and frontend registration modules.
+- Alpha2 result: 22 tests passed, 6/6 functions executed, 94/94 statements and
+  26/26 branches covered.
+
 ## 3.0.0-alpha1
 
 **Recovery Readiness foundation**

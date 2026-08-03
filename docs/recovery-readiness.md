@@ -1,6 +1,6 @@
 # Recovery Readiness
 
-BackupCheckup 3.0.0-alpha1 introduces a separate recovery assessment. It answers
+BackupCheckup 3.0.0-alpha2 provides a separate recovery assessment. It answers
 whether the latest monitored backup provides a credible basis for recovery, not
 only whether normal backup operation is healthy.
 
