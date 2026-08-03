@@ -596,6 +596,8 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             backup_stale=freshness.backup_stale,
             required_locations=self.minimum_redundant_locations,
             database_check_enabled=self.database_integrity_check,
+            backups=monitoring_records,
+            agent_summaries=storage.summaries,
         )
 
         public_locations = self._public_location_ids(latest_locations)
@@ -673,6 +675,11 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             recovery_recommendation=recovery.recommendation,
             recovery_deductions=recovery.deductions,
             recovery_checks=recovery.checks,
+            recovery_content_inventory=recovery.content_inventory,
+            recovery_content_comparison=recovery.content_comparison,
+            recovery_storage_resilience=recovery.storage_resilience,
+            backup_content_changed=recovery.backup_content_changed,
+            external_copy_missing=recovery.external_copy_missing,
             average_backup_size=inventory_analytics.average_backup_size,
             longest_backup_gap_days=inventory_analytics.longest_backup_gap_days,
             size_trend=inventory_analytics.size_trend,
@@ -1242,6 +1249,8 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 self.data.minimum_redundant_locations,
             ),
             database_check_enabled=getattr(self, "database_integrity_check", False),
+            backups=self.data.monitored_backups,
+            agent_summaries=summaries,
         )
         return replace(
             self.data,
@@ -1274,6 +1283,11 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             recovery_recommendation=recovery.recommendation,
             recovery_deductions=recovery.deductions,
             recovery_checks=recovery.checks,
+            recovery_content_inventory=recovery.content_inventory,
+            recovery_content_comparison=recovery.content_comparison,
+            recovery_storage_resilience=recovery.storage_resilience,
+            backup_content_changed=recovery.backup_content_changed,
+            external_copy_missing=recovery.external_copy_missing,
             agent_errors={**self.data.agent_errors, "manager": error_code},
         )
 

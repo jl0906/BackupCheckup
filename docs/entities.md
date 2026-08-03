@@ -41,6 +41,24 @@ diagnostics. Timestamp entities are disabled in Standard mode to avoid duplicati
 user-facing age sensors; Expert mode can still expose them for templates and advanced
 automations.
 
+
+## Recovery Readiness entities
+
+| Entity | Default | Purpose |
+| --- | --- | --- |
+| `sensor.backup_checkup_recovery_readiness` | Standard | Recovery score from 0 to 100 with checks, deductions, content inventory, content comparison, and storage resilience attributes |
+| `sensor.backup_checkup_recovery_status` | Standard | `ready`, `limited`, `insufficient`, or `unknown` |
+| `sensor.backup_checkup_recovery_recommendation` | Standard | Highest-priority disaster-recovery action |
+| `binary_sensor.backup_checkup_external_copy_missing` | Standard | On when known storage classes confirm that no copy exists in an independent off-device failure domain |
+| `binary_sensor.backup_checkup_backup_content_changed` | Standard | On when a previous complete backup contained required data that the latest backup no longer contains |
+
+The recovery-readiness attributes never expose add-on names, folder names, raw
+agent IDs, backup names, or paths. Content comparison reports only counts and the
+generic critical categories SSL, Share, and Media. Storage copies are represented
+by anonymous references and conservative classes such as Home Assistant device,
+directly attached storage, local network/NAS, remote storage, cloud, or unknown.
+Unknown storage targets are never assumed to be independent.
+
 ## Mobile notification behavior
 
 Mobile notifications are configured in the integration options. The selector is

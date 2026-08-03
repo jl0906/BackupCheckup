@@ -494,6 +494,11 @@ class BackupCheckupData:
     recovery_recommendation: str = "none"
     recovery_deductions: dict[str, int] = field(default_factory=dict)
     recovery_checks: dict[str, bool | None] = field(default_factory=dict)
+    recovery_content_inventory: dict[str, Any] = field(default_factory=dict)
+    recovery_content_comparison: dict[str, Any] = field(default_factory=dict)
+    recovery_storage_resilience: dict[str, Any] = field(default_factory=dict)
+    backup_content_changed: bool = False
+    external_copy_missing: bool = False
 
     @property
     def latest_monitored_backup_record(self) -> BackupRecord | None:

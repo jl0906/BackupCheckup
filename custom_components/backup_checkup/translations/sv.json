@@ -521,7 +521,8 @@
           "verify_latest_backup": "Verify the latest backup",
           "create_external_copy": "Create an independent backup copy",
           "create_complete_backup": "Create a complete backup",
-          "enable_database_check": "Enable or run the database check"
+          "enable_database_check": "Enable or run the database check",
+          "review_backup_contents": "Granska ändrat säkerhetskopieinnehåll"
         }
       }
     },
@@ -576,6 +577,12 @@
       },
       "backup_checksum_changed": {
         "name": "Backup checksum changed"
+      },
+      "external_copy_missing": {
+        "name": "Extern säkerhetskopia saknas"
+      },
+      "backup_content_changed": {
+        "name": "Säkerhetskopians innehåll har ändrats"
       }
     },
     "button": {

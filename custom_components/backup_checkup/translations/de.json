@@ -521,7 +521,8 @@
           "verify_latest_backup": "Neuestes Backup vollständig prüfen",
           "create_external_copy": "Unabhängige Backup-Kopie erstellen",
           "create_complete_backup": "Vollständiges Backup erstellen",
-          "enable_database_check": "Datenbankprüfung aktivieren oder ausführen"
+          "enable_database_check": "Datenbankprüfung aktivieren oder ausführen",
+          "review_backup_contents": "Veränderten Backup-Inhalt prüfen"
         }
       }
     },
@@ -576,6 +577,12 @@
       },
       "backup_checksum_changed": {
         "name": "Backup-Prüfsumme geändert"
+      },
+      "external_copy_missing": {
+        "name": "Unabhängige Backup-Kopie fehlt"
+      },
+      "backup_content_changed": {
+        "name": "Backup-Inhalt unerwartet verändert"
       }
     },
     "button": {

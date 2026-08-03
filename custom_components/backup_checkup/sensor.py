@@ -218,6 +218,9 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
             "recommendation": data.recovery_recommendation,
             "checks": data.recovery_checks,
             "deductions": data.recovery_deductions,
+            "content_inventory": data.recovery_content_inventory,
+            "content_comparison": data.recovery_content_comparison,
+            "storage_resilience": data.recovery_storage_resilience,
         },
     ),
     BackupCheckupSensorDescription(

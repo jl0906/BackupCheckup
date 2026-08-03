@@ -17,7 +17,7 @@ from .const import CONF_SHOW_SIDEBAR_PANEL, DOMAIN, VERSION
 _LOGGER = logging.getLogger(__name__)
 
 PANEL_URL_PATH = "backup-checkup"
-PANEL_ASSET_REVISION = 4
+PANEL_ASSET_REVISION = 5
 PANEL_VERSION_TAG = f"{VERSION.replace('.', '-')}-r{PANEL_ASSET_REVISION}"
 PANEL_WEB_COMPONENT = f"backup-checkup-panel-v{PANEL_VERSION_TAG}"
 PANEL_MODULE_PATH = (

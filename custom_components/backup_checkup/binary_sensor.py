@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -29,6 +30,7 @@ class BackupCheckupBinarySensorDescription(BinarySensorEntityDescription):
     """Describe a BackupCheckup binary sensor."""
 
     value_fn: Callable[[BackupCheckupData], bool]
+    attributes_fn: Callable[[BackupCheckupData], dict[str, Any]] | None = None
 
 
 BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
@@ -162,6 +164,22 @@ BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
         value_fn=lambda data: data.backup_not_redundant,
     ),
     BackupCheckupBinarySensorDescription(
+        key="external_copy_missing",
+        translation_key="external_copy_missing",
+        icon="mdi:cloud-off-outline",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda data: data.external_copy_missing,
+        attributes_fn=lambda data: data.recovery_storage_resilience,
+    ),
+    BackupCheckupBinarySensorDescription(
+        key="backup_content_changed",
+        translation_key="backup_content_changed",
+        icon="mdi:archive-sync-outline",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda data: data.backup_content_changed,
+        attributes_fn=lambda data: data.recovery_content_comparison,
+    ),
+    BackupCheckupBinarySensorDescription(
         key="required_location_missing",
         translation_key="required_location_missing",
         entity_registry_enabled_default=False,
@@ -261,6 +279,12 @@ class BackupCheckupBinarySensor(BackupCheckupEntity, BinarySensorEntity):
     def is_on(self) -> bool:
         """Return the problem state."""
         return self.entity_description.value_fn(self.coordinator.data)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return optional privacy-safe diagnostic attributes."""
+        attributes_fn = self.entity_description.attributes_fn
+        return attributes_fn(self.coordinator.data) if attributes_fn else {}
 
 
 class BackupCheckupAgentProblemBinarySensor(

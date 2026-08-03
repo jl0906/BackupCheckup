@@ -1,4 +1,4 @@
-const PANEL_ELEMENT_NAME = "backup-checkup-panel-v3-0-0-alpha3-r4";
+const PANEL_ELEMENT_NAME = "backup-checkup-panel-v3-0-0-alpha4-r5";
 
 const TRANSLATION_SEPARATOR = "\u001f";
 const TRANSLATION_KEYS = Object.freeze({
@@ -208,7 +208,9 @@ const RECOVERY_CHECK_KEYS = Object.freeze([
   "integrity_verified",
   "database_verified",
   "independent_copy",
+  "multiple_failure_domains",
   "copy_sizes_consistent",
+  "content_stable",
 ]);
 
 const RECOVERY_TEXT = Object.freeze({
@@ -230,6 +232,50 @@ const RECOVERY_TEXT = Object.freeze({
     limitedMessage: "Recovery is possible, but important gaps remain.",
     insufficientMessage: "Recovery readiness is insufficient.",
     unknownMessage: "Recovery readiness cannot be assessed yet.",
+    inventoryTitle: "Contents of the latest backup",
+    comparisonTitle: "Compared with the previous complete backup",
+    storageTitle: "Storage resilience",
+    baselineMissing: "No previous complete backup is available for comparison.",
+    noContentChanges: "No relevant content changes were detected.",
+    contentChanged: "The backup scope changed without losing required contents.",
+    contentRegression: "Previously included contents are missing or incomplete.",
+    backupReference: "Backup reference",
+    baselineReference: "Comparison backup",
+    homeAssistant: "Home Assistant data",
+    database: "Database",
+    addons: "Add-ons",
+    folders: "Folders",
+    ssl: "SSL",
+    share: "Share",
+    media: "Media",
+    failedComponents: "Failed components",
+    copies: "Backup copies",
+    classifiedCopies: "Classified copies",
+    unknownCopies: "Unclassified copies",
+    failureDomains: "Independent failure domains",
+    offDeviceCopy: "Copy outside the Home Assistant device",
+    independentCopy: "Independent copy confirmed",
+    storageClasses: "Storage classes",
+    present: "Present",
+    missing: "Missing",
+    notKnown: "Not known",
+    yes: "Yes",
+    no: "No",
+    added: "Added",
+    removed: "Removed",
+    addedAddons: "Added add-ons",
+    removedAddons: "Removed add-ons",
+    addedFolders: "Added folders",
+    removedFolders: "Removed folders",
+    criticalMissing: "Critical folders missing",
+    storageClassLabels: {
+      local_device: "Home Assistant device",
+      direct_attached: "Directly attached storage",
+      local_network: "Local network / NAS",
+      remote: "Remote storage",
+      cloud: "Cloud storage",
+      unknown: "Unknown",
+    },
     checkLabels: {
       backup_available: "Backup available",
       backup_current: "Backup is current",
@@ -239,7 +285,9 @@ const RECOVERY_TEXT = Object.freeze({
       integrity_verified: "Integrity verified",
       database_verified: "Database verified",
       independent_copy: "Independent copy available",
+      multiple_failure_domains: "Multiple failure domains available",
       copy_sizes_consistent: "Copy sizes are consistent",
+      content_stable: "Backup contents remain complete",
     },
   },
   de: {
@@ -260,6 +308,50 @@ const RECOVERY_TEXT = Object.freeze({
     limitedMessage: "Eine Wiederherstellung ist möglich, aber wichtige Lücken bestehen.",
     insufficientMessage: "Die Wiederherstellungsbereitschaft ist unzureichend.",
     unknownMessage: "Die Wiederherstellungsbereitschaft kann noch nicht bewertet werden.",
+    inventoryTitle: "Inhalt des neuesten Backups",
+    comparisonTitle: "Vergleich mit dem vorherigen vollständigen Backup",
+    storageTitle: "Ausfallsicherheit der Speicherorte",
+    baselineMissing: "Es ist noch kein vorheriges vollständiges Backup für einen Vergleich vorhanden.",
+    noContentChanges: "Es wurden keine relevanten Inhaltsänderungen erkannt.",
+    contentChanged: "Der Sicherungsumfang wurde verändert, ohne erforderliche Inhalte zu verlieren.",
+    contentRegression: "Zuvor enthaltene Inhalte fehlen oder sind unvollständig.",
+    backupReference: "Backup-Referenz",
+    baselineReference: "Vergleichsbackup",
+    homeAssistant: "Home-Assistant-Daten",
+    database: "Datenbank",
+    addons: "Add-ons",
+    folders: "Ordner",
+    ssl: "SSL",
+    share: "Share",
+    media: "Medien",
+    failedComponents: "Fehlgeschlagene Bestandteile",
+    copies: "Backup-Kopien",
+    classifiedCopies: "Klassifizierte Kopien",
+    unknownCopies: "Nicht klassifizierte Kopien",
+    failureDomains: "Unabhängige Ausfallbereiche",
+    offDeviceCopy: "Kopie außerhalb des Home-Assistant-Geräts",
+    independentCopy: "Unabhängige Kopie bestätigt",
+    storageClasses: "Speicherklassen",
+    present: "Enthalten",
+    missing: "Fehlt",
+    notKnown: "Unbekannt",
+    yes: "Ja",
+    no: "Nein",
+    added: "Hinzugefügt",
+    removed: "Entfernt",
+    addedAddons: "Hinzugefügte Add-ons",
+    removedAddons: "Entfernte Add-ons",
+    addedFolders: "Hinzugefügte Ordner",
+    removedFolders: "Entfernte Ordner",
+    criticalMissing: "Fehlende kritische Ordner",
+    storageClassLabels: {
+      local_device: "Home-Assistant-Gerät",
+      direct_attached: "Direkt angeschlossener Speicher",
+      local_network: "Lokales Netzwerk / NAS",
+      remote: "Entfernter Speicher",
+      cloud: "Cloud-Speicher",
+      unknown: "Unbekannt",
+    },
     checkLabels: {
       backup_available: "Backup vorhanden",
       backup_current: "Backup aktuell",
@@ -269,7 +361,9 @@ const RECOVERY_TEXT = Object.freeze({
       integrity_verified: "Integrität geprüft",
       database_verified: "Datenbank geprüft",
       independent_copy: "Unabhängige Kopie vorhanden",
+      multiple_failure_domains: "Mehrere Ausfallbereiche vorhanden",
       copy_sizes_consistent: "Kopiergrößen stimmen überein",
+      content_stable: "Backup-Inhalt weiterhin vollständig",
     },
   },
   da: { tab: "Gendannelse", title: "Gendannelsesberedskab", score: "Gendannelsesscore", status: "Gendannelsesstatus", recommendation: "Vigtigste handling", checks: "Gendannelseskontroller", deductions: "Pointfradrag" },
@@ -387,6 +481,10 @@ class BackupCheckupPanel extends HTMLElement {
         checkLabels: {
           ...RECOVERY_TEXT.en.checkLabels,
           ...(recovery.checkLabels || {}),
+        },
+        storageClassLabels: {
+          ...RECOVERY_TEXT.en.storageClassLabels,
+          ...(recovery.storageClassLabels || {}),
         },
       },
     };
@@ -589,6 +687,71 @@ class BackupCheckupPanel extends HTMLElement {
     </div>`).join("");
   }
 
+  _recoveryValue(value, text) {
+    if (value === true) return text.present;
+    if (value === false) return text.missing;
+    return text.notKnown;
+  }
+
+  _recoveryDetailRow(label, value) {
+    return `<div class="explanation-row"><span>${this._escape(label)}</span><strong>${this._escape(value)}</strong></div>`;
+  }
+
+  _contentInventoryRows(inventory, text) {
+    const failed = Number(inventory?.failed_agent_count || 0)
+      + Number(inventory?.failed_addon_count || 0)
+      + Number(inventory?.failed_folder_count || 0);
+    return [
+      [text.backupReference, inventory?.backup_reference || "—"],
+      [text.homeAssistant, this._recoveryValue(inventory?.homeassistant_included, text)],
+      [text.database, this._recoveryValue(inventory?.database_included, text)],
+      [text.addons, inventory?.addon_count ?? 0],
+      [text.folders, inventory?.folder_count ?? 0],
+      [text.ssl, this._recoveryValue(inventory?.ssl_included, text)],
+      [text.share, this._recoveryValue(inventory?.share_included, text)],
+      [text.media, this._recoveryValue(inventory?.media_included, text)],
+      [text.failedComponents, failed],
+    ].map(([label, value]) => this._recoveryDetailRow(label, value)).join("");
+  }
+
+  _contentComparisonRows(comparison, text) {
+    if (!comparison?.baseline_available) {
+      return `<div class="empty"><ha-icon icon="mdi:history"></ha-icon>${this._escape(text.baselineMissing)}</div>`;
+    }
+    const state = comparison.material_regression
+      ? text.contentRegression
+      : comparison.changed ? text.contentChanged : text.noContentChanges;
+    const critical = Array.isArray(comparison.critical_components_missing)
+      ? comparison.critical_components_missing.map((key) => text[key] || this._humanize(key)).join(", ")
+      : "";
+    const rows = [
+      [text.baselineReference, comparison.baseline_reference || "—"],
+      [text.removedAddons, comparison.missing_addon_count ?? 0],
+      [text.addedAddons, comparison.added_addon_count ?? 0],
+      [text.removedFolders, comparison.missing_folder_count ?? 0],
+      [text.addedFolders, comparison.added_folder_count ?? 0],
+      [text.criticalMissing, critical || "—"],
+    ].map(([label, value]) => this._recoveryDetailRow(label, value)).join("");
+    const tone = comparison.material_regression ? "danger" : "success";
+    const icon = comparison.material_regression ? "mdi:alert-circle-outline" : "mdi:check-circle-outline";
+    return `<div class="empty ${tone}"><ha-icon icon="${icon}"></ha-icon>${this._escape(state)}</div>${rows}`;
+  }
+
+  _storageResilienceRows(storage, text) {
+    const classes = Array.isArray(storage?.storage_classes)
+      ? storage.storage_classes.map((key) => text.storageClassLabels?.[key] || this._humanize(key)).join(", ")
+      : "";
+    return [
+      [text.copies, storage?.copy_count ?? 0],
+      [text.classifiedCopies, storage?.classified_copy_count ?? 0],
+      [text.unknownCopies, storage?.unknown_copy_count ?? 0],
+      [text.failureDomains, storage?.failure_domain_count ?? 0],
+      [text.offDeviceCopy, this._recoveryValue(storage?.off_device_copy, { ...text, present: text.yes, missing: text.no })],
+      [text.independentCopy, this._recoveryValue(storage?.independent_copy, { ...text, present: text.yes, missing: text.no })],
+      [text.storageClasses, classes || text.notKnown],
+    ].map(([label, value]) => this._recoveryDetailRow(label, value)).join("");
+  }
+
   _storageRows(agents, text) {
     if (!agents.length) return `<div class="empty">${this._escape(text.noStorage)}</div>`;
     return agents.map((agent) => {
@@ -762,6 +925,9 @@ class BackupCheckupPanel extends HTMLElement {
       recoveryDeductions: recoveryReadiness?.attributes?.deductions
         || recoveryRecommendation?.attributes?.deductions
         || {},
+      recoveryContentInventory: recoveryReadiness?.attributes?.content_inventory || {},
+      recoveryContentComparison: recoveryReadiness?.attributes?.content_comparison || {},
+      recoveryStorageResilience: recoveryReadiness?.attributes?.storage_resilience || {},
       isAdmin: Boolean(this._hass.user?.is_admin),
       verifyState: this._state("verify"),
       refreshState: this._state("refresh"),
@@ -883,6 +1049,20 @@ class BackupCheckupPanel extends HTMLElement {
       <article class="card recovery-deductions-card">
         <div class="card-title"><ha-icon icon="mdi:chart-donut"></ha-icon><h3>${this._escape(text.deductions)}</h3></div>
         <div class="rows">${this._recoveryDeductionRows(model.recoveryDeductions, text)}</div>
+      </article>
+    </section>
+    <section class="content-grid recovery-details">
+      <article class="card">
+        <div class="card-title"><ha-icon icon="mdi:archive-eye-outline"></ha-icon><h3>${this._escape(text.inventoryTitle)}</h3></div>
+        <div class="rows">${this._contentInventoryRows(model.recoveryContentInventory, text)}</div>
+      </article>
+      <article class="card">
+        <div class="card-title"><ha-icon icon="mdi:compare-horizontal"></ha-icon><h3>${this._escape(text.comparisonTitle)}</h3></div>
+        <div class="rows">${this._contentComparisonRows(model.recoveryContentComparison, text)}</div>
+      </article>
+      <article class="card storage-card">
+        <div class="card-title"><ha-icon icon="mdi:server-security"></ha-icon><h3>${this._escape(text.storageTitle)}</h3></div>
+        <div class="rows">${this._storageResilienceRows(model.recoveryStorageResilience, text)}</div>
       </article>
     </section>
     ${this._actionFooter(model)}`;
@@ -1217,6 +1397,7 @@ class BackupCheckupPanel extends HTMLElement {
       .storage-count span { display:block; color:var(--secondary-text-color); font-size:11px; font-weight:400; }
       .empty { min-height:52px; display:flex; align-items:center; gap:9px; color:var(--secondary-text-color); }
       .empty.success ha-icon { color:#2e9d68; }
+      .empty.danger ha-icon { color:#d84b55; }
       .explanation-row { min-height:44px; display:flex; align-items:center; justify-content:space-between; gap:16px; border-top:1px solid var(--divider-color); }
       .explanation-row:first-child { border-top:0; }
       .explanation-row span { color:var(--secondary-text-color); font-size:12px; }

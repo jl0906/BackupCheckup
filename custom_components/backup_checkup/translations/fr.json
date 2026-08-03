@@ -521,7 +521,8 @@
           "verify_latest_backup": "Verify the latest backup",
           "create_external_copy": "Create an independent backup copy",
           "create_complete_backup": "Create a complete backup",
-          "enable_database_check": "Enable or run the database check"
+          "enable_database_check": "Enable or run the database check",
+          "review_backup_contents": "Vérifier le contenu modifié de la sauvegarde"
         }
       }
     },
@@ -576,6 +577,12 @@
       },
       "backup_checksum_changed": {
         "name": "Backup checksum changed"
+      },
+      "external_copy_missing": {
+        "name": "Copie externe de sauvegarde manquante"
+      },
+      "backup_content_changed": {
+        "name": "Contenu de sauvegarde modifié"
       }
     },
     "button": {

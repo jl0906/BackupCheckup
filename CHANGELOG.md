@@ -1,5 +1,49 @@
 # Changelog
 
+## 3.0.0-alpha4
+
+**Recovery inventory and failure-domain-aware redundancy**
+
+### Added
+
+- Added a privacy-safe inventory of the newest monitored backup covering Home
+  Assistant data, database inclusion, aggregate add-on and folder counts, SSL,
+  Share, Media, failed component counts, and completeness.
+- Added comparison with the previous complete monitored backup. Alpha4 reports
+  added and removed component counts and generic critical categories without
+  exposing add-on names, folder names, backup names, IDs, or paths.
+- Added material-regression detection. Missing previously included contents now
+  reduce the Recovery Readiness Score and produce the priority recommendation to
+  review the changed backup contents. Mere additions do not create a problem.
+- Added conservative storage classification for Home Assistant device, directly
+  attached storage, local network/NAS, remote storage, cloud, and unknown targets.
+- Added failure-domain-aware independent-copy assessment. Multiple backup-agent
+  entries are no longer assumed to be independent automatically.
+- Added `binary_sensor.backup_checkup_external_copy_missing` and
+  `binary_sensor.backup_checkup_backup_content_changed`, including privacy-safe
+  diagnostic attributes and Standard/Expert entity-mode support.
+- Extended the Recovery / Notfallvorsorge frontend with content inventory,
+  previous-backup comparison, and storage-resilience sections.
+
+### Changed
+
+- Expanded Recovery Readiness from nine to eleven checks by adding content
+  stability and multiple known failure domains.
+- Rebalanced the score to retain a deterministic 100-point model.
+- Unknown storage targets are now explicitly not assessed and receive a smaller
+  uncertainty deduction instead of being treated as confirmed independent copies.
+- Added the `review_backup_contents` recovery recommendation in every supported
+  translation.
+- Increased the frontend asset revision to `r5` to prevent stale alpha3 browser
+  assets from hiding the new sections.
+
+### Quality assurance
+
+- Added executable content-comparison, storage-classification, failure-domain,
+  privacy, translation, wiring, and visible frontend tests.
+- Alpha4 result: 45 tests passed, 25/25 functions, 287/287 statements, and 62/62
+  branches covered in the alpha-specific production modules.
+
 ## 3.0.0-alpha3
 
 **Recovery Readiness frontend**
