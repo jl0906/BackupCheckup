@@ -74,6 +74,10 @@ from .native_backup import (
 from .notifications import BackupCheckupNotificationManager
 from .problem_state import evaluate_problem_state
 from .recovery import assess_recovery_readiness
+from .recovery_preparedness import (
+    RecoveryPreparednessStore,
+    detect_recovery_dependencies,
+)
 from .security import (
     anonymous_agent_reference,
     classify_exception,
@@ -173,6 +177,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self.notification_manager = BackupCheckupNotificationManager(
             hass, entry.entry_id, activity=self.activity
         )
+        self.recovery_preparedness = RecoveryPreparednessStore(hass, entry.entry_id)
         self._normalizer = BackupRecordNormalizer(entry.entry_id)
 
         self.integrity_result = BackupIntegrityResult.not_checked()
@@ -237,6 +242,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self.active_update_interval_minutes = settings.active_update_interval_minutes
         self.error_backoff_interval_minutes = settings.error_backoff_interval_minutes
         self.adaptive_error_threshold = settings.adaptive_error_threshold
+
 
     def _record_activity(
         self,
@@ -590,6 +596,12 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             latest_backup_locations=len(latest_locations),
             minimum_redundant_locations=self.minimum_redundant_locations,
         )
+        preparedness = self.recovery_preparedness.snapshot(
+            now=now,
+            detected_dependencies=detect_recovery_dependencies(
+                self.hass, latest, storage.summaries
+            ),
+        )
         recovery = assess_recovery_readiness(
             latest,
             self.integrity_result,
@@ -598,6 +610,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             database_check_enabled=self.database_integrity_check,
             backups=monitoring_records,
             agent_summaries=storage.summaries,
+            preparedness=preparedness,
         )
 
         public_locations = self._public_location_ids(latest_locations)
@@ -678,6 +691,14 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             recovery_content_inventory=recovery.content_inventory,
             recovery_content_comparison=recovery.content_comparison,
             recovery_storage_resilience=recovery.storage_resilience,
+            recovery_preparedness=recovery.preparedness,
+            recovery_checklist_incomplete=(
+                recovery.checks.get("preparedness_checklist_complete") is not True
+                and latest is not None
+            ),
+            external_dependency_unprotected=(
+                recovery.checks.get("external_dependencies_protected") is False
+            ),
             backup_content_changed=recovery.backup_content_changed,
             external_copy_missing=recovery.external_copy_missing,
             average_backup_size=inventory_analytics.average_backup_size,
@@ -1239,6 +1260,12 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 self.data.minimum_redundant_locations,
             ),
         )
+        preparedness = self.recovery_preparedness.snapshot(
+            now=now,
+            detected_dependencies=detect_recovery_dependencies(
+                self.hass, self.data.latest_monitored_backup_record, summaries
+            ),
+        )
         recovery = assess_recovery_readiness(
             self.data.latest_monitored_backup_record,
             self.data.integrity,
@@ -1251,6 +1278,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             database_check_enabled=getattr(self, "database_integrity_check", False),
             backups=self.data.monitored_backups,
             agent_summaries=summaries,
+            preparedness=preparedness,
         )
         return replace(
             self.data,
@@ -1286,6 +1314,14 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             recovery_content_inventory=recovery.content_inventory,
             recovery_content_comparison=recovery.content_comparison,
             recovery_storage_resilience=recovery.storage_resilience,
+            recovery_preparedness=recovery.preparedness,
+            recovery_checklist_incomplete=(
+                recovery.checks.get("preparedness_checklist_complete") is not True
+                and self.data.latest_monitored_backup_record is not None
+            ),
+            external_dependency_unprotected=(
+                recovery.checks.get("external_dependencies_protected") is False
+            ),
             backup_content_changed=recovery.backup_content_changed,
             external_copy_missing=recovery.external_copy_missing,
             agent_errors={**self.data.agent_errors, "manager": error_code},

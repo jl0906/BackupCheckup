@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .const import DOMAIN
 
-STORE_KINDS = ("activity", "history", "integrity", "notifications")
+STORE_KINDS = ("activity", "history", "integrity", "notifications", "recovery")
 _STORE_PATTERN = re.compile(
     rf"^{re.escape(DOMAIN)}\.(?P<entry_id>[A-Za-z0-9_-]+)\."
     rf"(?P<kind>{'|'.join(STORE_KINDS)})$"

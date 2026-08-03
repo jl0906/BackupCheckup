@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 DOMAIN = "backup_checkup"
 CONFIG_ENTRY_VERSION = 14
 NAME = "BackupCheckup"
-VERSION = "3.0.0-alpha4"
+VERSION = "3.0.0-alpha5"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -190,6 +190,10 @@ SERVICE_VERIFY_LATEST_BACKUP = "verify_latest_backup"
 SERVICE_REFRESH = "refresh"
 SERVICE_TEST_NOTIFICATION = "test_notification"
 SERVICE_CLEAR_ACTIVITY_LOG = "clear_activity_log"
+SERVICE_SET_RECOVERY_PREPAREDNESS = "set_recovery_preparedness"
+ATTR_PREPAREDNESS_SECTION = "section"
+ATTR_PREPAREDNESS_ITEM = "item"
+ATTR_PREPAREDNESS_STATUS = "status"
 
 STATUS_OK = "ok"
 STATUS_NO_BACKUPS = "no_backups"

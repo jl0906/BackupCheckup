@@ -1,4 +1,4 @@
-const PANEL_ELEMENT_NAME = "backup-checkup-panel-v3-0-0-alpha4-r5";
+const PANEL_ELEMENT_NAME = "backup-checkup-panel-v3-0-0-alpha5-r6";
 
 const TRANSLATION_SEPARATOR = "\u001f";
 const TRANSLATION_KEYS = Object.freeze({
@@ -268,6 +268,36 @@ const RECOVERY_TEXT = Object.freeze({
     addedFolders: "Added folders",
     removedFolders: "Removed folders",
     criticalMissing: "Critical folders missing",
+    preparednessTitle: "Guided emergency checklist",
+    preparednessIntro: "Confirm only whether the required information is available. Passwords, paths and notes are never stored here.",
+    dependenciesTitle: "External dependencies",
+    dependenciesIntro: "Review every category and mark whether systems outside the backup are separately protected or not applicable. Detected integrations are highlighted but never inspected for secrets.",
+    reviewInterval: "Confirmations expire after {days} days and must then be reviewed again.",
+    detected: "Detected",
+    expired: "Review expired",
+    adminOnly: "Only Home Assistant administrators can change these states.",
+    checklistLabels: {
+      backup_password_available: "Backup password is retrievable",
+      storage_access_documented: "Access to external backup storage is documented",
+      restore_method_known: "The restore procedure is known",
+      replacement_hardware_available: "Replacement hardware or installation media is available",
+      network_access_documented: "Required network access is documented",
+      recovery_contacts_documented: "Required contacts and account ownership are documented",
+    },
+    dependencyLabels: {
+      external_database: "External database",
+      mqtt: "MQTT broker",
+      zigbee: "Zigbee coordinator",
+      zwave: "Z-Wave controller",
+      thread: "Thread / Matter infrastructure",
+      esphome: "ESPHome configuration",
+      network_storage: "Network storage / NAS",
+      reverse_proxy: "Reverse proxy",
+      certificates: "Certificates",
+      cloud_services: "Cloud services and API access",
+    },
+    checklistStatusLabels: { unknown: "Not assessed", confirmed: "Confirmed", missing: "Missing", not_required: "Not required" },
+    dependencyStatusLabels: { unknown: "Not assessed", protected: "Protected separately", unprotected: "Not protected", not_applicable: "Not applicable" },
     storageClassLabels: {
       local_device: "Home Assistant device",
       direct_attached: "Directly attached storage",
@@ -288,6 +318,8 @@ const RECOVERY_TEXT = Object.freeze({
       multiple_failure_domains: "Multiple failure domains available",
       copy_sizes_consistent: "Copy sizes are consistent",
       content_stable: "Backup contents remain complete",
+      preparedness_checklist_complete: "Guided emergency checklist complete",
+      external_dependencies_protected: "External dependencies protected",
     },
   },
   de: {
@@ -344,6 +376,36 @@ const RECOVERY_TEXT = Object.freeze({
     addedFolders: "Hinzugefügte Ordner",
     removedFolders: "Entfernte Ordner",
     criticalMissing: "Fehlende kritische Ordner",
+    preparednessTitle: "Geführter Notfallcheck",
+    preparednessIntro: "Bestätige nur, ob die benötigten Informationen verfügbar sind. Passwörter, Pfade und Notizen werden hier niemals gespeichert.",
+    dependenciesTitle: "Externe Abhängigkeiten",
+    dependenciesIntro: "Prüfe jede Kategorie und kennzeichne, ob Systeme außerhalb des Backups separat abgesichert oder nicht zutreffend sind. Erkannte Integrationen werden hervorgehoben, aber niemals auf Geheimnisse untersucht.",
+    reviewInterval: "Bestätigungen laufen nach {days} Tagen ab und müssen anschließend erneut geprüft werden.",
+    detected: "Erkannt",
+    expired: "Prüfung abgelaufen",
+    adminOnly: "Nur Home-Assistant-Administratoren können diese Angaben ändern.",
+    checklistLabels: {
+      backup_password_available: "Backup-Passwort ist auffindbar",
+      storage_access_documented: "Zugang zum externen Backup-Speicher ist dokumentiert",
+      restore_method_known: "Der Wiederherstellungsweg ist bekannt",
+      replacement_hardware_available: "Ersatzgerät oder Installationsmedium ist verfügbar",
+      network_access_documented: "Benötigte Netzwerkzugänge sind dokumentiert",
+      recovery_contacts_documented: "Benötigte Kontakte und Kontoinhaber sind dokumentiert",
+    },
+    dependencyLabels: {
+      external_database: "Externe Datenbank",
+      mqtt: "MQTT-Broker",
+      zigbee: "Zigbee-Koordinator",
+      zwave: "Z-Wave-Controller",
+      thread: "Thread- / Matter-Infrastruktur",
+      esphome: "ESPHome-Konfiguration",
+      network_storage: "Netzwerkspeicher / NAS",
+      reverse_proxy: "Reverse Proxy",
+      certificates: "Zertifikate",
+      cloud_services: "Cloud-Dienste und API-Zugänge",
+    },
+    checklistStatusLabels: { unknown: "Nicht bewertet", confirmed: "Bestätigt", missing: "Fehlt", not_required: "Nicht erforderlich" },
+    dependencyStatusLabels: { unknown: "Nicht bewertet", protected: "Separat abgesichert", unprotected: "Nicht abgesichert", not_applicable: "Nicht zutreffend" },
     storageClassLabels: {
       local_device: "Home-Assistant-Gerät",
       direct_attached: "Direkt angeschlossener Speicher",
@@ -364,6 +426,8 @@ const RECOVERY_TEXT = Object.freeze({
       multiple_failure_domains: "Mehrere Ausfallbereiche vorhanden",
       copy_sizes_consistent: "Kopiergrößen stimmen überein",
       content_stable: "Backup-Inhalt weiterhin vollständig",
+      preparedness_checklist_complete: "Geführter Notfallcheck vollständig",
+      external_dependencies_protected: "Externe Abhängigkeiten abgesichert",
     },
   },
   da: { tab: "Gendannelse", title: "Gendannelsesberedskab", score: "Gendannelsesscore", status: "Gendannelsesstatus", recommendation: "Vigtigste handling", checks: "Gendannelseskontroller", deductions: "Pointfradrag" },
@@ -485,6 +549,22 @@ class BackupCheckupPanel extends HTMLElement {
         storageClassLabels: {
           ...RECOVERY_TEXT.en.storageClassLabels,
           ...(recovery.storageClassLabels || {}),
+        },
+        checklistLabels: {
+          ...RECOVERY_TEXT.en.checklistLabels,
+          ...(recovery.checklistLabels || {}),
+        },
+        dependencyLabels: {
+          ...RECOVERY_TEXT.en.dependencyLabels,
+          ...(recovery.dependencyLabels || {}),
+        },
+        checklistStatusLabels: {
+          ...RECOVERY_TEXT.en.checklistStatusLabels,
+          ...(recovery.checklistStatusLabels || {}),
+        },
+        dependencyStatusLabels: {
+          ...RECOVERY_TEXT.en.dependencyStatusLabels,
+          ...(recovery.dependencyStatusLabels || {}),
         },
       },
     };
@@ -752,6 +832,38 @@ class BackupCheckupPanel extends HTMLElement {
     ].map(([label, value]) => this._recoveryDetailRow(label, value)).join("");
   }
 
+  _preparednessSelect(section, key, item, labels, isAdmin) {
+    const options = Object.entries(labels).map(([value, label]) =>
+      `<option value="${this._escape(value)}" ${item?.status === value ? "selected" : ""}>${this._escape(label)}</option>`
+    ).join("");
+    const busyKey = `preparedness:${section}:${key}`;
+    const disabled = !isAdmin || this._busy.has(busyKey) ? "disabled" : "";
+    return `<select data-preparedness-section="${section}" data-preparedness-item="${this._escape(key)}" ${disabled}>${options}</select>`;
+  }
+
+  _preparednessRows(preparedness, section, text, isAdmin) {
+    const items = preparedness?.[section] || {};
+    const isChecklist = section === "checklist";
+    const itemLabels = isChecklist ? text.checklistLabels : text.dependencyLabels;
+    const statusLabels = isChecklist ? text.checklistStatusLabels : text.dependencyStatusLabels;
+    return Object.keys(itemLabels).map((key) => {
+      const item = items[key] || { status: "unknown", effective_status: "unknown" };
+      const detected = !isChecklist && item.detected;
+      const expired = Boolean(item.expired);
+      const effectiveLabel = statusLabels[item.effective_status] || text.unknown;
+      return `<div class="preparedness-row ${expired ? "expired" : ""}">
+        <div class="preparedness-copy"><strong>${this._escape(itemLabels[key])}</strong><span>${this._escape(effectiveLabel)}</span></div>
+        <div class="preparedness-badges">${detected ? `<span class="preparedness-badge detected">${this._escape(text.detected)}</span>` : ""}${expired ? `<span class="preparedness-badge expired">${this._escape(text.expired)}</span>` : ""}</div>
+        ${this._preparednessSelect(section, key, item, statusLabels, isAdmin)}
+      </div>`;
+    }).join("");
+  }
+
+  _preparednessReviewText(preparedness, text) {
+    const days = preparedness?.review_interval_days || 180;
+    return String(text.reviewInterval).replace("{days}", days);
+  }
+
   _storageRows(agents, text) {
     if (!agents.length) return `<div class="empty">${this._escape(text.noStorage)}</div>`;
     return agents.map((agent) => {
@@ -928,6 +1040,7 @@ class BackupCheckupPanel extends HTMLElement {
       recoveryContentInventory: recoveryReadiness?.attributes?.content_inventory || {},
       recoveryContentComparison: recoveryReadiness?.attributes?.content_comparison || {},
       recoveryStorageResilience: recoveryReadiness?.attributes?.storage_resilience || {},
+      recoveryPreparedness: recoveryReadiness?.attributes?.preparedness || {},
       isAdmin: Boolean(this._hass.user?.is_admin),
       verifyState: this._state("verify"),
       refreshState: this._state("refresh"),
@@ -1063,6 +1176,17 @@ class BackupCheckupPanel extends HTMLElement {
       <article class="card storage-card">
         <div class="card-title"><ha-icon icon="mdi:server-security"></ha-icon><h3>${this._escape(text.storageTitle)}</h3></div>
         <div class="rows">${this._storageResilienceRows(model.recoveryStorageResilience, text)}</div>
+      </article>
+      <article class="card storage-card preparedness-card">
+        <div class="card-title"><ha-icon icon="mdi:clipboard-check-multiple-outline"></ha-icon><h3>${this._escape(text.preparednessTitle)}</h3></div>
+        <p class="preparedness-intro">${this._escape(text.preparednessIntro)}</p>
+        <div class="preparedness-list">${this._preparednessRows(model.recoveryPreparedness, "checklist", text, model.isAdmin)}</div>
+      </article>
+      <article class="card storage-card preparedness-card">
+        <div class="card-title"><ha-icon icon="mdi:connection"></ha-icon><h3>${this._escape(text.dependenciesTitle)}</h3></div>
+        <p class="preparedness-intro">${this._escape(text.dependenciesIntro)}</p>
+        <div class="preparedness-list">${this._preparednessRows(model.recoveryPreparedness, "dependencies", text, model.isAdmin)}</div>
+        <p class="preparedness-note">${this._escape(this._preparednessReviewText(model.recoveryPreparedness, text))}${model.isAdmin ? "" : ` ${this._escape(text.adminOnly)}`}</p>
       </article>
     </section>
     ${this._actionFooter(model)}`;
@@ -1231,6 +1355,15 @@ class BackupCheckupPanel extends HTMLElement {
         this._runAction(action);
       });
     });
+    this.shadowRoot.querySelectorAll("[data-preparedness-section]").forEach((select) => {
+      select.addEventListener("change", () => {
+        this._setRecoveryPreparedness(
+          select.dataset.preparednessSection,
+          select.dataset.preparednessItem,
+          select.value
+        );
+      });
+    });
     this.shadowRoot.querySelectorAll("[data-level-filter]").forEach((button) => {
       button.addEventListener("click", () => {
         this._logLevelFilter = button.dataset.levelFilter;
@@ -1318,6 +1451,25 @@ class BackupCheckupPanel extends HTMLElement {
     }
   }
 
+  async _setRecoveryPreparedness(section, item, status) {
+    const action = `preparedness:${section}:${item}`;
+    if (!this._hass?.user?.is_admin || this._busy.has(action)) return;
+    this._busy.add(action);
+    this._scheduleRender();
+    try {
+      await this._hass.callService("backup_checkup", "set_recovery_preparedness", { section, item, status });
+    } catch (_error) {
+      this.dispatchEvent(new CustomEvent("hass-notification", {
+        bubbles: true,
+        composed: true,
+        detail: { message: this._text().actionFailed },
+      }));
+    } finally {
+      this._busy.delete(action);
+      this._scheduleRender();
+    }
+  }
+
   _openSettings() {
     history.pushState(null, "", "/config/integrations/integration/backup_checkup");
     window.dispatchEvent(new Event("location-changed"));
@@ -1377,6 +1529,20 @@ class BackupCheckupPanel extends HTMLElement {
       .recovery-check div { min-width:0; display:flex; flex-direction:column; gap:4px; }
       .recovery-check strong { font-size:13px; line-height:1.3; }
       .recovery-check span { color:var(--secondary-text-color); font-size:11px; }
+      .preparedness-intro, .preparedness-note { margin:0 0 15px; color:var(--secondary-text-color); font-size:12px; line-height:1.5; }
+      .preparedness-note { margin:14px 0 0; }
+      .preparedness-list { display:flex; flex-direction:column; }
+      .preparedness-row { display:grid; grid-template-columns:minmax(0, 1fr) auto minmax(160px, auto); align-items:center; gap:12px; min-height:66px; border-top:1px solid var(--divider-color); }
+      .preparedness-row:first-child { border-top:0; }
+      .preparedness-copy { min-width:0; display:flex; flex-direction:column; gap:4px; }
+      .preparedness-copy strong { font-size:13px; line-height:1.35; }
+      .preparedness-copy span { color:var(--secondary-text-color); font-size:11px; }
+      .preparedness-badges { display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; }
+      .preparedness-badge { padding:4px 7px; border-radius:999px; font-size:10px; font-weight:700; }
+      .preparedness-badge.detected { background:rgba(33,150,243,.13); color:#1976d2; }
+      .preparedness-badge.expired { background:rgba(231,154,36,.14); color:#b87300; }
+      .preparedness-row select { width:100%; min-height:38px; padding:6px 9px; border:1px solid var(--divider-color); border-radius:9px; background:var(--card-background-color); color:var(--primary-text-color); font:inherit; font-size:12px; }
+      .preparedness-row select:disabled { opacity:.68; }
       .rows { display:flex; flex-direction:column; }
       .problem-row, .storage-row { display:flex; align-items:center; gap:12px; min-height:52px; border-top:1px solid var(--divider-color); }
       .problem-row:first-child, .storage-row:first-child { border-top:0; }
@@ -1446,7 +1612,7 @@ class BackupCheckupPanel extends HTMLElement {
       .action.secondary { background:var(--card-background-color); color:var(--primary-text-color); }
       .action:disabled { opacity:.48; cursor:default; }
       @media (max-width:900px) { .metrics { grid-template-columns:repeat(2, minmax(0, 1fr)); } .recovery-check-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .content-grid { grid-template-columns:1fr; } .storage-card { grid-column:auto; } .log-row { grid-template-columns:165px 1fr; } .log-row span { grid-column:2; } }
-      @media (max-width:620px) { main { padding:18px 12px 28px; } header { padding:0 4px; } header p { display:none; } .tabs { margin-top:0; } .hero { min-height:0; padding:24px 21px; } .score { width:104px; height:104px; margin-left:14px; } .score::before { inset:8px; } .score strong { font-size:27px; } .hero h2 { font-size:23px; } .metrics { grid-template-columns:1fr 1fr; gap:10px; } .metrics.recovery-summary, .recovery-check-grid { grid-template-columns:1fr; } .metric { min-height:95px; padding:15px; } .content-grid { gap:12px; } .card { padding:18px; } .log-toolbar { align-items:stretch; flex-direction:column; } .live-indicator { align-self:flex-end; } .log-row { grid-template-columns:1fr; gap:3px; padding:10px 13px; } .log-row span { grid-column:auto; } footer { flex-direction:column-reverse; } .action { justify-content:center; } }
+      @media (max-width:620px) { .preparedness-row { grid-template-columns:1fr; gap:7px; padding:11px 0; } .preparedness-badges { justify-content:flex-start; } main { padding:18px 12px 28px; } header { padding:0 4px; } header p { display:none; } .tabs { margin-top:0; } .hero { min-height:0; padding:24px 21px; } .score { width:104px; height:104px; margin-left:14px; } .score::before { inset:8px; } .score strong { font-size:27px; } .hero h2 { font-size:23px; } .metrics { grid-template-columns:1fr 1fr; gap:10px; } .metrics.recovery-summary, .recovery-check-grid { grid-template-columns:1fr; } .metric { min-height:95px; padding:15px; } .content-grid { gap:12px; } .card { padding:18px; } .log-toolbar { align-items:stretch; flex-direction:column; } .live-indicator { align-self:flex-end; } .log-row { grid-template-columns:1fr; gap:3px; padding:10px 13px; } .log-row span { grid-column:auto; } footer { flex-direction:column-reverse; } .action { justify-content:center; } }
       @media (max-width:390px) { .hero { align-items:flex-start; } .score { width:88px; height:88px; } .score span { display:none; } .metrics { grid-template-columns:1fr; } }
     `;
   }

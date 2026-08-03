@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+
+import voluptuous as vol
 from pathlib import Path
 
 from homeassistant.config_entries import ConfigEntry
@@ -22,6 +24,9 @@ from .activity import (
 )
 from .configuration import normalize_configuration
 from .const import (
+    ATTR_PREPAREDNESS_ITEM,
+    ATTR_PREPAREDNESS_SECTION,
+    ATTR_PREPAREDNESS_STATUS,
     CONF_ACTIVITY_LOGGING_ENABLED,
     CONF_AUTO_VERIFY_NEW_BACKUPS,
     CONF_DATABASE_INTEGRITY_CHECK,
@@ -67,6 +72,7 @@ from .const import (
     SERVICE_REFRESH,
     SERVICE_TEST_NOTIFICATION,
     SERVICE_VERIFY_LATEST_BACKUP,
+    SERVICE_SET_RECOVERY_PREPAREDNESS,
     VERSION,
 )
 from .coordinator import BackupCheckupCoordinator
@@ -75,6 +81,16 @@ from .frontend import async_register_frontend, async_setup_panel
 from .history import BackupCheckupHistory
 from .integrity import BackupIntegrityStore
 from .notifications import BackupCheckupNotificationManager
+from .recovery_preparedness import (
+    CHECKLIST_KEYS,
+    CHECK_STATUS_OPTIONS,
+    DEPENDENCY_KEYS,
+    DEPENDENCY_STATUS_OPTIONS,
+    SECTION_CHECKLIST,
+    SECTION_DEPENDENCIES,
+    SECTION_OPTIONS,
+    RecoveryPreparednessStore,
+)
 from .repairs import (
     async_remove_issues,
     async_set_temporary_cleanup_issue,
@@ -90,6 +106,14 @@ from .storage_cleanup import cleanup_entry_store_files, cleanup_orphaned_store_f
 _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+_RECOVERY_PREPAREDNESS_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_PREPAREDNESS_SECTION): vol.In(SECTION_OPTIONS),
+        vol.Required(ATTR_PREPAREDNESS_ITEM): cv.string,
+        vol.Required(ATTR_PREPAREDNESS_STATUS): cv.string,
+    }
+)
 
 
 def _record_activity(
@@ -218,6 +242,31 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
             coordinator, "service_test_notification", ACTIVITY_OUTCOME_COMPLETED
         )
 
+    async def _async_set_recovery_preparedness(call: ServiceCall) -> None:
+        coordinator = _loaded_coordinator(hass)
+        section = call.data[ATTR_PREPAREDNESS_SECTION]
+        item = call.data[ATTR_PREPAREDNESS_ITEM]
+        status = call.data[ATTR_PREPAREDNESS_STATUS]
+        valid_items = CHECKLIST_KEYS if section == SECTION_CHECKLIST else DEPENDENCY_KEYS
+        valid_statuses = (
+            CHECK_STATUS_OPTIONS
+            if section == SECTION_CHECKLIST
+            else DEPENDENCY_STATUS_OPTIONS
+        )
+        if item not in valid_items or status not in valid_statuses:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_recovery_preparedness",
+            )
+        await coordinator.recovery_preparedness.async_set_item(section, item, status)
+        _record_activity(
+            coordinator,
+            "recovery_preparedness_update",
+            ACTIVITY_OUTCOME_COMPLETED,
+            details={"section": section, "status": status},
+        )
+        await coordinator.async_request_refresh()
+
     async def _async_clear_activity_log(_call: ServiceCall) -> None:
         coordinator = _loaded_coordinator(hass)
         await coordinator.activity.async_clear()
@@ -229,6 +278,13 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
         (SERVICE_CLEAR_ACTIVITY_LOG, _async_clear_activity_log),
     ):
         async_register_admin_service(hass, DOMAIN, service, handler)
+    async_register_admin_service(
+        hass,
+        DOMAIN,
+        SERVICE_SET_RECOVERY_PREPAREDNESS,
+        _async_set_recovery_preparedness,
+        _RECOVERY_PREPAREDNESS_SCHEMA,
+    )
     return True
 
 
@@ -327,6 +383,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # coordinator-owned tasks even when setup fails partway through.
     entry.async_on_unload(coordinator.async_shutdown)
     await coordinator.activity.async_load()
+    await coordinator.recovery_preparedness.async_load()
     _record_activity(
         coordinator,
         "config_entry_setup",
@@ -432,6 +489,7 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
             coordinator.integrity_verifier.store.async_remove,
             coordinator.notification_manager.async_remove,
             coordinator.activity.async_remove,
+            coordinator.recovery_preparedness.async_remove,
         )
     else:
         removers = (
@@ -439,6 +497,7 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
             BackupIntegrityStore(hass, entry.entry_id).async_remove,
             BackupCheckupNotificationManager(hass, entry.entry_id).async_remove,
             BackupCheckupActivityLog(hass, entry.entry_id).async_remove,
+            RecoveryPreparednessStore(hass, entry.entry_id).async_remove,
         )
 
     for remove in removers:

@@ -180,6 +180,7 @@ def _recovery_diagnostics(data: BackupCheckupData) -> dict[str, Any]:
         "content_inventory": data.recovery_content_inventory,
         "content_comparison": data.recovery_content_comparison,
         "storage_resilience": data.recovery_storage_resilience,
+        "preparedness": data.recovery_preparedness,
         "backup_content_changed": data.backup_content_changed,
         "external_copy_missing": data.external_copy_missing,
     }

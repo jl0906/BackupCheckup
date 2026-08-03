@@ -1,5 +1,59 @@
 # Changelog
 
+## 3.0.0-alpha5
+
+**Guided emergency preparedness and external dependencies**
+
+### Added
+
+- Added a guided, administrator-editable emergency checklist directly to the
+  Recovery / Notfallvorsorge frontend. It records only fixed enum states for
+  password availability, storage access, restore procedure, replacement hardware,
+  network access, and recovery contacts.
+- Added a fixed external-dependency inventory for external databases, MQTT,
+  Zigbee, Z-Wave, Thread/Matter, ESPHome, network storage, reverse proxies,
+  certificates, and cloud/API access.
+- Added privacy-safe automatic detection hints for MQTT, ZHA/deCONZ, Z-Wave JS,
+  Thread/Matter, ESPHome, external databases, and off-device network storage.
+  Detection only reads integration domains and existing aggregate backup metadata;
+  it never reads credentials, addresses, paths, configuration payloads, or secrets.
+- Added a private per-config-entry recovery-preparedness Store. Confirmations expire
+  after 180 days and become unassessed until reviewed again.
+- Added the administrator-only `backup_checkup.set_recovery_preparedness` action,
+  with strict section, item, and status validation.
+- Added `binary_sensor.backup_checkup_recovery_checklist_incomplete` and
+  `binary_sensor.backup_checkup_external_dependency_unprotected`.
+
+### Changed
+
+- Expanded Recovery Readiness from eleven to thirteen checks by adding guided
+  checklist completion and external-dependency protection.
+- A high numeric score alone no longer produces the `ready` status. Ready now also
+  requires a completed checklist and a completed external-dependency review.
+- Every dependency category can be explicitly marked as separately protected or
+  not applicable, including installations where no dependency was detected
+  automatically.
+- Added the priority recommendations `complete_recovery_checklist` and
+  `protect_external_dependencies` in every supported backend translation.
+- Extended entities, diagnostics, entity presets, private-store cleanup, and the
+  sidebar frontend with the new preparedness information.
+- Increased the frontend asset revision to `r6` to prevent stale alpha4 assets.
+
+### Privacy and safety
+
+- No free text is accepted or persisted by the new checklist.
+- Passwords, tokens, hostnames, paths, account names, notes, and integration
+  configuration are never stored in preparedness state or exposed in diagnostics.
+- All updates require Home Assistant administrator permission.
+
+### Quality assurance
+
+- Added persistence, expiry, malformed-store, dependency-detection, score,
+  recommendation, entity, translation, privacy, service-wiring, and executable
+  frontend tests.
+- Alpha5 result: 65 tests passed, 40/40 functions, 470/470 statements, and 108/108
+  branches covered in the alpha-specific production modules.
+
 ## 3.0.0-alpha4
 
 **Recovery inventory and failure-domain-aware redundancy**

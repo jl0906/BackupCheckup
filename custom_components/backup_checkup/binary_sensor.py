@@ -180,6 +180,22 @@ BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
         attributes_fn=lambda data: data.recovery_content_comparison,
     ),
     BackupCheckupBinarySensorDescription(
+        key="recovery_checklist_incomplete",
+        translation_key="recovery_checklist_incomplete",
+        icon="mdi:clipboard-alert-outline",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda data: data.recovery_checklist_incomplete,
+        attributes_fn=lambda data: data.recovery_preparedness,
+    ),
+    BackupCheckupBinarySensorDescription(
+        key="external_dependency_unprotected",
+        translation_key="external_dependency_unprotected",
+        icon="mdi:connection",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        value_fn=lambda data: data.external_dependency_unprotected,
+        attributes_fn=lambda data: data.recovery_preparedness,
+    ),
+    BackupCheckupBinarySensorDescription(
         key="required_location_missing",
         translation_key="required_location_missing",
         entity_registry_enabled_default=False,

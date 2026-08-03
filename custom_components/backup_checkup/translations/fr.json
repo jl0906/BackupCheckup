@@ -522,7 +522,9 @@
           "create_external_copy": "Create an independent backup copy",
           "create_complete_backup": "Create a complete backup",
           "enable_database_check": "Enable or run the database check",
-          "review_backup_contents": "Vérifier le contenu modifié de la sauvegarde"
+          "review_backup_contents": "Vérifier le contenu modifié de la sauvegarde",
+          "complete_recovery_checklist": "Complete the guided recovery checklist",
+          "protect_external_dependencies": "Protect external dependencies"
         }
       }
     },
@@ -583,6 +585,12 @@
       },
       "backup_content_changed": {
         "name": "Contenu de sauvegarde modifié"
+      },
+      "recovery_checklist_incomplete": {
+        "name": "Recovery checklist incomplete"
+      },
+      "external_dependency_unprotected": {
+        "name": "External dependency unprotected"
       }
     },
     "button": {
@@ -734,6 +742,9 @@
     },
     "notification_not_configured": {
       "message": "No notification targets are configured for BackupCheckup."
+    },
+    "invalid_recovery_preparedness": {
+      "message": "The selected recovery-preparedness item or status is invalid."
     }
   }
 }

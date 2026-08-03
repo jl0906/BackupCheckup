@@ -46,11 +46,13 @@ automations.
 
 | Entity | Default | Purpose |
 | --- | --- | --- |
-| `sensor.backup_checkup_recovery_readiness` | Standard | Recovery score from 0 to 100 with checks, deductions, content inventory, content comparison, and storage resilience attributes |
+| `sensor.backup_checkup_recovery_readiness` | Standard | Recovery score from 0 to 100 with checks, deductions, content inventory, content comparison, storage resilience, guided checklist, and external-dependency attributes |
 | `sensor.backup_checkup_recovery_status` | Standard | `ready`, `limited`, `insufficient`, or `unknown` |
 | `sensor.backup_checkup_recovery_recommendation` | Standard | Highest-priority disaster-recovery action |
 | `binary_sensor.backup_checkup_external_copy_missing` | Standard | On when known storage classes confirm that no copy exists in an independent off-device failure domain |
 | `binary_sensor.backup_checkup_backup_content_changed` | Standard | On when a previous complete backup contained required data that the latest backup no longer contains |
+| `binary_sensor.backup_checkup_recovery_checklist_incomplete` | Standard | On while the fixed emergency checklist is missing, incomplete, or expired |
+| `binary_sensor.backup_checkup_external_dependency_unprotected` | Standard | On when at least one reviewed external dependency is explicitly unprotected or the required review remains incomplete after it has begun |
 
 The recovery-readiness attributes never expose add-on names, folder names, raw
 agent IDs, backup names, or paths. Content comparison reports only counts and the
@@ -58,6 +60,12 @@ generic critical categories SSL, Share, and Media. Storage copies are represente
 by anonymous references and conservative classes such as Home Assistant device,
 directly attached storage, local network/NAS, remote storage, cloud, or unknown.
 Unknown storage targets are never assumed to be independent.
+
+The preparedness attributes contain only fixed enum states, update timestamps,
+expiry flags, automatically detected category flags, and aggregate counts. They do
+not contain passwords, notes, paths, hostnames, credentials, or integration
+configuration. Checklist and dependency values can be changed only through the
+administrator-protected frontend/action and expire after 180 days.
 
 ## Mobile notification behavior
 

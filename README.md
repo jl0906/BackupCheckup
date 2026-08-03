@@ -10,7 +10,7 @@
 
 <p align="center">
   <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-orange.svg">
-  <img alt="Version 3.0.0-alpha4" src="https://img.shields.io/badge/version-3.0.0--alpha4-blue.svg">
+  <img alt="Version 3.0.0-alpha5" src="https://img.shields.io/badge/version-3.0.0--alpha5-blue.svg">
   <img alt="AI Coded and Maintained" src="https://img.shields.io/badge/AI-Coded_and_Maintained-8A2BE2.svg">
   <img alt="Home Assistant 2026.3 or newer" src="https://img.shields.io/badge/Home_Assistant-2026.3_or_newer-41BDF5.svg">
   <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg">
@@ -25,9 +25,9 @@ It warns you when backups are missing, outdated, incomplete, unexpectedly small,
 BackupCheckup now evaluates whether the newest monitored backup is suitable for
 a real disaster-recovery scenario. The new score is independent from the normal
 backup health score and explains its result through privacy-safe checks and
-weighted deductions. Alpha4 additionally inventories the latest backup, compares
-its scope with the previous complete backup, and classifies storage copies by
-failure domain. The alpha remains strictly read-only and never starts a restore.
+weighted deductions. Alpha5 additionally provides a guided emergency checklist,
+locally persisted confirmations, and an external-dependency review. The alpha
+remains non-destructive and never starts a restore.
 
 ## Install with HACS
 
@@ -61,10 +61,13 @@ Hardware detection is only a recommendation. BackupCheckup never changes your se
 Enable **Show BackupCheckup in the sidebar** during setup to add a responsive overview page directly to Home Assistant. It provides:
 
 - overall backup status, Health Score, and Recovery Readiness Score
-- a dedicated **Recovery / Notfallvorsorge** tab with status, priority action, all eleven checks, and weighted deductions
+- a dedicated **Recovery / Notfallvorsorge** tab with status, priority action, all thirteen checks, and weighted deductions
 - a privacy-safe inventory of Home Assistant data, database, add-ons, folders, SSL, Share, and Media
 - a comparison with the previous complete backup that highlights missing contents without exposing their names
 - failure-domain-aware storage classification instead of treating every second target as automatically independent
+- a guided emergency checklist for restore access, procedure, hardware, network access, and recovery contacts
+- an external-dependency review with privacy-safe detection hints for MQTT, Zigbee, Z-Wave, Thread/Matter, ESPHome, external databases, and network storage
+- fixed confirmations that expire after 180 days without storing passwords, paths, notes, or configuration contents
 - the recommended next action and active problems
 - latest backup age and size, stored-backup count, and integrity status
 - a compact overview of every configured backup storage location
@@ -217,7 +220,7 @@ The sidebar frontend contains separate **Overview**, **Recovery / Notfallvorsorg
 - [FAQ](docs/faq.md)
 - [Dashboard example](docs/examples/dashboard.yaml)
 - [Automation example](docs/examples/automation.yaml)
-- [Alpha4 coverage report](docs/coverage-3.0.0-alpha4.md)
+- [Alpha5 coverage report](docs/coverage-3.0.0-alpha5.md)
 - [Function coverage report](docs/function-coverage-2.3.0.md)
 - [Security hardening report](docs/security-hardening-2.3.1.md)
 - [2.4.0 quality and Health Score audit](docs/quality-audit-health-score-2.4.0.md)
@@ -227,7 +230,7 @@ The sidebar frontend contains separate **Overview**, **Recovery / Notfallvorsorg
 
 Install updates through HACS and restart Home Assistant when requested.
 
-Removing the BackupCheckup config entry deletes only the integration's own local history, integrity result, notification state, and optional activity journal. Your Home Assistant backups are never deleted.
+Removing the BackupCheckup config entry deletes only the integration's own local history, integrity result, notification state, optional activity journal, and recovery-preparedness confirmations. Your Home Assistant backups are never deleted.
 
 ## Languages
 

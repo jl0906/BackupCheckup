@@ -22,3 +22,57 @@ clear_activity_log:
   description: >-
     Clears all buffered and, when enabled, persisted privacy-safe activity records.
     Administrator access is required.
+
+set_recovery_preparedness:
+  name: Update recovery preparedness
+  description: >-
+    Updates one fixed recovery-checklist or external-dependency state. Only predefined
+    enum values are stored locally; no passwords, notes, paths, or other secrets are
+    accepted. Administrator access is required.
+  fields:
+    section:
+      name: Section
+      description: Select whether a checklist or dependency item is updated.
+      required: true
+      selector:
+        select:
+          options:
+            - checklist
+            - dependencies
+    item:
+      name: Item
+      description: Fixed checklist or dependency key.
+      required: true
+      selector:
+        select:
+          options:
+            - backup_password_available
+            - storage_access_documented
+            - restore_method_known
+            - replacement_hardware_available
+            - network_access_documented
+            - recovery_contacts_documented
+            - external_database
+            - mqtt
+            - zigbee
+            - zwave
+            - thread
+            - esphome
+            - network_storage
+            - reverse_proxy
+            - certificates
+            - cloud_services
+    status:
+      name: Status
+      description: Fixed state valid for the selected section.
+      required: true
+      selector:
+        select:
+          options:
+            - unknown
+            - confirmed
+            - missing
+            - not_required
+            - protected
+            - unprotected
+            - not_applicable

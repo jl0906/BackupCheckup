@@ -522,7 +522,9 @@
           "create_external_copy": "Unabhängige Backup-Kopie erstellen",
           "create_complete_backup": "Vollständiges Backup erstellen",
           "enable_database_check": "Datenbankprüfung aktivieren oder ausführen",
-          "review_backup_contents": "Veränderten Backup-Inhalt prüfen"
+          "review_backup_contents": "Veränderten Backup-Inhalt prüfen",
+          "complete_recovery_checklist": "Geführten Notfallcheck vervollständigen",
+          "protect_external_dependencies": "Externe Abhängigkeiten absichern"
         }
       }
     },
@@ -583,6 +585,12 @@
       },
       "backup_content_changed": {
         "name": "Backup-Inhalt unerwartet verändert"
+      },
+      "recovery_checklist_incomplete": {
+        "name": "Notfallcheck unvollständig"
+      },
+      "external_dependency_unprotected": {
+        "name": "Externe Abhängigkeit nicht abgesichert"
       }
     },
     "button": {
@@ -734,6 +742,9 @@
     },
     "notification_not_configured": {
       "message": "Für BackupCheckup sind keine Benachrichtigungsziele konfiguriert."
+    },
+    "invalid_recovery_preparedness": {
+      "message": "Der ausgewählte Notfallvorsorge-Eintrag oder Status ist ungültig."
     }
   }
 }

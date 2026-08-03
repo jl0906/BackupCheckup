@@ -497,6 +497,9 @@ class BackupCheckupData:
     recovery_content_inventory: dict[str, Any] = field(default_factory=dict)
     recovery_content_comparison: dict[str, Any] = field(default_factory=dict)
     recovery_storage_resilience: dict[str, Any] = field(default_factory=dict)
+    recovery_preparedness: dict[str, Any] = field(default_factory=dict)
+    recovery_checklist_incomplete: bool = False
+    external_dependency_unprotected: bool = False
     backup_content_changed: bool = False
     external_copy_missing: bool = False
 

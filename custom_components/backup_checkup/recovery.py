@@ -12,6 +12,7 @@ from .const import (
 )
 from .models import BackupAgentSummary, BackupIntegrityResult, BackupRecord
 from .recovery_inventory import RecoveryInventory, build_recovery_inventory
+from .recovery_preparedness import RecoveryPreparednessSnapshot
 
 RECOVERY_STATUS_READY = "ready"
 RECOVERY_STATUS_LIMITED = "limited"
@@ -29,6 +30,8 @@ RECOVERY_RECOMMENDATION_EXTERNAL_COPY = "create_external_copy"
 RECOVERY_RECOMMENDATION_COMPLETE_BACKUP = "create_complete_backup"
 RECOVERY_RECOMMENDATION_REVIEW_CONTENTS = "review_backup_contents"
 RECOVERY_RECOMMENDATION_DATABASE = "enable_database_check"
+RECOVERY_RECOMMENDATION_CHECKLIST = "complete_recovery_checklist"
+RECOVERY_RECOMMENDATION_DEPENDENCIES = "protect_external_dependencies"
 RECOVERY_RECOMMENDATION_NONE = "none"
 RECOVERY_RECOMMENDATION_OPTIONS = (
     RECOVERY_RECOMMENDATION_NONE,
@@ -37,6 +40,8 @@ RECOVERY_RECOMMENDATION_OPTIONS = (
     RECOVERY_RECOMMENDATION_COMPLETE_BACKUP,
     RECOVERY_RECOMMENDATION_REVIEW_CONTENTS,
     RECOVERY_RECOMMENDATION_DATABASE,
+    RECOVERY_RECOMMENDATION_CHECKLIST,
+    RECOVERY_RECOMMENDATION_DEPENDENCIES,
 )
 
 
@@ -52,14 +57,20 @@ class RecoveryReadiness:
     content_inventory: dict[str, Any]
     content_comparison: dict[str, Any]
     storage_resilience: dict[str, Any]
+    preparedness: dict[str, Any]
     backup_content_changed: bool
     external_copy_missing: bool
 
 
-def _status(score: int, has_backup: bool) -> str:
+def _status(
+    score: int,
+    has_backup: bool,
+    *,
+    preparedness_complete: bool = True,
+) -> str:
     if not has_backup:
         return RECOVERY_STATUS_INSUFFICIENT
-    if score >= 85:
+    if score >= 85 and preparedness_complete:
         return RECOVERY_STATUS_READY
     if score >= 55:
         return RECOVERY_STATUS_LIMITED
@@ -73,6 +84,7 @@ def _checks(
     *,
     backup_stale: bool,
     database_check_enabled: bool,
+    preparedness: RecoveryPreparednessSnapshot,
 ) -> dict[str, bool | None]:
     """Return all recovery checks from current inventory and verification state."""
     applies_to_latest = bool(latest and integrity.backup_id == latest.backup_id)
@@ -106,6 +118,8 @@ def _checks(
             or inventory.comparison.material_regression is None
             else not inventory.comparison.material_regression
         ),
+        "preparedness_checklist_complete": preparedness.checklist_complete,
+        "external_dependencies_protected": preparedness.dependencies_protected,
     }
 
 
@@ -128,6 +142,8 @@ def _deductions(
         "multiple_failure_domains": 4,
         "copy_sizes_consistent": 4,
         "content_stable": 5,
+        "preparedness_checklist_complete": 7,
+        "external_dependencies_protected": 5,
     }
     deductions = {
         key: weight for key, weight in weights.items() if checks[key] is False
@@ -137,6 +153,8 @@ def _deductions(
         "database_included",
         "independent_copy",
         "multiple_failure_domains",
+        "preparedness_checklist_complete",
+        "external_dependencies_protected",
     ):
         if checks[key] is None:
             deductions[key] = max(1, weights[key] // 2)
@@ -161,6 +179,10 @@ def _recommendation(
         return RECOVERY_RECOMMENDATION_EXTERNAL_COPY
     if database_check_enabled and checks["database_verified"] is not True:
         return RECOVERY_RECOMMENDATION_DATABASE
+    if checks["preparedness_checklist_complete"] is not True:
+        return RECOVERY_RECOMMENDATION_CHECKLIST
+    if checks["external_dependencies_protected"] is not True:
+        return RECOVERY_RECOMMENDATION_DEPENDENCIES
     return RECOVERY_RECOMMENDATION_NONE
 
 
@@ -173,16 +195,19 @@ def assess_recovery_readiness(
     database_check_enabled: bool,
     backups: tuple[BackupRecord, ...] = (),
     agent_summaries: tuple[BackupAgentSummary, ...] = (),
+    preparedness: RecoveryPreparednessSnapshot | None = None,
 ) -> RecoveryReadiness:
     """Assess whether the latest backup is suitable for disaster recovery."""
     del required_locations  # Replaced by failure-domain-aware redundancy in alpha4.
     inventory = build_recovery_inventory(latest, backups, agent_summaries)
+    preparedness_snapshot = preparedness or RecoveryPreparednessSnapshot.empty()
     checks = _checks(
         latest,
         inventory,
         integrity,
         backup_stale=backup_stale,
         database_check_enabled=database_check_enabled,
+        preparedness=preparedness_snapshot,
     )
     deductions = _deductions(latest, checks)
     score = max(0, 100 - sum(deductions.values()))
@@ -194,13 +219,21 @@ def assess_recovery_readiness(
     )
     return RecoveryReadiness(
         score=score,
-        status=_status(score, latest is not None),
+        status=_status(
+            score,
+            latest is not None,
+            preparedness_complete=(
+                checks["preparedness_checklist_complete"] is True
+                and checks["external_dependencies_protected"] is True
+            ),
+        ),
         recommendation=recommendation,
         deductions=deductions,
         checks=checks,
         content_inventory=inventory.content.as_dict(),
         content_comparison=inventory.comparison.as_dict(),
         storage_resilience=inventory.storage.as_dict(),
+        preparedness=preparedness_snapshot.as_dict(),
         backup_content_changed=inventory.comparison.material_regression is True,
         external_copy_missing=bool(
             latest is not None and inventory.storage.independent_copy is False
