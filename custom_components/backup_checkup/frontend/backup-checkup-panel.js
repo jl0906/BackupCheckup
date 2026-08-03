@@ -1,4 +1,4 @@
-const PANEL_ELEMENT_NAME = "backup-checkup-panel-v3-0-0-alpha6-r7";
+const PANEL_ELEMENT_NAME = "backup-checkup-panel-v3-0-0-beta1-r8";
 
 const TRANSLATION_SEPARATOR = "\u001f";
 const TRANSLATION_KEYS = Object.freeze({
@@ -499,6 +499,188 @@ const RECOVERY_TEXT = Object.freeze({
   sv: { tab: "Återställning", title: "Återställningsberedskap", score: "Återställningspoäng", status: "Återställningsstatus", recommendation: "Viktigaste åtgärd", checks: "Återställningskontroller", deductions: "Poängavdrag" },
 });
 
+
+const CONFIG_TEXT = Object.freeze({
+  en: {
+    tab: "Settings",
+    title: "BackupCheckup settings",
+    subtitle: "Change all integration options directly here. Saving reloads the integration once.",
+    loading: "Loading settings…",
+    loadFailed: "The settings could not be loaded.",
+    save: "Save settings",
+    saving: "Saving…",
+    saved: "Settings saved. BackupCheckup is reloading.",
+    reset: "Discard changes",
+    reloadNotice: "A short integration reload is required after saving.",
+    adminOnly: "Only Home Assistant administrators can change these settings.",
+    runtime: "Runtime and performance",
+    runtimeHelp: "Choose a hardware profile or configure every runtime limit manually.",
+    monitoring: "Monitoring and thresholds",
+    monitoringHelp: "Control when BackupCheckup reports stale, small or non-redundant backups.",
+    verification: "Integrity verification",
+    verificationHelp: "Configure automatic checks, database inspection and safety limits.",
+    presentation: "Display, privacy and notifications",
+    presentationHelp: "Control entities, live logging, metadata visibility and Companion App notifications.",
+    hardware: "Detected hardware recommendation",
+    recommended: "Recommended profile",
+    installationType: "Installation type",
+    architecture: "Architecture",
+    board: "Board",
+    runtime_profile: "Runtime profile",
+    adaptive_polling: "Adaptive polling",
+    update_interval_minutes: "Normal polling interval (minutes)",
+    active_update_interval_minutes: "Active polling interval (minutes)",
+    error_backoff_interval_minutes: "Error backoff interval (minutes)",
+    adaptive_error_threshold: "Errors before backoff",
+    max_verification_size_gb: "Maximum backup download (GB)",
+    max_expanded_size_gb: "Maximum expanded size (GB)",
+    verification_timeout_minutes: "Verification timeout (minutes)",
+    database_timeout_minutes: "Database timeout (minutes)",
+    manual_verification_cooldown_minutes: "Manual verification cooldown (minutes)",
+    monitoring_policy: "Monitoring policy",
+    max_age_days: "Maximum backup age (days)",
+    size_check_mode: "Size check",
+    minimum_backup_size_mb: "Minimum backup size (MB)",
+    maximum_size_drop_percent: "Maximum size drop (%)",
+    minimum_redundant_locations: "Required storage locations",
+    repair_issues_enabled: "Create Home Assistant repair issues",
+    analytics_window_days: "Analytics window (days)",
+    verification_policy: "Verification policy",
+    auto_verify_new_backups: "Automatically verify new backups",
+    database_integrity_check: "Inspect the backup database",
+    entity_mode: "Entity mode",
+    expose_backup_metadata: "Expose private backup metadata in entity attributes",
+    show_sidebar_panel: "Show BackupCheckup in the sidebar",
+    activity_logging_enabled: "Enable detailed live logging",
+    activity_log_persistence: "Keep the live log across restarts",
+    activity_log_retention_days: "Live-log retention (days)",
+    notifications_enabled: "Enable mobile notifications",
+    notification_targets: "Companion App devices",
+    notify_on_recovery: "Send recovery notifications",
+    noTargets: "No Companion App notification entities are available.",
+    selectMultiple: "Use Ctrl/Cmd to select multiple devices.",
+    optionLabels: {
+      energy_saving: "Energy saving",
+      home_assistant_appliance: "Home Assistant appliance",
+      performance: "Performance",
+      server: "Server",
+      custom: "Custom",
+      balanced: "Balanced",
+      strict: "Strict",
+      manual: "Manual",
+      automatic: "Automatic",
+      deep: "Deep verification",
+      standard: "Standard",
+      expert: "Expert",
+      fixed: "Fixed minimum",
+      disabled: "Disabled",
+    },
+    errors: {
+      invalid_payload: "The submitted configuration is invalid.",
+      unknown_setting: "The submitted configuration contains an unknown setting.",
+      invalid_boolean: "Select a valid on/off value.",
+      invalid_integer: "Enter a whole number.",
+      out_of_range: "The value is outside the allowed range.",
+      invalid_option: "Select a supported option.",
+      invalid_notification_target: "Select only valid notification devices.",
+      notification_target_required: "Select at least one device when notifications are enabled.",
+      active_interval_too_slow: "The active interval must not exceed the normal interval.",
+      backoff_interval_too_fast: "The error backoff must not be shorter than the normal interval.",
+      expanded_size_too_small: "The expanded-size limit must be at least the download limit.",
+      fixed_size_required: "A fixed size check requires a minimum size above zero.",
+    },
+  },
+  de: {
+    tab: "Einstellungen",
+    title: "BackupCheckup-Einstellungen",
+    subtitle: "Alle Integrationsoptionen direkt hier ändern. Beim Speichern wird die Integration einmal neu geladen.",
+    loading: "Einstellungen werden geladen…",
+    loadFailed: "Die Einstellungen konnten nicht geladen werden.",
+    save: "Einstellungen speichern",
+    saving: "Speichern…",
+    saved: "Einstellungen gespeichert. BackupCheckup wird neu geladen.",
+    reset: "Änderungen verwerfen",
+    reloadNotice: "Nach dem Speichern ist ein kurzer Neustart der Integration erforderlich.",
+    adminOnly: "Nur Home-Assistant-Administratoren können diese Einstellungen ändern.",
+    runtime: "Laufzeit und Leistung",
+    runtimeHelp: "Hardwareprofil auswählen oder alle Laufzeitgrenzen manuell konfigurieren.",
+    monitoring: "Überwachung und Grenzwerte",
+    monitoringHelp: "Festlegen, wann BackupCheckup alte, kleine oder nicht redundante Backups meldet.",
+    verification: "Integritätsprüfung",
+    verificationHelp: "Automatische Prüfungen, Datenbankkontrolle und Sicherheitsgrenzen konfigurieren.",
+    presentation: "Darstellung, Datenschutz und Benachrichtigungen",
+    presentationHelp: "Entitäten, Live-Protokoll, Metadaten und Companion-App-Benachrichtigungen steuern.",
+    hardware: "Erkannte Hardwareempfehlung",
+    recommended: "Empfohlenes Profil",
+    installationType: "Installationsart",
+    architecture: "Architektur",
+    board: "Hardware/Board",
+    runtime_profile: "Laufzeitprofil",
+    adaptive_polling: "Adaptive Abfrage",
+    update_interval_minutes: "Normales Abfrageintervall (Minuten)",
+    active_update_interval_minutes: "Aktives Abfrageintervall (Minuten)",
+    error_backoff_interval_minutes: "Fehler-Warteintervall (Minuten)",
+    adaptive_error_threshold: "Fehler bis zur Wartephase",
+    max_verification_size_gb: "Maximaler Backup-Download (GB)",
+    max_expanded_size_gb: "Maximal entpackte Größe (GB)",
+    verification_timeout_minutes: "Zeitlimit der Prüfung (Minuten)",
+    database_timeout_minutes: "Zeitlimit der Datenbankprüfung (Minuten)",
+    manual_verification_cooldown_minutes: "Sperrzeit manueller Prüfungen (Minuten)",
+    monitoring_policy: "Überwachungsrichtlinie",
+    max_age_days: "Maximales Backupalter (Tage)",
+    size_check_mode: "Größenprüfung",
+    minimum_backup_size_mb: "Minimale Backupgröße (MB)",
+    maximum_size_drop_percent: "Maximaler Größenrückgang (%)",
+    minimum_redundant_locations: "Erforderliche Speicherorte",
+    repair_issues_enabled: "Home-Assistant-Reparaturhinweise erstellen",
+    analytics_window_days: "Analysezeitraum (Tage)",
+    verification_policy: "Prüfstrategie",
+    auto_verify_new_backups: "Neue Backups automatisch prüfen",
+    database_integrity_check: "Datenbank im Backup kontrollieren",
+    entity_mode: "Entitätsmodus",
+    expose_backup_metadata: "Private Backup-Metadaten in Entitätsattributen anzeigen",
+    show_sidebar_panel: "BackupCheckup in der Seitenleiste anzeigen",
+    activity_logging_enabled: "Detailliertes Live-Protokoll aktivieren",
+    activity_log_persistence: "Live-Protokoll über Neustarts behalten",
+    activity_log_retention_days: "Aufbewahrung des Live-Protokolls (Tage)",
+    notifications_enabled: "Mobile Benachrichtigungen aktivieren",
+    notification_targets: "Companion-App-Geräte",
+    notify_on_recovery: "Entwarnungsbenachrichtigungen senden",
+    noTargets: "Keine Benachrichtigungsentitäten der Companion App verfügbar.",
+    selectMultiple: "Mit Strg/Cmd können mehrere Geräte ausgewählt werden.",
+    optionLabels: {
+      energy_saving: "Energiesparend",
+      home_assistant_appliance: "Home-Assistant-Gerät",
+      performance: "Leistung",
+      server: "Server",
+      custom: "Benutzerdefiniert",
+      balanced: "Ausgewogen",
+      strict: "Streng",
+      manual: "Manuell",
+      automatic: "Automatisch",
+      deep: "Tiefe Prüfung",
+      standard: "Standard",
+      expert: "Experte",
+      fixed: "Fester Mindestwert",
+      disabled: "Deaktiviert",
+    },
+    errors: {
+      invalid_payload: "Die übermittelte Konfiguration ist ungültig.",
+      unknown_setting: "Die Konfiguration enthält eine unbekannte Einstellung.",
+      invalid_boolean: "Bitte einen gültigen Ein-/Aus-Wert auswählen.",
+      invalid_integer: "Bitte eine ganze Zahl eingeben.",
+      out_of_range: "Der Wert liegt außerhalb des zulässigen Bereichs.",
+      invalid_option: "Bitte eine unterstützte Option auswählen.",
+      invalid_notification_target: "Bitte nur gültige Benachrichtigungsgeräte auswählen.",
+      notification_target_required: "Bei aktivierten Benachrichtigungen muss mindestens ein Gerät ausgewählt sein.",
+      active_interval_too_slow: "Das aktive Intervall darf nicht größer als das normale Intervall sein.",
+      backoff_interval_too_fast: "Das Fehler-Warteintervall darf nicht kürzer als das normale Intervall sein.",
+      expanded_size_too_small: "Die Grenze der entpackten Größe muss mindestens der Downloadgrenze entsprechen.",
+      fixed_size_required: "Für eine feste Größenprüfung muss die Mindestgröße größer als null sein.",
+    },
+  },
+});
+
 const DEFAULT_ENTITIES = {
   status: "sensor.backup_checkup_status",
   health_score: "sensor.backup_checkup_health_score",
@@ -539,6 +721,7 @@ class BackupCheckupPanel extends HTMLElement {
     this._relevantStateRefs = new Map();
     this._viewContext = "";
     this._panelEntitySignature = "";
+    this._configState = { status: "idle", data: null, draft: null, errors: {}, saved: false };
   }
 
   set hass(value) {
@@ -602,6 +785,18 @@ class BackupCheckupPanel extends HTMLElement {
       ...selected,
       activityActions: { ...TEXT.en.activityActions, ...selected.activityActions },
       activityOutcomes: { ...TEXT.en.activityOutcomes, ...selected.activityOutcomes },
+      config: {
+        ...CONFIG_TEXT.en,
+        ...(CONFIG_TEXT[language] || {}),
+        optionLabels: {
+          ...CONFIG_TEXT.en.optionLabels,
+          ...(CONFIG_TEXT[language]?.optionLabels || {}),
+        },
+        errors: {
+          ...CONFIG_TEXT.en.errors,
+          ...(CONFIG_TEXT[language]?.errors || {}),
+        },
+      },
       recovery: {
         ...RECOVERY_TEXT.en,
         ...recovery,
@@ -667,6 +862,7 @@ class BackupCheckupPanel extends HTMLElement {
 
   _relevantEntityIds() {
     const entities = this._entities();
+    if (this._activeTab === "settings") return [];
     if (this._activeTab === "logs") {
       return [entities.activity_log, entities.clear_activity_log];
     }
@@ -1225,10 +1421,14 @@ class BackupCheckupPanel extends HTMLElement {
     </footer>`;
   }
 
-  _tabs(text) {
+  _tabs(text, isAdmin) {
     const overviewActive = this._activeTab === "overview" ? "active" : "";
     const recoveryActive = this._activeTab === "recovery" ? "active" : "";
     const logsActive = this._activeTab === "logs" ? "active" : "";
+    const settingsActive = this._activeTab === "settings" ? "active" : "";
+    const settingsTab = isAdmin ? `<button class="tab ${settingsActive}" data-tab="settings">
+      <ha-icon icon="mdi:cog-outline"></ha-icon>${this._escape(text.config.tab)}
+    </button>` : "";
     return `<nav class="tabs" aria-label="BackupCheckup">
       <button class="tab ${overviewActive}" data-tab="overview">
         <ha-icon icon="mdi:view-dashboard-outline"></ha-icon>${this._escape(text.overviewTab)}
@@ -1239,6 +1439,7 @@ class BackupCheckupPanel extends HTMLElement {
       <button class="tab ${logsActive}" data-tab="logs">
         <ha-icon icon="mdi:text-box-search-outline"></ha-icon>${this._escape(text.logTab)}
       </button>
+      ${settingsTab}
     </nav>`;
   }
 
@@ -1434,6 +1635,148 @@ class BackupCheckupPanel extends HTMLElement {
     }).join("");
   }
 
+  _configError(key, text) {
+    const code = this._configState.errors?.[key];
+    return code ? `<span class="config-error">${this._escape(text.errors[code] || code)}</span>` : "";
+  }
+
+  _configSelect(key, options, text) {
+    const value = this._configState.draft?.[key];
+    const choices = (options || []).map((option) => `<option value="${this._escape(option)}" ${option === value ? "selected" : ""}>${this._escape(text.optionLabels[option] || this._humanize(option))}</option>`).join("");
+    return `<label class="config-field"><span>${this._escape(text[key] || key)}</span><select data-config-key="${this._escape(key)}">${choices}</select>${this._configError(key, text)}</label>`;
+  }
+
+  _configNumber(key, text, limits) {
+    const value = this._configState.draft?.[key];
+    const limit = limits?.[key] || {};
+    return `<label class="config-field"><span>${this._escape(text[key] || key)}</span><input type="number" step="1" min="${this._escape(limit.min ?? "")}" max="${this._escape(limit.max ?? "")}" value="${this._escape(value ?? "")}" data-config-key="${this._escape(key)}">${this._configError(key, text)}</label>`;
+  }
+
+  _configToggle(key, text) {
+    const checked = this._configState.draft?.[key] ? "checked" : "";
+    return `<label class="config-toggle"><input type="checkbox" data-config-key="${this._escape(key)}" ${checked}><span><strong>${this._escape(text[key] || key)}</strong></span></label>${this._configError(key, text)}`;
+  }
+
+  _notificationTargetField(data, text) {
+    const targets = data?.options?.notification_targets || [];
+    const selected = new Set(this._configState.draft?.notification_targets || []);
+    if (!targets.length) return `<div class="config-field"><span>${this._escape(text.notification_targets)}</span><p class="config-hint">${this._escape(text.noTargets)}</p>${this._configError("notification_targets", text)}</div>`;
+    const options = targets.map((target) => `<option value="${this._escape(target.value)}" ${selected.has(target.value) ? "selected" : ""}>${this._escape(target.label)}</option>`).join("");
+    return `<label class="config-field"><span>${this._escape(text.notification_targets)}</span><select multiple size="${Math.min(6, Math.max(2, targets.length))}" data-config-key="notification_targets">${options}</select><small>${this._escape(text.selectMultiple)}</small>${this._configError("notification_targets", text)}</label>`;
+  }
+
+  _configSection(title, help, content) {
+    return `<article class="card config-card"><div class="card-title"><ha-icon icon="mdi:tune-variant"></ha-icon><div><h3>${this._escape(title)}</h3><p>${this._escape(help)}</p></div></div><div class="config-grid">${content}</div></article>`;
+  }
+
+  _settingsTemplate(model) {
+    const text = model.text.config;
+    const state = this._configState;
+    if (!model.isAdmin) return `<article class="card config-message"><ha-icon icon="mdi:shield-lock-outline"></ha-icon><p>${this._escape(text.adminOnly)}</p></article>`;
+    if (["idle", "loading"].includes(state.status)) return `<article class="card config-message"><ha-circular-progress active></ha-circular-progress><p>${this._escape(text.loading)}</p></article>`;
+    if (state.status === "error" || !state.data || !state.draft) return `<article class="card config-message danger"><ha-icon icon="mdi:alert-circle-outline"></ha-icon><p>${this._escape(text.loadFailed)}</p><button class="action secondary" data-config-retry><ha-icon icon="mdi:refresh"></ha-icon>${this._escape(model.text.refresh)}</button></article>`;
+
+    const data = state.data;
+    const draft = state.draft;
+    const limits = data.limits || {};
+    const options = data.options || {};
+    const hardware = data.hardware || {};
+    const runtimeCustom = draft.runtime_profile === "custom";
+    const monitoringCustom = draft.monitoring_policy === "custom";
+    const verificationCustom = draft.verification_policy === "custom";
+    const hardwareCard = `<article class="card config-hardware"><div class="card-title"><ha-icon icon="mdi:chip"></ha-icon><h3>${this._escape(text.hardware)}</h3></div><div class="rows">
+      ${this._recoveryDetailRow(text.recommended, text.optionLabels[hardware.recommended_profile] || this._humanize(hardware.recommended_profile || "—"))}
+      ${this._recoveryDetailRow(text.installationType, hardware.installation_type || "—")}
+      ${this._recoveryDetailRow(text.architecture, hardware.architecture || "—")}
+      ${this._recoveryDetailRow(text.board, hardware.board || "—")}
+    </div></article>`;
+
+    let runtimeFields = this._configSelect("runtime_profile", options.runtime_profiles, text) + this._configToggle("adaptive_polling", text);
+    if (runtimeCustom) runtimeFields += ["update_interval_minutes", "active_update_interval_minutes", "error_backoff_interval_minutes", "adaptive_error_threshold", "max_verification_size_gb", "max_expanded_size_gb", "verification_timeout_minutes", "database_timeout_minutes", "manual_verification_cooldown_minutes"].map((key) => this._configNumber(key, text, limits)).join("");
+    runtimeFields += this._configError("runtime", text);
+
+    let monitoringFields = this._configSelect("monitoring_policy", options.monitoring_policies, text);
+    if (monitoringCustom) monitoringFields += this._configNumber("max_age_days", text, limits) + this._configSelect("size_check_mode", options.size_check_modes, text) + this._configNumber("minimum_backup_size_mb", text, limits) + this._configNumber("maximum_size_drop_percent", text, limits) + this._configNumber("minimum_redundant_locations", text, limits) + this._configToggle("repair_issues_enabled", text) + this._configNumber("analytics_window_days", text, limits);
+    monitoringFields += this._configError("monitoring", text);
+
+    let verificationFields = this._configSelect("verification_policy", options.verification_policies, text) + this._configNumber("manual_verification_cooldown_minutes", text, limits);
+    if (verificationCustom) verificationFields += this._configToggle("auto_verify_new_backups", text) + this._configToggle("database_integrity_check", text);
+
+    const presentationFields = this._configSelect("entity_mode", options.entity_modes, text)
+      + this._configToggle("expose_backup_metadata", text)
+      + this._configToggle("show_sidebar_panel", text)
+      + this._configToggle("activity_logging_enabled", text)
+      + this._configToggle("activity_log_persistence", text)
+      + this._configNumber("activity_log_retention_days", text, limits)
+      + this._configToggle("notifications_enabled", text)
+      + this._notificationTargetField(data, text)
+      + this._configToggle("notify_on_recovery", text);
+
+    const baseError = this._configError("base", text);
+    const saved = state.saved ? `<div class="config-success"><ha-icon icon="mdi:check-circle-outline"></ha-icon>${this._escape(text.saved)}</div>` : "";
+    return `<section class="config-page"><section class="config-intro"><div><h2>${this._escape(text.title)}</h2><p>${this._escape(text.subtitle)}</p></div><span><ha-icon icon="mdi:reload"></ha-icon>${this._escape(text.reloadNotice)}</span></section>${saved}${baseError}<section class="content-grid config-top">${hardwareCard}${this._configSection(text.runtime, text.runtimeHelp, runtimeFields)}</section>${this._configSection(text.monitoring, text.monitoringHelp, monitoringFields)}${this._configSection(text.verification, text.verificationHelp, verificationFields)}${this._configSection(text.presentation, text.presentationHelp, presentationFields)}<footer class="config-footer"><button class="action secondary" data-config-reset ${state.status === "saving" ? "disabled" : ""}><ha-icon icon="mdi:undo-variant"></ha-icon>${this._escape(text.reset)}</button><button class="action primary" data-config-save ${state.status === "saving" ? "disabled" : ""}><ha-icon icon="mdi:content-save-outline"></ha-icon>${this._escape(state.status === "saving" ? text.saving : text.save)}</button></footer></section>`;
+  }
+
+  async _callWS(message) {
+    if (typeof this._hass?.callWS === "function") return this._hass.callWS(message);
+    const response = await this._hass.connection.sendMessagePromise(message);
+    return response?.result ?? response;
+  }
+
+  async _loadConfiguration(force = false) {
+    if (!this._hass?.user?.is_admin || (!force && ["loading", "ready", "saving"].includes(this._configState.status))) return;
+    this._configState = { ...this._configState, status: "loading", errors: {}, saved: false };
+    this._scheduleRender();
+    try {
+      const data = await this._callWS({ type: "backup_checkup/config/get", entry_id: this._panel?.config?.entry_id });
+      this._configState = { status: "ready", data, draft: JSON.parse(JSON.stringify(data.values || {})), errors: {}, saved: false };
+    } catch (_error) {
+      this._configState = { status: "error", data: null, draft: null, errors: {}, saved: false };
+    }
+    this._scheduleRender();
+  }
+
+  _setConfigValue(element) {
+    const key = element.dataset.configKey;
+    if (!key || !this._configState.draft) return;
+    let value;
+    if (element.type === "checkbox") value = element.checked;
+    else if (element.multiple) value = [...element.selectedOptions].map((option) => option.value);
+    else if (element.type === "number") value = Number(element.value);
+    else value = element.value;
+    this._configState.draft[key] = value;
+    delete this._configState.errors[key];
+    delete this._configState.errors.runtime;
+    delete this._configState.errors.monitoring;
+    this._configState.saved = false;
+    this._scheduleRender();
+  }
+
+  _resetConfiguration() {
+    if (!this._configState.data) return;
+    this._configState = { ...this._configState, status: "ready", draft: JSON.parse(JSON.stringify(this._configState.data.values || {})), errors: {}, saved: false };
+    this._scheduleRender();
+  }
+
+  async _saveConfiguration() {
+    if (!this._hass?.user?.is_admin || this._configState.status === "saving" || !this._configState.draft) return;
+    this._configState = { ...this._configState, status: "saving", errors: {}, saved: false };
+    this._scheduleRender();
+    try {
+      const result = await this._callWS({ type: "backup_checkup/config/update", entry_id: this._panel?.config?.entry_id, values: this._configState.draft });
+      if (!result?.success) {
+        this._configState = { ...this._configState, status: "ready", errors: result?.errors || { base: "invalid_payload" }, saved: false };
+      } else {
+        const data = { ...this._configState.data, values: result.values };
+        this._configState = { status: "ready", data, draft: JSON.parse(JSON.stringify(result.values || {})), errors: {}, saved: true };
+        this.dispatchEvent(new CustomEvent("hass-notification", { bubbles: true, composed: true, detail: { message: this._text().config.saved } }));
+      }
+    } catch (_error) {
+      this._configState = { ...this._configState, status: "ready", errors: { base: "invalid_payload" }, saved: false };
+    }
+    this._scheduleRender();
+  }
+
   _logTemplate(model) {
     if (!model.activityEnabled) {
       return `<section class="log-disabled">
@@ -1486,11 +1829,14 @@ class BackupCheckupPanel extends HTMLElement {
       this._lastActivitySequence = model.activitySequence;
       this._lastActivityEntryCount = entryCount;
     }
-    const content = this._activeTab === "logs"
-      ? this._logTemplate(model)
-      : this._activeTab === "recovery"
-        ? this._recoveryTemplate(model)
-        : this._overviewTemplate(model);
+    if (this._activeTab === "settings" && !model.isAdmin) this._activeTab = "overview";
+    const content = this._activeTab === "settings"
+      ? this._settingsTemplate(model)
+      : this._activeTab === "logs"
+        ? this._logTemplate(model)
+        : this._activeTab === "recovery"
+          ? this._recoveryTemplate(model)
+          : this._overviewTemplate(model);
     const settingsButton = this._settingsButton(model.isAdmin, model.text);
 
     this.shadowRoot.innerHTML = `
@@ -1501,11 +1847,17 @@ class BackupCheckupPanel extends HTMLElement {
           <div><h1>${this._escape(model.text.dashboard)}</h1><p>${this._escape(model.text.subtitle)}</p></div>
           ${settingsButton}
         </header>
-        ${this._tabs(model.text)}
+        ${this._tabs(model.text, model.isAdmin)}
         ${content}
       </main>`;
 
     this.shadowRoot.querySelector('[data-nav="settings"]')?.addEventListener("click", () => this._openSettings());
+    this.shadowRoot.querySelector("[data-config-retry]")?.addEventListener("click", () => this._loadConfiguration(true));
+    this.shadowRoot.querySelector("[data-config-reset]")?.addEventListener("click", () => this._resetConfiguration());
+    this.shadowRoot.querySelector("[data-config-save]")?.addEventListener("click", () => this._saveConfiguration());
+    this.shadowRoot.querySelectorAll("[data-config-key]").forEach((element) => {
+      element.addEventListener("change", () => this._setConfigValue(element));
+    });
     this.shadowRoot.querySelectorAll("[data-tab]").forEach((button) => {
       button.addEventListener("click", () => {
         this._activeTab = button.dataset.tab;
@@ -1513,6 +1865,7 @@ class BackupCheckupPanel extends HTMLElement {
           this._scrollLogToBottom = true;
           this._pendingLogEntries = 0;
         }
+        if (this._activeTab === "settings") this._loadConfiguration();
         this._relevantStateChanged(this._hass);
         this._scheduleRender();
       });
@@ -1681,8 +2034,11 @@ class BackupCheckupPanel extends HTMLElement {
   }
 
   _openSettings() {
-    history.pushState(null, "", "/config/integrations/integration/backup_checkup");
-    window.dispatchEvent(new Event("location-changed"));
+    if (!this._hass?.user?.is_admin) return;
+    this._activeTab = "settings";
+    this._relevantStateChanged(this._hass);
+    this._loadConfiguration();
+    this._scheduleRender();
   }
 
   static get styles() {
@@ -1828,6 +2184,31 @@ class BackupCheckupPanel extends HTMLElement {
       @media (max-width:900px) { .metrics { grid-template-columns:repeat(2, minmax(0, 1fr)); } .recovery-check-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .content-grid { grid-template-columns:1fr; } .storage-card { grid-column:auto; } .log-row { grid-template-columns:165px 1fr; } .log-row span { grid-column:2; } }
       @media (max-width:620px) { .restore-test-controls, .plan-actions, .card-actions { flex-direction:column; } .restore-test-controls select { width:100%; } .preparedness-row { grid-template-columns:1fr; gap:7px; padding:11px 0; } .preparedness-badges { justify-content:flex-start; } main { padding:18px 12px 28px; } header { padding:0 4px; } header p { display:none; } .tabs { margin-top:0; } .hero { min-height:0; padding:24px 21px; } .score { width:104px; height:104px; margin-left:14px; } .score::before { inset:8px; } .score strong { font-size:27px; } .hero h2 { font-size:23px; } .metrics { grid-template-columns:1fr 1fr; gap:10px; } .metrics.recovery-summary, .recovery-check-grid { grid-template-columns:1fr; } .metric { min-height:95px; padding:15px; } .content-grid { gap:12px; } .card { padding:18px; } .log-toolbar { align-items:stretch; flex-direction:column; } .live-indicator { align-self:flex-end; } .log-row { grid-template-columns:1fr; gap:3px; padding:10px 13px; } .log-row span { grid-column:auto; } footer { flex-direction:column-reverse; } .action { justify-content:center; } }
       @media (max-width:390px) { .hero { align-items:flex-start; } .score { width:88px; height:88px; } .score span { display:none; } .metrics { grid-template-columns:1fr; } }
+
+      .config-page { display:flex; flex-direction:column; gap:18px; }
+      .config-intro { display:flex; justify-content:space-between; align-items:flex-start; gap:24px; padding:26px 28px; border-radius:20px; background:var(--card-background-color); box-shadow:var(--ha-card-box-shadow, 0 2px 8px rgba(0,0,0,.08)); }
+      .config-intro h2 { margin:0 0 8px; font-size:25px; }
+      .config-intro p { margin:0; color:var(--secondary-text-color); }
+      .config-intro > span { display:flex; align-items:center; gap:8px; max-width:330px; padding:10px 13px; border-radius:12px; background:color-mix(in srgb, var(--primary-color) 10%, transparent); color:var(--secondary-text-color); font-size:12px; }
+      .config-top { grid-template-columns:minmax(260px, .7fr) minmax(0, 1.3fr); }
+      .config-card { margin:0; }
+      .config-card > .card-title { align-items:flex-start; }
+      .config-card .card-title p { margin:5px 0 0; color:var(--secondary-text-color); font-size:12px; font-weight:400; }
+      .config-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(245px, 1fr)); gap:16px 18px; margin-top:20px; }
+      .config-field { display:flex; flex-direction:column; gap:7px; min-width:0; }
+      .config-field > span { font-size:13px; font-weight:600; }
+      .config-field small, .config-hint { margin:0; color:var(--secondary-text-color); font-size:11px; }
+      .config-field input, .config-field select { width:100%; min-height:42px; padding:9px 11px; border:1px solid var(--divider-color); border-radius:10px; background:var(--card-background-color); color:var(--primary-text-color); font:inherit; }
+      .config-field select[multiple] { min-height:96px; }
+      .config-toggle { display:flex; align-items:flex-start; gap:11px; min-height:42px; padding:10px 12px; border:1px solid var(--divider-color); border-radius:10px; cursor:pointer; }
+      .config-toggle input { width:18px; height:18px; margin:1px 0 0; accent-color:var(--primary-color); }
+      .config-toggle strong { font-size:13px; line-height:1.35; }
+      .config-error { display:block; grid-column:1/-1; color:var(--error-color, #db4437); font-size:12px; font-weight:600; }
+      .config-success { display:flex; align-items:center; gap:9px; padding:13px 16px; border-radius:12px; background:rgba(46,157,104,.14); color:#2e9d68; font-weight:600; }
+      .config-message { min-height:180px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; text-align:center; }
+      .config-message > ha-icon { --mdc-icon-size:36px; }
+      .config-message.danger { color:var(--error-color, #db4437); }
+      .config-footer { position:sticky; bottom:0; z-index:3; display:flex; justify-content:flex-end; gap:12px; padding:16px 0 4px; background:linear-gradient(transparent, var(--primary-background-color) 24%); }
     `;
   }
 }

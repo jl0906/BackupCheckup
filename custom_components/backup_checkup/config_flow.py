@@ -11,6 +11,7 @@ from homeassistant.data_entry_flow import FlowResult
 
 from .configuration import normalize_configuration
 from .const import (
+    CONFIG_ENTRY_VERSION,
     CONF_ACTIVITY_LOGGING_ENABLED,
     CONF_ADAPTIVE_POLLING,
     CONF_ENTITY_MODE,
@@ -217,7 +218,7 @@ class BackupCheckupConfigFlow(
 ):
     """Handle the guided BackupCheckup installation flow."""
 
-    VERSION = 13
+    VERSION = CONFIG_ENTRY_VERSION
 
     def __init__(self) -> None:
         """Initialize an empty guided flow."""

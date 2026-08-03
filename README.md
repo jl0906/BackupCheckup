@@ -10,7 +10,7 @@
 
 <p align="center">
   <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-orange.svg">
-  <img alt="Version 3.0.0-alpha6" src="https://img.shields.io/badge/version-3.0.0--alpha6-blue.svg">
+  <img alt="Version 3.0.0-beta1" src="https://img.shields.io/badge/version-3.0.0--beta1-blue.svg">
   <img alt="AI Coded and Maintained" src="https://img.shields.io/badge/AI-Coded_and_Maintained-8A2BE2.svg">
   <img alt="Home Assistant 2026.3 or newer" src="https://img.shields.io/badge/Home_Assistant-2026.3_or_newer-41BDF5.svg">
   <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg">
@@ -20,15 +20,16 @@ BackupCheckup is a local Home Assistant custom integration that monitors the **a
 
 It warns you when backups are missing, outdated, incomplete, unexpectedly small, stored on too few locations, or no longer readable. No separate helpers or automations are required.
 
-## Recovery Readiness (3.0 alpha)
+## Recovery Readiness (3.0 beta)
 
 BackupCheckup now evaluates whether the newest monitored backup is suitable for
 a real disaster-recovery scenario. The new score is independent from the normal
 backup health score and explains its result through privacy-safe checks and
-weighted deductions. Alpha6 additionally provides a structural simulated restore
-assessment, privacy-safe documentation of externally performed test restores, and
-locally generated Markdown, HTML, and JSON emergency-plan exports. The alpha
-remains non-destructive and never starts a restore.
+weighted deductions. Beta1 additionally provides a structural simulated restore
+assessment, privacy-safe documentation of externally performed test restores,
+locally generated Markdown, HTML, and JSON emergency-plan exports, and a native
+administrator-only settings editor inside the sidebar panel. The beta remains
+non-destructive and never starts a restore.
 
 ## Install with HACS
 
@@ -78,8 +79,13 @@ Enable **Show BackupCheckup in the sidebar** during setup to add a responsive ov
 - clear Online, Offline, and Outdated storage badges with understandable causes
 - an explanation of Health Score deductions and the latest integrity result
 - administrator actions to refresh data, verify and reassess the latest backup, and document an external test restore
+- all integration settings directly in an administrator-only **Settings** tab, including presets, custom thresholds, privacy, logging, entities, and notifications
 
-The panel is bundled with BackupCheckup, uses the integration's existing privacy setting, and does not load external frontend resources. It is disabled by default and can be enabled or removed later under **Configure → Frontend, entities, and notifications**.
+The panel is bundled with BackupCheckup, uses the integration's existing privacy setting, and does not load external frontend resources. It is disabled by default and can be enabled during setup or later through the
+normal Home Assistant options dialog. Once enabled, administrators can manage all
+BackupCheckup options from the panel's **Settings** tab. The Home Assistant
+**Devices & services → BackupCheckup → Configure** dialog remains available as a
+fallback, including after the sidebar panel is disabled.
 
 ### Performance profiles
 
@@ -118,7 +124,10 @@ Deep verification is never enabled only because powerful hardware was detected.
 | **Standard** | A focused set of useful status, health, integrity, and problem entities. |
 | **Expert** | Every available entity, per-storage metrics, and advanced diagnostics. |
 
-Detailed live logging is selected independently from the entity mode. All settings remain available later under **Settings → Devices & services → BackupCheckup → Configure**.
+Detailed live logging is selected independently from the entity mode. When the
+sidebar is enabled, administrators can change all integration options directly in
+its **Settings** tab. The standard **Settings → Devices & services → BackupCheckup
+→ Configure** flow remains available as a fallback.
 
 After updating BackupCheckup files, restart Home Assistant once. This reloads
 the integration's backend translations and activates the versioned frontend
@@ -224,7 +233,8 @@ The sidebar frontend contains separate **Overview**, **Recovery / Notfallvorsorg
 - [FAQ](docs/faq.md)
 - [Dashboard example](docs/examples/dashboard.yaml)
 - [Automation example](docs/examples/automation.yaml)
-- [Alpha6 coverage report](docs/coverage-3.0.0-alpha6.md)
+- [Beta1 coverage report](docs/coverage-3.0.0-beta1.md)
+- [Integrated frontend configuration](docs/frontend-configuration-3.0.0-beta1.md)
 - [Function coverage report](docs/function-coverage-2.3.0.md)
 - [Security hardening report](docs/security-hardening-2.3.1.md)
 - [2.4.0 quality and Health Score audit](docs/quality-audit-health-score-2.4.0.md)

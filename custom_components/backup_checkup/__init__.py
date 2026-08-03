@@ -81,6 +81,7 @@ from .const import (
 from .coordinator import BackupCheckupCoordinator
 from .entity_mode import async_apply_entity_mode
 from .frontend import async_register_frontend, async_setup_panel
+from .frontend_config import async_register_frontend_config
 from .history import BackupCheckupHistory
 from .integrity import BackupIntegrityStore
 from .notifications import BackupCheckupNotificationManager
@@ -205,6 +206,7 @@ async def _async_cleanup_orphaned_stores(hass: HomeAssistant) -> None:
 async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
     """Register actions and remove stores left by deleted config entries."""
     await async_register_frontend(hass)
+    async_register_frontend_config(hass)
     await _async_cleanup_orphaned_stores(hass)
 
     async def _async_verify_latest_backup(_call: ServiceCall) -> None:

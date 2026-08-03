@@ -1,5 +1,71 @@
 # Changelog
 
+## 3.0.0-beta1
+
+**Integrated configuration and beta hardening**
+
+### Added
+
+- Added a native administrator-only **Settings** tab to the optional BackupCheckup
+  sidebar panel. It exposes the complete canonical integration configuration:
+  runtime profiles and custom limits, monitoring policies and thresholds,
+  verification policies and safety limits, entity mode, metadata privacy,
+  sidebar visibility, activity logging, persistence, retention, mobile
+  notifications, targets, and recovery notifications.
+- Added dedicated `backup_checkup/config/get` and
+  `backup_checkup/config/update` WebSocket commands for the panel. Both commands
+  are protected by Home Assistant's administrator requirement and use a strict
+  server-side whitelist, type validation, range validation, enum validation, and
+  cross-field validation before any config entry is changed.
+- Added detected-hardware context, valid option lists, numeric limits, and current
+  Companion App notification targets to the privacy-safe settings model.
+- Added inline German and English labels, validation errors, save/reload feedback,
+  preset-dependent custom fields, multi-device selection, and a local discard
+  action. Other panel languages use the complete English fallback for the new
+  settings editor in this beta.
+- Added executable Node regression coverage for loading, rendering, editing,
+  validation feedback, saving, resetting, notification-target multi-selection,
+  and administrator visibility.
+
+### Changed
+
+- The sidebar's settings button now opens the integrated editor instead of
+  navigating to Home Assistant's integration page.
+- Saving persists one resolved canonical snapshot to both config-entry data and
+  options through `async_update_entry`, acknowledges the result, and schedules
+  exactly one integration reload.
+- Preset selection is resolved on the backend. Custom profiles retain every
+  manually editable limit, while predefined profiles apply their canonical
+  server-side values.
+- New installations now use config-entry schema version 15 directly instead of
+  being created at the older version 13 and requiring an immediate migration.
+- Increased the frontend asset revision to `r8` and changed the custom-element
+  name to `backup-checkup-panel-v3-0-0-beta1-r8`.
+- The existing Home Assistant options flow remains fully supported as a fallback,
+  especially when the sidebar panel is disabled or unavailable.
+
+### Security and compatibility evaluation
+
+- The frontend does not call Home Assistant's internal config-flow WebSocket
+  implementation. BackupCheckup registers its own documented custom WebSocket API
+  and validates every submitted value again in Python.
+- Non-administrators cannot load or update the configuration API and do not see
+  the settings tab in the panel.
+- No password, token, backup path, host, IP address, raw backup identifier, or
+  integration configuration from another domain is exposed by the settings API.
+- The dedicated API requires no additional manifest dependency on
+  `websocket_api`; it is registered by the integration during domain setup.
+
+### Quality assurance
+
+- Added backend tests for presets, custom values, malformed payloads, unknown
+  fields, booleans, integers, ranges, enums, notification targets, cross-field
+  constraints, legacy profile mapping, entry isolation, WebSocket responses,
+  persistence, reload scheduling, and command registration.
+- Beta1 result: 114 tests passed. The complete selected 3.0 recovery and frontend
+  configuration production-module set reached 71/71 functions, 867/867
+  statements, and 218/218 branches covered.
+
 ## 3.0.0-alpha6
 
 **Restore testing and exportable emergency recovery plans**

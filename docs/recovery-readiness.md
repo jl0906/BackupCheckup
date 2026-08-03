@@ -1,6 +1,6 @@
 # Recovery Readiness
 
-BackupCheckup 3.0.0-alpha6 provides a separate disaster-recovery assessment. It
+BackupCheckup 3.0.0-beta1 provides a separate disaster-recovery assessment. It
 answers whether the newest monitored backup and the surrounding recovery
 preparation provide a credible basis for restoring Home Assistant after a total
 system failure. It remains separate from the normal backup Health Score.
@@ -62,7 +62,7 @@ frontend to show that a review expired.
 
 ## External dependencies
 
-Alpha5 provides fixed categories for:
+Beta1 provides fixed categories for:
 
 - external databases;
 - MQTT brokers;
@@ -102,7 +102,7 @@ privacy-safe assessment but cannot change it.
 
 ## Simulated restore assessment
 
-Alpha6 derives a non-destructive restore assessment from the latest monitored
+Beta1 derives a non-destructive restore assessment from the latest monitored
 backup and the most recent integrity result. It checks:
 
 - the integrity result applies to the newest backup;
@@ -127,7 +127,7 @@ simulation is recalculated from the new result.
 ## Documented test restore
 
 A real test restore must be performed outside the productive Home Assistant
-instance. Alpha6 can document its bounded result through the administrator-only
+instance. Beta1 can document its bounded result through the administrator-only
 action:
 
 `backup_checkup.record_restore_test`
@@ -147,7 +147,7 @@ check incomplete. The private Store is removed together with the config entry.
 
 ## Emergency recovery plan and exports
 
-Alpha6 generates a localized recovery plan from the current privacy-safe
+Beta1 generates a localized recovery plan from the current privacy-safe
 assessment. It contains:
 
 - the detected or configured Home Assistant installation type;
