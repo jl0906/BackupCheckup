@@ -79,6 +79,7 @@ from .recovery_preparedness import (
     detect_recovery_dependencies,
 )
 from .recovery_restore import RecoveryRestoreTestStore
+from .recovery_simulation import RecoverySimulationProgress, simulate_restore
 from .security import (
     anonymous_agent_reference,
     classify_exception,
@@ -180,6 +181,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         )
         self.recovery_preparedness = RecoveryPreparednessStore(hass, entry.entry_id)
         self.recovery_restore_tests = RecoveryRestoreTestStore(hass, entry.entry_id)
+        self.recovery_simulation_progress = RecoverySimulationProgress()
         self._normalizer = BackupRecordNormalizer(entry.entry_id)
 
         self.integrity_result = BackupIntegrityResult.not_checked()
@@ -244,7 +246,6 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self.active_update_interval_minutes = settings.active_update_interval_minutes
         self.error_backoff_interval_minutes = settings.error_backoff_interval_minutes
         self.adaptive_error_threshold = settings.adaptive_error_threshold
-
 
     def _record_activity(
         self,
@@ -347,6 +348,8 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         if self._integrity_task is not None and not self._integrity_task.done():
             self._integrity_task.cancel()
             await asyncio.gather(self._integrity_task, return_exceptions=True)
+        self.recovery_simulation_progress.cancel()
+        self.integrity_verifier.set_progress_listener(None)
         if (
             self._adaptive_refresh_task is not None
             and not self._adaptive_refresh_task.done()
@@ -620,6 +623,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 "installation_type"
             ),
             language=getattr(getattr(self.hass, "config", None), "language", "en"),
+            simulation_progress=self.recovery_simulation_progress.as_dict(),
         )
 
         public_locations = self._public_location_ids(latest_locations)
@@ -707,7 +711,9 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             last_restore_test=restore_test.tested_at,
             restore_test_result=restore_test.result,
             restore_test_scope=restore_test.scope,
-            restore_test_overdue=(restore_test.passed is not True and latest is not None),
+            restore_test_overdue=(
+                restore_test.passed is not True and latest is not None
+            ),
             recovery_plan_incomplete=bool(recovery.recovery_plan.get("warnings")),
             recovery_checklist_incomplete=(
                 recovery.checks.get("preparedness_checklist_complete") is not True
@@ -1206,12 +1212,8 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 targets=self.notification_targets,
                 notify_on_recovery=self.notify_on_recovery,
             )
-        except Exception as err:
-            _LOGGER.exception(
-                "Unexpected error while processing BackupCheckup notifications: "
-                "error_type=%s",
-                safe_error_type(err),
-            )
+        except Exception:
+            _LOGGER.exception("Unexpected error while processing notifications")
 
     def _manager_error_snapshot(self, error_code: str) -> BackupCheckupData:
         """Return the last snapshot with dynamically aged unavailable state."""
@@ -1477,7 +1479,10 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 translation_domain=DOMAIN,
                 translation_key="verification_no_backup",
             )
-        if source == "manual" and self.manual_verification_cooldown_active:
+        if (
+            source in {"manual", "simulation"}
+            and self.manual_verification_cooldown_active
+        ):
             self._record_activity(
                 "integrity_check_request",
                 ACTIVITY_OUTCOME_SKIPPED,
@@ -1515,6 +1520,17 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             return
         cancelled = False
         self.integrity_check_running = True
+        simulation_run = source == "simulation"
+        if simulation_run:
+            self.recovery_simulation_progress.start(
+                record,
+                database_check_enabled=self.database_integrity_check,
+            )
+            self.integrity_verifier.set_progress_listener(
+                lambda action, outcome, details: self._handle_simulation_progress(
+                    record, action, outcome, details
+                )
+            )
         try:
             self._record_activity(
                 "integrity_check",
@@ -1524,9 +1540,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 },
             )
             if self.data is not None:
-                self.async_set_updated_data(
-                    replace(self.data, integrity_check_running=True)
-                )
+                self._publish_simulation_progress(record)
             result = await self.integrity_verifier.async_verify(
                 record,
                 database_check=self.database_integrity_check,
@@ -1537,8 +1551,11 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 repair_issues_enabled=self.repair_issues_enabled,
             )
             self.integrity_result = result
+            if simulation_run:
+                self.recovery_simulation_progress.finish(result)
+                self._publish_simulation_progress(record)
             self._update_integrity_retry_state(result)
-            if source == "manual":
+            if source in {"manual", "simulation"}:
                 self._last_manual_verification_at = (
                     result.checked_at or dt_util.utcnow()
                 )
@@ -1555,6 +1572,9 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             )
         except asyncio.CancelledError:
             cancelled = True
+            if simulation_run:
+                self.recovery_simulation_progress.cancel()
+                self._publish_simulation_progress(record)
             self._record_activity(
                 "integrity_check",
                 ACTIVITY_OUTCOME_CANCELLED,
@@ -1566,8 +1586,11 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         except Exception as err:  # noqa: BLE001 - full verification task boundary
             result = self._internal_error_result(record)
             self.integrity_result = result
+            if simulation_run:
+                self.recovery_simulation_progress.finish(result)
+                self._publish_simulation_progress(record)
             self._update_integrity_retry_state(result)
-            if source == "manual":
+            if source in {"manual", "simulation"}:
                 self._last_manual_verification_at = result.checked_at
             self._record_activity(
                 "integrity_check",
@@ -1580,6 +1603,8 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             )
             await self._try_persist_integrity_result(result, source, record)
         finally:
+            if simulation_run:
+                self.integrity_verifier.set_progress_listener(None)
             self.integrity_check_running = False
             self._integrity_task = release_current_task_reference(self._integrity_task)
             if not cancelled:
@@ -1592,6 +1617,35 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                         level=logging.WARNING,
                         details={"error_type": safe_error_type(err)},
                     )
+
+    def _handle_simulation_progress(
+        self,
+        record: BackupRecord,
+        action: str,
+        outcome: str,
+        details: Mapping[str, object] | None,
+    ) -> None:
+        """Publish one privacy-safe simulation stage immediately to entities."""
+        self.recovery_simulation_progress.activity(action, outcome, details)
+        self._publish_simulation_progress(record)
+
+    def _publish_simulation_progress(self, record: BackupRecord) -> None:
+        """Update the simulation sensor without waiting for an inventory refresh."""
+        if self.data is None:
+            return
+        simulation = simulate_restore(
+            record,
+            self.integrity_result,
+            database_check_enabled=self.database_integrity_check,
+            live_progress=self.recovery_simulation_progress.as_dict(),
+        )
+        self.async_set_updated_data(
+            replace(
+                self.data,
+                integrity_check_running=self.integrity_check_running,
+                recovery_restore_simulation=simulation.as_dict(),
+            )
+        )
 
     async def _try_persist_integrity_result(
         self,

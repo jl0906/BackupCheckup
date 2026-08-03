@@ -10,7 +10,7 @@
 
 <p align="center">
   <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-orange.svg">
-  <img alt="Version 3.0.0-beta1" src="https://img.shields.io/badge/version-3.0.0--beta1-blue.svg">
+  <img alt="Version 3.0.0-beta2" src="https://img.shields.io/badge/version-3.0.0--beta2-blue.svg">
   <img alt="AI Coded and Maintained" src="https://img.shields.io/badge/AI-Coded_and_Maintained-8A2BE2.svg">
   <img alt="Home Assistant 2026.3 or newer" src="https://img.shields.io/badge/Home_Assistant-2026.3_or_newer-41BDF5.svg">
   <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg">
@@ -25,8 +25,9 @@ It warns you when backups are missing, outdated, incomplete, unexpectedly small,
 BackupCheckup now evaluates whether the newest monitored backup is suitable for
 a real disaster-recovery scenario. The new score is independent from the normal
 backup health score and explains its result through privacy-safe checks and
-weighted deductions. Beta1 additionally provides a structural simulated restore
-assessment, privacy-safe documentation of externally performed test restores,
+weighted deductions. Beta2 additionally provides a dedicated non-destructive
+restore simulation that runs the full protected read pipeline with live progress,
+privacy-safe documentation of externally performed test restores,
 locally generated Markdown, HTML, and JSON emergency-plan exports, and a native
 administrator-only settings editor inside the sidebar panel. The beta remains
 non-destructive and never starts a restore.
@@ -70,7 +71,8 @@ Enable **Show BackupCheckup in the sidebar** during setup to add a responsive ov
 - a guided emergency checklist for restore access, procedure, hardware, network access, and recovery contacts
 - an external-dependency review with privacy-safe detection hints for MQTT, Zigbee, Z-Wave, Thread/Matter, ESPHome, external databases, and network storage
 - fixed confirmations that expire after 180 days without storing passwords, paths, notes, or configuration contents
-- a structural simulated restore assessment covering metadata, archive readability, integrity, optional database checks, encryption, and storage availability
+- a dedicated simulated restore run that downloads, decrypts, and fully reads the newest backup through the existing hardened verification pipeline
+- a graphical live pipeline with eight stages, technical progress, archive/file counters, data volume, runtime, and grouped results
 - privacy-safe documentation of successful, failed, full, or partial test restores performed outside the production system
 - a locally generated emergency plan with Markdown, HTML, and JSON exports that contain no secrets or raw backup names
 - the recommended next action and active problems
@@ -78,7 +80,7 @@ Enable **Show BackupCheckup in the sidebar** during setup to add a responsive ov
 - a compact overview of every configured backup storage location
 - clear Online, Offline, and Outdated storage badges with understandable causes
 - an explanation of Health Score deductions and the latest integrity result
-- administrator actions to refresh data, verify and reassess the latest backup, and document an external test restore
+- separate administrator actions to refresh data, verify the latest backup, run the restore simulation, and document an external test restore
 - all integration settings directly in an administrator-only **Settings** tab, including presets, custom thresholds, privacy, logging, entities, and notifications
 
 The panel is bundled with BackupCheckup, uses the integration's existing privacy setting, and does not load external frontend resources. It is disabled by default and can be enabled during setup or later through the
@@ -193,6 +195,12 @@ BackupCheckup can:
 > [!IMPORTANT]
 > A successful check confirms that the backup is structurally readable and, when applicable, decryptable. It is not a complete restore test.
 
+The separate **Simulated restore test** action uses this same hardened read-only
+pipeline and presents every stage live in the Recovery tab. It never calls a Home
+Assistant restore endpoint, writes to production directories, starts add-ons, or
+executes custom integration code. Its result is therefore a strong structural
+readiness assessment, not a guarantee that a real restore will start successfully.
+
 ## Alerts and Repairs
 
 BackupCheckup can create native issues under **Settings → System → Repairs** and remove them automatically after recovery.
@@ -233,6 +241,8 @@ The sidebar frontend contains separate **Overview**, **Recovery / Notfallvorsorg
 - [FAQ](docs/faq.md)
 - [Dashboard example](docs/examples/dashboard.yaml)
 - [Automation example](docs/examples/automation.yaml)
+- [Beta2 revision report](docs/revision-3.0.0-beta2.md)
+- [Beta2 coverage report](docs/coverage-3.0.0-beta2.md)
 - [Beta1 coverage report](docs/coverage-3.0.0-beta1.md)
 - [Integrated frontend configuration](docs/frontend-configuration-3.0.0-beta1.md)
 - [Function coverage report](docs/function-coverage-2.3.0.md)

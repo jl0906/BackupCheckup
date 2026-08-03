@@ -437,7 +437,7 @@ def assess_storage_resilience(
         independent_copy: bool | None = False
     elif len(known_domains) >= 2:
         multiple_domains = True
-        independent_copy = True if has_off_device else False
+        independent_copy = bool(has_off_device)
     elif unknown_count:
         multiple_domains = None
         independent_copy = None

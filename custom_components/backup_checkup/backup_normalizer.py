@@ -151,9 +151,10 @@ class BackupRecordNormalizer:
         """Return a finite integral non-negative number without truncation."""
         if isinstance(value, bool) or not isinstance(value, int | float):
             return None
-        if isinstance(value, float):
-            if not math.isfinite(value) or not value.is_integer():
-                return None
+        if isinstance(value, float) and (
+            not math.isfinite(value) or not value.is_integer()
+        ):
+            return None
         normalized = int(value)
         return normalized if normalized >= 0 else None
 
@@ -323,7 +324,7 @@ class BackupRecordNormalizer:
         """Return validated identity fields required by every backup record."""
         backup_id_raw = ThirdPartyBoundary.attribute(backup, "backup_id", None)
         if not isinstance(backup_id_raw, str):
-            raise ValueError("invalid_backup_id")
+            raise TypeError("invalid_backup_id")
         backup_id = backup_id_raw.strip()
         if not backup_id or len(backup_id) > _MAX_BACKUP_ID_LENGTH:
             raise ValueError("invalid_backup_id")

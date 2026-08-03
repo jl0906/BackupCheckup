@@ -131,6 +131,14 @@ _TEXT = {
     },
 }
 
+_PLAN_SECTIONS = (
+    ("section_required", "required_items"),
+    ("section_steps", "steps"),
+    ("section_dependencies", "external_dependencies"),
+    ("section_checks", "post_restore_checks"),
+    ("section_warnings", "warnings"),
+)
+
 
 def _markdown_escape(value: Any) -> str:
     """Neutralize inline HTML in values written to a Markdown export."""
@@ -138,7 +146,12 @@ def _markdown_escape(value: Any) -> str:
 
 
 def _render_markdown(data: dict[str, Any], text: dict[str, str]) -> str:
-    lines = [f"# {_markdown_escape(data['title'])}", "", _markdown_escape(data["summary"]), ""]
+    lines = [
+        f"# {_markdown_escape(data['title'])}",
+        "",
+        _markdown_escape(data["summary"]),
+        "",
+    ]
     lines.append(
         f"**{_markdown_escape(text['label_installation'])}:** "
         f"{_markdown_escape(data['installation_type'])}"
@@ -152,13 +165,8 @@ def _render_markdown(data: dict[str, Any], text: dict[str, str]) -> str:
         f"{_markdown_escape(data['backup_date'] or '—')}"
     )
     lines.append("")
-    for key, values in (
-        ("section_required", data["required_items"]),
-        ("section_steps", data["steps"]),
-        ("section_dependencies", data["external_dependencies"]),
-        ("section_checks", data["post_restore_checks"]),
-        ("section_warnings", data["warnings"]),
-    ):
+    for key, data_key in _PLAN_SECTIONS:
+        values = data[data_key]
         lines.append(f"## {text[key]}")
         if values:
             lines.extend(f"- {_markdown_escape(value)}" for value in values)
@@ -172,31 +180,95 @@ def _render_markdown(data: dict[str, Any], text: dict[str, str]) -> str:
 def _render_html(data: dict[str, Any], text: dict[str, str]) -> str:
     def list_html(values: list[str]) -> str:
         items = values or [text["none"]]
-        return "<ul>" + "".join(f"<li>{html.escape(item)}</li>" for item in items) + "</ul>"
+        return (
+            "<ul>"
+            + "".join(f"<li>{html.escape(item)}</li>" for item in items)
+            + "</ul>"
+        )
 
     sections = "".join(
-        f"<section><h2>{html.escape(text[key])}</h2>{list_html(values)}</section>"
-        for key, values in (
-            ("section_required", data["required_items"]),
-            ("section_steps", data["steps"]),
-            ("section_dependencies", data["external_dependencies"]),
-            ("section_checks", data["post_restore_checks"]),
-            ("section_warnings", data["warnings"]),
-        )
+        f"<section><h2>{html.escape(text[key])}</h2>"
+        f"{list_html(data[data_key])}</section>"
+        for key, data_key in _PLAN_SECTIONS
     )
     return (
-        "<!doctype html><html><head><meta charset=\"utf-8\"><title>"
+        '<!doctype html><html><head><meta charset="utf-8"><title>'
         + html.escape(data["title"])
         + "</title><style>body{font-family:system-ui,sans-serif;max-width:850px;margin:40px auto;padding:0 20px;line-height:1.5}"
         "h1,h2{line-height:1.2}section{margin-top:28px}.meta{padding:16px;background:#f3f4f6;border-radius:8px}"
         ".privacy{margin-top:32px;font-size:.9em;color:#555}</style></head><body>"
         f"<h1>{html.escape(data['title'])}</h1><p>{html.escape(data['summary'])}</p>"
-        f"<div class=\"meta\"><strong>{html.escape(text['label_installation'])}:</strong> {html.escape(data['installation_type'])}<br>"
+        f'<div class="meta"><strong>{html.escape(text["label_installation"])}:</strong> {html.escape(data["installation_type"])}<br>'
         f"<strong>{html.escape(text['label_backup_reference'])}:</strong> {html.escape(data['backup_reference'] or '—')}<br>"
         f"<strong>{html.escape(text['label_backup_date'])}:</strong> {html.escape(data['backup_date'] or '—')}</div>"
         + sections
-        + f"<p class=\"privacy\">{html.escape(text['privacy'])}</p></body></html>"
+        + f'<p class="privacy">{html.escape(text["privacy"])}</p></body></html>'
     )
+
+
+def _recovery_instructions(
+    text: dict[str, str],
+    *,
+    installation: str,
+    backup_date: str | None,
+    reference: str | None,
+    protected: bool,
+    has_dependencies: bool,
+) -> tuple[list[str], list[str]]:
+    """Build required items and ordered recovery steps without duplicated branches."""
+    required_items = [
+        text["required_storage"],
+        text["required_network"],
+        text["required_hardware"],
+    ]
+    steps = [
+        text["step_install"].format(installation=installation),
+        text["step_restore"].format(
+            date=backup_date or "—", reference=reference or "—"
+        ),
+    ]
+    if protected:
+        required_items.insert(0, text["required_password"])
+        steps.insert(1, text["step_password"])
+    steps.append(text["step_wait"])
+    if has_dependencies:
+        steps.append(text["step_dependencies"])
+    return required_items, steps
+
+
+def _dependency_labels(
+    preparedness: RecoveryPreparednessSnapshot,
+) -> tuple[str, ...]:
+    """Return fixed dependency keys that need to appear in the plan."""
+    return tuple(
+        key
+        for key, value in preparedness.dependencies.items()
+        if value.get("detected") is True
+        or value.get("effective_status") in {"protected", "unprotected"}
+    )
+
+
+def _plan_warnings(
+    text: dict[str, str],
+    preparedness: RecoveryPreparednessSnapshot,
+    simulation: RecoverySimulation,
+    restore_test: RestoreTestSnapshot,
+) -> list[str]:
+    """Return localized unresolved risks in stable priority order."""
+    warning_checks = (
+        (simulation.passed is not True, "warning_simulation"),
+        (restore_test.passed is not True, "warning_restore_test"),
+        (preparedness.checklist_complete is not True, "warning_checklist"),
+        (
+            preparedness.dependencies_protected is not True,
+            "warning_dependencies",
+        ),
+        (
+            simulation.checks.get("integrity_verified") is not True,
+            "warning_integrity",
+        ),
+    )
+    return [text[key] for active, key in warning_checks if active]
 
 
 def build_recovery_plan(
@@ -224,44 +296,16 @@ def build_recovery_plan(
     )
     summary = text["summary_ready"] if readiness_ready else text["summary_limited"]
 
-    required_items = [
-        text["required_storage"],
-        text["required_network"],
-        text["required_hardware"],
-    ]
-    if integrity.protected is True:
-        required_items.insert(0, text["required_password"])
-
-    steps = [
-        text["step_install"].format(installation=installation),
-        text["step_restore"].format(
-            date=backup_date or "—", reference=reference or "—"
-        ),
-    ]
-    if integrity.protected is True:
-        steps.insert(1, text["step_password"])
-    steps.append(text["step_wait"])
-
-    dependency_labels = tuple(
-        key
-        for key, value in preparedness.dependencies.items()
-        if value.get("detected") is True
-        or value.get("effective_status") in {"protected", "unprotected"}
+    dependency_labels = _dependency_labels(preparedness)
+    required_items, steps = _recovery_instructions(
+        text,
+        installation=installation,
+        backup_date=backup_date,
+        reference=reference,
+        protected=integrity.protected is True,
+        has_dependencies=bool(dependency_labels),
     )
-    if dependency_labels:
-        steps.append(text["step_dependencies"])
-
-    warnings: list[str] = []
-    if simulation.passed is not True:
-        warnings.append(text["warning_simulation"])
-    if restore_test.passed is not True:
-        warnings.append(text["warning_restore_test"])
-    if preparedness.checklist_complete is not True:
-        warnings.append(text["warning_checklist"])
-    if preparedness.dependencies_protected is not True:
-        warnings.append(text["warning_dependencies"])
-    if simulation.checks.get("integrity_verified") is not True:
-        warnings.append(text["warning_integrity"])
+    warnings = _plan_warnings(text, preparedness, simulation, restore_test)
 
     data = {
         "title": text["title"],

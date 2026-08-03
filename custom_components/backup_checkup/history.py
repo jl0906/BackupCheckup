@@ -12,6 +12,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
+from .datetime_utils import parse_stored_utc_datetime
 from .repairs import async_set_storage_data_issue
 from .security import safe_error_type
 
@@ -63,7 +64,7 @@ class BackupCheckupHistory:
             if stored is None:
                 return {}, False
             if not isinstance(stored, dict):
-                raise ValueError("invalid_store_root")
+                raise TypeError("invalid_store_root")
         except Exception as err:  # noqa: BLE001 - private store boundary
             _LOGGER.warning(
                 "Invalid history store data was reset: error_type=%s",
@@ -269,10 +270,4 @@ class BackupCheckupHistory:
             "attempts": list(self._attempts),
         }
 
-    @staticmethod
-    def _parse_datetime(value: Any) -> datetime | None:
-        """Parse a stored datetime and normalize it to UTC."""
-        if not isinstance(value, str):
-            return None
-        parsed = dt_util.parse_datetime(value)
-        return dt_util.as_utc(parsed) if parsed is not None else None
+    _parse_datetime = staticmethod(parse_stored_utc_datetime)

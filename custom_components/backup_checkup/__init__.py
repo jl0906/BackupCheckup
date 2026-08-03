@@ -7,7 +7,6 @@ import logging
 from pathlib import Path
 
 import voluptuous as vol
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.exceptions import HomeAssistantError
@@ -25,10 +24,10 @@ from .activity import (
 from .configuration import normalize_configuration
 from .const import (
     ATTR_PREPAREDNESS_ITEM,
-    ATTR_RESTORE_TEST_RESULT,
-    ATTR_RESTORE_TEST_SCOPE,
     ATTR_PREPAREDNESS_SECTION,
     ATTR_PREPAREDNESS_STATUS,
+    ATTR_RESTORE_TEST_RESULT,
+    ATTR_RESTORE_TEST_SCOPE,
     CONF_ACTIVITY_LOGGING_ENABLED,
     CONF_AUTO_VERIFY_NEW_BACKUPS,
     CONF_DATABASE_INTEGRITY_CHECK,
@@ -71,11 +70,12 @@ from .const import (
     PLATFORMS,
     PROFILE_CUSTOM,
     SERVICE_CLEAR_ACTIVITY_LOG,
-    SERVICE_REFRESH,
     SERVICE_RECORD_RESTORE_TEST,
+    SERVICE_REFRESH,
+    SERVICE_SET_RECOVERY_PREPAREDNESS,
+    SERVICE_SIMULATE_RESTORE,
     SERVICE_TEST_NOTIFICATION,
     SERVICE_VERIFY_LATEST_BACKUP,
-    SERVICE_SET_RECOVERY_PREPAREDNESS,
     VERSION,
 )
 from .coordinator import BackupCheckupCoordinator
@@ -86,12 +86,11 @@ from .history import BackupCheckupHistory
 from .integrity import BackupIntegrityStore
 from .notifications import BackupCheckupNotificationManager
 from .recovery_preparedness import (
-    CHECKLIST_KEYS,
     CHECK_STATUS_OPTIONS,
+    CHECKLIST_KEYS,
     DEPENDENCY_KEYS,
     DEPENDENCY_STATUS_OPTIONS,
     SECTION_CHECKLIST,
-    SECTION_DEPENDENCIES,
     SECTION_OPTIONS,
     RecoveryPreparednessStore,
 )
@@ -216,6 +215,13 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
         )
         await coordinator.async_start_integrity_check(source="manual")
 
+    async def _async_simulate_restore(_call: ServiceCall) -> None:
+        coordinator = _loaded_coordinator(hass)
+        _record_activity(
+            coordinator, "service_simulate_restore", ACTIVITY_OUTCOME_STARTED
+        )
+        await coordinator.async_start_integrity_check(source="simulation")
+
     async def _async_refresh(_call: ServiceCall) -> None:
         coordinator = _loaded_coordinator(hass)
         _record_activity(coordinator, "service_refresh", ACTIVITY_OUTCOME_STARTED)
@@ -264,7 +270,9 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
         section = call.data[ATTR_PREPAREDNESS_SECTION]
         item = call.data[ATTR_PREPAREDNESS_ITEM]
         status = call.data[ATTR_PREPAREDNESS_STATUS]
-        valid_items = CHECKLIST_KEYS if section == SECTION_CHECKLIST else DEPENDENCY_KEYS
+        valid_items = (
+            CHECKLIST_KEYS if section == SECTION_CHECKLIST else DEPENDENCY_KEYS
+        )
         valid_statuses = (
             CHECK_STATUS_OPTIONS
             if section == SECTION_CHECKLIST
@@ -315,6 +323,7 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
 
     for service, handler in (
         (SERVICE_VERIFY_LATEST_BACKUP, _async_verify_latest_backup),
+        (SERVICE_SIMULATE_RESTORE, _async_simulate_restore),
         (SERVICE_REFRESH, _async_refresh),
         (SERVICE_TEST_NOTIFICATION, _async_test_notification),
         (SERVICE_CLEAR_ACTIVITY_LOG, _async_clear_activity_log),

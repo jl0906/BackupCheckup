@@ -10,10 +10,10 @@ import sqlite3
 import tarfile
 import time
 import unicodedata
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from contextlib import closing, contextmanager
 from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path, PurePosixPath
 from typing import Any
 
@@ -45,6 +45,7 @@ from .const import (
     INTEGRITY_STATUS_VALID,
     INTEGRITY_STATUS_VALID_WITH_WARNINGS,
 )
+from .datetime_utils import parse_stored_utc_datetime
 from .models import BackupIntegrityResult, BackupRecord
 from .repairs import (
     async_set_storage_data_issue,
@@ -225,17 +226,7 @@ class BackupIntegrityStore:
         self._state = IntegrityStoreState(BackupIntegrityResult.not_checked())
         self._result = self._state.result
 
-    @staticmethod
-    def _parse_datetime(value: Any) -> datetime | None:
-        """Parse one persisted timestamp and normalize it to aware UTC."""
-        if not isinstance(value, str):
-            return None
-        parsed = dt_util.parse_datetime(value)
-        if parsed is None:
-            return None
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=UTC)
-        return dt_util.as_utc(parsed)
+    _parse_datetime = staticmethod(parse_stored_utc_datetime)
 
     @staticmethod
     def _bounded_store_text(value: Any, maximum: int) -> str | None:
@@ -428,12 +419,11 @@ class BackupIntegrityStore:
 
     async def async_remove(self) -> None:
         """Remove the stored integrity state without racing a pending save."""
-        async with self._state_lock:
-            async with self._load_lock:
-                await self._store.async_remove()
-                self._loaded = False
-                self._state = IntegrityStoreState(BackupIntegrityResult.not_checked())
-                self._result = self._state.result
+        async with self._state_lock, self._load_lock:
+            await self._store.async_remove()
+            self._loaded = False
+            self._state = IntegrityStoreState(BackupIntegrityResult.not_checked())
+            self._result = self._state.result
 
 
 class BackupIntegrityVerifier:
@@ -450,7 +440,17 @@ class BackupIntegrityVerifier:
         self.hass = hass
         self._entry_id = entry_id
         self._activity = activity
+        self._progress_listener: (
+            Callable[[str, str, Mapping[str, object] | None], None] | None
+        ) = None
         self.store = BackupIntegrityStore(hass, entry_id)
+
+    def set_progress_listener(
+        self,
+        listener: Callable[[str, str, Mapping[str, object] | None], None] | None,
+    ) -> None:
+        """Attach one task-scoped listener for live simulation progress."""
+        self._progress_listener = listener
 
     def _record_activity(
         self,
@@ -469,6 +469,14 @@ class BackupIntegrityVerifier:
                 activity_visible=False,
                 details=details,
             )
+        if self._progress_listener is not None:
+            try:
+                self._progress_listener(action, outcome, details)
+            except Exception:
+                _LOGGER.debug(
+                    "Unable to publish restore-simulation progress",
+                    exc_info=True,
+                )
 
     async def async_verify(
         self,
@@ -925,9 +933,7 @@ class BackupIntegrityVerifier:
         """Run blocking archive verification and classify its failures."""
         prepared = downloaded.prepared
         extract_action = (
-            "encrypted_backup_extract"
-            if prepared.protected
-            else "backup_extract"
+            "encrypted_backup_extract" if prepared.protected else "backup_extract"
         )
         self._record_activity(extract_action, ACTIVITY_OUTCOME_STARTED)
         if database_check:

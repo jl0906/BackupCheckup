@@ -4,10 +4,8 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
-
-from homeassistant.util import dt as dt_util
 
 from .age import completed_age_days
 from .const import (
@@ -16,24 +14,13 @@ from .const import (
     INTEGRITY_STATUS_NOT_CHECKED,
     INTEGRITY_STATUS_OPTIONS,
 )
+from .datetime_utils import parse_stored_utc_datetime as _parse_stored_datetime
 
 _MAX_RESULT_COUNTER = 10_000_000
 _MAX_VERIFIED_SIZE = 10**15
 _MAX_DURATION_SECONDS = 365 * 86400
 _MAX_STORED_WARNINGS = 1000
 _MAX_LOADED_WARNINGS = 50
-
-
-def _parse_stored_datetime(value: Any) -> datetime | None:
-    """Parse a stored timestamp and normalize it to aware UTC."""
-    if not isinstance(value, str):
-        return None
-    parsed = dt_util.parse_datetime(value)
-    if parsed is None:
-        return None
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=UTC)
-    return dt_util.as_utc(parsed)
 
 
 def _valid_optional_datetime(value: Any) -> bool:

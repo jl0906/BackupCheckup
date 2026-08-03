@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 DOMAIN = "backup_checkup"
 CONFIG_ENTRY_VERSION = 15
 NAME = "BackupCheckup"
-VERSION = "3.0.0-beta1"
+VERSION = "3.0.0-beta2"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -187,6 +187,7 @@ MAX_BACKUP_METADATA_BYTES = 2 * 1024 * 1024
 MIN_FREE_SPACE_RESERVE_BYTES = 1024 * 1024 * 1024
 STALE_TEMP_DIRECTORY_AGE_HOURS = 24
 SERVICE_VERIFY_LATEST_BACKUP = "verify_latest_backup"
+SERVICE_SIMULATE_RESTORE = "simulate_restore"
 SERVICE_REFRESH = "refresh"
 SERVICE_TEST_NOTIFICATION = "test_notification"
 SERVICE_CLEAR_ACTIVITY_LOG = "clear_activity_log"

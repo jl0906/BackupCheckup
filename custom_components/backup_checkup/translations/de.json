@@ -535,6 +535,10 @@
           "passed": "Bestanden",
           "warning": "Mit Hinweisen",
           "failed": "Fehlgeschlagen",
+          "running": "Läuft",
+          "aborted": "Abgebrochen",
+          "password_required": "Backup-Passwort erforderlich",
+          "inconclusive": "Nicht eindeutig",
           "not_run": "Nicht ausgeführt"
         }
       },

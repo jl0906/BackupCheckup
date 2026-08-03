@@ -223,6 +223,7 @@ def assess_recovery_readiness(
     generated_at: datetime | None = None,
     installation_type: str | None = None,
     language: str = "en",
+    simulation_progress: dict[str, Any] | None = None,
 ) -> RecoveryReadiness:
     """Assess whether the latest backup is suitable for disaster recovery."""
     del required_locations  # Replaced by failure-domain-aware redundancy in alpha4.
@@ -230,7 +231,10 @@ def assess_recovery_readiness(
     preparedness_snapshot = preparedness or RecoveryPreparednessSnapshot.empty()
     restore_test_snapshot = restore_test or RestoreTestSnapshot.empty()
     simulation = simulate_restore(
-        latest, integrity, database_check_enabled=database_check_enabled
+        latest,
+        integrity,
+        database_check_enabled=database_check_enabled,
+        live_progress=simulation_progress,
     )
     checks = _checks(
         latest,

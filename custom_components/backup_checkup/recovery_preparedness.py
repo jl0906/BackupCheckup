@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -11,6 +11,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
+from .datetime_utils import parse_stored_utc_datetime
 from .models import BackupAgentSummary, BackupRecord
 from .recovery_inventory import (
     STORAGE_CLASS_CLOUD,
@@ -134,7 +135,8 @@ class PreparednessItem:
             "status": self.status,
             "effective_status": effective,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
-            "expired": self.status != CHECK_STATUS_UNKNOWN and effective == CHECK_STATUS_UNKNOWN,
+            "expired": self.status != CHECK_STATUS_UNKNOWN
+            and effective == CHECK_STATUS_UNKNOWN,
         }
 
 
@@ -219,16 +221,7 @@ class RecoveryPreparednessStore:
             key: PreparednessItem(DEPENDENCY_STATUS_UNKNOWN) for key in DEPENDENCY_KEYS
         }
 
-    @staticmethod
-    def _parse_datetime(value: Any) -> datetime | None:
-        if not isinstance(value, str):
-            return None
-        parsed = dt_util.parse_datetime(value)
-        if parsed is None:
-            return None
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=UTC)
-        return dt_util.as_utc(parsed)
+    _parse_datetime = staticmethod(parse_stored_utc_datetime)
 
     @classmethod
     def _load_items(
@@ -275,7 +268,9 @@ class RecoveryPreparednessStore:
             return {
                 key: {
                     "status": item.status,
-                    "updated_at": item.updated_at.isoformat() if item.updated_at else None,
+                    "updated_at": item.updated_at.isoformat()
+                    if item.updated_at
+                    else None,
                 }
                 for key, item in items.items()
             }
@@ -343,7 +338,9 @@ class RecoveryPreparednessStore:
             checklist_effective.append(serialized["effective_status"])
             expired += int(serialized["expired"])
 
-        configured_checklist = any(status != CHECK_STATUS_UNKNOWN for status in checklist_effective)
+        configured_checklist = any(
+            status != CHECK_STATUS_UNKNOWN for status in checklist_effective
+        )
         checklist_complete: bool | None
         if not configured_checklist:
             checklist_complete = None
@@ -372,7 +369,8 @@ class RecoveryPreparednessStore:
             dependencies_protected: bool | None = None
         else:
             dependencies_protected = all(
-                status in {
+                status
+                in {
                     DEPENDENCY_STATUS_PROTECTED,
                     DEPENDENCY_STATUS_NOT_APPLICABLE,
                 }

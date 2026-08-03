@@ -343,9 +343,7 @@ def _with_legacy_derivations(merged: dict[str, Any]) -> dict[str, Any]:
     if CONF_VERIFICATION_POLICY not in merged:
         merged[CONF_VERIFICATION_POLICY] = _legacy_verification_policy(merged)
     if CONF_ACTIVITY_LOGGING_ENABLED not in merged:
-        merged[CONF_ACTIVITY_LOGGING_ENABLED] = (
-            merged.get(CONF_ENTITY_MODE) == "expert"
-        )
+        merged[CONF_ACTIVITY_LOGGING_ENABLED] = merged.get(CONF_ENTITY_MODE) == "expert"
     return merged
 
 
@@ -489,9 +487,7 @@ class BackupCheckupSettings:
                 show_sidebar_panel=values[CONF_SHOW_SIDEBAR_PANEL],
                 activity_logging_enabled=values[CONF_ACTIVITY_LOGGING_ENABLED],
                 activity_log_persistence=values[CONF_ACTIVITY_LOG_PERSISTENCE],
-                activity_log_retention_days=values[
-                    CONF_ACTIVITY_LOG_RETENTION_DAYS
-                ],
+                activity_log_retention_days=values[CONF_ACTIVITY_LOG_RETENTION_DAYS],
             ),
         )
 
@@ -538,12 +534,8 @@ class BackupCheckupSettings:
             CONF_NOTIFY_ON_RECOVERY: self.presentation.notify_on_recovery,
             CONF_EXPOSE_BACKUP_METADATA: self.presentation.expose_backup_metadata,
             CONF_SHOW_SIDEBAR_PANEL: self.presentation.show_sidebar_panel,
-            CONF_ACTIVITY_LOGGING_ENABLED: (
-                self.presentation.activity_logging_enabled
-            ),
-            CONF_ACTIVITY_LOG_PERSISTENCE: (
-                self.presentation.activity_log_persistence
-            ),
+            CONF_ACTIVITY_LOGGING_ENABLED: (self.presentation.activity_logging_enabled),
+            CONF_ACTIVITY_LOG_PERSISTENCE: (self.presentation.activity_log_persistence),
             CONF_ACTIVITY_LOG_RETENTION_DAYS: (
                 self.presentation.activity_log_retention_days
             ),

@@ -5,6 +5,13 @@ verify_latest_backup:
     BackupCheckup's configured resource and privacy safeguards. Administrator access
     is required.
 
+simulate_restore:
+  name: Simulate restore
+  description: >-
+    Runs the administrator-only, non-destructive restore simulation for the
+    newest monitored backup. The protected verification pipeline downloads,
+    decrypts, and fully reads the backup without restoring data.
+
 refresh:
   name: Refresh BackupCheckup
   description: >-

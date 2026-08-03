@@ -392,9 +392,7 @@ class BackupCheckupNotificationManager:
         except Exception as err:
             self.last_error = classify_exception(err)
             _LOGGER.exception(
-                "Unexpected BackupCheckup notification error: error_type=%s "
-                "error_code=%s",
-                safe_error_type(err),
+                "Unexpected BackupCheckup notification error: error_code=%s",
                 self.last_error,
             )
             self._record_activity(
@@ -426,7 +424,7 @@ class BackupCheckupNotificationManager:
             if stored is None:
                 return {}, False
             if not isinstance(stored, dict):
-                raise ValueError("invalid_store_root")
+                raise TypeError("invalid_store_root")
         except Exception as err:  # noqa: BLE001
             _LOGGER.warning(
                 "Invalid notification store data was reset: error_type=%s",

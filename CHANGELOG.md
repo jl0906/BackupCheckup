@@ -1,5 +1,55 @@
 # Changelog
 
+## 3.0.0-beta2
+
+**Complete recovery-simulation and quality revision**
+
+### Added
+
+- Added the dedicated administrator-only `backup_checkup.simulate_restore`
+  action. The Recovery button no longer aliases the normal integrity-check
+  action.
+- Added a live simulation model with the stages preparation, storage-copy
+  selection, download, archive reading, optional database inspection,
+  evaluation, cleanup, and completion.
+- Added live technical progress, stage states, runtime, archive count, file
+  count, verified data volume, and explicit `running`, `aborted`,
+  `password_required`, and `inconclusive` result states.
+- Added a responsive graphical simulation pipeline to the Recovery tab with a
+  progress bar, stage cards, read metrics, grouped result counts, and a clear
+  non-destructive safety statement.
+- Added regression coverage for the full progress lifecycle, controlled failure
+  mapping, optional database stage, dedicated action wiring, translations, and
+  the rendered live frontend.
+
+### Changed
+
+- The simulated restore now executes the existing hardened read-only verifier
+  instead of merely presenting a renamed calculation derived after a normal
+  integrity check. It therefore really downloads, decrypts, validates, and fully
+  reads the selected backup while still performing no restore.
+- Reused the existing archive, password, storage fallback, resource-limit,
+  database, cleanup, and privacy code paths. No second security-critical archive
+  implementation was introduced.
+- Refactored recovery-plan construction and shared export sections to reduce
+  complexity and repeated rendering logic.
+- Expanded the simulation sensor enum and all translation files for live and
+  controlled terminal states.
+- Increased the frontend asset revision to `r9` and changed the custom-element
+  name to `backup-checkup-panel-v3-0-0-beta2-r9`.
+
+### Fixed
+
+- Fixed the Recovery action and the normal Verify action exposing two controls
+  for what was previously the same backend operation.
+- Fixed the Recovery tab being unable to show progress until the entire
+  verification and subsequent inventory refresh had completed.
+- Fixed aborted, password-required, and internal-error verifier results being
+  collapsed into overly generic restore-simulation outcomes.
+- Cleaned remaining production lint findings, unused imports, redundant
+  exception logging, and avoidable conditional forms discovered during the full
+  revision.
+
 ## 3.0.0-beta1
 
 **Integrated configuration and beta hardening**

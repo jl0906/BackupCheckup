@@ -14,6 +14,7 @@ from .const import (
     DOMAIN,
     SERVICE_CLEAR_ACTIVITY_LOG,
     SERVICE_REFRESH,
+    SERVICE_SIMULATE_RESTORE,
     SERVICE_TEST_NOTIFICATION,
     SERVICE_VERIFY_LATEST_BACKUP,
 )
@@ -105,10 +106,10 @@ class BackupCheckupRecoveryAssessmentButton(BackupCheckupEntity, ButtonEntity):
         )
 
     async def async_press(self) -> None:
-        """Verify the latest backup; the simulation is derived after refresh."""
+        """Start the dedicated read-only restore-simulation mode."""
         await self.hass.services.async_call(
             DOMAIN,
-            SERVICE_VERIFY_LATEST_BACKUP,
+            SERVICE_SIMULATE_RESTORE,
             blocking=True,
             context=self._context,
         )

@@ -11,7 +11,6 @@ from homeassistant.data_entry_flow import FlowResult
 
 from .configuration import normalize_configuration
 from .const import (
-    CONFIG_ENTRY_VERSION,
     CONF_ACTIVITY_LOGGING_ENABLED,
     CONF_ADAPTIVE_POLLING,
     CONF_ENTITY_MODE,
@@ -29,6 +28,7 @@ from .const import (
     CONF_SHOW_SIDEBAR_PANEL,
     CONF_SIZE_CHECK_MODE,
     CONF_VERIFICATION_POLICY,
+    CONFIG_ENTRY_VERSION,
     DEFAULT_ENTITY_MODE,
     DEFAULT_EXPOSE_BACKUP_METADATA,
     DEFAULT_MONITORING_POLICY,

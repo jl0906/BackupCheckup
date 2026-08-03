@@ -1,6 +1,6 @@
 # Recovery Readiness
 
-BackupCheckup 3.0.0-beta1 provides a separate disaster-recovery assessment. It
+BackupCheckup 3.0.0-beta2 provides a separate disaster-recovery assessment. It
 answers whether the newest monitored backup and the surrounding recovery
 preparation provide a credible basis for restoring Home Assistant after a total
 system failure. It remains separate from the normal backup Health Score.
@@ -102,8 +102,19 @@ privacy-safe assessment but cannot change it.
 
 ## Simulated restore assessment
 
-Beta1 derives a non-destructive restore assessment from the latest monitored
-backup and the most recent integrity result. It checks:
+Beta2 provides a dedicated administrator-only simulation mode for the newest
+monitored backup. It deliberately reuses the hardened integrity-verification
+pipeline instead of implementing a second archive reader. During the run it:
+
+- selects an available storage copy and falls back to another copy when needed;
+- downloads the backup with resource, free-space, and timeout limits;
+- decrypts protected backups with Home Assistant's configured backup password;
+- validates `backup.json` and the expected archive inventory;
+- streams every outer and inner archive member completely;
+- optionally extracts and verifies the included SQLite database;
+- removes temporary data and publishes every stage live to the frontend.
+
+The completed assessment checks:
 
 - the integrity result applies to the newest backup;
 - backup metadata and the anonymous backup reference are available;
@@ -114,15 +125,20 @@ backup and the most recent integrity result. It checks:
 - an encrypted backup was readable when encryption applies;
 - at least one storage copy is available.
 
-The simulation never creates a temporary Home Assistant installation and never
-invokes Home Assistant's restore operation. A result can be `passed`, `warning`,
-`failed`, or `not_run`. A warning means the structural assessment passed but
-non-blocking information remains unknown or the underlying integrity result
-contained warnings. Failed blocking checks do not satisfy Recovery Readiness.
+The simulation never creates a temporary Home Assistant installation, writes to
+production directories, executes restored code, starts add-ons, or invokes Home
+Assistant's restore operation. A result can be `running`, `passed`, `warning`,
+`failed`, `aborted`, `password_required`, `inconclusive`, or `not_run`. A warning
+means the structural assessment passed but non-blocking information remains
+unknown or the underlying verifier reported warnings. Failed blocking checks do
+not satisfy Recovery Readiness.
 
-The administrator button `button.backup_checkup_run_recovery_assessment` starts the
-existing protected verification workflow for the latest backup. The structural
-simulation is recalculated from the new result.
+The administrator button `button.backup_checkup_run_recovery_assessment` starts
+the dedicated `backup_checkup.simulate_restore` action. Integrity verification and
+simulation share the same task lock and manual cooldown, so they cannot overlap.
+The Recovery tab updates through the normal Home Assistant state stream and shows
+the current stage, technical percentage, per-stage states, read archive/file
+counts, data volume, duration, and grouped check results.
 
 ## Documented test restore
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from homeassistant.core import HomeAssistant
@@ -11,6 +11,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
+from .datetime_utils import parse_stored_utc_datetime
 from .models import BackupRecord
 
 _STORAGE_VERSION = 1
@@ -65,7 +66,9 @@ class RestoreTestSnapshot:
     validity_days: int
 
     @classmethod
-    def empty(cls, *, validity_days: int = DEFAULT_RESTORE_TEST_VALID_DAYS) -> RestoreTestSnapshot:
+    def empty(
+        cls, *, validity_days: int = DEFAULT_RESTORE_TEST_VALID_DAYS
+    ) -> RestoreTestSnapshot:
         """Return an unassessed restore-test state."""
         return cls(
             tested_at=None,
@@ -114,17 +117,7 @@ class RecoveryRestoreTestStore:
         self._validity_days = max(30, min(int(validity_days), 3650))
         self._record: RestoreTestRecord | None = None
 
-    @staticmethod
-    def _parse_datetime(value: Any) -> datetime | None:
-        """Parse a stored timestamp and normalize it to UTC."""
-        if not isinstance(value, str):
-            return None
-        parsed = dt_util.parse_datetime(value)
-        if parsed is None:
-            return None
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=UTC)
-        return dt_util.as_utc(parsed)
+    _parse_datetime = staticmethod(parse_stored_utc_datetime)
 
     @classmethod
     def _parse_record(cls, value: Any) -> RestoreTestRecord | None:

@@ -1,4 +1,4 @@
-const PANEL_ELEMENT_NAME = "backup-checkup-panel-v3-0-0-beta1-r8";
+const PANEL_ELEMENT_NAME = "backup-checkup-panel-v3-0-0-beta2-r9";
 
 const TRANSLATION_SEPARATOR = "\u001f";
 const TRANSLATION_KEYS = Object.freeze({
@@ -281,11 +281,26 @@ const RECOVERY_TEXT = Object.freeze({
     expired: "Review expired",
     adminOnly: "Only Home Assistant administrators can change these states.",
     simulationTitle: "Simulated restore test",
-    simulationIntro: "Checks backup metadata, archive structure, integrity and database readability without restoring or changing anything.",
+    simulationIntro: "Runs the real protected read pipeline: the backup is downloaded, decrypted when required, and every archive is read without restoring or changing the live system.",
     simulationRun: "Run simulated restore test",
+    simulationActivity: "Starting restore simulation",
     simulationStatus: "Simulation status",
+    simulationLive: "Simulation in progress",
+    simulationSafety: "No restore endpoint is called and no production data is written.",
+    simulationStage: "Current step",
+    simulationProgress: "Technical progress",
+    simulationChecksPassed: "Passed checks",
+    simulationChecksOpen: "Open checks",
+    simulationChecksFailed: "Blocking checks",
+    simulationArchives: "Archives read",
+    simulationFiles: "Files read",
+    simulationSize: "Data read",
+    simulationDuration: "Runtime",
     blockingFailures: "Blocking failures",
     simulationWarnings: "Open simulation warnings",
+    simulationStatusLabels: { passed: "Ready", warning: "Ready with warnings", failed: "Not ready", running: "Running", aborted: "Aborted by a safety limit", password_required: "Backup password required", inconclusive: "Result inconclusive", not_run: "Not run" },
+    simulationStageLabels: { prepare: "Prepare simulation", storage: "Select storage copy", download: "Download backup", archives: "Read metadata and archives", database: "Check database", evaluate: "Evaluate restore plan", cleanup: "Remove temporary data", complete: "Complete simulation" },
+    simulationStageStateLabels: { pending: "Pending", running: "Running", passed: "Passed", warning: "Warning", failed: "Failed", not_applicable: "Not applicable" },
     restoreTestTitle: "Documented test restore",
     restoreTestIntro: "Document only a restore test performed outside the productive Home Assistant instance.",
     restoreTestMissing: "No test restore has been documented yet.",
@@ -417,11 +432,26 @@ const RECOVERY_TEXT = Object.freeze({
     expired: "Prüfung abgelaufen",
     adminOnly: "Nur Home-Assistant-Administratoren können diese Angaben ändern.",
     simulationTitle: "Simulierter Wiederherstellungstest",
-    simulationIntro: "Prüft Backup-Metadaten, Archivstruktur, Integrität und Datenbanklesbarkeit, ohne etwas wiederherzustellen oder zu verändern.",
+    simulationIntro: "Nutzt die echte geschützte Lesepipeline: Das Backup wird geladen, bei Bedarf entschlüsselt und vollständig eingelesen, ohne das laufende System wiederherzustellen oder zu verändern.",
     simulationRun: "Simulierten Wiederherstellungstest ausführen",
+    simulationActivity: "Wiederherstellungssimulation wird gestartet",
     simulationStatus: "Ergebnis der Simulation",
+    simulationLive: "Simulation läuft",
+    simulationSafety: "Es wird kein Restore-Endpunkt aufgerufen und es werden keine Produktivdaten geschrieben.",
+    simulationStage: "Aktueller Schritt",
+    simulationProgress: "Technischer Fortschritt",
+    simulationChecksPassed: "Bestandene Prüfungen",
+    simulationChecksOpen: "Offene Prüfungen",
+    simulationChecksFailed: "Blockierende Prüfungen",
+    simulationArchives: "Gelesene Archive",
+    simulationFiles: "Gelesene Dateien",
+    simulationSize: "Gelesene Daten",
+    simulationDuration: "Laufzeit",
     blockingFailures: "Blockierende Fehler",
     simulationWarnings: "Offene Hinweise der Simulation",
+    simulationStatusLabels: { passed: "Bereit", warning: "Bereit mit Warnungen", failed: "Nicht bereit", running: "Läuft", aborted: "Durch Sicherheitsgrenze abgebrochen", password_required: "Backup-Passwort erforderlich", inconclusive: "Ergebnis nicht eindeutig", not_run: "Noch nicht ausgeführt" },
+    simulationStageLabels: { prepare: "Simulation vorbereiten", storage: "Speicherkopie auswählen", download: "Backup herunterladen", archives: "Metadaten und Archive lesen", database: "Datenbank prüfen", evaluate: "Wiederherstellungsplan bewerten", cleanup: "Temporäre Daten entfernen", complete: "Simulation abschließen" },
+    simulationStageStateLabels: { pending: "Ausstehend", running: "Läuft", passed: "Bestanden", warning: "Warnung", failed: "Fehlgeschlagen", not_applicable: "Nicht erforderlich" },
     restoreTestTitle: "Dokumentierter Test-Restore",
     restoreTestIntro: "Dokumentiere ausschließlich einen außerhalb der produktiven Home-Assistant-Instanz ausgeführten Wiederherstellungstest.",
     restoreTestMissing: "Es wurde noch kein Test-Restore dokumentiert.",
@@ -832,6 +862,18 @@ class BackupCheckupPanel extends HTMLElement {
           ...RECOVERY_TEXT.en.restoreScopeLabels,
           ...(recovery.restoreScopeLabels || {}),
         },
+        simulationStatusLabels: {
+          ...RECOVERY_TEXT.en.simulationStatusLabels,
+          ...(recovery.simulationStatusLabels || {}),
+        },
+        simulationStageLabels: {
+          ...RECOVERY_TEXT.en.simulationStageLabels,
+          ...(recovery.simulationStageLabels || {}),
+        },
+        simulationStageStateLabels: {
+          ...RECOVERY_TEXT.en.simulationStageStateLabels,
+          ...(recovery.simulationStageStateLabels || {}),
+        },
       },
     };
   }
@@ -1135,18 +1177,60 @@ class BackupCheckupPanel extends HTMLElement {
   }
 
   _simulationRows(simulation, text) {
-    const failures = Array.isArray(simulation?.blocking_failures)
-      ? simulation.blocking_failures.map((key) => text.checkLabels?.[key] || this._humanize(key)).join(", ")
-      : "";
-    const warnings = Array.isArray(simulation?.warnings)
-      ? simulation.warnings.map((key) => text.checkLabels?.[key] || this._humanize(key)).join(", ")
-      : "";
-    return [
-      [text.simulationStatus, this._humanize(simulation?.status || "not_run")],
-      [text.checkedAt || "Checked", this._date(simulation?.checked_at)],
-      [text.blockingFailures, failures || "—"],
-      [text.simulationWarnings, warnings || "—"],
-    ].map(([label, value]) => this._recoveryDetailRow(label, value)).join("");
+    const status = simulation?.status || "not_run";
+    const tone = ["passed"].includes(status) ? "good"
+      : ["running", "warning", "aborted", "password_required", "inconclusive"].includes(status) ? "warning"
+        : status === "failed" ? "danger" : "neutral";
+    const statusLabel = text.simulationStatusLabels?.[status] || this._humanize(status);
+    const progress = Math.min(100, Math.max(0, Number(simulation?.progress_percent) || 0));
+    const stage = simulation?.stage || "prepare";
+    const stageLabel = text.simulationStageLabels?.[stage] || this._humanize(stage);
+    const checks = Object.values(simulation?.checks || {});
+    const passed = checks.filter((value) => value === true).length;
+    const failed = checks.filter((value) => value === false).length;
+    const open = checks.filter((value) => value == null).length;
+    const stageRows = Object.entries(simulation?.stages || {}).map(([key, value]) => {
+      const icon = value === "passed" ? "mdi:check-circle"
+        : value === "failed" ? "mdi:close-circle"
+          : value === "running" ? "mdi:progress-clock"
+            : value === "warning" ? "mdi:alert-circle"
+              : value === "not_applicable" ? "mdi:minus-circle-outline" : "mdi:clock-outline";
+      const label = text.simulationStageLabels?.[key] || this._humanize(key);
+      const stateLabel = text.simulationStageStateLabels?.[value] || this._humanize(value);
+      return `<div class="simulation-stage ${this._escape(value)}">
+        <ha-icon icon="${icon}"></ha-icon>
+        <div><strong>${this._escape(label)}</strong><span>${this._escape(stateLabel)}</span></div>
+      </div>`;
+    }).join("");
+    const sizeMb = Number(simulation?.verified_size) > 0
+      ? `${(Number(simulation.verified_size) / 1_000_000).toLocaleString(this._language(), { maximumFractionDigits: 1 })} MB`
+      : "—";
+    const duration = Number(simulation?.duration_seconds) >= 0
+      ? `${Number(simulation.duration_seconds).toLocaleString(this._language(), { maximumFractionDigits: 1 })} s`
+      : "—";
+    return `<div class="simulation-dashboard ${tone}">
+      <div class="simulation-head">
+        <div class="simulation-state"><span></span><div><small>${this._escape(simulation?.running ? text.simulationLive : text.simulationStatus)}</small><strong>${this._escape(statusLabel)}</strong></div></div>
+        <div class="simulation-current"><small>${this._escape(text.simulationStage)}</small><strong>${this._escape(stageLabel)}</strong></div>
+      </div>
+      <div class="simulation-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}">
+        <div style="width:${progress}%"></div>
+      </div>
+      <div class="simulation-progress-label"><span>${this._escape(text.simulationProgress)}</span><strong>${progress}%</strong></div>
+      <div class="simulation-pipeline">${stageRows}</div>
+      <div class="simulation-metrics">
+        <div><ha-icon icon="mdi:archive-outline"></ha-icon><span>${this._escape(text.simulationArchives)}</span><strong>${Number(simulation?.archive_count) || 0}</strong></div>
+        <div><ha-icon icon="mdi:file-multiple-outline"></ha-icon><span>${this._escape(text.simulationFiles)}</span><strong>${Number(simulation?.file_count) || 0}</strong></div>
+        <div><ha-icon icon="mdi:database-arrow-down-outline"></ha-icon><span>${this._escape(text.simulationSize)}</span><strong>${this._escape(sizeMb)}</strong></div>
+        <div><ha-icon icon="mdi:timer-outline"></ha-icon><span>${this._escape(text.simulationDuration)}</span><strong>${this._escape(duration)}</strong></div>
+      </div>
+      <div class="simulation-check-summary">
+        <div class="good"><strong>${passed}</strong><span>${this._escape(text.simulationChecksPassed)}</span></div>
+        <div class="warning"><strong>${open}</strong><span>${this._escape(text.simulationChecksOpen)}</span></div>
+        <div class="danger"><strong>${failed}</strong><span>${this._escape(text.simulationChecksFailed)}</span></div>
+      </div>
+      <p class="simulation-safety"><ha-icon icon="mdi:shield-lock-outline"></ha-icon>${this._escape(text.simulationSafety)}</p>
+    </div>`;
   }
 
   _restoreTestRows(restoreTest, text) {
@@ -1405,19 +1489,20 @@ class BackupCheckupPanel extends HTMLElement {
     </button>`;
   }
 
-  _actionFooter(model) {
+  _actionFooter(model, showVerify = true) {
     if (!model.isAdmin) return "";
     const refreshDisabled = this._buttonDisabled(model.refreshState, "refresh")
       ? "disabled" : "";
     const verifyDisabled = this._buttonDisabled(model.verifyState, "verify")
       ? "disabled" : "";
+    const verifyAction = showVerify ? `<button class="action primary" data-action="verify" ${verifyDisabled}>
+        <ha-icon icon="mdi:shield-search"></ha-icon>${this._escape(model.text.verify)}
+      </button>` : "";
     return `<footer>
       <button class="action secondary" data-action="refresh" ${refreshDisabled}>
         <ha-icon icon="mdi:refresh"></ha-icon>${this._escape(model.text.refresh)}
       </button>
-      <button class="action primary" data-action="verify" ${verifyDisabled}>
-        <ha-icon icon="mdi:shield-search"></ha-icon>${this._escape(model.text.verify)}
-      </button>
+      ${verifyAction}
     </footer>`;
   }
 
@@ -1540,10 +1625,10 @@ class BackupCheckupPanel extends HTMLElement {
         <div class="preparedness-list">${this._preparednessRows(model.recoveryPreparedness, "dependencies", text, model.isAdmin)}</div>
         <p class="preparedness-note">${this._escape(this._preparednessReviewText(model.recoveryPreparedness, text))}${model.isAdmin ? "" : ` ${this._escape(text.adminOnly)}`}</p>
       </article>
-      <article class="card">
+      <article class="card storage-card simulation-card">
         <div class="card-title"><ha-icon icon="mdi:test-tube"></ha-icon><h3>${this._escape(text.simulationTitle)}</h3></div>
         <p class="preparedness-intro">${this._escape(text.simulationIntro)}</p>
-        <div class="rows">${this._simulationRows(model.restoreSimulation, text)}</div>
+        ${this._simulationRows(model.restoreSimulation, text)}
         ${model.isAdmin ? `<div class="card-actions"><button class="action primary" data-action="recovery_assessment" ${assessmentDisabled}><ha-icon icon="mdi:home-search-outline"></ha-icon>${this._escape(text.simulationRun)}</button></div>` : ""}
       </article>
       <article class="card">
@@ -1559,11 +1644,13 @@ class BackupCheckupPanel extends HTMLElement {
         ${this._planExportButtons(model.recoveryPlan, text)}
       </article>
     </section>
-    ${this._actionFooter(model)}`;
+    ${this._actionFooter(model, false)}`;
   }
 
   _activityMessage(record, text) {
-    const action = text.activityActions[record.action] || this._humanize(record.action);
+    const action = record.action === "service_simulate_restore"
+      ? text.recovery.simulationActivity
+      : text.activityActions[record.action] || this._humanize(record.action);
     const progress = record.details?.progress_percent;
     if (progress !== undefined) return `${action} – ${progress}%`;
     const outcome = text.activityOutcomes[record.outcome] || this._humanize(record.outcome);
@@ -1588,7 +1675,7 @@ class BackupCheckupPanel extends HTMLElement {
     const action = String(record.action || "");
     if (action.includes("notification")) return "notification";
     if (action.includes("backup") || action.includes("storage_copy")) return "backup";
-    if (action.includes("integrity") || action.includes("verification")) return "check";
+    if (action.includes("integrity") || action.includes("verification") || action.includes("simulate_restore")) return "check";
     return "system";
   }
 
@@ -2109,6 +2196,46 @@ class BackupCheckupPanel extends HTMLElement {
       .preparedness-badge.expired { background:rgba(231,154,36,.14); color:#b87300; }
       .preparedness-row select { width:100%; min-height:38px; padding:6px 9px; border:1px solid var(--divider-color); border-radius:9px; background:var(--card-background-color); color:var(--primary-text-color); font:inherit; font-size:12px; }
       .preparedness-row select:disabled { opacity:.68; }
+      .simulation-dashboard { --simulation-tone:#607d8b; --simulation-soft:rgba(96,125,139,.12); display:flex; flex-direction:column; gap:14px; padding:18px; border:1px solid color-mix(in srgb, var(--simulation-tone) 26%, var(--divider-color)); border-radius:16px; background:linear-gradient(145deg, var(--simulation-soft), transparent 48%); }
+      .simulation-dashboard.good { --simulation-tone:#2e9d68; --simulation-soft:rgba(46,157,104,.12); }
+      .simulation-dashboard.warning { --simulation-tone:#e79a24; --simulation-soft:rgba(231,154,36,.12); }
+      .simulation-dashboard.danger { --simulation-tone:#d84b55; --simulation-soft:rgba(216,75,85,.12); }
+      .simulation-head { display:flex; align-items:center; justify-content:space-between; gap:18px; }
+      .simulation-state { display:flex; align-items:center; gap:11px; }
+      .simulation-state > span { width:12px; height:12px; border-radius:50%; background:var(--simulation-tone); box-shadow:0 0 0 6px var(--simulation-soft); }
+      .simulation-state div, .simulation-current { display:flex; flex-direction:column; gap:3px; }
+      .simulation-state small, .simulation-current small { color:var(--secondary-text-color); font-size:11px; }
+      .simulation-state strong { color:var(--simulation-tone); font-size:17px; }
+      .simulation-current { align-items:flex-end; text-align:right; }
+      .simulation-current strong { font-size:13px; }
+      .simulation-progress { height:10px; overflow:hidden; border-radius:999px; background:color-mix(in srgb, var(--divider-color) 72%, transparent); }
+      .simulation-progress > div { height:100%; min-width:0; border-radius:inherit; background:linear-gradient(90deg, color-mix(in srgb, var(--simulation-tone) 72%, white), var(--simulation-tone)); transition:width .35s ease; }
+      .simulation-progress-label { display:flex; justify-content:space-between; margin-top:-8px; color:var(--secondary-text-color); font-size:11px; }
+      .simulation-progress-label strong { color:var(--simulation-tone); }
+      .simulation-pipeline { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:9px; }
+      .simulation-stage { min-height:66px; display:flex; align-items:center; gap:9px; padding:10px; border:1px solid var(--divider-color); border-radius:11px; background:var(--card-background-color); }
+      .simulation-stage ha-icon { flex:0 0 auto; color:#90a4ae; --mdc-icon-size:21px; }
+      .simulation-stage.passed ha-icon { color:#2e9d68; }
+      .simulation-stage.failed ha-icon { color:#d84b55; }
+      .simulation-stage.warning ha-icon, .simulation-stage.running ha-icon { color:#e79a24; }
+      .simulation-stage.running { border-color:color-mix(in srgb, var(--simulation-tone) 55%, var(--divider-color)); box-shadow:0 0 0 2px var(--simulation-soft); }
+      .simulation-stage div { min-width:0; display:flex; flex-direction:column; gap:3px; }
+      .simulation-stage strong { font-size:11px; line-height:1.25; }
+      .simulation-stage span { color:var(--secondary-text-color); font-size:10px; }
+      .simulation-metrics { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:9px; }
+      .simulation-metrics > div { display:grid; grid-template-columns:auto 1fr; gap:3px 8px; align-items:center; padding:11px; border-radius:11px; background:color-mix(in srgb, var(--card-background-color) 88%, var(--simulation-tone)); }
+      .simulation-metrics ha-icon { grid-row:1 / 3; color:var(--simulation-tone); --mdc-icon-size:22px; }
+      .simulation-metrics span { color:var(--secondary-text-color); font-size:10px; }
+      .simulation-metrics strong { font-size:14px; }
+      .simulation-check-summary { display:grid; grid-template-columns:repeat(3, 1fr); gap:9px; }
+      .simulation-check-summary > div { display:flex; align-items:center; gap:9px; padding:10px 12px; border-radius:10px; background:var(--card-background-color); }
+      .simulation-check-summary strong { font-size:20px; }
+      .simulation-check-summary span { color:var(--secondary-text-color); font-size:11px; }
+      .simulation-check-summary .good strong { color:#2e9d68; }
+      .simulation-check-summary .warning strong { color:#e79a24; }
+      .simulation-check-summary .danger strong { color:#d84b55; }
+      .simulation-safety { display:flex; align-items:center; gap:8px; margin:0; color:var(--secondary-text-color); font-size:11px; line-height:1.45; }
+      .simulation-safety ha-icon { flex:0 0 auto; color:#2e9d68; --mdc-icon-size:19px; }
       .restore-test-controls, .plan-actions, .card-actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:16px; }
       .restore-test-controls select { min-height:42px; min-width:170px; flex:1; padding:6px 10px; border:1px solid var(--divider-color); border-radius:10px; background:var(--card-background-color); color:var(--primary-text-color); font:inherit; }
       .restore-test-controls .action { flex:1 1 220px; justify-content:center; }
@@ -2181,8 +2308,8 @@ class BackupCheckupPanel extends HTMLElement {
       .action.primary { background:var(--primary-color); border-color:var(--primary-color); color:var(--text-primary-color, white); }
       .action.secondary { background:var(--card-background-color); color:var(--primary-text-color); }
       .action:disabled { opacity:.48; cursor:default; }
-      @media (max-width:900px) { .metrics { grid-template-columns:repeat(2, minmax(0, 1fr)); } .recovery-check-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .content-grid { grid-template-columns:1fr; } .storage-card { grid-column:auto; } .log-row { grid-template-columns:165px 1fr; } .log-row span { grid-column:2; } }
-      @media (max-width:620px) { .restore-test-controls, .plan-actions, .card-actions { flex-direction:column; } .restore-test-controls select { width:100%; } .preparedness-row { grid-template-columns:1fr; gap:7px; padding:11px 0; } .preparedness-badges { justify-content:flex-start; } main { padding:18px 12px 28px; } header { padding:0 4px; } header p { display:none; } .tabs { margin-top:0; } .hero { min-height:0; padding:24px 21px; } .score { width:104px; height:104px; margin-left:14px; } .score::before { inset:8px; } .score strong { font-size:27px; } .hero h2 { font-size:23px; } .metrics { grid-template-columns:1fr 1fr; gap:10px; } .metrics.recovery-summary, .recovery-check-grid { grid-template-columns:1fr; } .metric { min-height:95px; padding:15px; } .content-grid { gap:12px; } .card { padding:18px; } .log-toolbar { align-items:stretch; flex-direction:column; } .live-indicator { align-self:flex-end; } .log-row { grid-template-columns:1fr; gap:3px; padding:10px 13px; } .log-row span { grid-column:auto; } footer { flex-direction:column-reverse; } .action { justify-content:center; } }
+      @media (max-width:900px) { .metrics { grid-template-columns:repeat(2, minmax(0, 1fr)); } .recovery-check-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .content-grid { grid-template-columns:1fr; } .storage-card { grid-column:auto; } .simulation-pipeline, .simulation-metrics { grid-template-columns:repeat(2, minmax(0, 1fr)); } .log-row { grid-template-columns:165px 1fr; } .log-row span { grid-column:2; } }
+      @media (max-width:620px) { .restore-test-controls, .plan-actions, .card-actions { flex-direction:column; } .restore-test-controls select { width:100%; } .preparedness-row { grid-template-columns:1fr; gap:7px; padding:11px 0; } .preparedness-badges { justify-content:flex-start; } .simulation-head { align-items:flex-start; flex-direction:column; } .simulation-current { align-items:flex-start; text-align:left; } .simulation-pipeline, .simulation-metrics { grid-template-columns:1fr; } .simulation-check-summary { grid-template-columns:1fr; } main { padding:18px 12px 28px; } header { padding:0 4px; } header p { display:none; } .tabs { margin-top:0; } .hero { min-height:0; padding:24px 21px; } .score { width:104px; height:104px; margin-left:14px; } .score::before { inset:8px; } .score strong { font-size:27px; } .hero h2 { font-size:23px; } .metrics { grid-template-columns:1fr 1fr; gap:10px; } .metrics.recovery-summary, .recovery-check-grid { grid-template-columns:1fr; } .metric { min-height:95px; padding:15px; } .content-grid { gap:12px; } .card { padding:18px; } .log-toolbar { align-items:stretch; flex-direction:column; } .live-indicator { align-self:flex-end; } .log-row { grid-template-columns:1fr; gap:3px; padding:10px 13px; } .log-row span { grid-column:auto; } footer { flex-direction:column-reverse; } .action { justify-content:center; } }
       @media (max-width:390px) { .hero { align-items:flex-start; } .score { width:88px; height:88px; } .score span { display:none; } .metrics { grid-template-columns:1fr; } }
 
       .config-page { display:flex; flex-direction:column; gap:18px; }

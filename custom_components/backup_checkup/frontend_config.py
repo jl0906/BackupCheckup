@@ -6,7 +6,6 @@ from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant.components import websocket_api
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -286,9 +285,15 @@ def resolve_frontend_configuration(
             CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
         ):
             values[key] = _bounded_int(source[key], key, errors)
-        if values[CONF_ACTIVE_UPDATE_INTERVAL_MINUTES] > values[CONF_UPDATE_INTERVAL_MINUTES]:
+        if (
+            values[CONF_ACTIVE_UPDATE_INTERVAL_MINUTES]
+            > values[CONF_UPDATE_INTERVAL_MINUTES]
+        ):
             errors["runtime"] = "active_interval_too_slow"
-        if values[CONF_ERROR_BACKOFF_INTERVAL_MINUTES] < values[CONF_UPDATE_INTERVAL_MINUTES]:
+        if (
+            values[CONF_ERROR_BACKOFF_INTERVAL_MINUTES]
+            < values[CONF_UPDATE_INTERVAL_MINUTES]
+        ):
             errors["runtime"] = "backoff_interval_too_fast"
         if values[CONF_MAX_EXPANDED_SIZE_GB] < values[CONF_MAX_VERIFICATION_SIZE_GB]:
             errors[CONF_MAX_EXPANDED_SIZE_GB] = "expanded_size_too_small"

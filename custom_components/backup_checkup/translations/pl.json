@@ -535,6 +535,10 @@
           "passed": "Passed",
           "warning": "Passed with warnings",
           "failed": "Failed",
+          "running": "Running",
+          "aborted": "Aborted",
+          "password_required": "Backup password required",
+          "inconclusive": "Inconclusive",
           "not_run": "Not run"
         }
       },
