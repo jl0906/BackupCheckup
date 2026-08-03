@@ -501,6 +501,28 @@
           "not_found": "Nicht gefunden",
           "not_applicable": "Nicht zutreffend"
         }
+      },
+      "recovery_readiness": {
+        "name": "Wiederherstellungsbereitschaft"
+      },
+      "recovery_status": {
+        "name": "Wiederherstellungsstatus",
+        "state": {
+          "ready": "Bereit",
+          "limited": "Eingeschränkt",
+          "insufficient": "Unzureichend",
+          "unknown": "Unbekannt"
+        }
+      },
+      "recovery_recommendation": {
+        "name": "Empfohlene Notfallmaßnahme",
+        "state": {
+          "none": "Keine Maßnahme erforderlich",
+          "verify_latest_backup": "Neuestes Backup vollständig prüfen",
+          "create_external_copy": "Unabhängige Backup-Kopie erstellen",
+          "create_complete_backup": "Vollständiges Backup erstellen",
+          "enable_database_check": "Datenbankprüfung aktivieren oder ausführen"
+        }
       }
     },
     "binary_sensor": {

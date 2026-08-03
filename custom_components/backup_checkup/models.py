@@ -489,6 +489,11 @@ class BackupCheckupData:
     health_score_components: dict[str, int] = field(default_factory=dict)
     health_score_raw_deductions: dict[str, int] = field(default_factory=dict)
     health_score_suppressed_deductions: tuple[str, ...] = ()
+    recovery_readiness_score: int = 0
+    recovery_status: str = "unknown"
+    recovery_recommendation: str = "none"
+    recovery_deductions: dict[str, int] = field(default_factory=dict)
+    recovery_checks: dict[str, bool | None] = field(default_factory=dict)
 
     @property
     def latest_monitored_backup_record(self) -> BackupRecord | None:

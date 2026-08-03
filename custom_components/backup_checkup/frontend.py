@@ -17,7 +17,7 @@ from .const import CONF_SHOW_SIDEBAR_PANEL, DOMAIN, VERSION
 _LOGGER = logging.getLogger(__name__)
 
 PANEL_URL_PATH = "backup-checkup"
-PANEL_ASSET_REVISION = 1
+PANEL_ASSET_REVISION = 2
 PANEL_VERSION_TAG = f"{VERSION.replace('.', '-')}-r{PANEL_ASSET_REVISION}"
 PANEL_WEB_COMPONENT = f"backup-checkup-panel-v{PANEL_VERSION_TAG}"
 PANEL_MODULE_PATH = (
@@ -30,6 +30,9 @@ PANEL_MODULE_FILE = Path(__file__).parent / "frontend" / "backup-checkup-panel.j
 _PANEL_ENTITIES: dict[str, tuple[str, str]] = {
     "status": ("sensor", "status"),
     "health_score": ("sensor", "health_score"),
+    "recovery_readiness": ("sensor", "recovery_readiness"),
+    "recovery_status": ("sensor", "recovery_status"),
+    "recovery_recommendation": ("sensor", "recovery_recommendation"),
     "recommendation": ("sensor", "recommendation"),
     "stored_backups": ("sensor", "stored_backups"),
     "latest_backup_age": ("sensor", "latest_backup_age"),

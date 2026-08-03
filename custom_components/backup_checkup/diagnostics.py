@@ -169,6 +169,17 @@ def _health_diagnostics(data: BackupCheckupData) -> dict[str, Any]:
     }
 
 
+def _recovery_diagnostics(data: BackupCheckupData) -> dict[str, Any]:
+    """Return the privacy-safe disaster-recovery assessment."""
+    return {
+        "score": data.recovery_readiness_score,
+        "status": data.recovery_status,
+        "recommendation": data.recovery_recommendation,
+        "checks": data.recovery_checks,
+        "deductions": data.recovery_deductions,
+    }
+
+
 def _inventory_diagnostics(data: BackupCheckupData) -> dict[str, Any]:
     """Return inventory counts, newest backups, and normalization diagnostics."""
     latest_monitored = data.latest_monitored_backup_record
@@ -303,6 +314,7 @@ async def async_get_config_entry_diagnostics(
         ),
         "coordinator": _coordinator_diagnostics(coordinator, data),
         "health": _health_diagnostics(data),
+        "recovery": _recovery_diagnostics(data),
         "inventory": _inventory_diagnostics(data),
         "integrity": _integrity_diagnostics(entry, data),
         "analytics": _analytics_diagnostics(data),

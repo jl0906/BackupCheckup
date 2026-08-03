@@ -501,6 +501,28 @@
           "not_found": "Hittades inte",
           "not_applicable": "Not applicable"
         }
+      },
+      "recovery_readiness": {
+        "name": "Recovery readiness"
+      },
+      "recovery_status": {
+        "name": "Recovery status",
+        "state": {
+          "ready": "Ready",
+          "limited": "Limited",
+          "insufficient": "Insufficient",
+          "unknown": "Unknown"
+        }
+      },
+      "recovery_recommendation": {
+        "name": "Recovery recommendation",
+        "state": {
+          "none": "No action required",
+          "verify_latest_backup": "Verify the latest backup",
+          "create_external_copy": "Create an independent backup copy",
+          "create_complete_backup": "Create a complete backup",
+          "enable_database_check": "Enable or run the database check"
+        }
       }
     },
     "binary_sensor": {

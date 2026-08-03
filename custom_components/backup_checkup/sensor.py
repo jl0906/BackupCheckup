@@ -45,6 +45,7 @@ from .coordinator import BackupCheckupCoordinator
 from .entity import BackupCheckupAgentEntity, BackupCheckupEntity
 from .entity_mode import entity_enabled_by_default
 from .models import BackupAgentSummary, BackupCheckupData
+from .recovery import RECOVERY_RECOMMENDATION_OPTIONS, RECOVERY_STATUS_OPTIONS
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -203,6 +204,45 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         device_class=SensorDeviceClass.ENUM,
         options=INTEGRITY_DATABASE_OPTIONS,
         value_fn=lambda data: data.integrity.database_status,
+    ),
+    BackupCheckupSensorDescription(
+        key="recovery_readiness",
+        translation_key="recovery_readiness",
+        icon="mdi:home-alert-outline",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        value_fn=lambda data: data.recovery_readiness_score,
+        attributes_fn=lambda data: {
+            "status": data.recovery_status,
+            "recommendation": data.recovery_recommendation,
+            "checks": data.recovery_checks,
+            "deductions": data.recovery_deductions,
+        },
+    ),
+    BackupCheckupSensorDescription(
+        key="recovery_status",
+        translation_key="recovery_status",
+        icon="mdi:lifebuoy",
+        device_class=SensorDeviceClass.ENUM,
+        options=RECOVERY_STATUS_OPTIONS,
+        value_fn=lambda data: data.recovery_status,
+        attributes_fn=lambda data: {
+            "score": data.recovery_readiness_score,
+            "checks": data.recovery_checks,
+        },
+    ),
+    BackupCheckupSensorDescription(
+        key="recovery_recommendation",
+        translation_key="recovery_recommendation",
+        icon="mdi:clipboard-check-outline",
+        device_class=SensorDeviceClass.ENUM,
+        options=RECOVERY_RECOMMENDATION_OPTIONS,
+        value_fn=lambda data: data.recovery_recommendation,
+        attributes_fn=lambda data: {
+            "score": data.recovery_readiness_score,
+            "deductions": data.recovery_deductions,
+        },
     ),
     BackupCheckupSensorDescription(
         key="health_score",

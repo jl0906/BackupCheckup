@@ -73,6 +73,7 @@ from .native_backup import (
 )
 from .notifications import BackupCheckupNotificationManager
 from .problem_state import evaluate_problem_state
+from .recovery import assess_recovery_readiness
 from .security import (
     anonymous_agent_reference,
     classify_exception,
@@ -589,6 +590,13 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             latest_backup_locations=len(latest_locations),
             minimum_redundant_locations=self.minimum_redundant_locations,
         )
+        recovery = assess_recovery_readiness(
+            latest,
+            self.integrity_result,
+            backup_stale=freshness.backup_stale,
+            required_locations=self.minimum_redundant_locations,
+            database_check_enabled=self.database_integrity_check,
+        )
 
         public_locations = self._public_location_ids(latest_locations)
         self._last_inventory_success_at = now
@@ -660,6 +668,11 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             health_score_components=health.component_deductions,
             health_score_raw_deductions=health.raw_deductions,
             health_score_suppressed_deductions=health.suppressed_deductions,
+            recovery_readiness_score=recovery.score,
+            recovery_status=recovery.status,
+            recovery_recommendation=recovery.recommendation,
+            recovery_deductions=recovery.deductions,
+            recovery_checks=recovery.checks,
             average_backup_size=inventory_analytics.average_backup_size,
             longest_backup_gap_days=inventory_analytics.longest_backup_gap_days,
             size_trend=inventory_analytics.size_trend,
@@ -1219,6 +1232,17 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 self.data.minimum_redundant_locations,
             ),
         )
+        recovery = assess_recovery_readiness(
+            self.data.latest_monitored_backup_record,
+            self.data.integrity,
+            backup_stale=freshness.backup_stale,
+            required_locations=getattr(
+                self,
+                "minimum_redundant_locations",
+                self.data.minimum_redundant_locations,
+            ),
+            database_check_enabled=getattr(self, "database_integrity_check", False),
+        )
         return replace(
             self.data,
             checked_at=now,
@@ -1245,6 +1269,11 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             health_score_components=health.component_deductions,
             health_score_raw_deductions=health.raw_deductions,
             health_score_suppressed_deductions=health.suppressed_deductions,
+            recovery_readiness_score=recovery.score,
+            recovery_status=recovery.status,
+            recovery_recommendation=recovery.recommendation,
+            recovery_deductions=recovery.deductions,
+            recovery_checks=recovery.checks,
             agent_errors={**self.data.agent_errors, "manager": error_code},
         )
 
