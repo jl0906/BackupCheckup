@@ -29,7 +29,7 @@ from typing import Any, BinaryIO
 from securetar import SecureTarArchive
 
 PROTOCOL_VERSION = 1
-RUNNER_VERSION = "3.0.7"
+RUNNER_VERSION = "3.0.8"
 LISTEN_PORT = 8099
 DATA_DIR = Path("/data")
 TOKEN_PATH = DATA_DIR / "api_token"
@@ -173,17 +173,12 @@ def _probe_isolation() -> bool:
 
 
 def _namespace_command(command: list[str]) -> list[str]:
-    """Run a command without access to the runner's network or process view."""
+    """Run a command without access to the runner's network."""
     return [
         "unshare",
-        "--mount",
-        "--pid",
         "--net",
-        "--ipc",
-        "--uts",
         "--fork",
         "--kill-child",
-        "--mount-proc",
         *command,
     ]
 

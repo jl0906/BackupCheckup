@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.0.8
+
+### Fixed
+
+- Restored Runtime Runner availability under Home Assistant's protected app
+  environment by limiting namespace creation to the supported isolated network
+  namespace.
+- Retained the security boundary through an unprivileged runtime account, a
+  secret-free environment, dropped Linux capabilities, `no_new_privs`, sandbox
+  preflight verification, and resource limits.
+
 ## 3.0.7
 
 ### Fixed
