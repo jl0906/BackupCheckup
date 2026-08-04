@@ -486,8 +486,12 @@ class BackupCheckupData:
     recovery_storage_resilience: dict[str, Any] = field(default_factory=dict)
     recovery_preparedness: dict[str, Any] = field(default_factory=dict)
     recovery_restore_simulation: dict[str, Any] = field(default_factory=dict)
+    recovery_runtime_test: dict[str, Any] = field(default_factory=dict)
     recovery_restore_test: dict[str, Any] = field(default_factory=dict)
     recovery_plan: dict[str, Any] = field(default_factory=dict)
+    recovery_evidence: dict[str, Any] = field(default_factory=dict)
+    recovery_adaptive_policy: dict[str, Any] = field(default_factory=dict)
+    recovery_open_risks: tuple[str, ...] = ()
     last_restore_test: datetime | None = None
     restore_test_result: str | None = None
     restore_test_scope: str | None = None

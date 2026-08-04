@@ -40,6 +40,7 @@ from .const import (
     CONF_PRESET_REVISION,
     CONF_REPAIR_ISSUES_ENABLED,
     CONF_RUNTIME_PROFILE,
+    CONF_RUNTIME_RUNNER,
     CONF_SHOW_SIDEBAR_PANEL,
     CONF_SIZE_CHECK_MODE,
     CONF_UPDATE_INTERVAL_MINUTES,
@@ -248,110 +249,105 @@ def _notification_targets(value: Any, errors: dict[str, str]) -> list[str]:
     return normalized
 
 
-def resolve_frontend_configuration(
-    current: Mapping[str, Any], submitted: Mapping[str, Any]
-) -> dict[str, Any]:
-    """Validate and resolve one complete configuration snapshot from the panel."""
-    if not isinstance(submitted, Mapping):
-        raise FrontendConfigurationError({"base": "invalid_payload"})
-
-    unknown = sorted(set(submitted) - _FRONTEND_KEYS - _READONLY_KEYS)
-    if unknown:
-        raise FrontendConfigurationError({"base": "unknown_setting"})
-
-    existing = normalize_configuration(current)
-    source = {key: submitted.get(key, existing[key]) for key in _FRONTEND_KEYS}
-    errors: dict[str, str] = {}
-    values = dict(existing)
-
-    runtime_profile = _enum_value(
-        source[CONF_RUNTIME_PROFILE], CONF_RUNTIME_PROFILE, errors
-    )
-    adaptive_polling = _strict_bool(
+def _resolve_runtime_settings(
+    source: Mapping[str, Any], values: dict[str, Any], errors: dict[str, str]
+) -> None:
+    """Apply one runtime preset or validate its custom resource limits."""
+    profile = _enum_value(source[CONF_RUNTIME_PROFILE], CONF_RUNTIME_PROFILE, errors)
+    adaptive = _strict_bool(
         source[CONF_ADAPTIVE_POLLING], CONF_ADAPTIVE_POLLING, errors
     )
-    values[CONF_RUNTIME_PROFILE] = runtime_profile
-    values[CONF_ADAPTIVE_POLLING] = adaptive_polling
-    if runtime_profile == RUNTIME_PROFILE_CUSTOM:
-        for key in (
-            CONF_UPDATE_INTERVAL_MINUTES,
-            CONF_ACTIVE_UPDATE_INTERVAL_MINUTES,
-            CONF_ERROR_BACKOFF_INTERVAL_MINUTES,
-            CONF_ADAPTIVE_ERROR_THRESHOLD,
-            CONF_MAX_VERIFICATION_SIZE_GB,
-            CONF_MAX_EXPANDED_SIZE_GB,
-            CONF_VERIFICATION_TIMEOUT_MINUTES,
-            CONF_DATABASE_TIMEOUT_MINUTES,
-            CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
-        ):
-            values[key] = _bounded_int(source[key], key, errors)
-        if (
-            values[CONF_ACTIVE_UPDATE_INTERVAL_MINUTES]
-            > values[CONF_UPDATE_INTERVAL_MINUTES]
-        ):
-            errors["runtime"] = "active_interval_too_slow"
-        if (
-            values[CONF_ERROR_BACKOFF_INTERVAL_MINUTES]
-            < values[CONF_UPDATE_INTERVAL_MINUTES]
-        ):
-            errors["runtime"] = "backoff_interval_too_fast"
-        if values[CONF_MAX_EXPANDED_SIZE_GB] < values[CONF_MAX_VERIFICATION_SIZE_GB]:
-            errors[CONF_MAX_EXPANDED_SIZE_GB] = "expanded_size_too_small"
-    else:
-        values.update(
-            runtime_values(runtime_profile, adaptive_polling=adaptive_polling)
-        )
+    values[CONF_RUNTIME_PROFILE] = profile
+    values[CONF_ADAPTIVE_POLLING] = adaptive
+    if profile != RUNTIME_PROFILE_CUSTOM:
+        values.update(runtime_values(profile, adaptive_polling=adaptive))
+        return
+    for key in (
+        CONF_UPDATE_INTERVAL_MINUTES,
+        CONF_ACTIVE_UPDATE_INTERVAL_MINUTES,
+        CONF_ERROR_BACKOFF_INTERVAL_MINUTES,
+        CONF_ADAPTIVE_ERROR_THRESHOLD,
+        CONF_MAX_VERIFICATION_SIZE_GB,
+        CONF_MAX_EXPANDED_SIZE_GB,
+        CONF_VERIFICATION_TIMEOUT_MINUTES,
+        CONF_DATABASE_TIMEOUT_MINUTES,
+        CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
+    ):
+        values[key] = _bounded_int(source[key], key, errors)
+    if (
+        values[CONF_ACTIVE_UPDATE_INTERVAL_MINUTES]
+        > values[CONF_UPDATE_INTERVAL_MINUTES]
+    ):
+        errors["runtime"] = "active_interval_too_slow"
+    if (
+        values[CONF_ERROR_BACKOFF_INTERVAL_MINUTES]
+        < values[CONF_UPDATE_INTERVAL_MINUTES]
+    ):
+        errors["runtime"] = "backoff_interval_too_fast"
+    if values[CONF_MAX_EXPANDED_SIZE_GB] < values[CONF_MAX_VERIFICATION_SIZE_GB]:
+        errors[CONF_MAX_EXPANDED_SIZE_GB] = "expanded_size_too_small"
 
-    monitoring_policy = _enum_value(
-        source[CONF_MONITORING_POLICY], CONF_MONITORING_POLICY, errors
+
+def _resolve_monitoring_settings(
+    source: Mapping[str, Any], values: dict[str, Any], errors: dict[str, str]
+) -> None:
+    """Apply one monitoring policy or validate its custom thresholds."""
+    policy = _enum_value(source[CONF_MONITORING_POLICY], CONF_MONITORING_POLICY, errors)
+    values[CONF_MONITORING_POLICY] = policy
+    if policy != MONITORING_POLICY_CUSTOM:
+        values.update(monitoring_values(policy))
+        return
+    for key in (
+        CONF_MAX_AGE_DAYS,
+        CONF_MINIMUM_BACKUP_SIZE_MB,
+        CONF_MAXIMUM_SIZE_DROP_PERCENT,
+        CONF_MINIMUM_REDUNDANT_LOCATIONS,
+        CONF_ANALYTICS_WINDOW_DAYS,
+    ):
+        values[key] = _bounded_int(source[key], key, errors)
+    values[CONF_SIZE_CHECK_MODE] = _enum_value(
+        source[CONF_SIZE_CHECK_MODE], CONF_SIZE_CHECK_MODE, errors
     )
-    values[CONF_MONITORING_POLICY] = monitoring_policy
-    if monitoring_policy == MONITORING_POLICY_CUSTOM:
-        for key in (
-            CONF_MAX_AGE_DAYS,
-            CONF_MINIMUM_BACKUP_SIZE_MB,
-            CONF_MAXIMUM_SIZE_DROP_PERCENT,
-            CONF_MINIMUM_REDUNDANT_LOCATIONS,
-            CONF_ANALYTICS_WINDOW_DAYS,
-        ):
-            values[key] = _bounded_int(source[key], key, errors)
-        values[CONF_SIZE_CHECK_MODE] = _enum_value(
-            source[CONF_SIZE_CHECK_MODE], CONF_SIZE_CHECK_MODE, errors
-        )
-        values[CONF_REPAIR_ISSUES_ENABLED] = _strict_bool(
-            source[CONF_REPAIR_ISSUES_ENABLED], CONF_REPAIR_ISSUES_ENABLED, errors
-        )
-        if (
-            values[CONF_SIZE_CHECK_MODE] == SIZE_CHECK_FIXED
-            and values[CONF_MINIMUM_BACKUP_SIZE_MB] == 0
-        ):
-            errors["monitoring"] = "fixed_size_required"
-    else:
-        values.update(monitoring_values(monitoring_policy))
+    values[CONF_REPAIR_ISSUES_ENABLED] = _strict_bool(
+        source[CONF_REPAIR_ISSUES_ENABLED], CONF_REPAIR_ISSUES_ENABLED, errors
+    )
+    if (
+        values[CONF_SIZE_CHECK_MODE] == SIZE_CHECK_FIXED
+        and values[CONF_MINIMUM_BACKUP_SIZE_MB] == 0
+    ):
+        errors["monitoring"] = "fixed_size_required"
 
-    verification_policy = _enum_value(
+
+def _resolve_verification_settings(
+    source: Mapping[str, Any], values: dict[str, Any], errors: dict[str, str]
+) -> None:
+    """Apply one verification policy without silently deepening it."""
+    policy = _enum_value(
         source[CONF_VERIFICATION_POLICY], CONF_VERIFICATION_POLICY, errors
     )
-    values[CONF_VERIFICATION_POLICY] = verification_policy
+    values[CONF_VERIFICATION_POLICY] = policy
     values[CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES] = _bounded_int(
         source[CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES],
         CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
         errors,
     )
-    if verification_policy == VERIFICATION_POLICY_CUSTOM:
-        values[CONF_AUTO_VERIFY_NEW_BACKUPS] = _strict_bool(
-            source[CONF_AUTO_VERIFY_NEW_BACKUPS],
-            CONF_AUTO_VERIFY_NEW_BACKUPS,
-            errors,
-        )
-        values[CONF_DATABASE_INTEGRITY_CHECK] = _strict_bool(
-            source[CONF_DATABASE_INTEGRITY_CHECK],
-            CONF_DATABASE_INTEGRITY_CHECK,
-            errors,
-        )
-    else:
-        values.update(verification_values(verification_policy))
+    if policy != VERIFICATION_POLICY_CUSTOM:
+        values.update(verification_values(policy))
+        return
+    values[CONF_AUTO_VERIFY_NEW_BACKUPS] = _strict_bool(
+        source[CONF_AUTO_VERIFY_NEW_BACKUPS], CONF_AUTO_VERIFY_NEW_BACKUPS, errors
+    )
+    values[CONF_DATABASE_INTEGRITY_CHECK] = _strict_bool(
+        source[CONF_DATABASE_INTEGRITY_CHECK],
+        CONF_DATABASE_INTEGRITY_CHECK,
+        errors,
+    )
 
+
+def _resolve_presentation_settings(
+    source: Mapping[str, Any], values: dict[str, Any], errors: dict[str, str]
+) -> None:
+    """Validate the smaller presentation, privacy, and notification fields."""
     for key in (
         CONF_ENTITY_MODE,
         CONF_NOTIFICATIONS_ENABLED,
@@ -368,7 +364,6 @@ def resolve_frontend_configuration(
             values[key] = _bounded_int(source[key], key, errors)
         else:
             values[key] = _enum_value(source[key], key, errors)
-
     values[CONF_NOTIFICATION_TARGETS] = _notification_targets(
         source[CONF_NOTIFICATION_TARGETS], errors
     )
@@ -378,6 +373,28 @@ def resolve_frontend_configuration(
         and CONF_NOTIFICATION_TARGETS not in errors
     ):
         errors[CONF_NOTIFICATION_TARGETS] = "notification_target_required"
+
+
+def resolve_frontend_configuration(
+    current: Mapping[str, Any], submitted: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Validate and resolve one complete configuration snapshot from the panel."""
+    if not isinstance(submitted, Mapping):
+        raise FrontendConfigurationError({"base": "invalid_payload"})
+
+    unknown = sorted(set(submitted) - _FRONTEND_KEYS - _READONLY_KEYS)
+    if unknown:
+        raise FrontendConfigurationError({"base": "unknown_setting"})
+
+    existing = normalize_configuration(current)
+    source = {key: submitted.get(key, existing[key]) for key in _FRONTEND_KEYS}
+    errors: dict[str, str] = {}
+    values = dict(existing)
+
+    _resolve_runtime_settings(source, values, errors)
+    _resolve_monitoring_settings(source, values, errors)
+    _resolve_verification_settings(source, values, errors)
+    _resolve_presentation_settings(source, values, errors)
 
     if errors:
         raise FrontendConfigurationError(errors)
@@ -470,7 +487,14 @@ async def websocket_config_update(
 
     hass.config_entries.async_update_entry(
         entry,
-        data=resolved,
+        data={
+            **resolved,
+            **(
+                {CONF_RUNTIME_RUNNER: entry.data[CONF_RUNTIME_RUNNER]}
+                if CONF_RUNTIME_RUNNER in entry.data
+                else {}
+            ),
+        },
         options=resolved,
     )
     connection.send_result(

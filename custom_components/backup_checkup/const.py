@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 DOMAIN = "backup_checkup"
 CONFIG_ENTRY_VERSION = 15
 NAME = "BackupCheckup"
-VERSION = "3.0.0-beta2"
+VERSION = "3.0.0"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -50,6 +50,7 @@ CONF_SHOW_SIDEBAR_PANEL = "show_sidebar_panel"
 CONF_ACTIVITY_LOGGING_ENABLED = "activity_logging_enabled"
 CONF_ACTIVITY_LOG_PERSISTENCE = "activity_log_persistence"
 CONF_ACTIVITY_LOG_RETENTION_DAYS = "activity_log_retention_days"
+CONF_RUNTIME_RUNNER = "runtime_runner"
 
 # Legacy monitoring-profile values retained for migration.
 PROFILE_STANDARD = "standard"

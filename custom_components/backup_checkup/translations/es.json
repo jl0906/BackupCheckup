@@ -116,7 +116,9 @@
       }
     },
     "abort": {
-      "single_instance_allowed": "Only one BackupCheckup instance is allowed."
+      "single_instance_allowed": "Only one BackupCheckup instance is allowed.",
+      "invalid_runtime_runner": "The discovered Runtime Runner supplied invalid connection information.",
+      "runtime_runner_connected": "The BackupCheckup Runtime Runner was connected successfully."
     },
     "error": {
       "fixed_size_required": "Enter a minimum backup size greater than 0 MB when using the fixed minimum size mode.",
@@ -542,6 +544,18 @@
           "not_run": "Not run"
         }
       },
+      "runtime_test_status": {
+        "name": "Runtime test",
+        "state": {
+          "not_available": "Not available",
+          "not_run": "Not run",
+          "running": "Running",
+          "passed": "Passed",
+          "failed": "Failed",
+          "aborted": "Aborted",
+          "inconclusive": "Inconclusive"
+        }
+      },
       "last_restore_test": {
         "name": "Last test restore"
       }
@@ -631,7 +645,7 @@
         "name": "Borrar registro en vivo"
       },
       "run_recovery_assessment": {
-        "name": "Run recovery assessment"
+        "name": "Check backup protection"
       }
     }
   },

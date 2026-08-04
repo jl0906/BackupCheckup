@@ -182,7 +182,11 @@ def _recovery_diagnostics(data: BackupCheckupData) -> dict[str, Any]:
         "storage_resilience": data.recovery_storage_resilience,
         "preparedness": data.recovery_preparedness,
         "restore_simulation": data.recovery_restore_simulation,
+        "runtime_test": data.recovery_runtime_test,
         "restore_test": data.recovery_restore_test,
+        "evidence": data.recovery_evidence,
+        "adaptive_policy": data.recovery_adaptive_policy,
+        "open_risks": list(data.recovery_open_risks),
         "recovery_plan": {
             key: value for key, value in data.recovery_plan.items() if key != "exports"
         },

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Mapping
 from typing import Any
 
 from homeassistant import config_entries
@@ -25,6 +26,7 @@ from .const import (
     CONF_NOTIFY_ON_RECOVERY,
     CONF_PRESET_REVISION,
     CONF_RUNTIME_PROFILE,
+    CONF_RUNTIME_RUNNER,
     CONF_SHOW_SIDEBAR_PANEL,
     CONF_SIZE_CHECK_MODE,
     CONF_VERIFICATION_POLICY,
@@ -57,6 +59,7 @@ from .flow_schemas import (
 from .hardware_profile import HardwareSnapshot, async_detect_hardware
 from .notification_selection import normalize_notification_targets
 from .presets import monitoring_values, runtime_values, verification_values
+from .recovery_runtime import RuntimeRunnerConnection
 from .setup_recommendation import async_recommended_verification_size_gb
 
 _OPTIONS_MENU = (
@@ -225,6 +228,53 @@ class BackupCheckupConfigFlow(
         self._draft = {}
         self._hardware = None
         self._recommended_verification_size_gb = None
+        self._runtime_runner: RuntimeRunnerConnection | None = None
+
+    @staticmethod
+    def _runtime_connection_from_discovery(
+        discovery_info: Mapping[str, Any],
+    ) -> RuntimeRunnerConnection | None:
+        """Build a private runner connection from Supervisor discovery data."""
+        if discovery_info.get("protocol") != 1:
+            return None
+        host = discovery_info.get("host")
+        port = discovery_info.get("port")
+        if (
+            not isinstance(host, str)
+            or not host
+            or any(character in host for character in "/\\?#@")
+            or isinstance(port, bool)
+            or not isinstance(port, int)
+            or not 1 <= port <= 65535
+        ):
+            return None
+        return RuntimeRunnerConnection.from_mapping(
+            {
+                "base_url": f"http://{host}:{port}/",
+                "token": discovery_info.get("token"),
+                "runner_id": discovery_info.get("runner_id"),
+            }
+        )
+
+    async def async_step_hassio(
+        self, discovery_info: Mapping[str, Any]
+    ) -> FlowResult:
+        """Attach the companion app without creating a second config entry."""
+        connection = self._runtime_connection_from_discovery(discovery_info)
+        if connection is None:
+            return self.async_abort(reason="invalid_runtime_runner")
+        entries = self._async_current_entries()
+        if entries:
+            entry = entries[0]
+            data = {**dict(entry.data), CONF_RUNTIME_RUNNER: connection.as_dict()}
+            self.hass.config_entries.async_update_entry(entry, data=data)
+            self.hass.async_create_task(
+                self.hass.config_entries.async_reload(entry.entry_id),
+                name=f"{DOMAIN}-runtime-runner-discovery",
+            )
+            return self.async_abort(reason="runtime_runner_connected")
+        self._runtime_runner = connection
+        return await self.async_step_user()
 
     async def _async_prepare(self) -> None:
         """Detect hardware once and prepare resolved defaults."""
@@ -352,6 +402,8 @@ class BackupCheckupConfigFlow(
         """Show the resolved setup before persisting it."""
         if user_input is not None:
             data = normalize_configuration(self._draft)
+            if self._runtime_runner is not None:
+                data[CONF_RUNTIME_RUNNER] = self._runtime_runner.as_dict()
             return self.async_create_entry(title=NAME, data=data)
         return self.async_show_form(
             step_id="summary",

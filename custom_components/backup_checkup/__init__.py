@@ -45,6 +45,7 @@ from .const import (
     CONF_NOTIFICATIONS_ENABLED,
     CONF_NOTIFY_ON_RECOVERY,
     CONF_REPAIR_ISSUES_ENABLED,
+    CONF_RUNTIME_RUNNER,
     CONF_SIZE_CHECK_MODE,
     CONF_VERIFICATION_TIMEOUT_MINUTES,
     CONFIG_ENTRY_VERSION,
@@ -99,6 +100,7 @@ from .recovery_restore import (
     RESTORE_TEST_SCOPE_OPTIONS,
     RecoveryRestoreTestStore,
 )
+from .recovery_runtime import RuntimeTestStore
 from .repairs import (
     async_remove_issues,
     async_set_temporary_cleanup_issue,
@@ -209,11 +211,12 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
     await _async_cleanup_orphaned_stores(hass)
 
     async def _async_verify_latest_backup(_call: ServiceCall) -> None:
+        """Compatibility alias for the unified backup-protection check."""
         coordinator = _loaded_coordinator(hass)
         _record_activity(
             coordinator, "service_verify_latest_backup", ACTIVITY_OUTCOME_STARTED
         )
-        await coordinator.async_start_integrity_check(source="manual")
+        await coordinator.async_start_integrity_check(source="simulation")
 
     async def _async_simulate_restore(_call: ServiceCall) -> None:
         coordinator = _loaded_coordinator(hass)
@@ -225,7 +228,10 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
     async def _async_refresh(_call: ServiceCall) -> None:
         coordinator = _loaded_coordinator(hass)
         _record_activity(coordinator, "service_refresh", ACTIVITY_OUTCOME_STARTED)
-        await coordinator.async_request_refresh()
+        hass.async_create_task(
+            coordinator.async_request_refresh(),
+            name=f"{DOMAIN}_preparedness_refresh",
+        )
         _record_activity(coordinator, "service_refresh", ACTIVITY_OUTCOME_COMPLETED)
 
     async def _async_test_notification(_call: ServiceCall) -> None:
@@ -290,7 +296,10 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
             ACTIVITY_OUTCOME_COMPLETED,
             details={"section": section, "status": status},
         )
-        await coordinator.async_request_refresh()
+        hass.async_create_task(
+            coordinator.async_request_refresh(),
+            name=f"{DOMAIN}_restore_test_refresh",
+        )
 
     async def _async_record_restore_test(call: ServiceCall) -> None:
         coordinator = _loaded_coordinator(hass)
@@ -403,11 +412,15 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         **dict(entry.data),
     }
     normalized = normalize_configuration(migrated, entry.options)
+    private_runner = entry.data.get(CONF_RUNTIME_RUNNER)
+    public_options = dict(normalized)
+    if private_runner is not None:
+        normalized[CONF_RUNTIME_RUNNER] = private_runner
     source_version = entry.version
     hass.config_entries.async_update_entry(
         entry,
         data=normalized,
-        options=normalized,
+        options=public_options,
         version=CONFIG_ENTRY_VERSION,
     )
     if normalized[CONF_ENTITY_MODE] == ENTITY_MODE_EXPERT:
@@ -443,6 +456,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.activity.async_load()
     await coordinator.recovery_preparedness.async_load()
     await coordinator.recovery_restore_tests.async_load()
+    await coordinator.runtime_tests.async_load()
     _record_activity(
         coordinator,
         "config_entry_setup",
@@ -550,6 +564,7 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
             coordinator.activity.async_remove,
             coordinator.recovery_preparedness.async_remove,
             coordinator.recovery_restore_tests.async_remove,
+            coordinator.runtime_tests.async_remove,
         )
     else:
         removers = (
@@ -559,6 +574,7 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
             BackupCheckupActivityLog(hass, entry.entry_id).async_remove,
             RecoveryPreparednessStore(hass, entry.entry_id).async_remove,
             RecoveryRestoreTestStore(hass, entry.entry_id).async_remove,
+            RuntimeTestStore(hass, entry.entry_id).async_remove,
         )
 
     for remove in removers:

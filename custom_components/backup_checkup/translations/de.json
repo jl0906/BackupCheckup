@@ -116,7 +116,9 @@
       }
     },
     "abort": {
-      "single_instance_allowed": "Es ist nur eine BackupCheckup-Instanz zulässig."
+      "single_instance_allowed": "Es ist nur eine BackupCheckup-Instanz zulässig.",
+      "invalid_runtime_runner": "Der erkannte Runtime Runner hat ungültige Verbindungsdaten geliefert.",
+      "runtime_runner_connected": "Der BackupCheckup Runtime Runner wurde erfolgreich verbunden."
     },
     "error": {
       "fixed_size_required": "Bei fester Mindestgröße muss eine Backupgröße über 0 MB eingetragen werden.",
@@ -542,6 +544,18 @@
           "not_run": "Nicht ausgeführt"
         }
       },
+      "runtime_test_status": {
+        "name": "Isolierter Runtime-Test",
+        "state": {
+          "not_available": "Runner nicht verfügbar",
+          "not_run": "Nicht ausgeführt",
+          "running": "Läuft",
+          "passed": "Bestanden",
+          "failed": "Fehlgeschlagen",
+          "aborted": "Abgebrochen",
+          "inconclusive": "Nicht eindeutig"
+        }
+      },
       "last_restore_test": {
         "name": "Letzter Test-Restore"
       }
@@ -622,7 +636,7 @@
         "name": "Backup-Daten aktualisieren"
       },
       "verify_latest_backup": {
-        "name": "Neuestes Backup vollständig prüfen"
+        "name": "Backup-Schutz prüfen (Kompatibilitätsalias)"
       },
       "test_notification": {
         "name": "Testbenachrichtigung senden"
@@ -631,7 +645,7 @@
         "name": "Live-Protokoll leeren"
       },
       "run_recovery_assessment": {
-        "name": "Wiederherstellungstest ausführen"
+        "name": "Backup-Schutz prüfen"
       }
     }
   },

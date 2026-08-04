@@ -10,6 +10,7 @@ from collections import defaultdict
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
+from pathlib import Path
 from statistics import median
 from typing import Any
 
@@ -18,6 +19,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
@@ -31,6 +33,7 @@ from .activity import (
     ACTIVITY_OUTCOME_STARTED,
     BackupCheckupActivityLog,
 )
+from .adaptive_policy import resolve_adaptive_policy
 from .age import completed_age_days, precise_age_days
 from .analytics import calculate_health_score, calculate_inventory_analytics
 from .backup_normalizer import BackupRecordNormalizer, ThirdPartyBoundary
@@ -47,6 +50,7 @@ from .const import (
     BACKUP_RESULT_COMPLETE,
     BACKUP_RESULT_PARTIAL,
     BACKUP_RESULT_UNKNOWN,
+    CONF_RUNTIME_RUNNER,
     DOMAIN,
     INTEGRITY_DATABASE_NOT_CHECKED,
     INTEGRITY_STATUS_ABORTED,
@@ -79,6 +83,16 @@ from .recovery_preparedness import (
     detect_recovery_dependencies,
 )
 from .recovery_restore import RecoveryRestoreTestStore
+from .recovery_runtime import (
+    RUNTIME_STATUS_ABORTED,
+    RUNTIME_STATUS_INCONCLUSIVE,
+    RuntimeRunnerClient,
+    RuntimeRunnerConnection,
+    RuntimeRunnerError,
+    RuntimeTestProgress,
+    RuntimeTestSnapshot,
+    RuntimeTestStore,
+)
 from .recovery_simulation import RecoverySimulationProgress, simulate_restore
 from .security import (
     anonymous_agent_reference,
@@ -164,6 +178,21 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self.config_entry = entry
         self.settings = BackupCheckupSettings.from_sources(entry.data, entry.options)
         self._apply_settings_compatibility_attributes()
+        runner_data = entry.options.get(CONF_RUNTIME_RUNNER) or entry.data.get(
+            CONF_RUNTIME_RUNNER
+        )
+        self.runtime_runner_connection = RuntimeRunnerConnection.from_mapping(
+            runner_data
+        )
+        self.recovery_policy = resolve_adaptive_policy(
+            runtime_profile=self.settings.runtime.profile,
+            update_interval_minutes=self.settings.runtime.update_interval_minutes,
+            auto_verify_new_backups=self.settings.verification.auto_verify_new_backups,
+            database_integrity_check=(
+                self.settings.verification.database_integrity_check
+            ),
+            ephemeral_runner_available=self.runtime_runner_connection is not None,
+        )
 
         self.activity = BackupCheckupActivityLog(
             hass,
@@ -181,7 +210,9 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         )
         self.recovery_preparedness = RecoveryPreparednessStore(hass, entry.entry_id)
         self.recovery_restore_tests = RecoveryRestoreTestStore(hass, entry.entry_id)
+        self.runtime_tests = RuntimeTestStore(hass, entry.entry_id)
         self.recovery_simulation_progress = RecoverySimulationProgress()
+        self.runtime_test_progress = RuntimeTestProgress()
         self._normalizer = BackupRecordNormalizer(entry.entry_id)
 
         self.integrity_result = BackupIntegrityResult.not_checked()
@@ -349,6 +380,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             self._integrity_task.cancel()
             await asyncio.gather(self._integrity_task, return_exceptions=True)
         self.recovery_simulation_progress.cancel()
+        self.runtime_test_progress.cancel()
         self.integrity_verifier.set_progress_listener(None)
         if (
             self._adaptive_refresh_task is not None
@@ -624,6 +656,8 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             ),
             language=getattr(getattr(self.hass, "config", None), "language", "en"),
             simulation_progress=self.recovery_simulation_progress.as_dict(),
+            adaptive_policy=self.recovery_policy,
+            runtime_test=self.runtime_tests.snapshot(),
         )
 
         public_locations = self._public_location_ids(latest_locations)
@@ -706,19 +740,18 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             recovery_storage_resilience=recovery.storage_resilience,
             recovery_preparedness=recovery.preparedness,
             recovery_restore_simulation=recovery.restore_simulation,
+            recovery_runtime_test=recovery.runtime_test,
             recovery_restore_test=recovery.restore_test,
             recovery_plan=recovery.recovery_plan,
+            recovery_evidence=recovery.evidence,
+            recovery_adaptive_policy=recovery.adaptive_policy,
+            recovery_open_risks=recovery.open_risks,
             last_restore_test=restore_test.tested_at,
             restore_test_result=restore_test.result,
             restore_test_scope=restore_test.scope,
-            restore_test_overdue=(
-                restore_test.passed is not True and latest is not None
-            ),
+            restore_test_overdue=False,
             recovery_plan_incomplete=bool(recovery.recovery_plan.get("warnings")),
-            recovery_checklist_incomplete=(
-                recovery.checks.get("preparedness_checklist_complete") is not True
-                and latest is not None
-            ),
+            recovery_checklist_incomplete=False,
             external_dependency_unprotected=(
                 recovery.checks.get("external_dependencies_protected") is False
             ),
@@ -1305,6 +1338,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 "installation_type"
             ),
             language=getattr(getattr(self.hass, "config", None), "language", "en"),
+            runtime_test=self.runtime_tests.snapshot(),
         )
         return replace(
             self.data,
@@ -1342,6 +1376,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             recovery_storage_resilience=recovery.storage_resilience,
             recovery_preparedness=recovery.preparedness,
             recovery_restore_simulation=recovery.restore_simulation,
+            recovery_runtime_test=recovery.runtime_test,
             recovery_restore_test=recovery.restore_test,
             recovery_plan=recovery.recovery_plan,
             last_restore_test=restore_test.tested_at,
@@ -1549,6 +1584,15 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 timeout_minutes=self.verification_timeout_minutes,
                 database_timeout_minutes=self.database_timeout_minutes,
                 repair_issues_enabled=self.repair_issues_enabled,
+                verified_archive_callback=(
+                    (
+                        lambda path, password, verified: self._async_run_runtime_test(
+                            record, path, password, verified
+                        )
+                    )
+                    if simulation_run and self.runtime_runner_connection is not None
+                    else None
+                ),
             )
             self.integrity_result = result
             if simulation_run:
@@ -1629,6 +1673,112 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self.recovery_simulation_progress.activity(action, outcome, details)
         self._publish_simulation_progress(record)
 
+    async def _async_run_runtime_test(
+        self,
+        record: BackupRecord,
+        archive_path: Path,
+        password: str | None,
+        verified: BackupIntegrityResult,
+    ) -> None:
+        """Run the optional isolated phase while verified data still exists."""
+        connection = self.runtime_runner_connection
+        if connection is None or not verified.sha256:
+            return
+
+        self.integrity_result = verified
+        self.recovery_simulation_progress.finish(verified)
+        self.runtime_test_progress.start(record.backup_reference)
+        self._record_activity("runtime_test", ACTIVITY_OUTCOME_STARTED)
+        self._publish_simulation_progress(record)
+        started = time.monotonic()
+        try:
+            client = RuntimeRunnerClient(
+                async_get_clientsession(self.hass), connection
+            )
+            snapshot = await client.async_run(
+                archive_path,
+                backup_reference=record.backup_reference,
+                backup_sha256=verified.sha256,
+                password=password,
+                timeout_seconds=max(60, self.verification_timeout_minutes * 60),
+                progress_callback=lambda stage, percent: (
+                    self._handle_runtime_progress(record, stage, percent)
+                ),
+            )
+        except asyncio.CancelledError:
+            self.runtime_test_progress.cancel()
+            self._publish_simulation_progress(record)
+            raise
+        except RuntimeRunnerError as err:
+            status = (
+                RUNTIME_STATUS_ABORTED
+                if err.code
+                in {
+                    "runner_isolation_unavailable",
+                    "runner_timeout",
+                    "cancelled",
+                }
+                else RUNTIME_STATUS_INCONCLUSIVE
+            )
+            snapshot = RuntimeTestSnapshot(
+                status=status,
+                backup_reference=record.backup_reference,
+                backup_sha256=verified.sha256,
+                checked_at=dt_util.utcnow(),
+                duration_seconds=round(time.monotonic() - started, 2),
+                runner_id=connection.runner_id,
+                error_code=err.code,
+            )
+        except Exception as err:  # noqa: BLE001 - optional runner boundary
+            snapshot = RuntimeTestSnapshot(
+                status=RUNTIME_STATUS_INCONCLUSIVE,
+                backup_reference=record.backup_reference,
+                backup_sha256=verified.sha256,
+                checked_at=dt_util.utcnow(),
+                duration_seconds=round(time.monotonic() - started, 2),
+                runner_id=connection.runner_id,
+                error_code="runner_internal_error",
+            )
+            _LOGGER.warning(
+                "Runtime runner failed unexpectedly: error_type=%s",
+                safe_error_type(err),
+            )
+
+        try:
+            await self.runtime_tests.async_save(snapshot)
+        except Exception as err:  # noqa: BLE001 - private store boundary
+            _LOGGER.warning(
+                "Unable to persist runtime-test result: error_type=%s",
+                safe_error_type(err),
+            )
+        self.runtime_test_progress.finish(snapshot)
+        self._record_activity(
+            "runtime_test",
+            (
+                ACTIVITY_OUTCOME_COMPLETED
+                if snapshot.passed is True
+                else ACTIVITY_OUTCOME_FAILED
+            ),
+            level=logging.INFO if snapshot.passed is True else logging.WARNING,
+            details={"status": snapshot.status},
+        )
+        self._publish_simulation_progress(record)
+
+    def _handle_runtime_progress(
+        self, record: BackupRecord, stage: str, percent: int
+    ) -> None:
+        """Publish authenticated runner progress immediately."""
+        self.runtime_test_progress.update(stage, percent)
+        self._publish_simulation_progress(record)
+
+    def _runtime_public_state(self, record: BackupRecord) -> dict[str, Any]:
+        """Combine stored proof details with the current live pipeline."""
+        state = self.runtime_tests.snapshot().as_dict()
+        progress = self.runtime_test_progress.as_dict()
+        if progress.get("backup_reference") == record.backup_reference:
+            state.update(progress)
+        return state
+
     def _publish_simulation_progress(self, record: BackupRecord) -> None:
         """Update the simulation sensor without waiting for an inventory refresh."""
         if self.data is None:
@@ -1644,6 +1794,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 self.data,
                 integrity_check_running=self.integrity_check_running,
                 recovery_restore_simulation=simulation.as_dict(),
+                recovery_runtime_test=self._runtime_public_state(record),
             )
         )
 

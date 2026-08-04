@@ -6,16 +6,31 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+from .adaptive_policy import AdaptiveRecoveryPolicy
 from .const import (
     INTEGRITY_DATABASE_PASSED,
     INTEGRITY_STATUS_VALID,
     INTEGRITY_STATUS_VALID_WITH_WARNINGS,
 )
 from .models import BackupAgentSummary, BackupIntegrityResult, BackupRecord
+from .recovery_evidence import (
+    EVIDENCE_FULL,
+    EVIDENCE_LIMITED,
+    EVIDENCE_NOT_RECOVERABLE,
+    EVIDENCE_RUNTIME,
+    EVIDENCE_STRUCTURAL,
+    RecoveryEvidence,
+    resolve_recovery_evidence,
+)
 from .recovery_inventory import RecoveryInventory, build_recovery_inventory
 from .recovery_plan import build_recovery_plan
 from .recovery_preparedness import RecoveryPreparednessSnapshot
 from .recovery_restore import RestoreTestSnapshot
+from .recovery_runtime import (
+    RUNTIME_STATUS_NOT_AVAILABLE,
+    RUNTIME_STATUS_NOT_RUN,
+    RuntimeTestSnapshot,
+)
 from .recovery_simulation import simulate_restore
 
 RECOVERY_STATUS_READY = "ready"
@@ -67,21 +82,31 @@ class RecoveryReadiness:
     storage_resilience: dict[str, Any]
     preparedness: dict[str, Any]
     restore_simulation: dict[str, Any]
+    runtime_test: dict[str, Any]
     restore_test: dict[str, Any]
     recovery_plan: dict[str, Any]
+    evidence: dict[str, Any]
+    adaptive_policy: dict[str, Any]
+    open_risks: tuple[str, ...]
     backup_content_changed: bool
     external_copy_missing: bool
 
 
-def _status(
-    score: int,
-    has_backup: bool,
-    *,
-    preparedness_complete: bool = True,
-) -> str:
-    if not has_backup:
+def _status(score: int, evidence: RecoveryEvidence) -> str:
+    """Map the evidence model to the compatible recovery-status entity."""
+    if evidence.level == EVIDENCE_NOT_RECOVERABLE:
         return RECOVERY_STATUS_INSUFFICIENT
-    if score >= 85 and preparedness_complete:
+    if evidence.level == EVIDENCE_LIMITED:
+        return RECOVERY_STATUS_LIMITED if score >= 55 else RECOVERY_STATUS_INSUFFICIENT
+    if (
+        evidence.level
+        in {
+            EVIDENCE_STRUCTURAL,
+            EVIDENCE_RUNTIME,
+            EVIDENCE_FULL,
+        }
+        and score >= 85
+    ):
         return RECOVERY_STATUS_READY
     if score >= 55:
         return RECOVERY_STATUS_LIMITED
@@ -150,16 +175,13 @@ def _deductions(
         "backup_complete": 10,
         "homeassistant_included": 8,
         "database_included": 4,
-        "integrity_verified": 12,
+        "integrity_verified": 16,
         "database_verified": 4,
         "independent_copy": 8,
         "multiple_failure_domains": 4,
         "copy_sizes_consistent": 3,
         "content_stable": 4,
-        "preparedness_checklist_complete": 7,
         "external_dependencies_protected": 5,
-        "simulated_restore_passed": 10,
-        "test_restore_documented": 7,
     }
     deductions = {
         key: weight for key, weight in weights.items() if checks[key] is False
@@ -169,10 +191,6 @@ def _deductions(
         "database_included",
         "independent_copy",
         "multiple_failure_domains",
-        "preparedness_checklist_complete",
-        "external_dependencies_protected",
-        "simulated_restore_passed",
-        "test_restore_documented",
     )
     for key in uncertain:
         if checks[key] is None:
@@ -198,15 +216,31 @@ def _recommendation(
         return RECOVERY_RECOMMENDATION_EXTERNAL_COPY
     if database_check_enabled and checks["database_verified"] is not True:
         return RECOVERY_RECOMMENDATION_DATABASE
-    if checks["preparedness_checklist_complete"] is not True:
-        return RECOVERY_RECOMMENDATION_CHECKLIST
-    if checks["external_dependencies_protected"] is not True:
-        return RECOVERY_RECOMMENDATION_DEPENDENCIES
     if checks["simulated_restore_passed"] is not True:
         return RECOVERY_RECOMMENDATION_SIMULATION
-    if checks["test_restore_documented"] is not True:
-        return RECOVERY_RECOMMENDATION_RESTORE_TEST
+    if checks["external_dependencies_protected"] is False:
+        return RECOVERY_RECOMMENDATION_DEPENDENCIES
     return RECOVERY_RECOMMENDATION_NONE
+
+
+def _open_risks(
+    checks: dict[str, bool | None],
+    preparedness: RecoveryPreparednessSnapshot,
+    inventory: RecoveryInventory,
+) -> tuple[str, ...]:
+    """Return concise actionable risks without promoting optional evidence to errors."""
+    risks: list[str] = []
+    if checks.get("backup_current") is False:
+        risks.append("backup_stale")
+    if checks.get("independent_copy") is False:
+        risks.append("independent_copy_missing")
+    if inventory.comparison.material_regression is True:
+        risks.append("backup_content_regression")
+    if preparedness.dependency_unprotected_count:
+        risks.append("external_dependency_unprotected")
+    if preparedness.dependency_review_required_count:
+        risks.append("external_dependency_confirmation_required")
+    return tuple(risks)
 
 
 def assess_recovery_readiness(
@@ -224,12 +258,23 @@ def assess_recovery_readiness(
     installation_type: str | None = None,
     language: str = "en",
     simulation_progress: dict[str, Any] | None = None,
+    adaptive_policy: AdaptiveRecoveryPolicy | None = None,
+    runtime_test: RuntimeTestSnapshot | None = None,
 ) -> RecoveryReadiness:
     """Assess whether the latest backup is suitable for disaster recovery."""
-    del required_locations  # Replaced by failure-domain-aware redundancy in alpha4.
+    del required_locations  # Superseded by failure-domain-aware redundancy.
     inventory = build_recovery_inventory(latest, backups, agent_summaries)
     preparedness_snapshot = preparedness or RecoveryPreparednessSnapshot.empty()
     restore_test_snapshot = restore_test or RestoreTestSnapshot.empty()
+    runtime_test_snapshot = runtime_test or RuntimeTestSnapshot()
+    if (
+        runtime_test_snapshot.status == RUNTIME_STATUS_NOT_RUN
+        and adaptive_policy is not None
+        and not adaptive_policy.ephemeral_runner_available
+    ):
+        runtime_test_snapshot = RuntimeTestSnapshot(
+            status=RUNTIME_STATUS_NOT_AVAILABLE
+        )
     simulation = simulate_restore(
         latest,
         integrity,
@@ -248,6 +293,16 @@ def assess_recovery_readiness(
     )
     deductions = _deductions(latest, checks)
     score = max(0, 100 - sum(deductions.values()))
+    evidence = resolve_recovery_evidence(
+        has_backup=latest is not None,
+        backup_usable=bool(latest and not latest.incomplete),
+        structural_passed=simulation.passed,
+        restore_test=restore_test_snapshot,
+        runtime_verified=runtime_test_snapshot.verified_for(
+            latest.backup_reference if latest else None,
+            integrity.sha256,
+        ),
+    )
     plan = build_recovery_plan(
         latest,
         integrity,
@@ -266,16 +321,7 @@ def assess_recovery_readiness(
     )
     return RecoveryReadiness(
         score=score,
-        status=_status(
-            score,
-            latest is not None,
-            preparedness_complete=(
-                checks["preparedness_checklist_complete"] is True
-                and checks["external_dependencies_protected"] is True
-                and checks["simulated_restore_passed"] is True
-                and checks["test_restore_documented"] is True
-            ),
-        ),
+        status=_status(score, evidence),
         recommendation=recommendation,
         deductions=deductions,
         checks=checks,
@@ -284,8 +330,12 @@ def assess_recovery_readiness(
         storage_resilience=inventory.storage.as_dict(),
         preparedness=preparedness_snapshot.as_dict(),
         restore_simulation=simulation.as_dict(),
+        runtime_test=runtime_test_snapshot.as_dict(),
         restore_test=restore_test_snapshot.as_dict(),
         recovery_plan=plan.as_dict(),
+        evidence=evidence.as_dict(),
+        adaptive_policy=adaptive_policy.as_dict() if adaptive_policy else {},
+        open_risks=_open_risks(checks, preparedness_snapshot, inventory),
         backup_content_changed=inventory.comparison.material_regression is True,
         external_copy_missing=bool(
             latest is not None and inventory.storage.independent_copy is False

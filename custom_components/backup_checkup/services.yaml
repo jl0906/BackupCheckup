@@ -1,14 +1,13 @@
 verify_latest_backup:
-  name: Verify latest backup
+  name: Check backup protection (legacy alias)
   description: >-
-    Downloads and fully verifies the newest Home Assistant backup while enforcing
-    BackupCheckup's configured resource and privacy safeguards. Administrator access
-    is required.
+    Compatibility alias for Check backup protection. It runs the same unified,
+    non-destructive protected read pipeline. Administrator access is required.
 
 simulate_restore:
-  name: Simulate restore
+  name: Check backup protection
   description: >-
-    Runs the administrator-only, non-destructive restore simulation for the
+    Runs the administrator-only, unified non-destructive protection check for the
     newest monitored backup. The protected verification pipeline downloads,
     decrypts, and fully reads the backup without restoring data.
 
@@ -85,9 +84,9 @@ set_recovery_preparedness:
             - not_applicable
 
 record_restore_test:
-  name: Document test restore
+  name: Document optional test restore
   description: >-
-    Records the outcome of a restore test performed outside the productive Home
+    Optionally records the outcome of a restore test performed outside the productive Home
     Assistant instance. The action stores only the current backup reference, fixed
     enum values, and the current timestamp. No notes or secrets are accepted.
     Administrator access is required.

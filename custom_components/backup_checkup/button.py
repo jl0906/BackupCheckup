@@ -44,10 +44,11 @@ async def async_setup_entry(
 
 
 class BackupCheckupVerifyButton(BackupCheckupEntity, ButtonEntity):
-    """Start a full verification of the newest backup."""
+    """Compatibility button for the former separate integrity action."""
 
     _attr_translation_key = "verify_latest_backup"
     _attr_icon = "mdi:shield-search"
+    _attr_entity_registry_enabled_default = False
 
     def __init__(
         self,
@@ -80,7 +81,7 @@ class BackupCheckupVerifyButton(BackupCheckupEntity, ButtonEntity):
 
 
 class BackupCheckupRecoveryAssessmentButton(BackupCheckupEntity, ButtonEntity):
-    """Run the non-destructive recovery assessment for the newest backup."""
+    """Run the unified non-destructive backup-protection check."""
 
     _attr_translation_key = "run_recovery_assessment"
     _attr_icon = "mdi:home-search-outline"

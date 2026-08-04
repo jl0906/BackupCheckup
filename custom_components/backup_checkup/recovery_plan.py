@@ -80,7 +80,6 @@ _TEXT = {
         "post_backup": "Create and verify a new backup after recovery.",
         "warning_simulation": "The simulated restore assessment has not passed completely.",
         "warning_restore_test": "No current successful full test restore is documented.",
-        "warning_checklist": "The guided emergency checklist is incomplete or expired.",
         "warning_dependencies": "External dependencies are not fully assessed or protected.",
         "warning_integrity": "The latest backup has not been successfully verified.",
         "label_installation": "Installation",
@@ -115,7 +114,6 @@ _TEXT = {
         "post_backup": "Nach der Wiederherstellung ein neues Backup erstellen und prüfen.",
         "warning_simulation": "Der simulierte Wiederherstellungstest wurde nicht vollständig bestanden.",
         "warning_restore_test": "Es ist kein aktueller erfolgreicher vollständiger Test-Restore dokumentiert.",
-        "warning_checklist": "Der geführte Notfallcheck ist unvollständig oder abgelaufen.",
         "warning_dependencies": "Externe Abhängigkeiten sind nicht vollständig bewertet oder abgesichert.",
         "warning_integrity": "Das neueste Backup wurde nicht erfolgreich geprüft.",
         "label_installation": "Installation",
@@ -257,10 +255,13 @@ def _plan_warnings(
     """Return localized unresolved risks in stable priority order."""
     warning_checks = (
         (simulation.passed is not True, "warning_simulation"),
-        (restore_test.passed is not True, "warning_restore_test"),
-        (preparedness.checklist_complete is not True, "warning_checklist"),
         (
-            preparedness.dependencies_protected is not True,
+            restore_test.result is not None and restore_test.passed is not True,
+            "warning_restore_test",
+        ),
+        (
+            preparedness.dependencies_protected is False
+            or preparedness.dependency_review_required_count > 0,
             "warning_dependencies",
         ),
         (
@@ -289,10 +290,7 @@ def build_recovery_plan(
     reference = latest.backup_reference if latest else None
     backup_date = latest.date.isoformat() if latest else None
     readiness_ready = (
-        simulation.passed is True
-        and restore_test.passed is True
-        and preparedness.checklist_complete is True
-        and preparedness.dependencies_protected is True
+        simulation.passed is True and preparedness.dependencies_protected is not False
     )
     summary = text["summary_ready"] if readiness_ready else text["summary_limited"]
 

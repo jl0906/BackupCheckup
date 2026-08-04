@@ -157,6 +157,7 @@ class RecoveryPreparednessSnapshot:
     dependency_unknown_count: int
     expired_count: int
     review_interval_days: int
+    dependency_review_required_count: int = 0
 
     @classmethod
     def empty(cls) -> RecoveryPreparednessSnapshot:
@@ -172,7 +173,8 @@ class RecoveryPreparednessSnapshot:
             dependency_detected_count=0,
             dependency_protected_count=0,
             dependency_unprotected_count=0,
-            dependency_unknown_count=len(DEPENDENCY_KEYS),
+            dependency_unknown_count=0,
+            dependency_review_required_count=0,
             expired_count=0,
             review_interval_days=DEFAULT_REVIEW_INTERVAL_DAYS,
         )
@@ -191,6 +193,7 @@ class RecoveryPreparednessSnapshot:
             "dependency_protected_count": self.dependency_protected_count,
             "dependency_unprotected_count": self.dependency_unprotected_count,
             "dependency_unknown_count": self.dependency_unknown_count,
+            "dependency_review_required_count": self.dependency_review_required_count,
             "expired_count": self.expired_count,
             "review_interval_days": self.review_interval_days,
         }
@@ -353,20 +356,35 @@ class RecoveryPreparednessStore:
         dependencies: dict[str, dict[str, Any]] = {}
         dependency_effective: list[str] = []
         detected_count = 0
+        review_required_count = 0
         for key, item in self._dependencies.items():
             serialized = item.as_dict(current, review_days=self._review_interval_days)
             detected = key in detected_dependencies
-            serialized["detected"] = detected
+            effective_status = serialized["effective_status"]
+            configured = effective_status != DEPENDENCY_STATUS_UNKNOWN
+            relevant = detected or configured
+            serialized.update(
+                {
+                    "detected": detected,
+                    "auto_detected": detected,
+                    "relevant": relevant,
+                    "requires_confirmation": detected
+                    and effective_status == DEPENDENCY_STATUS_UNKNOWN,
+                }
+            )
             dependencies[key] = serialized
             expired += int(serialized["expired"])
-            dependency_effective.append(serialized["effective_status"])
+            if relevant:
+                dependency_effective.append(effective_status)
             detected_count += int(detected)
+            review_required_count += int(serialized["requires_confirmation"])
 
-        configured_dependencies = any(
-            status != DEPENDENCY_STATUS_UNKNOWN for status in dependency_effective
-        )
-        if not detected_count and not configured_dependencies:
+        if not dependency_effective:
             dependencies_protected: bool | None = None
+        elif DEPENDENCY_STATUS_UNPROTECTED in dependency_effective:
+            dependencies_protected = False
+        elif DEPENDENCY_STATUS_UNKNOWN in dependency_effective:
+            dependencies_protected = None
         else:
             dependencies_protected = all(
                 status
@@ -395,6 +413,7 @@ class RecoveryPreparednessStore:
             dependency_unknown_count=dependency_effective.count(
                 DEPENDENCY_STATUS_UNKNOWN
             ),
+            dependency_review_required_count=review_required_count,
             expired_count=expired,
             review_interval_days=self._review_interval_days,
         )

@@ -46,6 +46,7 @@ from .entity import BackupCheckupAgentEntity, BackupCheckupEntity
 from .entity_mode import entity_enabled_by_default
 from .models import BackupAgentSummary, BackupCheckupData
 from .recovery import RECOVERY_RECOMMENDATION_OPTIONS, RECOVERY_STATUS_OPTIONS
+from .recovery_runtime import RUNTIME_STATUS_OPTIONS
 from .recovery_simulation import SIMULATION_STATUS_OPTIONS
 
 
@@ -224,8 +225,12 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
             "storage_resilience": data.recovery_storage_resilience,
             "preparedness": data.recovery_preparedness,
             "restore_simulation": data.recovery_restore_simulation,
+            "runtime_test": data.recovery_runtime_test,
             "restore_test": data.recovery_restore_test,
             "recovery_plan": data.recovery_plan,
+            "evidence": data.recovery_evidence,
+            "adaptive_policy": data.recovery_adaptive_policy,
+            "open_risks": list(data.recovery_open_risks),
         },
     ),
     BackupCheckupSensorDescription(
@@ -238,6 +243,9 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         attributes_fn=lambda data: {
             "score": data.recovery_readiness_score,
             "checks": data.recovery_checks,
+            "evidence": data.recovery_evidence,
+            "adaptive_policy": data.recovery_adaptive_policy,
+            "open_risks": list(data.recovery_open_risks),
         },
     ),
     BackupCheckupSensorDescription(
@@ -260,6 +268,15 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         options=SIMULATION_STATUS_OPTIONS,
         value_fn=lambda data: data.recovery_restore_simulation.get("status", "not_run"),
         attributes_fn=lambda data: data.recovery_restore_simulation,
+    ),
+    BackupCheckupSensorDescription(
+        key="runtime_test_status",
+        translation_key="runtime_test_status",
+        icon="mdi:home-clock-outline",
+        device_class=SensorDeviceClass.ENUM,
+        options=RUNTIME_STATUS_OPTIONS,
+        value_fn=lambda data: data.recovery_runtime_test.get("status", "not_run"),
+        attributes_fn=lambda data: data.recovery_runtime_test,
     ),
     BackupCheckupSensorDescription(
         key="last_restore_test",

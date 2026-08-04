@@ -10,7 +10,7 @@ import sqlite3
 import tarfile
 import time
 import unicodedata
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Awaitable, Callable, Iterator, Mapping
 from contextlib import closing, contextmanager
 from dataclasses import dataclass, field, replace
 from datetime import datetime
@@ -87,6 +87,10 @@ _GLOBAL_LIMIT_CODES = frozenset(
         "insufficient_free_space",
     }
 )
+
+VerifiedArchiveCallback = Callable[
+    [Path, str | None, BackupIntegrityResult], Awaitable[None]
+]
 
 
 class _DuplicateJsonKeyError(ValueError):
@@ -488,6 +492,7 @@ class BackupIntegrityVerifier:
         timeout_minutes: int,
         database_timeout_minutes: int,
         repair_issues_enabled: bool,
+        verified_archive_callback: VerifiedArchiveCallback | None = None,
     ) -> BackupIntegrityResult:
         """Verify an available backup copy and fall back to another agent if needed."""
         started = time.monotonic()
@@ -547,6 +552,7 @@ class BackupIntegrityVerifier:
                     database_check=database_check,
                     database_timeout_minutes=database_timeout_minutes,
                     prior_copy_failures=failures.copy_failures,
+                    verified_archive_callback=verified_archive_callback,
                 )
                 if outcome.final:
                     if outcome.result is None:
@@ -622,6 +628,7 @@ class BackupIntegrityVerifier:
         database_check: bool,
         database_timeout_minutes: int,
         prior_copy_failures: int,
+        verified_archive_callback: VerifiedArchiveCallback | None = None,
     ) -> _CandidateOutcome:
         """Verify one prepared copy and classify whether another should be tried."""
         prepared = await self._async_prepare_candidate(
@@ -654,6 +661,7 @@ class BackupIntegrityVerifier:
             database_check=database_check,
             database_timeout_minutes=database_timeout_minutes,
             prior_copy_failures=prior_copy_failures,
+            verified_archive_callback=verified_archive_callback,
         )
 
     async def _async_prepare_candidate(
@@ -858,6 +866,7 @@ class BackupIntegrityVerifier:
         database_check: bool,
         database_timeout_minutes: int,
         prior_copy_failures: int,
+        verified_archive_callback: VerifiedArchiveCallback | None = None,
     ) -> _CandidateOutcome:
         """Inspect a downloaded archive and produce a final or retryable result."""
         prepared = downloaded.prepared
@@ -908,16 +917,20 @@ class BackupIntegrityVerifier:
                 await self._async_remove_candidate_file(prepared.path)
             return archive_result
 
-        return _CandidateOutcome(
-            self._completed_result(
-                record,
-                started=started,
-                downloaded=downloaded,
-                details=archive_result,
-                prior_copy_failures=prior_copy_failures,
-            ),
-            final=True,
+        result = self._completed_result(
+            record,
+            started=started,
+            downloaded=downloaded,
+            details=archive_result,
+            prior_copy_failures=prior_copy_failures,
         )
+        if verified_archive_callback is not None:
+            await verified_archive_callback(
+                prepared.path,
+                password if result.protected else None,
+                result,
+            )
+        return _CandidateOutcome(result, final=True)
 
     async def _async_archive_details(
         self,

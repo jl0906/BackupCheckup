@@ -15,6 +15,7 @@ STORE_KINDS = (
     "notifications",
     "recovery",
     "recovery_restore",
+    "runtime_test",
 )
 _STORE_PATTERN = re.compile(
     rf"^{re.escape(DOMAIN)}\.(?P<entry_id>[A-Za-z0-9_-]+)\."

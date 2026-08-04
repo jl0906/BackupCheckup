@@ -464,7 +464,7 @@ def build_recovery_inventory(
     backups: tuple[BackupRecord, ...],
     agent_summaries: tuple[BackupAgentSummary, ...],
 ) -> RecoveryInventory:
-    """Build all alpha4 recovery inventory and redundancy information."""
+    """Build recovery inventory and redundancy information."""
     return RecoveryInventory(
         content=build_content_inventory(latest),
         comparison=compare_backup_content(latest, backups),

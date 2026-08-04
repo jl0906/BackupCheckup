@@ -1,4 +1,4 @@
-const PANEL_ELEMENT_NAME = "backup-checkup-panel-v3-0-0-beta2-r9";
+const PANEL_ELEMENT_NAME = "backup-checkup-panel-v3-0-0-r1";
 
 const TRANSLATION_SEPARATOR = "\u001f";
 const TRANSLATION_KEYS = Object.freeze({
@@ -223,6 +223,18 @@ const RECOVERY_TEXT = Object.freeze({
     title: "Recovery readiness",
     subtitle: "Can Home Assistant be restored after a total system failure?",
     score: "Recovery score",
+    protectionCheck: "Check backup protection",
+    evidenceTitle: "Verified recovery level",
+    evidenceLabels: { not_recoverable: "Not recoverable", limited: "Limited", monitored: "Monitored", structurally_verified: "Structurally verified", runtime_ready: "Runtime start verified", fully_tested: "Fully tested" },
+    evidenceDescriptions: { not_recoverable: "No usable backup is available.", limited: "A blocker prevents a reliable recovery.", monitored: "The backup is monitored but has not yet been structurally verified.", structurally_verified: "The current backup was downloaded, decrypted when required, and read completely.", runtime_ready: "An isolated Home Assistant test instance also started successfully.", fully_tested: "A successful full external test restore is documented." },
+    profileLabels: { compact: "Compact", balanced: "Balanced", extended: "Extended", enterprise: "Server" },
+    adaptiveTitle: "Adaptive scope",
+    openRisksTitle: "Open risks",
+    noOpenRisks: "No blocking recovery risks were detected.",
+    riskLabels: { backup_stale: "The latest backup is too old", independent_copy_missing: "No independent backup copy was detected", backup_content_regression: "Previously included backup contents are missing", external_dependency_unprotected: "An external dependency is not protected", external_dependency_confirmation_required: "Confirm the protection of an automatically detected dependency" },
+    technicalDetails: "Technical details and optional preparedness",
+    optionalEvidence: "Optional additional evidence",
+    noDetectedDependencies: "No external dependency requiring confirmation was detected.",
     status: "Recovery status",
     recommendation: "Priority action",
     checks: "Recovery checks",
@@ -275,14 +287,14 @@ const RECOVERY_TEXT = Object.freeze({
     preparednessTitle: "Guided emergency checklist",
     preparednessIntro: "Confirm only whether the required information is available. Passwords, paths and notes are never stored here.",
     dependenciesTitle: "External dependencies",
-    dependenciesIntro: "Review every category and mark whether systems outside the backup are separately protected or not applicable. Detected integrations are highlighted but never inspected for secrets.",
+    dependenciesIntro: "BackupCheckup shows only automatically detected or previously configured dependencies. Confirm whether detected external data is protected separately.",
     reviewInterval: "Confirmations expire after {days} days and must then be reviewed again.",
     detected: "Detected",
     expired: "Review expired",
     adminOnly: "Only Home Assistant administrators can change these states.",
-    simulationTitle: "Simulated restore test",
+    simulationTitle: "Backup protection check",
     simulationIntro: "Runs the real protected read pipeline: the backup is downloaded, decrypted when required, and every archive is read without restoring or changing the live system.",
-    simulationRun: "Run simulated restore test",
+    simulationRun: "Check backup protection",
     simulationActivity: "Starting restore simulation",
     simulationStatus: "Simulation status",
     simulationLive: "Simulation in progress",
@@ -301,8 +313,17 @@ const RECOVERY_TEXT = Object.freeze({
     simulationStatusLabels: { passed: "Ready", warning: "Ready with warnings", failed: "Not ready", running: "Running", aborted: "Aborted by a safety limit", password_required: "Backup password required", inconclusive: "Result inconclusive", not_run: "Not run" },
     simulationStageLabels: { prepare: "Prepare simulation", storage: "Select storage copy", download: "Download backup", archives: "Read metadata and archives", database: "Check database", evaluate: "Evaluate restore plan", cleanup: "Remove temporary data", complete: "Complete simulation" },
     simulationStageStateLabels: { pending: "Pending", running: "Running", passed: "Passed", warning: "Warning", failed: "Failed", not_applicable: "Not applicable" },
+    runtimeTitle: "Isolated Home Assistant start",
+    runtimeIntro: "After the structural check, the optional runner restores the verified backup into a temporary, network-isolated instance and follows its startup live.",
+    runtimeStatus: "Runtime test status",
+    runtimeLive: "Ephemeral test instance is running",
+    runtimeProgress: "Runner progress",
+    runtimeSafety: "The test instance has no access to the home network. All temporary data is removed after the run.",
+    runtimeUnavailable: "The optional BackupCheckup Runtime Runner has not been detected.",
+    runtimeStatusLabels: { not_available: "Runner not available", not_run: "Not run", running: "Running", passed: "Runtime start verified", failed: "Startup failed", aborted: "Stopped by a safety limit", inconclusive: "Result inconclusive" },
+    runtimeStageLabels: { runtime_prepare: "Prepare isolated runner", runtime_upload: "Transfer verified backup", runtime_restore: "Restore temporary configuration", runtime_boot: "Start Home Assistant", runtime_probe: "Wait for runtime readiness", runtime_cleanup: "Remove temporary instance", runtime_complete: "Complete runtime test" },
     restoreTestTitle: "Documented test restore",
-    restoreTestIntro: "Document only a restore test performed outside the productive Home Assistant instance.",
+    restoreTestIntro: "Optional additional evidence. A documented external restore is no longer required for structural readiness.",
     restoreTestMissing: "No test restore has been documented yet.",
     restoreTestDate: "Tested on",
     restoreTestResult: "Result",
@@ -374,6 +395,18 @@ const RECOVERY_TEXT = Object.freeze({
     title: "Wiederherstellungsbereitschaft",
     subtitle: "Kann Home Assistant nach einem vollständigen Systemausfall wiederhergestellt werden?",
     score: "Recovery Readiness Score",
+    protectionCheck: "Backup-Schutz prüfen",
+    evidenceTitle: "Bestätigte Nachweisstufe",
+    evidenceLabels: { not_recoverable: "Nicht wiederherstellbar", limited: "Eingeschränkt", monitored: "Überwacht", structurally_verified: "Strukturell bestätigt", runtime_ready: "Startfähigkeit bestätigt", fully_tested: "Vollständig erprobt" },
+    evidenceDescriptions: { not_recoverable: "Es ist kein nutzbares Backup vorhanden.", limited: "Ein blockierendes Problem verhindert eine verlässliche Wiederherstellung.", monitored: "Das Backup wird überwacht, wurde aber noch nicht vollständig strukturell geprüft.", structurally_verified: "Das aktuelle Backup wurde geladen, bei Bedarf entschlüsselt und vollständig eingelesen.", runtime_ready: "Zusätzlich konnte eine isolierte Home-Assistant-Testinstanz erfolgreich starten.", fully_tested: "Ein erfolgreicher vollständiger externer Test-Restore ist dokumentiert." },
+    profileLabels: { compact: "Kompakt", balanced: "Ausgewogen", extended: "Erweitert", enterprise: "Server" },
+    adaptiveTitle: "Dynamischer Prüfumfang",
+    openRisksTitle: "Offene Risiken",
+    noOpenRisks: "Es wurden keine blockierenden Wiederherstellungsrisiken erkannt.",
+    riskLabels: { backup_stale: "Das neueste Backup ist zu alt", independent_copy_missing: "Keine unabhängige Backup-Kopie erkannt", backup_content_regression: "Zuvor enthaltene Backup-Inhalte fehlen", external_dependency_unprotected: "Eine externe Abhängigkeit ist nicht abgesichert", external_dependency_confirmation_required: "Absicherung einer automatisch erkannten Abhängigkeit bestätigen" },
+    technicalDetails: "Technische Details und optionale Vorsorge",
+    optionalEvidence: "Optionaler zusätzlicher Nachweis",
+    noDetectedDependencies: "Es wurde keine externe Abhängigkeit erkannt, die bestätigt werden muss.",
     status: "Wiederherstellungsstatus",
     recommendation: "Wichtigste Maßnahme",
     checks: "Prüfpunkte der Notfallvorsorge",
@@ -426,14 +459,14 @@ const RECOVERY_TEXT = Object.freeze({
     preparednessTitle: "Geführter Notfallcheck",
     preparednessIntro: "Bestätige nur, ob die benötigten Informationen verfügbar sind. Passwörter, Pfade und Notizen werden hier niemals gespeichert.",
     dependenciesTitle: "Externe Abhängigkeiten",
-    dependenciesIntro: "Prüfe jede Kategorie und kennzeichne, ob Systeme außerhalb des Backups separat abgesichert oder nicht zutreffend sind. Erkannte Integrationen werden hervorgehoben, aber niemals auf Geheimnisse untersucht.",
+    dependenciesIntro: "BackupCheckup zeigt nur automatisch erkannte oder bereits konfigurierte Abhängigkeiten. Bestätige lediglich, ob die erkannten externen Daten separat abgesichert sind.",
     reviewInterval: "Bestätigungen laufen nach {days} Tagen ab und müssen anschließend erneut geprüft werden.",
     detected: "Erkannt",
     expired: "Prüfung abgelaufen",
     adminOnly: "Nur Home-Assistant-Administratoren können diese Angaben ändern.",
-    simulationTitle: "Simulierter Wiederherstellungstest",
+    simulationTitle: "Backup-Schutzprüfung",
     simulationIntro: "Nutzt die echte geschützte Lesepipeline: Das Backup wird geladen, bei Bedarf entschlüsselt und vollständig eingelesen, ohne das laufende System wiederherzustellen oder zu verändern.",
-    simulationRun: "Simulierten Wiederherstellungstest ausführen",
+    simulationRun: "Backup-Schutz prüfen",
     simulationActivity: "Wiederherstellungssimulation wird gestartet",
     simulationStatus: "Ergebnis der Simulation",
     simulationLive: "Simulation läuft",
@@ -452,8 +485,17 @@ const RECOVERY_TEXT = Object.freeze({
     simulationStatusLabels: { passed: "Bereit", warning: "Bereit mit Warnungen", failed: "Nicht bereit", running: "Läuft", aborted: "Durch Sicherheitsgrenze abgebrochen", password_required: "Backup-Passwort erforderlich", inconclusive: "Ergebnis nicht eindeutig", not_run: "Noch nicht ausgeführt" },
     simulationStageLabels: { prepare: "Simulation vorbereiten", storage: "Speicherkopie auswählen", download: "Backup herunterladen", archives: "Metadaten und Archive lesen", database: "Datenbank prüfen", evaluate: "Wiederherstellungsplan bewerten", cleanup: "Temporäre Daten entfernen", complete: "Simulation abschließen" },
     simulationStageStateLabels: { pending: "Ausstehend", running: "Läuft", passed: "Bestanden", warning: "Warnung", failed: "Fehlgeschlagen", not_applicable: "Nicht erforderlich" },
+    runtimeTitle: "Isolierter Home-Assistant-Start",
+    runtimeIntro: "Nach der Strukturprüfung stellt der optionale Runner das geprüfte Backup in einer temporären, netzwerkisolierten Instanz wieder her und zeigt deren Start live.",
+    runtimeStatus: "Status des Runtime-Tests",
+    runtimeLive: "Ephemere Testinstanz läuft",
+    runtimeProgress: "Runner-Fortschritt",
+    runtimeSafety: "Die Testinstanz hat keinen Zugriff auf das Heimnetz. Alle temporären Daten werden nach dem Lauf entfernt.",
+    runtimeUnavailable: "Der optionale BackupCheckup Runtime Runner wurde nicht erkannt.",
+    runtimeStatusLabels: { not_available: "Runner nicht verfügbar", not_run: "Noch nicht ausgeführt", running: "Läuft", passed: "Startfähigkeit bestätigt", failed: "Start fehlgeschlagen", aborted: "Durch Sicherheitsgrenze beendet", inconclusive: "Ergebnis nicht eindeutig" },
+    runtimeStageLabels: { runtime_prepare: "Isolierten Runner vorbereiten", runtime_upload: "Geprüftes Backup übertragen", runtime_restore: "Temporäre Konfiguration wiederherstellen", runtime_boot: "Home Assistant starten", runtime_probe: "Auf Startbereitschaft warten", runtime_cleanup: "Temporäre Instanz entfernen", runtime_complete: "Runtime-Test abschließen" },
     restoreTestTitle: "Dokumentierter Test-Restore",
-    restoreTestIntro: "Dokumentiere ausschließlich einen außerhalb der produktiven Home-Assistant-Instanz ausgeführten Wiederherstellungstest.",
+    restoreTestIntro: "Optionaler zusätzlicher Nachweis. Für die strukturelle Bereitschaft ist ein dokumentierter externer Restore nicht mehr erforderlich.",
     restoreTestMissing: "Es wurde noch kein Test-Restore dokumentiert.",
     restoreTestDate: "Durchgeführt am",
     restoreTestResult: "Ergebnis",
@@ -740,6 +782,7 @@ class BackupCheckupPanel extends HTMLElement {
     this._panel = undefined;
     this._renderPending = false;
     this._busy = new Set();
+    this._preparednessDraft = new Map();
     this._activeTab = "overview";
     this._logSearch = "";
     this._logLevelFilter = "all";
@@ -857,6 +900,22 @@ class BackupCheckupPanel extends HTMLElement {
         restoreResultLabels: {
           ...RECOVERY_TEXT.en.restoreResultLabels,
           ...(recovery.restoreResultLabels || {}),
+        },
+        evidenceLabels: {
+          ...RECOVERY_TEXT.en.evidenceLabels,
+          ...(recovery.evidenceLabels || {}),
+        },
+        evidenceDescriptions: {
+          ...RECOVERY_TEXT.en.evidenceDescriptions,
+          ...(recovery.evidenceDescriptions || {}),
+        },
+        profileLabels: {
+          ...RECOVERY_TEXT.en.profileLabels,
+          ...(recovery.profileLabels || {}),
+        },
+        riskLabels: {
+          ...RECOVERY_TEXT.en.riskLabels,
+          ...(recovery.riskLabels || {}),
         },
         restoreScopeLabels: {
           ...RECOVERY_TEXT.en.restoreScopeLabels,
@@ -1050,6 +1109,23 @@ class BackupCheckupPanel extends HTMLElement {
     return text.unknownMessage;
   }
 
+  _evidenceTone(level) {
+    if (["structurally_verified", "runtime_ready", "fully_tested"].includes(level)) return "good";
+    if (["monitored", "limited"].includes(level)) return "warning";
+    if (level === "not_recoverable") return "danger";
+    return "neutral";
+  }
+
+  _riskRows(risks, text) {
+    if (!Array.isArray(risks) || !risks.length) {
+      return `<div class="empty success"><ha-icon icon="mdi:check-circle-outline"></ha-icon>${this._escape(text.noOpenRisks)}</div>`;
+    }
+    return risks.map((risk) => `<div class="problem-row">
+      <ha-icon icon="mdi:alert-circle-outline"></ha-icon>
+      <span>${this._escape(text.riskLabels?.[risk] || this._humanize(risk))}</span>
+    </div>`).join("");
+  }
+
   _recoveryCheckRows(checks, text) {
     return RECOVERY_CHECK_KEYS.map((key) => {
       const value = Object.prototype.hasOwnProperty.call(checks || {}, key)
@@ -1145,8 +1221,11 @@ class BackupCheckupPanel extends HTMLElement {
   }
 
   _preparednessSelect(section, key, item, labels, isAdmin) {
+    this._preparednessDraft ||= new Map();
+    const draftKey = `${section}:${key}`;
+    const selectedStatus = this._preparednessDraft.get(draftKey) || item?.status;
     const options = Object.entries(labels).map(([value, label]) =>
-      `<option value="${this._escape(value)}" ${item?.status === value ? "selected" : ""}>${this._escape(label)}</option>`
+      `<option value="${this._escape(value)}" ${selectedStatus === value ? "selected" : ""}>${this._escape(label)}</option>`
     ).join("");
     const busyKey = `preparedness:${section}:${key}`;
     const disabled = !isAdmin || this._busy.has(busyKey) ? "disabled" : "";
@@ -1154,15 +1233,29 @@ class BackupCheckupPanel extends HTMLElement {
   }
 
   _preparednessRows(preparedness, section, text, isAdmin) {
+    this._preparednessDraft ||= new Map();
     const items = preparedness?.[section] || {};
     const isChecklist = section === "checklist";
     const itemLabels = isChecklist ? text.checklistLabels : text.dependencyLabels;
     const statusLabels = isChecklist ? text.checklistStatusLabels : text.dependencyStatusLabels;
-    return Object.keys(itemLabels).map((key) => {
+    const keys = Object.keys(itemLabels).filter((key) => {
+      if (isChecklist) return true;
+      const item = items[key];
+      return Boolean(item?.relevant || item?.detected);
+    });
+    if (!keys.length) {
+      return `<div class="empty success"><ha-icon icon="mdi:check-circle-outline"></ha-icon>${this._escape(text.noDetectedDependencies)}</div>`;
+    }
+    return keys.map((key) => {
       const item = items[key] || { status: "unknown", effective_status: "unknown" };
+      const draftKey = `${section}:${key}`;
+      if (this._preparednessDraft.get(draftKey) === item.status) {
+        this._preparednessDraft.delete(draftKey);
+      }
+      const displayStatus = this._preparednessDraft.get(draftKey) || item.effective_status;
       const detected = !isChecklist && item.detected;
       const expired = Boolean(item.expired);
-      const effectiveLabel = statusLabels[item.effective_status] || text.unknown;
+      const effectiveLabel = statusLabels[displayStatus] || text.unknown;
       return `<div class="preparedness-row ${expired ? "expired" : ""}">
         <div class="preparedness-copy"><strong>${this._escape(itemLabels[key])}</strong><span>${this._escape(effectiveLabel)}</span></div>
         <div class="preparedness-badges">${detected ? `<span class="preparedness-badge detected">${this._escape(text.detected)}</span>` : ""}${expired ? `<span class="preparedness-badge expired">${this._escape(text.expired)}</span>` : ""}</div>
@@ -1176,7 +1269,7 @@ class BackupCheckupPanel extends HTMLElement {
     return String(text.reviewInterval).replace("{days}", days);
   }
 
-  _simulationRows(simulation, text) {
+  _simulationRows(simulation, text, compact = false) {
     const status = simulation?.status || "not_run";
     const tone = ["passed"].includes(status) ? "good"
       : ["running", "warning", "aborted", "password_required", "inconclusive"].includes(status) ? "warning"
@@ -1189,7 +1282,14 @@ class BackupCheckupPanel extends HTMLElement {
     const passed = checks.filter((value) => value === true).length;
     const failed = checks.filter((value) => value === false).length;
     const open = checks.filter((value) => value == null).length;
-    const stageRows = Object.entries(simulation?.stages || {}).map(([key, value]) => {
+    const allStageEntries = Object.entries(simulation?.stages || {});
+    const importantStages = allStageEntries.filter(([, value]) =>
+      ["running", "failed", "warning"].includes(value)
+    );
+    const stageEntries = compact
+      ? (importantStages.length ? importantStages : allStageEntries.slice(-1))
+      : allStageEntries;
+    const stageRows = stageEntries.map(([key, value]) => {
       const icon = value === "passed" ? "mdi:check-circle"
         : value === "failed" ? "mdi:close-circle"
           : value === "running" ? "mdi:progress-clock"
@@ -1208,6 +1308,17 @@ class BackupCheckupPanel extends HTMLElement {
     const duration = Number(simulation?.duration_seconds) >= 0
       ? `${Number(simulation.duration_seconds).toLocaleString(this._language(), { maximumFractionDigits: 1 })} s`
       : "—";
+    const detailedMetrics = compact ? "" : `<div class="simulation-metrics">
+        <div><ha-icon icon="mdi:archive-outline"></ha-icon><span>${this._escape(text.simulationArchives)}</span><strong>${Number(simulation?.archive_count) || 0}</strong></div>
+        <div><ha-icon icon="mdi:file-multiple-outline"></ha-icon><span>${this._escape(text.simulationFiles)}</span><strong>${Number(simulation?.file_count) || 0}</strong></div>
+        <div><ha-icon icon="mdi:database-arrow-down-outline"></ha-icon><span>${this._escape(text.simulationSize)}</span><strong>${this._escape(sizeMb)}</strong></div>
+        <div><ha-icon icon="mdi:timer-outline"></ha-icon><span>${this._escape(text.simulationDuration)}</span><strong>${this._escape(duration)}</strong></div>
+      </div>
+      <div class="simulation-check-summary">
+        <div class="good"><strong>${passed}</strong><span>${this._escape(text.simulationChecksPassed)}</span></div>
+        <div class="warning"><strong>${open}</strong><span>${this._escape(text.simulationChecksOpen)}</span></div>
+        <div class="danger"><strong>${failed}</strong><span>${this._escape(text.simulationChecksFailed)}</span></div>
+      </div>`;
     return `<div class="simulation-dashboard ${tone}">
       <div class="simulation-head">
         <div class="simulation-state"><span></span><div><small>${this._escape(simulation?.running ? text.simulationLive : text.simulationStatus)}</small><strong>${this._escape(statusLabel)}</strong></div></div>
@@ -1218,18 +1329,51 @@ class BackupCheckupPanel extends HTMLElement {
       </div>
       <div class="simulation-progress-label"><span>${this._escape(text.simulationProgress)}</span><strong>${progress}%</strong></div>
       <div class="simulation-pipeline">${stageRows}</div>
-      <div class="simulation-metrics">
-        <div><ha-icon icon="mdi:archive-outline"></ha-icon><span>${this._escape(text.simulationArchives)}</span><strong>${Number(simulation?.archive_count) || 0}</strong></div>
-        <div><ha-icon icon="mdi:file-multiple-outline"></ha-icon><span>${this._escape(text.simulationFiles)}</span><strong>${Number(simulation?.file_count) || 0}</strong></div>
-        <div><ha-icon icon="mdi:database-arrow-down-outline"></ha-icon><span>${this._escape(text.simulationSize)}</span><strong>${this._escape(sizeMb)}</strong></div>
-        <div><ha-icon icon="mdi:timer-outline"></ha-icon><span>${this._escape(text.simulationDuration)}</span><strong>${this._escape(duration)}</strong></div>
-      </div>
-      <div class="simulation-check-summary">
-        <div class="good"><strong>${passed}</strong><span>${this._escape(text.simulationChecksPassed)}</span></div>
-        <div class="warning"><strong>${open}</strong><span>${this._escape(text.simulationChecksOpen)}</span></div>
-        <div class="danger"><strong>${failed}</strong><span>${this._escape(text.simulationChecksFailed)}</span></div>
-      </div>
+      ${detailedMetrics}
       <p class="simulation-safety"><ha-icon icon="mdi:shield-lock-outline"></ha-icon>${this._escape(text.simulationSafety)}</p>
+    </div>`;
+  }
+
+  _runtimeRows(runtime, text) {
+    const status = runtime?.status || "not_available";
+    if (status === "not_available") {
+      return `<div class="empty runtime-empty"><ha-icon icon="mdi:server-off"></ha-icon>${this._escape(text.runtimeUnavailable)}</div>`;
+    }
+    const tone = status === "passed" ? "good"
+      : ["running", "aborted", "inconclusive"].includes(status) ? "warning"
+        : status === "failed" ? "danger" : "neutral";
+    const terminal = ["passed", "failed", "aborted", "inconclusive"].includes(status);
+    const storedProgress = runtime?.progress_percent;
+    const progress = Math.min(100, Math.max(
+      0,
+      Number(storedProgress ?? (terminal ? 100 : 0)) || 0,
+    ));
+    const stage = runtime?.stage || "runtime_prepare";
+    const statusLabel = text.runtimeStatusLabels?.[status] || this._humanize(status);
+    const stageLabel = text.runtimeStageLabels?.[stage] || this._humanize(stage);
+    const stageRows = Object.entries(runtime?.stages || {}).map(([key, value]) => {
+      const icon = value === "passed" ? "mdi:check-circle"
+        : value === "failed" ? "mdi:close-circle"
+          : value === "running" ? "mdi:progress-clock" : "mdi:clock-outline";
+      const label = text.runtimeStageLabels?.[key] || this._humanize(key);
+      const stateLabel = text.simulationStageStateLabels?.[value] || this._humanize(value);
+      return `<div class="simulation-stage ${this._escape(value)}">
+        <ha-icon icon="${icon}"></ha-icon>
+        <div><strong>${this._escape(label)}</strong><span>${this._escape(stateLabel)}</span></div>
+      </div>`;
+    }).join("");
+    return `<div class="runtime-phase">
+      <div class="runtime-heading"><ha-icon icon="mdi:home-clock-outline"></ha-icon><div><strong>${this._escape(text.runtimeTitle)}</strong><span>${this._escape(text.runtimeIntro)}</span></div></div>
+      <div class="simulation-dashboard ${tone}">
+        <div class="simulation-head">
+          <div class="simulation-state"><span></span><div><small>${this._escape(runtime?.running ? text.runtimeLive : text.runtimeStatus)}</small><strong>${this._escape(statusLabel)}</strong></div></div>
+          <div class="simulation-current"><small>${this._escape(text.simulationStage)}</small><strong>${this._escape(stageLabel)}</strong></div>
+        </div>
+        <div class="simulation-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><div style="width:${progress}%"></div></div>
+        <div class="simulation-progress-label"><span>${this._escape(text.runtimeProgress)}</span><strong>${progress}%</strong></div>
+        <div class="simulation-pipeline">${stageRows}</div>
+        <p class="simulation-safety"><ha-icon icon="mdi:shield-lock-outline"></ha-icon>${this._escape(text.runtimeSafety)}</p>
+      </div>
     </div>`;
   }
 
@@ -1423,6 +1567,8 @@ class BackupCheckupPanel extends HTMLElement {
     const recoveryRecommendationCode = recoveryRecommendation?.state
       || recoveryReadiness?.attributes?.recommendation
       || "none";
+    const recoveryEvidence = recoveryReadiness?.attributes?.evidence || {};
+    const evidenceLevel = recoveryEvidence.level || "monitored";
     const hasProblem = problem?.state === "on" || Boolean(status?.attributes?.problem);
     const tone = this._tone(status?.state, hasProblem);
     return {
@@ -1453,6 +1599,15 @@ class BackupCheckupPanel extends HTMLElement {
       ),
       recoveryTone: this._recoveryTone(recoveryStatusCode),
       recoveryMessage: this._recoveryMessage(recoveryStatusCode, text.recovery),
+      recoveryEvidence,
+      evidenceLevel,
+      evidenceLabel: text.recovery.evidenceLabels?.[evidenceLevel]
+        || this._humanize(evidenceLevel),
+      evidenceDescription: text.recovery.evidenceDescriptions?.[evidenceLevel]
+        || "",
+      evidenceTone: this._evidenceTone(evidenceLevel),
+      adaptivePolicy: recoveryReadiness?.attributes?.adaptive_policy || {},
+      recoveryOpenRisks: recoveryReadiness?.attributes?.open_risks || [],
       recoveryChecks: recoveryReadiness?.attributes?.checks
         || recoveryStatus?.attributes?.checks
         || {},
@@ -1465,6 +1620,9 @@ class BackupCheckupPanel extends HTMLElement {
       recoveryPreparedness: recoveryReadiness?.attributes?.preparedness || {},
       restoreSimulation: recoveryReadiness?.attributes?.restore_simulation
         || restoreSimulationState?.attributes || {},
+      runtimeTest: recoveryReadiness?.attributes?.runtime_test || {
+        status: "not_available",
+      },
       restoreTest: recoveryReadiness?.attributes?.restore_test
         || lastRestoreTestState?.attributes || {},
       recoveryPlan: recoveryReadiness?.attributes?.recovery_plan || {},
@@ -1493,10 +1651,10 @@ class BackupCheckupPanel extends HTMLElement {
     if (!model.isAdmin) return "";
     const refreshDisabled = this._buttonDisabled(model.refreshState, "refresh")
       ? "disabled" : "";
-    const verifyDisabled = this._buttonDisabled(model.verifyState, "verify")
+    const verifyDisabled = this._buttonDisabled(model.recoveryAssessmentState, "recovery_assessment")
       ? "disabled" : "";
-    const verifyAction = showVerify ? `<button class="action primary" data-action="verify" ${verifyDisabled}>
-        <ha-icon icon="mdi:shield-search"></ha-icon>${this._escape(model.text.verify)}
+    const verifyAction = showVerify ? `<button class="action primary" data-action="recovery_assessment" ${verifyDisabled}>
+        <ha-icon icon="mdi:shield-search"></ha-icon>${this._escape(model.text.recovery.protectionCheck)}
       </button>` : "";
     return `<footer>
       <button class="action secondary" data-action="refresh" ${refreshDisabled}>
@@ -1541,7 +1699,7 @@ class BackupCheckupPanel extends HTMLElement {
     </section>
     <section class="metrics">
       ${this._metric("mdi:shield-check-outline", model.text.status, model.statusLabel, model.tone)}
-      ${this._metric("mdi:lifebuoy", model.text.recovery.score, model.recoveryScoreLabel, model.recoveryTone)}
+      ${this._metric("mdi:lifebuoy", model.text.recovery.evidenceTitle, model.evidenceLabel, model.evidenceTone)}
       ${this._metric("mdi:timer-sand", model.text.latestBackup, this._formatState(model.latestAge))}
       ${this._metric("mdi:database", model.text.backupSize, this._formatState(model.latestSize))}
       ${this._metric("mdi:archive-multiple", model.text.storedBackups, this._formatState(model.stored))}
@@ -1577,73 +1735,82 @@ class BackupCheckupPanel extends HTMLElement {
     const assessmentDisabled = this._buttonDisabled(
       model.recoveryAssessmentState, "recovery_assessment"
     ) ? "disabled" : "";
-    return `<section class="hero ${model.recoveryTone}">
+    const presentation = model.adaptivePolicy?.presentation || "balanced";
+    const compact = presentation === "compact";
+    const enterprise = presentation === "enterprise";
+    const profileLabel = text.profileLabels?.[presentation] || this._humanize(presentation);
+    return `<section class="hero ${model.evidenceTone}">
       <div class="hero-copy">
-        <div class="eyebrow"><span></span>${this._escape(model.recoveryStatusLabel)}</div>
-        <h2>${this._escape(model.recoveryMessage)}</h2>
-        <p>${this._escape(text.subtitle)}</p>
+        <div class="eyebrow"><span></span>${this._escape(text.evidenceTitle)}</div>
+        <h2>${this._escape(model.evidenceLabel)}</h2>
+        <p>${this._escape(model.evidenceDescription)}</p>
       </div>
-      <div class="score" style="--score:${model.recoveryScore ?? 0}">
-        <div><strong>${model.recoveryScore ?? "—"}</strong><span>${this._escape(text.score)}</span></div>
+      <div class="evidence-orb ${model.evidenceTone}">
+        <ha-icon icon="mdi:shield-home-outline"></ha-icon>
       </div>
     </section>
     <section class="metrics recovery-summary">
-      ${this._metric("mdi:lifebuoy", text.status, model.recoveryStatusLabel, model.recoveryTone)}
+      ${this._metric("mdi:shield-check-outline", text.evidenceTitle, model.evidenceLabel, model.evidenceTone)}
       ${this._metric("mdi:clipboard-check-outline", text.recommendation, model.recoveryRecommendationLabel, model.recoveryRecommendationCode === "none" ? "good" : "warning")}
+      ${compact ? "" : this._metric("mdi:tune-variant", text.adaptiveTitle, profileLabel, "neutral")}
     </section>
     <section class="content-grid recovery-grid">
-      <article class="card recovery-checks-card">
-        <div class="card-title"><ha-icon icon="mdi:clipboard-list-outline"></ha-icon><h3>${this._escape(text.checks)}</h3></div>
-        <div class="recovery-check-grid">${this._recoveryCheckRows(model.recoveryChecks, text)}</div>
-      </article>
-      <article class="card recovery-deductions-card">
-        <div class="card-title"><ha-icon icon="mdi:chart-donut"></ha-icon><h3>${this._escape(text.deductions)}</h3></div>
-        <div class="rows">${this._recoveryDeductionRows(model.recoveryDeductions, text)}</div>
-      </article>
-    </section>
-    <section class="content-grid recovery-details">
-      <article class="card">
-        <div class="card-title"><ha-icon icon="mdi:archive-eye-outline"></ha-icon><h3>${this._escape(text.inventoryTitle)}</h3></div>
-        <div class="rows">${this._contentInventoryRows(model.recoveryContentInventory, text)}</div>
+      <article class="card storage-card simulation-card primary-recovery-card">
+        <div class="card-title"><ha-icon icon="mdi:shield-search"></ha-icon><h3>${this._escape(text.simulationTitle)}</h3></div>
+        <p class="preparedness-intro">${this._escape(text.simulationIntro)}</p>
+        ${this._simulationRows(model.restoreSimulation, text, compact)}
+        ${this._runtimeRows(model.runtimeTest, text)}
+        ${model.isAdmin ? `<div class="card-actions"><button class="action primary" data-action="recovery_assessment" ${assessmentDisabled}><ha-icon icon="mdi:shield-search"></ha-icon>${this._escape(text.protectionCheck)}</button></div>` : ""}
       </article>
       <article class="card">
-        <div class="card-title"><ha-icon icon="mdi:compare-horizontal"></ha-icon><h3>${this._escape(text.comparisonTitle)}</h3></div>
-        <div class="rows">${this._contentComparisonRows(model.recoveryContentComparison, text)}</div>
+        <div class="card-title"><ha-icon icon="mdi:alert-decagram-outline"></ha-icon><h3>${this._escape(text.openRisksTitle)}</h3></div>
+        <div class="rows">${this._riskRows(model.recoveryOpenRisks, text)}</div>
       </article>
-      <article class="card storage-card">
-        <div class="card-title"><ha-icon icon="mdi:server-security"></ha-icon><h3>${this._escape(text.storageTitle)}</h3></div>
-        <div class="rows">${this._storageResilienceRows(model.recoveryStorageResilience, text)}</div>
-      </article>
-      <article class="card storage-card preparedness-card">
-        <div class="card-title"><ha-icon icon="mdi:clipboard-check-multiple-outline"></ha-icon><h3>${this._escape(text.preparednessTitle)}</h3></div>
-        <p class="preparedness-intro">${this._escape(text.preparednessIntro)}</p>
-        <div class="preparedness-list">${this._preparednessRows(model.recoveryPreparedness, "checklist", text, model.isAdmin)}</div>
-      </article>
-      <article class="card storage-card preparedness-card">
+      <article class="card preparedness-card">
         <div class="card-title"><ha-icon icon="mdi:connection"></ha-icon><h3>${this._escape(text.dependenciesTitle)}</h3></div>
         <p class="preparedness-intro">${this._escape(text.dependenciesIntro)}</p>
         <div class="preparedness-list">${this._preparednessRows(model.recoveryPreparedness, "dependencies", text, model.isAdmin)}</div>
         <p class="preparedness-note">${this._escape(this._preparednessReviewText(model.recoveryPreparedness, text))}${model.isAdmin ? "" : ` ${this._escape(text.adminOnly)}`}</p>
       </article>
-      <article class="card storage-card simulation-card">
-        <div class="card-title"><ha-icon icon="mdi:test-tube"></ha-icon><h3>${this._escape(text.simulationTitle)}</h3></div>
-        <p class="preparedness-intro">${this._escape(text.simulationIntro)}</p>
-        ${this._simulationRows(model.restoreSimulation, text)}
-        ${model.isAdmin ? `<div class="card-actions"><button class="action primary" data-action="recovery_assessment" ${assessmentDisabled}><ha-icon icon="mdi:home-search-outline"></ha-icon>${this._escape(text.simulationRun)}</button></div>` : ""}
-      </article>
-      <article class="card">
-        <div class="card-title"><ha-icon icon="mdi:restore-clock"></ha-icon><h3>${this._escape(text.restoreTestTitle)}</h3></div>
-        <p class="preparedness-intro">${this._escape(text.restoreTestIntro)}</p>
-        <div class="rows">${this._restoreTestRows(model.restoreTest, text)}</div>
-        ${this._restoreTestControls(text, model.isAdmin)}
-      </article>
-      <article class="card storage-card">
-        <div class="card-title"><ha-icon icon="mdi:file-document-check-outline"></ha-icon><h3>${this._escape(text.planTitle)}</h3></div>
-        <p class="preparedness-intro">${this._escape(text.planIntro)}</p>
-        <div class="rows">${this._planRows(model.recoveryPlan, text)}</div>
-        ${this._planExportButtons(model.recoveryPlan, text)}
-      </article>
     </section>
+    <details class="card advanced-recovery" ${enterprise ? "open" : ""}>
+      <summary><ha-icon icon="mdi:information-outline"></ha-icon>${this._escape(text.technicalDetails)}</summary>
+      <section class="content-grid recovery-details">
+        <article class="detail-panel">
+          <div class="card-title"><ha-icon icon="mdi:archive-eye-outline"></ha-icon><h3>${this._escape(text.inventoryTitle)}</h3></div>
+          <div class="rows">${this._contentInventoryRows(model.recoveryContentInventory, text)}</div>
+        </article>
+        <article class="detail-panel">
+          <div class="card-title"><ha-icon icon="mdi:compare-horizontal"></ha-icon><h3>${this._escape(text.comparisonTitle)}</h3></div>
+          <div class="rows">${this._contentComparisonRows(model.recoveryContentComparison, text)}</div>
+        </article>
+        <article class="detail-panel">
+          <div class="card-title"><ha-icon icon="mdi:server-security"></ha-icon><h3>${this._escape(text.storageTitle)}</h3></div>
+          <div class="rows">${this._storageResilienceRows(model.recoveryStorageResilience, text)}</div>
+        </article>
+        <article class="detail-panel preparedness-card">
+          <div class="card-title"><ha-icon icon="mdi:clipboard-check-multiple-outline"></ha-icon><h3>${this._escape(text.preparednessTitle)}</h3></div>
+          <p class="preparedness-intro">${this._escape(text.preparednessIntro)}</p>
+          <div class="preparedness-list">${this._preparednessRows(model.recoveryPreparedness, "checklist", text, model.isAdmin)}</div>
+        </article>
+        <article class="detail-panel">
+          <div class="card-title"><ha-icon icon="mdi:restore-clock"></ha-icon><h3>${this._escape(text.optionalEvidence)}</h3></div>
+          <p class="preparedness-intro">${this._escape(text.restoreTestIntro)}</p>
+          <div class="rows">${this._restoreTestRows(model.restoreTest, text)}</div>
+          ${this._restoreTestControls(text, model.isAdmin)}
+        </article>
+        <article class="detail-panel">
+          <div class="card-title"><ha-icon icon="mdi:file-document-check-outline"></ha-icon><h3>${this._escape(text.planTitle)}</h3></div>
+          <p class="preparedness-intro">${this._escape(text.planIntro)}</p>
+          <div class="rows">${this._planRows(model.recoveryPlan, text)}</div>
+          ${this._planExportButtons(model.recoveryPlan, text)}
+        </article>
+        <article class="detail-panel storage-card">
+          <div class="card-title"><ha-icon icon="mdi:chart-donut"></ha-icon><h3>${this._escape(text.score)}: ${this._escape(model.recoveryScoreLabel)}</h3></div>
+          <div class="rows">${this._recoveryDeductionRows(model.recoveryDeductions, text)}</div>
+        </article>
+      </section>
+    </details>
     ${this._actionFooter(model, false)}`;
   }
 
@@ -2069,13 +2236,17 @@ class BackupCheckupPanel extends HTMLElement {
   }
 
   async _setRecoveryPreparedness(section, item, status) {
+    this._preparednessDraft ||= new Map();
     const action = `preparedness:${section}:${item}`;
+    const draftKey = `${section}:${item}`;
     if (!this._hass?.user?.is_admin || this._busy.has(action)) return;
+    this._preparednessDraft.set(draftKey, status);
     this._busy.add(action);
     this._scheduleRender();
     try {
       await this._hass.callService("backup_checkup", "set_recovery_preparedness", { section, item, status });
     } catch (_error) {
+      this._preparednessDraft.delete(draftKey);
       this.dispatchEvent(new CustomEvent("hass-notification", {
         bubbles: true,
         composed: true,
@@ -2145,6 +2316,7 @@ class BackupCheckupPanel extends HTMLElement {
       .tab ha-icon { --mdc-icon-size:20px; }
       .hero { --tone:#607d8b; --tone-soft:rgba(96,125,139,.14); display:flex; align-items:center; justify-content:space-between; min-height:210px; padding:32px 38px; overflow:hidden; border-radius:24px; background:linear-gradient(125deg, var(--tone-soft), var(--card-background-color) 62%); border:1px solid color-mix(in srgb, var(--tone) 28%, var(--divider-color)); position:relative; }
       .hero.good { --tone:#2e9d68; --tone-soft:rgba(46,157,104,.19); }
+      .hero.warning { --tone:#e79a24; --tone-soft:rgba(231,154,36,.18); }
       .hero.danger { --tone:#d84b55; --tone-soft:rgba(216,75,85,.18); }
       .hero::after { content:""; position:absolute; width:260px; height:260px; right:-80px; top:-130px; border-radius:50%; background:var(--tone-soft); }
       .hero-copy { position:relative; z-index:1; }
@@ -2157,6 +2329,9 @@ class BackupCheckupPanel extends HTMLElement {
       .score div { position:relative; display:flex; flex-direction:column; align-items:center; }
       .score strong { font-size:35px; line-height:1; }
       .score span { margin-top:7px; max-width:90px; text-align:center; color:var(--secondary-text-color); font-size:11px; }
+      .evidence-orb { --evidence:#607d8b; flex:0 0 auto; width:132px; height:132px; margin-left:32px; display:grid; place-items:center; border-radius:50%; color:var(--evidence); background:color-mix(in srgb, var(--evidence) 14%, var(--card-background-color)); border:2px solid color-mix(in srgb, var(--evidence) 48%, var(--divider-color)); position:relative; z-index:1; }
+      .evidence-orb.good { --evidence:#2e9d68; } .evidence-orb.warning { --evidence:#e79a24; } .evidence-orb.danger { --evidence:#d84b55; }
+      .evidence-orb ha-icon { --mdc-icon-size:54px; }
       .metrics { display:grid; grid-template-columns:repeat(auto-fit, minmax(175px, 1fr)); gap:13px; margin:18px 0; }
       .metric { --metric:#607d8b; min-height:105px; display:flex; align-items:flex-start; gap:12px; padding:18px; border-radius:17px; background:var(--card-background-color); box-shadow:var(--ha-card-box-shadow, 0 2px 8px rgba(0,0,0,.08)); }
       .metric.good { --metric:#2e9d68; } .metric.warning { --metric:#e79a24; } .metric.danger { --metric:#d84b55; }
@@ -2171,8 +2346,16 @@ class BackupCheckupPanel extends HTMLElement {
       .card-title ha-icon { color:var(--primary-color); --mdc-icon-size:22px; }
       .card-title h3 { margin:0; font-size:16px; }
       .recommendation-card p { margin:0; font-size:19px; line-height:1.45; font-weight:550; }
-      .recovery-summary { grid-template-columns:repeat(2, minmax(0, 1fr)); }
-      .recovery-grid { grid-template-columns:1fr; }
+      .recovery-summary { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+      .recovery-grid { grid-template-columns:minmax(0, 1.15fr) minmax(0, .85fr); }
+      .primary-recovery-card { grid-column:1 / -1; }
+      .advanced-recovery { margin-top:18px; }
+      .advanced-recovery > summary { display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:650; list-style:none; }
+      .advanced-recovery > summary::-webkit-details-marker { display:none; }
+      .advanced-recovery > summary::after { content:"⌄"; margin-left:auto; color:var(--secondary-text-color); font-size:20px; }
+      .advanced-recovery[open] > summary::after { content:"⌃"; }
+      .advanced-recovery > .content-grid { margin-top:22px; }
+      .detail-panel { min-width:0; padding:18px; border:1px solid var(--divider-color); border-radius:15px; background:color-mix(in srgb, var(--card-background-color) 96%, var(--primary-color)); }
       .recovery-checks-card, .recovery-deductions-card { grid-column:1 / -1; }
       .recovery-check-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; }
       .recovery-check { min-height:72px; display:flex; align-items:center; gap:11px; padding:13px; border:1px solid var(--divider-color); border-radius:13px; background:color-mix(in srgb, var(--card-background-color) 94%, var(--primary-color)); }
@@ -2236,6 +2419,13 @@ class BackupCheckupPanel extends HTMLElement {
       .simulation-check-summary .danger strong { color:#d84b55; }
       .simulation-safety { display:flex; align-items:center; gap:8px; margin:0; color:var(--secondary-text-color); font-size:11px; line-height:1.45; }
       .simulation-safety ha-icon { flex:0 0 auto; color:#2e9d68; --mdc-icon-size:19px; }
+      .runtime-phase { display:flex; flex-direction:column; gap:12px; margin-top:18px; padding-top:18px; border-top:1px solid var(--divider-color); }
+      .runtime-heading { display:flex; gap:11px; align-items:flex-start; }
+      .runtime-heading > ha-icon { flex:0 0 auto; color:var(--primary-color); --mdc-icon-size:24px; }
+      .runtime-heading > div { display:flex; flex-direction:column; gap:4px; }
+      .runtime-heading strong { font-size:14px; }
+      .runtime-heading span { color:var(--secondary-text-color); font-size:12px; line-height:1.45; }
+      .runtime-empty { margin-top:18px; border-top:1px solid var(--divider-color); padding-top:18px; }
       .restore-test-controls, .plan-actions, .card-actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:16px; }
       .restore-test-controls select { min-height:42px; min-width:170px; flex:1; padding:6px 10px; border:1px solid var(--divider-color); border-radius:10px; background:var(--card-background-color); color:var(--primary-text-color); font:inherit; }
       .restore-test-controls .action { flex:1 1 220px; justify-content:center; }
@@ -2308,8 +2498,8 @@ class BackupCheckupPanel extends HTMLElement {
       .action.primary { background:var(--primary-color); border-color:var(--primary-color); color:var(--text-primary-color, white); }
       .action.secondary { background:var(--card-background-color); color:var(--primary-text-color); }
       .action:disabled { opacity:.48; cursor:default; }
-      @media (max-width:900px) { .metrics { grid-template-columns:repeat(2, minmax(0, 1fr)); } .recovery-check-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .content-grid { grid-template-columns:1fr; } .storage-card { grid-column:auto; } .simulation-pipeline, .simulation-metrics { grid-template-columns:repeat(2, minmax(0, 1fr)); } .log-row { grid-template-columns:165px 1fr; } .log-row span { grid-column:2; } }
-      @media (max-width:620px) { .restore-test-controls, .plan-actions, .card-actions { flex-direction:column; } .restore-test-controls select { width:100%; } .preparedness-row { grid-template-columns:1fr; gap:7px; padding:11px 0; } .preparedness-badges { justify-content:flex-start; } .simulation-head { align-items:flex-start; flex-direction:column; } .simulation-current { align-items:flex-start; text-align:left; } .simulation-pipeline, .simulation-metrics { grid-template-columns:1fr; } .simulation-check-summary { grid-template-columns:1fr; } main { padding:18px 12px 28px; } header { padding:0 4px; } header p { display:none; } .tabs { margin-top:0; } .hero { min-height:0; padding:24px 21px; } .score { width:104px; height:104px; margin-left:14px; } .score::before { inset:8px; } .score strong { font-size:27px; } .hero h2 { font-size:23px; } .metrics { grid-template-columns:1fr 1fr; gap:10px; } .metrics.recovery-summary, .recovery-check-grid { grid-template-columns:1fr; } .metric { min-height:95px; padding:15px; } .content-grid { gap:12px; } .card { padding:18px; } .log-toolbar { align-items:stretch; flex-direction:column; } .live-indicator { align-self:flex-end; } .log-row { grid-template-columns:1fr; gap:3px; padding:10px 13px; } .log-row span { grid-column:auto; } footer { flex-direction:column-reverse; } .action { justify-content:center; } }
+      @media (max-width:900px) { .metrics { grid-template-columns:repeat(2, minmax(0, 1fr)); } .recovery-check-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } .content-grid, .recovery-grid { grid-template-columns:1fr; } .storage-card { grid-column:auto; } .primary-recovery-card { grid-column:auto; } .simulation-pipeline, .simulation-metrics { grid-template-columns:repeat(2, minmax(0, 1fr)); } .log-row { grid-template-columns:165px 1fr; } .log-row span { grid-column:2; } }
+      @media (max-width:620px) { .restore-test-controls, .plan-actions, .card-actions { flex-direction:column; } .restore-test-controls select { width:100%; } .preparedness-row { grid-template-columns:1fr; gap:7px; padding:11px 0; } .preparedness-badges { justify-content:flex-start; } .simulation-head { align-items:flex-start; flex-direction:column; } .simulation-current { align-items:flex-start; text-align:left; } .simulation-pipeline, .simulation-metrics { grid-template-columns:1fr; } .simulation-check-summary { grid-template-columns:1fr; } main { padding:18px 12px 28px; } header { padding:0 4px; } header p { display:none; } .tabs { margin-top:0; } .hero { min-height:0; padding:24px 21px; } .score, .evidence-orb { width:104px; height:104px; margin-left:14px; } .evidence-orb ha-icon { --mdc-icon-size:42px; } .score::before { inset:8px; } .score strong { font-size:27px; } .hero h2 { font-size:23px; } .metrics { grid-template-columns:1fr 1fr; gap:10px; } .metrics.recovery-summary, .recovery-check-grid { grid-template-columns:1fr; } .metric { min-height:95px; padding:15px; } .content-grid { gap:12px; } .card { padding:18px; } .log-toolbar { align-items:stretch; flex-direction:column; } .live-indicator { align-self:flex-end; } .log-row { grid-template-columns:1fr; gap:3px; padding:10px 13px; } .log-row span { grid-column:auto; } footer { flex-direction:column-reverse; } .action { justify-content:center; } }
       @media (max-width:390px) { .hero { align-items:flex-start; } .score { width:88px; height:88px; } .score span { display:none; } .metrics { grid-template-columns:1fr; } }
 
       .config-page { display:flex; flex-direction:column; gap:18px; }
