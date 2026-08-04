@@ -960,6 +960,17 @@ class BackupIntegrityVerifier:
             prepared.budget,
         )
         try:
+            heartbeat = 0
+            while not archive_future.done():
+                done, _pending = await asyncio.wait({archive_future}, timeout=2.0)
+                if done:
+                    break
+                heartbeat = min(95, heartbeat + 5)
+                self._record_activity(
+                    extract_action,
+                    ACTIVITY_OUTCOME_CHANGED,
+                    details={"progress_percent": heartbeat},
+                )
             details = await asyncio.shield(archive_future)
             self._record_activity(
                 extract_action,

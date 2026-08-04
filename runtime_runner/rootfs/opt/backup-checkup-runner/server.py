@@ -29,7 +29,7 @@ from typing import Any, BinaryIO
 from securetar import SecureTarArchive
 
 PROTOCOL_VERSION = 1
-RUNNER_VERSION = "3.0.4"
+RUNNER_VERSION = "3.0.5"
 LISTEN_PORT = 8099
 DATA_DIR = Path("/data")
 TOKEN_PATH = DATA_DIR / "api_token"
@@ -182,10 +182,20 @@ def _safe_member_path(name: str) -> PurePosixPath:
 
 def _read_backup_metadata(archive_path: Path, password: str | None) -> dict[str, Any]:
     with SecureTarArchive(archive_path, "r", password=password) as outer:
-        try:
-            member = outer.tar.getmember("backup.json")
-        except KeyError as err:
-            raise RunnerFailure("backup_metadata_missing") from err
+        member = None
+        for candidate in outer.tar:
+            candidate_path = _safe_member_path(candidate.name)
+            if candidate_path.name == "backup.json" and candidate_path.parts != (
+                "backup.json",
+            ):
+                raise RunnerFailure("backup_metadata_invalid")
+            if candidate_path.parts == ("backup.json",):
+                if member is not None:
+                    raise RunnerFailure("backup_metadata_invalid")
+                member = candidate
+                break
+        if member is None:
+            raise RunnerFailure("backup_metadata_missing")
         if not member.isfile() or member.size > MAX_METADATA_BYTES:
             raise RunnerFailure("backup_metadata_invalid")
         reader = outer.tar.extractfile(member)
@@ -298,6 +308,7 @@ class RunState:
     error_code: str | None = None
     thread: threading.Thread | None = field(default=None, repr=False)
     lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    _logged_progress_percent: int = field(default=0, repr=False)
 
     @property
     def archive_path(self) -> Path:
@@ -308,8 +319,17 @@ class RunState:
             previous_stage = self.stage
             self.stage = stage
             self.progress_percent = max(self.progress_percent, min(100, percent))
+            progress_bucket = self.progress_percent // 10 * 10
+            first_bucket = self._logged_progress_percent + 10
+            progress_updates = tuple(range(first_bucket, progress_bucket + 1, 10))
+            if progress_updates:
+                self._logged_progress_percent = progress_updates[-1]
         if stage != previous_stage:
-            _LOGGER.info("run stage_changed stage=%s progress=%d", stage, percent)
+            _LOGGER.info("run stage_changed stage=%s", stage)
+        for progress in progress_updates:
+            _LOGGER.info(
+                "run progress stage=%s progress_percent=%d", stage, progress
+            )
 
     def public(self) -> dict[str, Any]:
         with self.lock:
@@ -600,9 +620,8 @@ class RunManager:
             if run.status == "passed":
                 run.status = "inconclusive"
                 run.error_code = "cleanup_failed"
+        run.update("runtime_complete", 100)
         with run.lock:
-            run.stage = "runtime_complete"
-            run.progress_percent = 100
             run.checked_at = datetime.now(UTC).isoformat()
             run.duration_seconds = round(
                 time.monotonic() - run.started_monotonic, 2
@@ -770,6 +789,8 @@ class Handler(BaseHTTPRequestHandler):
                     output.write(chunk)
                     digest.update(chunk)
                     remaining -= len(chunk)
+                    uploaded = length - remaining
+                    run.update("runtime_upload", uploaded * 30 // length)
             if not hmac.compare_digest(digest.hexdigest(), run.backup_sha256):
                 run.archive_path.unlink(missing_ok=True)
                 raise RunnerFailure("archive_checksum_mismatch")

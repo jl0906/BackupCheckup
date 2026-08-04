@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 DOMAIN = "backup_checkup"
 CONFIG_ENTRY_VERSION = 15
 NAME = "BackupCheckup"
-VERSION = "3.0.4"
+VERSION = "3.0.5"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,

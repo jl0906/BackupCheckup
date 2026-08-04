@@ -135,10 +135,10 @@ class RecoverySimulationProgress:
             return
         stage, start_percent, end_percent = _ACTION_STAGES[action]
         self.stage = stage
-        if outcome == _OUTCOME_CHANGED and stage == STAGE_DOWNLOAD:
+        if outcome == _OUTCOME_CHANGED and stage in {STAGE_DOWNLOAD, STAGE_ARCHIVES}:
             raw_progress = (details or {}).get("progress_percent")
-            download_progress = raw_progress if isinstance(raw_progress, int) else 0
-            bounded = max(0, min(download_progress, 100))
+            stage_progress = raw_progress if isinstance(raw_progress, int) else 0
+            bounded = max(0, min(stage_progress, 100))
             self.progress_percent = max(
                 self.progress_percent,
                 start_percent + ((end_percent - start_percent) * bounded // 100),
