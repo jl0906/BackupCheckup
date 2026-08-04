@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.0.2
+
+### Security
+
+- Replaced the custom TLS context exception with exact runner-certificate
+  fingerprint verification.
+- Completed the documented SonarCloud security and code-quality remediations.
+
+### Fixed
+
+- Recovered existing runner registrations directly from Supervisor discovery
+  state and continued checking when the runner starts after Home Assistant.
+- Accepted both structured and legacy Home Assistant discovery payloads.
+- Classified `hassio.local` as local storage and every `hassio.<mount>` backup
+  target as Home Assistant OS network storage, independent of its display name.
+- Prevented correctly configured local and network copies from causing an
+  unclassified-storage deduction or incorrect recovery recommendation.
+
+### Changed
+
+- Reduced frontend and coordinator cognitive complexity and removed the remaining
+  open SonarCloud code-smell patterns.
+
 ## 3.0.1
 
 ### Security

@@ -1,4 +1,4 @@
-const PANEL_ELEMENT_NAME = "backup-checkup-panel-v3-0-1-r1";
+const PANEL_ELEMENT_NAME = "backup-checkup-panel-v3-0-2-r1";
 
 const TRANSLATION_SEPARATOR = "\u001f";
 const TRANSLATION_KEYS = Object.freeze({
@@ -852,7 +852,7 @@ class BackupCheckupPanel extends HTMLElement {
   _text() {
     const language = this._language();
     const selected = TEXT[language];
-    const recovery = RECOVERY_TEXT[language] || {};
+    const recovery = RECOVERY_TEXT[language] ?? RECOVERY_TEXT.en;
     return {
       ...TEXT.en,
       ...selected,
@@ -860,14 +860,14 @@ class BackupCheckupPanel extends HTMLElement {
       activityOutcomes: { ...TEXT.en.activityOutcomes, ...selected.activityOutcomes },
       config: {
         ...CONFIG_TEXT.en,
-        ...(CONFIG_TEXT[language] || {}),
+        ...CONFIG_TEXT[language],
         optionLabels: {
           ...CONFIG_TEXT.en.optionLabels,
-          ...(CONFIG_TEXT[language]?.optionLabels || {}),
+          ...CONFIG_TEXT[language]?.optionLabels,
         },
         errors: {
           ...CONFIG_TEXT.en.errors,
-          ...(CONFIG_TEXT[language]?.errors || {}),
+          ...CONFIG_TEXT[language]?.errors,
         },
       },
       recovery: {
@@ -875,63 +875,63 @@ class BackupCheckupPanel extends HTMLElement {
         ...recovery,
         checkLabels: {
           ...RECOVERY_TEXT.en.checkLabels,
-          ...(recovery.checkLabels || {}),
+          ...recovery.checkLabels,
         },
         storageClassLabels: {
           ...RECOVERY_TEXT.en.storageClassLabels,
-          ...(recovery.storageClassLabels || {}),
+          ...recovery.storageClassLabels,
         },
         checklistLabels: {
           ...RECOVERY_TEXT.en.checklistLabels,
-          ...(recovery.checklistLabels || {}),
+          ...recovery.checklistLabels,
         },
         dependencyLabels: {
           ...RECOVERY_TEXT.en.dependencyLabels,
-          ...(recovery.dependencyLabels || {}),
+          ...recovery.dependencyLabels,
         },
         checklistStatusLabels: {
           ...RECOVERY_TEXT.en.checklistStatusLabels,
-          ...(recovery.checklistStatusLabels || {}),
+          ...recovery.checklistStatusLabels,
         },
         dependencyStatusLabels: {
           ...RECOVERY_TEXT.en.dependencyStatusLabels,
-          ...(recovery.dependencyStatusLabels || {}),
+          ...recovery.dependencyStatusLabels,
         },
         restoreResultLabels: {
           ...RECOVERY_TEXT.en.restoreResultLabels,
-          ...(recovery.restoreResultLabels || {}),
+          ...recovery.restoreResultLabels,
         },
         evidenceLabels: {
           ...RECOVERY_TEXT.en.evidenceLabels,
-          ...(recovery.evidenceLabels || {}),
+          ...recovery.evidenceLabels,
         },
         evidenceDescriptions: {
           ...RECOVERY_TEXT.en.evidenceDescriptions,
-          ...(recovery.evidenceDescriptions || {}),
+          ...recovery.evidenceDescriptions,
         },
         profileLabels: {
           ...RECOVERY_TEXT.en.profileLabels,
-          ...(recovery.profileLabels || {}),
+          ...recovery.profileLabels,
         },
         riskLabels: {
           ...RECOVERY_TEXT.en.riskLabels,
-          ...(recovery.riskLabels || {}),
+          ...recovery.riskLabels,
         },
         restoreScopeLabels: {
           ...RECOVERY_TEXT.en.restoreScopeLabels,
-          ...(recovery.restoreScopeLabels || {}),
+          ...recovery.restoreScopeLabels,
         },
         simulationStatusLabels: {
           ...RECOVERY_TEXT.en.simulationStatusLabels,
-          ...(recovery.simulationStatusLabels || {}),
+          ...recovery.simulationStatusLabels,
         },
         simulationStageLabels: {
           ...RECOVERY_TEXT.en.simulationStageLabels,
-          ...(recovery.simulationStageLabels || {}),
+          ...recovery.simulationStageLabels,
         },
         simulationStageStateLabels: {
           ...RECOVERY_TEXT.en.simulationStageStateLabels,
-          ...(recovery.simulationStageStateLabels || {}),
+          ...recovery.simulationStageStateLabels,
         },
       },
     };
@@ -996,7 +996,8 @@ class BackupCheckupPanel extends HTMLElement {
         top: Number(element.scrollTop) || 0,
       });
     };
-    let current = this;
+    remember(this);
+    let current = this.parentElement || this.getRootNode?.()?.host || null;
     while (current) {
       remember(current);
       const root = current.getRootNode?.();
@@ -1128,13 +1129,20 @@ class BackupCheckupPanel extends HTMLElement {
 
   _recoveryCheckRows(checks, text) {
     return RECOVERY_CHECK_KEYS.map((key) => {
-      const value = Object.prototype.hasOwnProperty.call(checks || {}, key)
+      const value = Object.hasOwn(checks || {}, key)
         ? checks[key] : null;
-      const tone = value === true ? "good" : value === false ? "danger" : "neutral";
-      const icon = value === true
-        ? "mdi:check-circle-outline"
-        : value === false ? "mdi:alert-circle-outline" : "mdi:help-circle-outline";
-      const result = value === true ? text.passed : value === false ? text.failed : text.unknown;
+      let tone = "neutral";
+      let icon = "mdi:help-circle-outline";
+      let result = text.unknown;
+      if (value === true) {
+        tone = "good";
+        icon = "mdi:check-circle-outline";
+        result = text.passed;
+      } else if (value === false) {
+        tone = "danger";
+        icon = "mdi:alert-circle-outline";
+        result = text.failed;
+      }
       return `<div class="recovery-check ${tone}">
         <ha-icon icon="${icon}"></ha-icon>
         <div><strong>${this._escape(text.checkLabels?.[key] || this._humanize(key))}</strong><span>${this._escape(result)}</span></div>
@@ -1186,9 +1194,9 @@ class BackupCheckupPanel extends HTMLElement {
     if (!comparison?.baseline_available) {
       return `<div class="empty"><ha-icon icon="mdi:history"></ha-icon>${this._escape(text.baselineMissing)}</div>`;
     }
-    const state = comparison.material_regression
-      ? text.contentRegression
-      : comparison.changed ? text.contentChanged : text.noContentChanges;
+    let state = text.noContentChanges;
+    if (comparison.material_regression) state = text.contentRegression;
+    else if (comparison.changed) state = text.contentChanged;
     const critical = Array.isArray(comparison.critical_components_missing)
       ? comparison.critical_components_missing.map((key) => text[key] || this._humanize(key)).join(", ")
       : "";
@@ -1256,9 +1264,15 @@ class BackupCheckupPanel extends HTMLElement {
       const detected = !isChecklist && item.detected;
       const expired = Boolean(item.expired);
       const effectiveLabel = statusLabels[displayStatus] || text.unknown;
+      const detectedBadge = detected
+        ? `<span class="preparedness-badge detected">${this._escape(text.detected)}</span>`
+        : "";
+      const expiredBadge = expired
+        ? `<span class="preparedness-badge expired">${this._escape(text.expired)}</span>`
+        : "";
       return `<div class="preparedness-row ${expired ? "expired" : ""}">
         <div class="preparedness-copy"><strong>${this._escape(itemLabels[key])}</strong><span>${this._escape(effectiveLabel)}</span></div>
-        <div class="preparedness-badges">${detected ? `<span class="preparedness-badge detected">${this._escape(text.detected)}</span>` : ""}${expired ? `<span class="preparedness-badge expired">${this._escape(text.expired)}</span>` : ""}</div>
+        <div class="preparedness-badges">${detectedBadge}${expiredBadge}</div>
         ${this._preparednessSelect(section, key, item, statusLabels, isAdmin)}
       </div>`;
     }).join("");
@@ -1271,9 +1285,10 @@ class BackupCheckupPanel extends HTMLElement {
 
   _simulationRows(simulation, text, compact = false) {
     const status = simulation?.status || "not_run";
-    const tone = ["passed"].includes(status) ? "good"
-      : ["running", "warning", "aborted", "password_required", "inconclusive"].includes(status) ? "warning"
-        : status === "failed" ? "danger" : "neutral";
+    let tone = "neutral";
+    if (status === "passed") tone = "good";
+    else if (["running", "warning", "aborted", "password_required", "inconclusive"].includes(status)) tone = "warning";
+    else if (status === "failed") tone = "danger";
     const statusLabel = text.simulationStatusLabels?.[status] || this._humanize(status);
     const progress = Math.min(100, Math.max(0, Number(simulation?.progress_percent) || 0));
     const stage = simulation?.stage || "prepare";
@@ -1286,15 +1301,19 @@ class BackupCheckupPanel extends HTMLElement {
     const importantStages = allStageEntries.filter(([, value]) =>
       ["running", "failed", "warning"].includes(value)
     );
-    const stageEntries = compact
-      ? (importantStages.length ? importantStages : allStageEntries.slice(-1))
-      : allStageEntries;
+    let stageEntries = allStageEntries;
+    if (compact) {
+      stageEntries = importantStages.length ? importantStages : allStageEntries.slice(-1);
+    }
     const stageRows = stageEntries.map(([key, value]) => {
-      const icon = value === "passed" ? "mdi:check-circle"
-        : value === "failed" ? "mdi:close-circle"
-          : value === "running" ? "mdi:progress-clock"
-            : value === "warning" ? "mdi:alert-circle"
-              : value === "not_applicable" ? "mdi:minus-circle-outline" : "mdi:clock-outline";
+      const icons = {
+        passed: "mdi:check-circle",
+        failed: "mdi:close-circle",
+        running: "mdi:progress-clock",
+        warning: "mdi:alert-circle",
+        not_applicable: "mdi:minus-circle-outline",
+      };
+      const icon = icons[value] || "mdi:clock-outline";
       const label = text.simulationStageLabels?.[key] || this._humanize(key);
       const stateLabel = text.simulationStageStateLabels?.[value] || this._humanize(value);
       return `<div class="simulation-stage ${this._escape(value)}">
@@ -1339,9 +1358,10 @@ class BackupCheckupPanel extends HTMLElement {
     if (status === "not_available") {
       return `<div class="empty runtime-empty"><ha-icon icon="mdi:server-off"></ha-icon>${this._escape(text.runtimeUnavailable)}</div>`;
     }
-    const tone = status === "passed" ? "good"
-      : ["running", "aborted", "inconclusive"].includes(status) ? "warning"
-        : status === "failed" ? "danger" : "neutral";
+    let tone = "neutral";
+    if (status === "passed") tone = "good";
+    else if (["running", "aborted", "inconclusive"].includes(status)) tone = "warning";
+    else if (status === "failed") tone = "danger";
     const terminal = ["passed", "failed", "aborted", "inconclusive"].includes(status);
     const storedProgress = runtime?.progress_percent;
     const progress = Math.min(100, Math.max(
@@ -1352,9 +1372,12 @@ class BackupCheckupPanel extends HTMLElement {
     const statusLabel = text.runtimeStatusLabels?.[status] || this._humanize(status);
     const stageLabel = text.runtimeStageLabels?.[stage] || this._humanize(stage);
     const stageRows = Object.entries(runtime?.stages || {}).map(([key, value]) => {
-      const icon = value === "passed" ? "mdi:check-circle"
-        : value === "failed" ? "mdi:close-circle"
-          : value === "running" ? "mdi:progress-clock" : "mdi:clock-outline";
+      const icons = {
+        passed: "mdi:check-circle",
+        failed: "mdi:close-circle",
+        running: "mdi:progress-clock",
+      };
+      const icon = icons[value] || "mdi:clock-outline";
       const label = text.runtimeStageLabels?.[key] || this._humanize(key);
       const stateLabel = text.simulationStageStateLabels?.[value] || this._humanize(value);
       return `<div class="simulation-stage ${this._escape(value)}">
@@ -1432,7 +1455,9 @@ class BackupCheckupPanel extends HTMLElement {
     if (!agents.length) return `<div class="empty">${this._escape(text.noStorage)}</div>`;
     return agents.map((agent) => {
       const tone = this._storageTone(agent);
-      const state = agent.error ? "offline" : agent.stale ? "stale" : "online";
+      let state = "online";
+      if (agent.error) state = "offline";
+      else if (agent.stale) state = "stale";
       const latest = agent.latest_backup ? this._date(agent.latest_backup) : "—";
       const reason = agent.error ? this._friendlyError(agent.error, text) : "";
       return `
@@ -1500,7 +1525,10 @@ class BackupCheckupPanel extends HTMLElement {
     const detailRows = values.map(([label, value]) => `<div class="explanation-row"><span>${this._escape(label)}</span><strong>${this._escape(value)}</strong></div>`).join("");
     if (!error) return detailRows;
     const recommendation = this._friendlyRecommendation(error, text);
-    return `${detailRows}<div class="result-advice"><strong>${this._escape(this._friendlyError(error, text))}</strong>${recommendation ? `<span>${this._escape(text.nextStep)}: ${this._escape(recommendation)}</span>` : ""}</div>`;
+    const advice = recommendation
+      ? `<span>${this._escape(text.nextStep)}: ${this._escape(recommendation)}</span>`
+      : "";
+    return `${detailRows}<div class="result-advice"><strong>${this._escape(this._friendlyError(error, text))}</strong>${advice}</div>`;
   }
 
   _problemRows(problems, text) {
@@ -1852,7 +1880,10 @@ class BackupCheckupPanel extends HTMLElement {
     if (!code) return "";
     const message = this._friendlyError(code, text);
     const recommendation = this._friendlyRecommendation(code, text);
-    return `<div class="log-advice"><strong>${this._escape(message)}</strong>${recommendation ? `<span>${this._escape(text.nextStep)}: ${this._escape(recommendation)}</span>` : ""}</div>`;
+    const advice = recommendation
+      ? `<span>${this._escape(text.nextStep)}: ${this._escape(recommendation)}</span>`
+      : "";
+    return `<div class="log-advice"><strong>${this._escape(message)}</strong>${advice}</div>`;
   }
 
   _levelMatches(record) {
@@ -1968,7 +1999,10 @@ class BackupCheckupPanel extends HTMLElement {
 
     const baseError = this._configError("base", text);
     const saved = state.saved ? `<div class="config-success"><ha-icon icon="mdi:check-circle-outline"></ha-icon>${this._escape(text.saved)}</div>` : "";
-    return `<section class="config-page"><section class="config-intro"><div><h2>${this._escape(text.title)}</h2><p>${this._escape(text.subtitle)}</p></div><span><ha-icon icon="mdi:reload"></ha-icon>${this._escape(text.reloadNotice)}</span></section>${saved}${baseError}<section class="content-grid config-top">${hardwareCard}${this._configSection(text.runtime, text.runtimeHelp, runtimeFields)}</section>${this._configSection(text.monitoring, text.monitoringHelp, monitoringFields)}${this._configSection(text.verification, text.verificationHelp, verificationFields)}${this._configSection(text.presentation, text.presentationHelp, presentationFields)}<footer class="config-footer"><button class="action secondary" data-config-reset ${state.status === "saving" ? "disabled" : ""}><ha-icon icon="mdi:undo-variant"></ha-icon>${this._escape(text.reset)}</button><button class="action primary" data-config-save ${state.status === "saving" ? "disabled" : ""}><ha-icon icon="mdi:content-save-outline"></ha-icon>${this._escape(state.status === "saving" ? text.saving : text.save)}</button></footer></section>`;
+    const saving = state.status === "saving";
+    const disabled = saving ? "disabled" : "";
+    const saveLabel = saving ? text.saving : text.save;
+    return `<section class="config-page"><section class="config-intro"><div><h2>${this._escape(text.title)}</h2><p>${this._escape(text.subtitle)}</p></div><span><ha-icon icon="mdi:reload"></ha-icon>${this._escape(text.reloadNotice)}</span></section>${saved}${baseError}<section class="content-grid config-top">${hardwareCard}${this._configSection(text.runtime, text.runtimeHelp, runtimeFields)}</section>${this._configSection(text.monitoring, text.monitoringHelp, monitoringFields)}${this._configSection(text.verification, text.verificationHelp, verificationFields)}${this._configSection(text.presentation, text.presentationHelp, presentationFields)}<footer class="config-footer"><button class="action secondary" data-config-reset ${disabled}><ha-icon icon="mdi:undo-variant"></ha-icon>${this._escape(text.reset)}</button><button class="action primary" data-config-save ${disabled}><ha-icon icon="mdi:content-save-outline"></ha-icon>${this._escape(saveLabel)}</button></footer></section>`;
   }
 
   async _callWS(message) {
@@ -1977,14 +2011,25 @@ class BackupCheckupPanel extends HTMLElement {
     return response?.result ?? response;
   }
 
+  _clone(value) {
+    if (Array.isArray(value)) return value.map((item) => this._clone(item));
+    if (value && typeof value === "object") {
+      return Object.fromEntries(
+        Object.entries(value).map(([key, item]) => [key, this._clone(item)])
+      );
+    }
+    return value;
+  }
+
   async _loadConfiguration(force = false) {
     if (!this._hass?.user?.is_admin || (!force && ["loading", "ready", "saving"].includes(this._configState.status))) return;
     this._configState = { ...this._configState, status: "loading", errors: {}, saved: false };
     this._scheduleRender();
     try {
       const data = await this._callWS({ type: "backup_checkup/config/get", entry_id: this._panel?.config?.entry_id });
-      this._configState = { status: "ready", data, draft: JSON.parse(JSON.stringify(data.values || {})), errors: {}, saved: false };
-    } catch (_error) {
+      this._configState = { status: "ready", data, draft: this._clone(data.values || {}), errors: {}, saved: false };
+    } catch (error) {
+      console.warn("BackupCheckup configuration loading failed", error);
       this._configState = { status: "error", data: null, draft: null, errors: {}, saved: false };
     }
     this._scheduleRender();
@@ -2008,7 +2053,7 @@ class BackupCheckupPanel extends HTMLElement {
 
   _resetConfiguration() {
     if (!this._configState.data) return;
-    this._configState = { ...this._configState, status: "ready", draft: JSON.parse(JSON.stringify(this._configState.data.values || {})), errors: {}, saved: false };
+    this._configState = { ...this._configState, status: "ready", draft: this._clone(this._configState.data.values || {}), errors: {}, saved: false };
     this._scheduleRender();
   }
 
@@ -2022,10 +2067,11 @@ class BackupCheckupPanel extends HTMLElement {
         this._configState = { ...this._configState, status: "ready", errors: result?.errors || { base: "invalid_payload" }, saved: false };
       } else {
         const data = { ...this._configState.data, values: result.values };
-        this._configState = { status: "ready", data, draft: JSON.parse(JSON.stringify(result.values || {})), errors: {}, saved: true };
+        this._configState = { status: "ready", data, draft: this._clone(result.values || {}), errors: {}, saved: true };
         this.dispatchEvent(new CustomEvent("hass-notification", { bubbles: true, composed: true, detail: { message: this._text().config.saved } }));
       }
-    } catch (_error) {
+    } catch (error) {
+      console.warn("BackupCheckup configuration saving failed", error);
       this._configState = { ...this._configState, status: "ready", errors: { base: "invalid_payload" }, saved: false };
     }
     this._scheduleRender();
@@ -2038,6 +2084,12 @@ class BackupCheckupPanel extends HTMLElement {
         <p>${this._escape(model.text.loggingDisabled)}</p>
       </section>`;
     }
+    const clearDisabled = this._buttonDisabled(model.clearActivityState, "clear_activity_log")
+      ? "disabled"
+      : "";
+    const clearButton = model.isAdmin
+      ? `<button class="log-action danger" data-action="clear_activity_log" ${clearDisabled}><ha-icon icon="mdi:delete-sweep-outline"></ha-icon>${this._escape(model.text.clearLog)}</button>`
+      : "";
     return `<section class="log-view">
       <div class="log-toolbar">
         <label><ha-icon icon="mdi:magnify"></ha-icon>
@@ -2053,58 +2105,36 @@ class BackupCheckupPanel extends HTMLElement {
       <article class="log-console">
         <div class="log-heading"><h2>${this._escape(model.text.logTitle)}</h2><div>
           <button class="log-action" data-export-log><ha-icon icon="mdi:download-outline"></ha-icon>${this._escape(model.text.exportLog)}</button>
-          ${model.isAdmin ? `<button class="log-action danger" data-action="clear_activity_log" ${this._buttonDisabled(model.clearActivityState, "clear_activity_log") ? "disabled" : ""}><ha-icon icon="mdi:delete-sweep-outline"></ha-icon>${this._escape(model.text.clearLog)}</button>` : ""}
+          ${clearButton}
         </div></div>
         <div class="log-lines">${this._logRows(model.activityEntries, model.text)}</div>
       </article>
     </section>`;
   }
 
-  _render() {
-    if (!this.shadowRoot || !this._hass) return;
-    const scrollPositions = this._captureScrollPositions();
-    const previousLog = this.shadowRoot.querySelector(".log-lines");
-    const previousLogState = previousLog ? {
-      top: previousLog.scrollTop,
-      atBottom: previousLog.scrollHeight - previousLog.scrollTop - previousLog.clientHeight < 48,
-    } : null;
-    const restoreSearchFocus = this.shadowRoot.activeElement?.hasAttribute("data-log-search");
-    const model = this._renderModel();
-    if (this._activeTab === "logs") {
-      const entryCount = model.activityEntries.length;
-      if (this._lastActivitySequence === null) {
-        this._scrollLogToBottom = true;
-      } else if (model.activitySequence > this._lastActivitySequence && entryCount >= this._lastActivityEntryCount) {
-        const added = Math.max(1, entryCount - this._lastActivityEntryCount);
-        if (previousLogState?.atBottom) this._scrollLogToBottom = true;
-        else this._pendingLogEntries += added;
-      }
-      if (entryCount < this._lastActivityEntryCount) this._pendingLogEntries = 0;
-      this._lastActivitySequence = model.activitySequence;
-      this._lastActivityEntryCount = entryCount;
+  _updateLogRenderState(model, previousLogState) {
+    if (this._activeTab !== "logs") return;
+    const entryCount = model.activityEntries.length;
+    if (this._lastActivitySequence === null) {
+      this._scrollLogToBottom = true;
+    } else if (model.activitySequence > this._lastActivitySequence && entryCount >= this._lastActivityEntryCount) {
+      const added = Math.max(1, entryCount - this._lastActivityEntryCount);
+      if (previousLogState?.atBottom) this._scrollLogToBottom = true;
+      else this._pendingLogEntries += added;
     }
-    if (this._activeTab === "settings" && !model.isAdmin) this._activeTab = "overview";
-    const content = this._activeTab === "settings"
-      ? this._settingsTemplate(model)
-      : this._activeTab === "logs"
-        ? this._logTemplate(model)
-        : this._activeTab === "recovery"
-          ? this._recoveryTemplate(model)
-          : this._overviewTemplate(model);
-    const settingsButton = this._settingsButton(model.isAdmin, model.text);
+    if (entryCount < this._lastActivityEntryCount) this._pendingLogEntries = 0;
+    this._lastActivitySequence = model.activitySequence;
+    this._lastActivityEntryCount = entryCount;
+  }
 
-    this.shadowRoot.innerHTML = `
-      <style>${BackupCheckupPanel.styles}</style>
-      <main>
-        <header>
-          <div class="brand"><ha-icon icon="mdi:backup-restore"></ha-icon></div>
-          <div><h1>${this._escape(model.text.dashboard)}</h1><p>${this._escape(model.text.subtitle)}</p></div>
-          ${settingsButton}
-        </header>
-        ${this._tabs(model.text, model.isAdmin)}
-        ${content}
-      </main>`;
+  _activeTemplate(model) {
+    if (this._activeTab === "settings") return this._settingsTemplate(model);
+    if (this._activeTab === "logs") return this._logTemplate(model);
+    if (this._activeTab === "recovery") return this._recoveryTemplate(model);
+    return this._overviewTemplate(model);
+  }
 
+  _bindConfigurationEvents() {
     this.shadowRoot.querySelector('[data-nav="settings"]')?.addEventListener("click", () => this._openSettings());
     this.shadowRoot.querySelector("[data-config-retry]")?.addEventListener("click", () => this._loadConfiguration(true));
     this.shadowRoot.querySelector("[data-config-reset]")?.addEventListener("click", () => this._resetConfiguration());
@@ -2112,6 +2142,9 @@ class BackupCheckupPanel extends HTMLElement {
     this.shadowRoot.querySelectorAll("[data-config-key]").forEach((element) => {
       element.addEventListener("change", () => this._setConfigValue(element));
     });
+  }
+
+  _bindNavigationEvents(model) {
     this.shadowRoot.querySelectorAll("[data-tab]").forEach((button) => {
       button.addEventListener("click", () => {
         this._activeTab = button.dataset.tab;
@@ -2131,6 +2164,9 @@ class BackupCheckupPanel extends HTMLElement {
         this._runAction(action);
       });
     });
+  }
+
+  _bindRecoveryEvents(model) {
     this.shadowRoot.querySelectorAll("[data-preparedness-section]").forEach((select) => {
       select.addEventListener("change", () => {
         this._setRecoveryPreparedness(
@@ -2148,6 +2184,9 @@ class BackupCheckupPanel extends HTMLElement {
     this.shadowRoot.querySelectorAll("[data-export-plan]").forEach((button) => {
       button.addEventListener("click", () => this._exportRecoveryPlan(model, button.dataset.exportPlan));
     });
+  }
+
+  _bindLogEvents(model, restoreSearchFocus, previousLogState) {
     this.shadowRoot.querySelectorAll("[data-level-filter]").forEach((button) => {
       button.addEventListener("click", () => {
         this._logLevelFilter = button.dataset.levelFilter;
@@ -2176,22 +2215,58 @@ class BackupCheckupPanel extends HTMLElement {
       search.focus({ preventScroll: true });
       search.setSelectionRange(search.value.length, search.value.length);
     }
+    this._restoreLogPosition(previousLogState);
+  }
+
+  _restoreLogPosition(previousLogState) {
     const currentLog = this.shadowRoot.querySelector(".log-lines");
-    if (currentLog) {
-      if (this._scrollLogToBottom || !previousLogState) {
-        currentLog.scrollTop = currentLog.scrollHeight;
-        this._scrollLogToBottom = false;
-      } else {
-        currentLog.scrollTop = previousLogState.top;
-      }
-      currentLog.addEventListener("scroll", () => {
-        const atBottom = currentLog.scrollHeight - currentLog.scrollTop - currentLog.clientHeight < 48;
-        if (atBottom && this._pendingLogEntries) {
-          this._pendingLogEntries = 0;
-          this._scheduleRender();
-        }
-      }, { passive: true });
+    if (!currentLog) return;
+    if (this._scrollLogToBottom || !previousLogState) {
+      currentLog.scrollTop = currentLog.scrollHeight;
+      this._scrollLogToBottom = false;
+    } else {
+      currentLog.scrollTop = previousLogState.top;
     }
+    currentLog.addEventListener("scroll", () => {
+      const atBottom = currentLog.scrollHeight - currentLog.scrollTop - currentLog.clientHeight < 48;
+      if (atBottom && this._pendingLogEntries) {
+        this._pendingLogEntries = 0;
+        this._scheduleRender();
+      }
+    }, { passive: true });
+  }
+
+  _render() {
+    if (!this.shadowRoot || !this._hass) return;
+    const scrollPositions = this._captureScrollPositions();
+    const previousLog = this.shadowRoot.querySelector(".log-lines");
+    const previousLogState = previousLog ? {
+      top: previousLog.scrollTop,
+      atBottom: previousLog.scrollHeight - previousLog.scrollTop - previousLog.clientHeight < 48,
+    } : null;
+    const restoreSearchFocus = this.shadowRoot.activeElement?.hasAttribute("data-log-search");
+    const model = this._renderModel();
+    this._updateLogRenderState(model, previousLogState);
+    if (this._activeTab === "settings" && !model.isAdmin) this._activeTab = "overview";
+    const content = this._activeTemplate(model);
+    const settingsButton = this._settingsButton(model.isAdmin, model.text);
+
+    this.shadowRoot.innerHTML = `
+      <style>${BackupCheckupPanel.styles}</style>
+      <main>
+        <header>
+          <div class="brand"><ha-icon icon="mdi:backup-restore"></ha-icon></div>
+          <div><h1>${this._escape(model.text.dashboard)}</h1><p>${this._escape(model.text.subtitle)}</p></div>
+          ${settingsButton}
+        </header>
+        ${this._tabs(model.text, model.isAdmin)}
+        ${content}
+      </main>`;
+
+    this._bindConfigurationEvents();
+    this._bindNavigationEvents(model);
+    this._bindRecoveryEvents(model);
+    this._bindLogEvents(model, restoreSearchFocus, previousLogState);
     this._restoreScrollPositions(scrollPositions);
   }
 

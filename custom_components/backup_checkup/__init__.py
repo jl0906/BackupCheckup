@@ -100,7 +100,11 @@ from .recovery_restore import (
     RESTORE_TEST_SCOPE_OPTIONS,
     RecoveryRestoreTestStore,
 )
-from .recovery_runtime import RuntimeTestStore
+from .recovery_runtime import (
+    RuntimeRunnerConnection,
+    RuntimeTestStore,
+    async_discover_supervisor_runner,
+)
 from .repairs import (
     async_remove_issues,
     async_set_temporary_cleanup_issue,
@@ -228,10 +232,7 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
     async def _async_refresh(_call: ServiceCall) -> None:
         coordinator = _loaded_coordinator(hass)
         _record_activity(coordinator, "service_refresh", ACTIVITY_OUTCOME_STARTED)
-        hass.async_create_task(
-            coordinator.async_request_refresh(),
-            name=f"{DOMAIN}_preparedness_refresh",
-        )
+        await coordinator.async_request_refresh()
         _record_activity(coordinator, "service_refresh", ACTIVITY_OUTCOME_COMPLETED)
 
     async def _async_test_notification(_call: ServiceCall) -> None:
@@ -447,8 +448,46 @@ async def _async_cleanup_stale_temporary_data(
         return TempCleanupResult(failures=1)
 
 
+async def _async_attach_discovered_runner(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> None:
+    """Attach an existing Supervisor discovery missed by the config flow."""
+    connection = await async_discover_supervisor_runner(hass)
+    if connection is None:
+        return
+    current = RuntimeRunnerConnection.from_mapping(entry.data.get(CONF_RUNTIME_RUNNER))
+    if current == connection:
+        return
+    hass.config_entries.async_update_entry(
+        entry,
+        data={**dict(entry.data), CONF_RUNTIME_RUNNER: connection.as_dict()},
+    )
+
+
+async def _async_monitor_runner_discovery(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    coordinator: BackupCheckupCoordinator,
+) -> None:
+    """Keep looking until a runner started after Home Assistant is registered."""
+    retry_delay = 5
+    while coordinator.runtime_runner_connection is None:
+        await asyncio.sleep(retry_delay)
+        connection = await async_discover_supervisor_runner(hass)
+        if connection is None:
+            retry_delay = min(60, retry_delay * 2)
+            continue
+        hass.config_entries.async_update_entry(
+            entry,
+            data={**dict(entry.data), CONF_RUNTIME_RUNNER: connection.as_dict()},
+        )
+        coordinator.attach_runtime_runner(connection)
+        await coordinator.async_request_refresh()
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up BackupCheckup from a config entry."""
+    await _async_attach_discovered_runner(hass, entry)
     coordinator = BackupCheckupCoordinator(hass, entry)
     # Register shutdown before the first await so Home Assistant can clean up
     # coordinator-owned tasks even when setup fails partway through.
@@ -495,6 +534,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     entry.runtime_data = coordinator
     coordinator.async_start_adaptive_polling()
+    if coordinator.runtime_runner_connection is None:
+        runner_monitor = hass.async_create_task(
+            _async_monitor_runner_discovery(hass, entry, coordinator),
+            name=f"{DOMAIN}_runtime_runner_discovery",
+        )
+        entry.async_on_unload(runner_monitor.cancel)
 
     def _sync_repair_issues() -> None:
         if coordinator.repair_issues_enabled:

@@ -86,7 +86,7 @@ _FAILED_OUTCOMES = {"cancelled", "failed", "skipped"}
 
 def _empty_stages(*, database_check_enabled: bool) -> dict[str, str]:
     """Return a stable ordered stage mapping for the frontend pipeline."""
-    stages = {stage: STAGE_PENDING for stage in SIMULATION_STAGE_OPTIONS}
+    stages = dict.fromkeys(SIMULATION_STAGE_OPTIONS, STAGE_PENDING)
     if not database_check_enabled:
         stages[STAGE_DATABASE] = STAGE_NOT_APPLICABLE
     return stages

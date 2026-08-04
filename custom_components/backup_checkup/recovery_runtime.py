@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
 
+import aiohttp
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
@@ -100,17 +101,16 @@ def _bounded_percent(value: Any) -> int:
 
 def _empty_stages() -> dict[str, str]:
     """Return the stable runtime pipeline shape."""
-    return {stage: "pending" for stage in RUNTIME_STAGE_OPTIONS}
+    return dict.fromkeys(RUNTIME_STAGE_OPTIONS, "pending")
 
 
-def _tls_context(certificate: str) -> ssl.SSLContext | None:
-    """Build a TLS context pinned to the runner's discovered certificate."""
+def _tls_fingerprint(certificate: str) -> aiohttp.Fingerprint | None:
+    """Build an aiohttp pin from the runner's discovered certificate."""
     try:
-        context = ssl.create_default_context(cadata=certificate)
-    except ssl.SSLError:
+        der_certificate = ssl.PEM_cert_to_DER_cert(certificate)
+    except ValueError:
         return None
-    context.check_hostname = False
-    return context
+    return aiohttp.Fingerprint(hashlib.sha256(der_certificate).digest())
 
 
 @dataclass(frozen=True, slots=True)
@@ -169,7 +169,7 @@ class RuntimeRunnerConnection:
         )
         if not base_url or not token or not runner_id or not tls_certificate:
             return None
-        if not base_url.startswith("https://") or _tls_context(tls_certificate) is None:
+        if not base_url.startswith("https://") or _tls_fingerprint(tls_certificate) is None:
             return None
         return cls(
             base_url=base_url.rstrip("/") + "/",
@@ -186,6 +186,30 @@ class RuntimeRunnerConnection:
             "runner_id": self.runner_id,
             "tls_certificate": self.tls_certificate,
         }
+
+
+async def async_discover_supervisor_runner(
+    hass: HomeAssistant,
+) -> RuntimeRunnerConnection | None:
+    """Recover a registered runner directly from Supervisor discovery state."""
+    try:
+        from homeassistant.components.hassio.handler import (
+            get_supervisor_client,
+        )
+    except ImportError:
+        return None
+    try:
+        discoveries = await get_supervisor_client(hass).discovery.list()
+    except Exception:  # noqa: BLE001 - optional Supervisor integration boundary
+        return None
+    for discovery in discoveries:
+        service = getattr(discovery, "service", None)
+        config = getattr(discovery, "config", None)
+        if service != DOMAIN or not isinstance(config, Mapping):
+            continue
+        if connection := RuntimeRunnerConnection.from_discovery(config):
+            return connection
+    return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -440,8 +464,8 @@ class RuntimeRunnerClient:
         """Initialize the authenticated HTTP client."""
         self._session = session
         self._connection = connection
-        self._ssl_context = _tls_context(connection.tls_certificate)
-        if self._ssl_context is None:
+        self._tls_pin = _tls_fingerprint(connection.tls_certificate)
+        if self._tls_pin is None:
             raise RuntimeRunnerError("runner_tls_invalid")
 
     @property
@@ -470,7 +494,7 @@ class RuntimeRunnerClient:
                 self._url("v1/health"),
                 headers=self._headers,
                 timeout=10,
-                ssl=self._ssl_context,
+                ssl=self._tls_pin,
             ) as response:
                 if response.status != 200:
                     raise RuntimeRunnerError("runner_unavailable")
@@ -559,7 +583,7 @@ class RuntimeRunnerClient:
                 headers=self._headers,
                 json=payload,
                 timeout=15,
-                ssl=self._ssl_context,
+                ssl=self._tls_pin,
             ) as response:
                 data = await response.json()
                 if response.status != 201 or not isinstance(data, Mapping):
@@ -612,7 +636,7 @@ class RuntimeRunnerClient:
                 headers=headers,
                 data=self._archive_chunks(archive_path, progress_callback),
                 timeout=None,
-                ssl=self._ssl_context,
+                ssl=self._tls_pin,
             ) as response:
                 if response.status != 204:
                     try:
@@ -631,7 +655,7 @@ class RuntimeRunnerClient:
                 self._url(f"v1/runs/{run_id}/start"),
                 headers=self._headers,
                 timeout=15,
-                ssl=self._ssl_context,
+                ssl=self._tls_pin,
             ) as response:
                 if response.status != 202:
                     try:
@@ -659,7 +683,7 @@ class RuntimeRunnerClient:
                     self._url(f"v1/runs/{run_id}"),
                     headers=self._headers,
                     timeout=10,
-                    ssl=self._ssl_context,
+                    ssl=self._tls_pin,
                 ) as response:
                     payload = await response.json()
                     if response.status != 200 or not isinstance(payload, Mapping):
@@ -687,9 +711,9 @@ class RuntimeRunnerClient:
                 self._url(f"v1/runs/{run_id}"),
                 headers=self._headers,
                 timeout=10,
-                ssl=self._ssl_context,
-            ):
-                pass
+                ssl=self._tls_pin,
+            ) as response:
+                response.release()
         except Exception:  # noqa: BLE001 - best-effort remote cleanup
             return
 

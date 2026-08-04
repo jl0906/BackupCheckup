@@ -237,7 +237,11 @@ class BackupCheckupConfigFlow(
         self, discovery_info: HassioServiceInfo
     ) -> FlowResult:
         """Attach the companion app without creating a second config entry."""
-        discovery_config = getattr(discovery_info, "config", None)
+        discovery_config = getattr(
+            discovery_info,
+            "config",
+            discovery_info if isinstance(discovery_info, Mapping) else None,
+        )
         if not isinstance(discovery_config, Mapping):
             return self.async_abort(reason="invalid_runtime_runner")
         connection = RuntimeRunnerConnection.from_discovery(discovery_config)

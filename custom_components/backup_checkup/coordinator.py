@@ -12,7 +12,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from pathlib import Path
 from statistics import median
-from typing import Any
+from typing import Any, cast
 
 from homeassistant.components.backup import async_get_manager
 from homeassistant.config_entries import ConfigEntry
@@ -33,7 +33,7 @@ from .activity import (
     ACTIVITY_OUTCOME_STARTED,
     BackupCheckupActivityLog,
 )
-from .adaptive_policy import resolve_adaptive_policy
+from .adaptive_policy import AdaptiveRecoveryPolicy, resolve_adaptive_policy
 from .age import completed_age_days, precise_age_days
 from .analytics import (
     HealthScore,
@@ -81,7 +81,11 @@ from .native_backup import (
 )
 from .notifications import BackupCheckupNotificationManager
 from .problem_state import evaluate_problem_state
-from .recovery import RecoveryReadiness, assess_recovery_readiness
+from .recovery import (
+    RecoveryAssessmentContext,
+    RecoveryReadiness,
+    assess_recovery_readiness,
+)
 from .recovery_preparedness import (
     RecoveryPreparednessStore,
     detect_recovery_dependencies,
@@ -215,15 +219,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self.runtime_runner_connection = RuntimeRunnerConnection.from_mapping(
             runner_data
         )
-        self.recovery_policy = resolve_adaptive_policy(
-            runtime_profile=self.settings.runtime.profile,
-            update_interval_minutes=self.settings.runtime.update_interval_minutes,
-            auto_verify_new_backups=self.settings.verification.auto_verify_new_backups,
-            database_integrity_check=(
-                self.settings.verification.database_integrity_check
-            ),
-            ephemeral_runner_available=self.runtime_runner_connection is not None,
-        )
+        self.recovery_policy = self._resolve_recovery_policy()
 
         self.activity = BackupCheckupActivityLog(
             hass,
@@ -273,6 +269,23 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             name=DOMAIN,
             update_interval=timedelta(minutes=self.settings.update_interval_minutes),
         )
+
+    def _resolve_recovery_policy(self) -> AdaptiveRecoveryPolicy:
+        """Resolve adaptive policy against the current runner availability."""
+        return resolve_adaptive_policy(
+            runtime_profile=self.settings.runtime.profile,
+            update_interval_minutes=self.settings.runtime.update_interval_minutes,
+            auto_verify_new_backups=self.settings.verification.auto_verify_new_backups,
+            database_integrity_check=(
+                self.settings.verification.database_integrity_check
+            ),
+            ephemeral_runner_available=self.runtime_runner_connection is not None,
+        )
+
+    def attach_runtime_runner(self, connection: RuntimeRunnerConnection) -> None:
+        """Attach a runner discovered after the coordinator was initialized."""
+        self.runtime_runner_connection = connection
+        self.recovery_policy = self._resolve_recovery_policy()
 
     def _apply_settings_compatibility_attributes(self) -> None:
         """Expose stable attributes used by entities and existing tests."""
@@ -681,11 +694,15 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             agent_summaries=storage.summaries,
             preparedness=preparedness,
             restore_test=restore_test,
-            generated_at=now,
-            installation_type=self.settings.runtime.hardware_detection.get(
-                "installation_type"
+            context=RecoveryAssessmentContext(
+                generated_at=now,
+                installation_type=self.settings.runtime.hardware_detection.get(
+                    "installation_type"
+                ),
+                language=getattr(
+                    getattr(self.hass, "config", None), "language", "en"
+                ),
             ),
-            language=getattr(getattr(self.hass, "config", None), "language", "en"),
             simulation_progress=self.recovery_simulation_progress.as_dict(),
             adaptive_policy=self.recovery_policy,
             runtime_test=self.runtime_tests.snapshot(),
@@ -1346,52 +1363,61 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             agent_summaries=summaries,
             preparedness=preparedness,
             restore_test=restore_test,
-            generated_at=now,
-            installation_type=self.settings.runtime.hardware_detection.get(
-                "installation_type"
+            context=RecoveryAssessmentContext(
+                generated_at=now,
+                installation_type=self.settings.runtime.hardware_detection.get(
+                    "installation_type"
+                ),
+                language=getattr(
+                    getattr(self.hass, "config", None), "language", "en"
+                ),
             ),
-            language=getattr(getattr(self.hass, "config", None), "language", "en"),
             runtime_test=self.runtime_tests.snapshot(),
         )
-        return replace(
-            self.data,
-            checked_at=now,
-            latest_backup_age_days=freshness.latest_days,
-            latest_backup_age_days_precise=freshness.latest_precise,
-            automatic_backup_age_days=freshness.automatic_days,
-            automatic_backup_age_days_precise=freshness.automatic_precise,
-            manual_backup_age_days=freshness.manual_days,
-            manual_backup_age_days_precise=freshness.manual_precise,
-            agent_summaries=summaries,
-            backup_stale=freshness.backup_stale,
-            automatic_backup_overdue=freshness.automatic_backup_overdue,
-            required_location_missing=required_missing,
-            manager_state=STATE_UNAVAILABLE,
-            manager_unavailable=True,
-            problem=True,
-            status=state.status,
-            recommendation=state.recommendation,
-            problem_count=len(state.active),
-            active_problems=state.active,
-            **_assessment_fields(health, recovery),
-            last_restore_test=restore_test.tested_at,
-            restore_test_result=restore_test.result,
-            restore_test_scope=restore_test.scope,
-            restore_test_overdue=(
-                restore_test.passed is not True
-                and self.data.latest_monitored_backup_record is not None
+        return cast(
+            BackupCheckupData,
+            replace(
+                self.data,
+                checked_at=now,
+                latest_backup_age_days=freshness.latest_days,
+                latest_backup_age_days_precise=freshness.latest_precise,
+                automatic_backup_age_days=freshness.automatic_days,
+                automatic_backup_age_days_precise=freshness.automatic_precise,
+                manual_backup_age_days=freshness.manual_days,
+                manual_backup_age_days_precise=freshness.manual_precise,
+                agent_summaries=summaries,
+                backup_stale=freshness.backup_stale,
+                automatic_backup_overdue=freshness.automatic_backup_overdue,
+                required_location_missing=required_missing,
+                manager_state=STATE_UNAVAILABLE,
+                manager_unavailable=True,
+                problem=True,
+                status=state.status,
+                recommendation=state.recommendation,
+                problem_count=len(state.active),
+                active_problems=state.active,
+                **_assessment_fields(health, recovery),
+                last_restore_test=restore_test.tested_at,
+                restore_test_result=restore_test.result,
+                restore_test_scope=restore_test.scope,
+                restore_test_overdue=(
+                    restore_test.passed is not True
+                    and self.data.latest_monitored_backup_record is not None
+                ),
+                recovery_plan_incomplete=bool(
+                    recovery.recovery_plan.get("warnings")
+                ),
+                recovery_checklist_incomplete=(
+                    recovery.checks.get("preparedness_checklist_complete") is not True
+                    and self.data.latest_monitored_backup_record is not None
+                ),
+                external_dependency_unprotected=(
+                    recovery.checks.get("external_dependencies_protected") is False
+                ),
+                backup_content_changed=recovery.backup_content_changed,
+                external_copy_missing=recovery.external_copy_missing,
+                agent_errors={**self.data.agent_errors, "manager": error_code},
             ),
-            recovery_plan_incomplete=bool(recovery.recovery_plan.get("warnings")),
-            recovery_checklist_incomplete=(
-                recovery.checks.get("preparedness_checklist_complete") is not True
-                and self.data.latest_monitored_backup_record is not None
-            ),
-            external_dependency_unprotected=(
-                recovery.checks.get("external_dependencies_protected") is False
-            ),
-            backup_content_changed=recovery.backup_content_changed,
-            external_copy_missing=recovery.external_copy_missing,
-            agent_errors={**self.data.agent_errors, "manager": error_code},
         )
 
     def _age_agent_summary(
@@ -1400,11 +1426,14 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         """Return one storage summary aged to the current failed refresh."""
         age = precise_age_days(now, summary.latest_backup)
         stale = age is None or age > self.max_age_days
-        return replace(
-            summary,
-            latest_backup_age_days=age,
-            stale=stale,
-            problem=bool(summary.error or stale),
+        return cast(
+            BackupAgentSummary,
+            replace(
+                summary,
+                latest_backup_age_days=age,
+                stale=stale,
+                problem=bool(summary.error or stale),
+            ),
         )
 
     def _schedule_automatic_verification(
@@ -1539,6 +1568,112 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         )
         return True
 
+    def _runtime_archive_callback(
+        self, record: BackupRecord, *, simulation_run: bool
+    ) -> Callable[..., object] | None:
+        """Return the optional callback that hands an archive to the runner."""
+        if not simulation_run or self.runtime_runner_connection is None:
+            return None
+        return lambda path, password, verified: self._async_run_runtime_test(
+            record, path, password, verified
+        )
+
+    def _publish_integrity_result(
+        self,
+        record: BackupRecord,
+        result: BackupIntegrityResult,
+        *,
+        simulation_run: bool,
+    ) -> None:
+        """Publish one verifier result to all in-memory consumers."""
+        self.integrity_result = result
+        if simulation_run:
+            self.recovery_simulation_progress.finish(result)
+            self._publish_simulation_progress(record)
+        self._update_integrity_retry_state(result)
+
+    async def _async_complete_integrity_check(
+        self,
+        record: BackupRecord,
+        result: BackupIntegrityResult,
+        *,
+        source: str,
+        simulation_run: bool,
+    ) -> None:
+        """Persist and record a successful verifier invocation."""
+        self._publish_integrity_result(
+            record, result, simulation_run=simulation_run
+        )
+        if source in {"manual", "simulation"}:
+            self._last_manual_verification_at = result.checked_at or dt_util.utcnow()
+        await self._try_persist_integrity_result(result, source, record)
+        self._record_activity(
+            "integrity_check",
+            ACTIVITY_OUTCOME_COMPLETED,
+            details={
+                "duration_seconds": result.duration_seconds,
+                "source": source,
+                "status": result.status,
+                "warning_count": len(result.warnings),
+            },
+        )
+
+    async def _async_fail_integrity_check(
+        self,
+        record: BackupRecord,
+        err: Exception,
+        *,
+        source: str,
+        simulation_run: bool,
+    ) -> None:
+        """Convert an unexpected verifier exception into bounded state."""
+        result = self._internal_error_result(record)
+        self._publish_integrity_result(
+            record, result, simulation_run=simulation_run
+        )
+        if source in {"manual", "simulation"}:
+            self._last_manual_verification_at = result.checked_at
+        self._record_activity(
+            "integrity_check",
+            ACTIVITY_OUTCOME_FAILED,
+            level=logging.ERROR,
+            details={"error_type": safe_error_type(err), "source": source},
+        )
+        await self._try_persist_integrity_result(result, source, record)
+
+    def _cancel_integrity_check(
+        self, record: BackupRecord, *, source: str, simulation_run: bool
+    ) -> None:
+        """Publish a cancelled verifier invocation."""
+        if simulation_run:
+            self.recovery_simulation_progress.cancel()
+            self._publish_simulation_progress(record)
+        self._record_activity(
+            "integrity_check",
+            ACTIVITY_OUTCOME_CANCELLED,
+            details={"source": source},
+        )
+
+    async def _async_finish_integrity_task(
+        self, *, simulation_run: bool, cancelled: bool
+    ) -> None:
+        """Release verifier state and refresh the inventory when appropriate."""
+        if simulation_run:
+            self.integrity_verifier.set_progress_listener(None)
+        self.integrity_check_running = False
+        self._integrity_task = release_current_task_reference(self._integrity_task)
+        if cancelled:
+            return
+        try:
+            await self.async_request_refresh()
+        except Exception as err:  # noqa: BLE001 - coordinator boundary
+            self._record_activity(
+                "post_verification_refresh",
+                ACTIVITY_OUTCOME_FAILED,
+                level=logging.WARNING,
+                details={"error_type": safe_error_type(err)},
+            )
+
     async def _async_run_integrity_check(
         self,
         record: BackupRecord,
@@ -1579,83 +1714,33 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 timeout_minutes=self.verification_timeout_minutes,
                 database_timeout_minutes=self.database_timeout_minutes,
                 repair_issues_enabled=self.repair_issues_enabled,
-                verified_archive_callback=(
-                    (
-                        lambda path, password, verified: self._async_run_runtime_test(
-                            record, path, password, verified
-                        )
-                    )
-                    if simulation_run and self.runtime_runner_connection is not None
-                    else None
+                verified_archive_callback=self._runtime_archive_callback(
+                    record, simulation_run=simulation_run
                 ),
             )
-            self.integrity_result = result
-            if simulation_run:
-                self.recovery_simulation_progress.finish(result)
-                self._publish_simulation_progress(record)
-            self._update_integrity_retry_state(result)
-            if source in {"manual", "simulation"}:
-                self._last_manual_verification_at = (
-                    result.checked_at or dt_util.utcnow()
-                )
-            await self._try_persist_integrity_result(result, source, record)
-            self._record_activity(
-                "integrity_check",
-                ACTIVITY_OUTCOME_COMPLETED,
-                details={
-                    "duration_seconds": result.duration_seconds,
-                    "source": source,
-                    "status": result.status,
-                    "warning_count": len(result.warnings),
-                },
+            await self._async_complete_integrity_check(
+                record,
+                result,
+                source=source,
+                simulation_run=simulation_run,
             )
         except asyncio.CancelledError:
             cancelled = True
-            if simulation_run:
-                self.recovery_simulation_progress.cancel()
-                self._publish_simulation_progress(record)
-            self._record_activity(
-                "integrity_check",
-                ACTIVITY_OUTCOME_CANCELLED,
-                details={
-                    "source": source,
-                },
+            self._cancel_integrity_check(
+                record, source=source, simulation_run=simulation_run
             )
             raise
         except Exception as err:  # noqa: BLE001 - full verification task boundary
-            result = self._internal_error_result(record)
-            self.integrity_result = result
-            if simulation_run:
-                self.recovery_simulation_progress.finish(result)
-                self._publish_simulation_progress(record)
-            self._update_integrity_retry_state(result)
-            if source in {"manual", "simulation"}:
-                self._last_manual_verification_at = result.checked_at
-            self._record_activity(
-                "integrity_check",
-                ACTIVITY_OUTCOME_FAILED,
-                level=logging.ERROR,
-                details={
-                    "error_type": safe_error_type(err),
-                    "source": source,
-                },
+            await self._async_fail_integrity_check(
+                record,
+                err,
+                source=source,
+                simulation_run=simulation_run,
             )
-            await self._try_persist_integrity_result(result, source, record)
         finally:
-            if simulation_run:
-                self.integrity_verifier.set_progress_listener(None)
-            self.integrity_check_running = False
-            self._integrity_task = release_current_task_reference(self._integrity_task)
-            if not cancelled:
-                try:
-                    await self.async_request_refresh()
-                except Exception as err:  # noqa: BLE001 - coordinator boundary
-                    self._record_activity(
-                        "post_verification_refresh",
-                        ACTIVITY_OUTCOME_FAILED,
-                        level=logging.WARNING,
-                        details={"error_type": safe_error_type(err)},
-                    )
+            await self._async_finish_integrity_task(
+                simulation_run=simulation_run, cancelled=cancelled
+            )
 
     def _handle_simulation_progress(
         self,

@@ -178,15 +178,15 @@ class BackupRecordNormalizer:
         return tuple(sorted(normalized))
 
     @staticmethod
-    def _addon_iterable(value: Any) -> tuple[Any, ...]:
+    def _addon_iterable(value: Any) -> list[Any]:
         """Return add-on entries from supported Home Assistant metadata shapes."""
         if value is None:
-            return ()
+            return []
         if isinstance(value, Mapping):
-            return tuple(item for _key, item in ThirdPartyBoundary.mapping_items(value))
+            return [item for _key, item in ThirdPartyBoundary.mapping_items(value)]
         if isinstance(value, str):
-            return (value,)
-        return tuple(ThirdPartyBoundary.iterable(value))
+            return [value]
+        return list(ThirdPartyBoundary.iterable(value))
 
     @staticmethod
     def _addon_slug(addon: Any) -> str | None:

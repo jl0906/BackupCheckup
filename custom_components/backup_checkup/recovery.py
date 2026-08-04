@@ -69,6 +69,15 @@ RECOVERY_RECOMMENDATION_OPTIONS = (
 
 
 @dataclass(frozen=True, slots=True)
+class RecoveryAssessmentContext:
+    """Environment metadata shared by one recovery assessment."""
+
+    generated_at: datetime | None = None
+    installation_type: str | None = None
+    language: str = "en"
+
+
+@dataclass(frozen=True, slots=True)
 class RecoveryReadiness:
     """Privacy-safe recovery-readiness result."""
 
@@ -254,15 +263,14 @@ def assess_recovery_readiness(
     agent_summaries: tuple[BackupAgentSummary, ...] = (),
     preparedness: RecoveryPreparednessSnapshot | None = None,
     restore_test: RestoreTestSnapshot | None = None,
-    generated_at: datetime | None = None,
-    installation_type: str | None = None,
-    language: str = "en",
+    context: RecoveryAssessmentContext | None = None,
     simulation_progress: dict[str, Any] | None = None,
     adaptive_policy: AdaptiveRecoveryPolicy | None = None,
     runtime_test: RuntimeTestSnapshot | None = None,
 ) -> RecoveryReadiness:
     """Assess whether the latest backup is suitable for disaster recovery."""
     del required_locations  # Superseded by failure-domain-aware redundancy.
+    assessment_context = context or RecoveryAssessmentContext()
     inventory = build_recovery_inventory(latest, backups, agent_summaries)
     preparedness_snapshot = preparedness or RecoveryPreparednessSnapshot.empty()
     restore_test_snapshot = restore_test or RestoreTestSnapshot.empty()
@@ -309,9 +317,9 @@ def assess_recovery_readiness(
         preparedness_snapshot,
         simulation,
         restore_test_snapshot,
-        generated_at=generated_at or datetime.now(UTC),
-        installation_type=installation_type,
-        language=language,
+        generated_at=assessment_context.generated_at or datetime.now(UTC),
+        installation_type=assessment_context.installation_type,
+        language=assessment_context.language,
     )
     recommendation = _recommendation(
         latest,

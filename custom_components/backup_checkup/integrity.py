@@ -15,7 +15,7 @@ from contextlib import closing, contextmanager
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, cast
 
 from homeassistant.components.backup import async_get_manager
 from homeassistant.core import HomeAssistant
@@ -1214,12 +1214,15 @@ class BackupIntegrityVerifier:
     ) -> BackupIntegrityResult:
         """Return the most useful failure after all available copies were tried."""
         if failures.best is not None:
-            return replace(
-                failures.best,
-                warnings=tuple(
-                    dict.fromkeys(
-                        (*failures.best.warnings, "all_storage_copies_failed")
-                    )
+            return cast(
+                BackupIntegrityResult,
+                replace(
+                    failures.best,
+                    warnings=tuple(
+                        dict.fromkeys(
+                            (*failures.best.warnings, "all_storage_copies_failed")
+                        )
+                    ),
                 ),
             )
         return self._failure(

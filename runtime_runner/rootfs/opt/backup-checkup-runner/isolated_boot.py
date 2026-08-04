@@ -32,7 +32,7 @@ def _endpoint_ready() -> bool:
             return 100 <= response.status < 500
     except urllib.error.HTTPError as err:
         return 100 <= err.code < 500
-    except (OSError, urllib.error.URLError):
+    except OSError:
         return False
 
 

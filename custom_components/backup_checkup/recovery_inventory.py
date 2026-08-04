@@ -256,6 +256,16 @@ def _normalized_tokens(*values: str | None) -> set[str]:
 
 def classify_storage(agent_id: str, storage_name: str | None = None) -> str:
     """Classify a backup target conservatively from Home Assistant metadata."""
+    domain, separator, unique_id = agent_id.casefold().partition(".")
+    if domain == "hassio" and separator:
+        # Home Assistant OS exposes its internal target as hassio.local and every
+        # Supervisor backup mount as hassio.<mount name>. Mount names are chosen by
+        # the user and therefore cannot be classified reliably from words alone.
+        return (
+            STORAGE_CLASS_LOCAL_DEVICE
+            if unique_id == "local"
+            else STORAGE_CLASS_LOCAL_NETWORK
+        )
     tokens = _normalized_tokens(agent_id, storage_name)
     if tokens & _CLOUD_TERMS:
         return STORAGE_CLASS_CLOUD

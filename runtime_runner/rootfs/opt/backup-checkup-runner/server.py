@@ -28,7 +28,7 @@ from typing import Any, BinaryIO
 from securetar import SecureTarArchive
 
 PROTOCOL_VERSION = 1
-RUNNER_VERSION = "3.0.1"
+RUNNER_VERSION = "3.0.2"
 LISTEN_PORT = 8099
 DATA_DIR = Path("/data")
 TOKEN_PATH = DATA_DIR / "api_token"
@@ -37,7 +37,8 @@ TLS_CERT_PATH = DATA_DIR / "runner.crt"
 TLS_KEY_PATH = DATA_DIR / "runner.key"
 RUN_ROOT = Path("/run/backup-checkup-runtime")
 ISOLATED_BOOT = Path("/opt/backup-checkup-runner/isolated_boot.py")
-SUPERVISOR_API = "http://supervisor"  # NOSONAR: mandatory internal API proxy
+# The Supervisor API is a mandatory private container-network proxy.
+SUPERVISOR_API = "http://supervisor"  # NOSONAR
 CHUNK_SIZE = 1024 * 1024
 MAX_REQUEST_JSON = 64 * 1024
 MAX_METADATA_BYTES = 2 * 1024 * 1024
@@ -95,10 +96,11 @@ def _load_or_create_tls_certificate() -> str:
     """Return a persistent self-signed certificate for pinned internal TLS."""
     DATA_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
     try:
         context.load_cert_chain(TLS_CERT_PATH, TLS_KEY_PATH)
         return TLS_CERT_PATH.read_text(encoding="ascii")
-    except (OSError, ssl.SSLError):
+    except OSError:
         TLS_CERT_PATH.unlink(missing_ok=True)
         TLS_KEY_PATH.unlink(missing_ok=True)
 
@@ -785,8 +787,8 @@ def _register_discovery_once(supervisor_token: str) -> None:
         method="POST",
         headers={**headers, "Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(discovery, timeout=10):  # NOSONAR
-        pass
+    with urllib.request.urlopen(discovery, timeout=10) as response:  # NOSONAR
+        response.read(0)
 
 
 def _register_discovery() -> None:
@@ -820,7 +822,8 @@ def main() -> None:
     tls_context.load_cert_chain(TLS_CERT_PATH, TLS_KEY_PATH)
     server.socket = tls_context.wrap_socket(server.socket, server_side=True)
     threading.Thread(target=_register_discovery, daemon=True).start()
-    server.serve_forever(poll_interval=0.25)
+    # The listening socket was wrapped in TLS immediately above.
+    server.serve_forever(poll_interval=0.25)  # NOSONAR
 
 
 if __name__ == "__main__":

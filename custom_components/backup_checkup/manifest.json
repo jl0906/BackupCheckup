@@ -2,6 +2,7 @@
   "domain": "backup_checkup",
   "name": "BackupCheckup",
   "after_dependencies": [
+    "hassio",
     "logbook"
   ],
   "codeowners": [
@@ -19,5 +20,5 @@
   "issue_tracker": "https://github.com/jl0906/BackupCheckup/issues",
   "requirements": [],
   "single_config_entry": true,
-  "version": "3.0.1"
+  "version": "3.0.2"
 }
