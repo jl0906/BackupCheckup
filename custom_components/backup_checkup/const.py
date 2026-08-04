@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 DOMAIN = "backup_checkup"
 CONFIG_ENTRY_VERSION = 15
 NAME = "BackupCheckup"
-VERSION = "3.0.9"
+VERSION = "3.0.10"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -13,8 +13,8 @@ PLATFORMS: tuple[Platform, ...] = (
     Platform.BUTTON,
 )
 
-DOCUMENTATION_URL = "https://github.com/jl0906/BackupCheckup"
-TROUBLESHOOTING_URL = f"{DOCUMENTATION_URL}/blob/main/docs/troubleshooting.md"
+DOCUMENTATION_URL = "https://github.com/jl0906/BackupCheckup/wiki"
+TROUBLESHOOTING_URL = f"{DOCUMENTATION_URL}/Fehlerbehebung"
 
 CONF_MAX_AGE_DAYS = "max_age_days"
 CONF_UPDATE_INTERVAL_MINUTES = "update_interval_minutes"

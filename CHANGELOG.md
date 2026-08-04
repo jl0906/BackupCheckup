@@ -1,5 +1,24 @@
 # Changelog
 
+## 3.0.10
+
+### Changed
+
+- Consolidated the complete user guide in the GitHub Wiki, including every
+  integration option, runner option, feature, entity, action, safety boundary,
+  update path, FAQ entry, and troubleshooting workflow.
+- Reduced the repository README to the product summary, HACS installation, the
+  optional Runtime Runner note, and one canonical Wiki link.
+- Removed obsolete coverage snapshots, historical audits, revision notes,
+  duplicated guides, examples, and other superseded files from `docs/`.
+- Redirected Home Assistant documentation and Repair help links to the Wiki.
+
+### Compatibility
+
+- This is an organizational release based on 3.0.9. Runtime behavior and stored
+  configuration remain compatible; integration, frontend asset, and runner
+  versions are synchronized as 3.0.10.
+
 ## 3.0.9
 
 ### Fixed
