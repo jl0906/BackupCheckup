@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.0.1
+
+**Fixed**
+- Fixed automatic discovery of the installed and running BackupCheckup Runtime Runner. The companion app now receives Supervisor API access required to register its authenticated internal endpoint with Home Assistant.
+
 ## 3.0.0
 
 ### Added
