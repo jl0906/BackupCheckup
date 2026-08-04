@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version 3.0.11" src="https://img.shields.io/badge/version-3.0.11-blue.svg">
+  <img alt="Version 3.0.12" src="https://img.shields.io/badge/version-3.0.12-blue.svg">
   <img alt="Home Assistant 2026.3 or newer" src="https://img.shields.io/badge/Home_Assistant-2026.3_or_newer-41BDF5.svg">
   <img alt="AI coded and maintained" src="https://img.shields.io/badge/AI-coded%20%26%20maintained-8A2BE2.svg">
   <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg">

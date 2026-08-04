@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.0.12
+
+### Fixed
+
+- Synchronized the registered panel component with the 3.0.12 frontend and
+  published a new versioned asset URL so HACS and browsers cannot reuse the
+  broken component from the immutable 3.0.11 release tag.
+- Added a CI consistency check that fails when the manifest version, backend
+  panel registration, and JavaScript custom-element name diverge.
+- Added a lightweight browser-environment probe that loads, registers, and
+  renders the panel during CI instead of checking JavaScript syntax alone.
+
+### Compatibility
+
+- Integration, frontend asset, and Runtime Runner versions are synchronized as
+  3.0.12. Existing configuration and stored analysis data remain compatible.
+
 ## 3.0.11
 
 ### Fixed
@@ -7,11 +24,6 @@
 - Prepared the ephemeral Home Assistant log with the sandbox UID/GID before
   startup so the unprivileged runtime can open its configured log file instead
   of exiting with `home_assistant_permission_denied`.
-- Synchronized the registered panel component with the 3.0.11 frontend and
-  published asset revision 2 so browsers cannot reuse the broken cached module.
-- Added a CI consistency check that fails when the manifest version, backend
-  panel registration, and JavaScript custom-element name diverge.
-
 ### Compatibility
 
 - Integration, frontend asset, and Runtime Runner versions are synchronized as
