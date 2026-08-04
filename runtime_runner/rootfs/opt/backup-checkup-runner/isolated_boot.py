@@ -15,6 +15,31 @@ from pathlib import Path
 SANDBOX_UID = 65534
 SANDBOX_GID = 65534
 SAFE_PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+MAX_VIRTUAL_MEMORY_BYTES = 8 * 1024 * 1024 * 1024
+MAX_OUTPUT_FILE_BYTES = 2 * 1024 * 1024 * 1024
+STARTUP_LOG_TAIL_BYTES = 128 * 1024
+STARTUP_ERROR_SIGNATURES = (
+    (
+        "home_assistant_memory_limit",
+        ("memoryerror", "cannot allocate memory", "failed to map segment"),
+    ),
+    (
+        "home_assistant_file_limit",
+        ("file size limit exceeded", "errno 27"),
+    ),
+    (
+        "home_assistant_permission_denied",
+        ("permissionerror", "permission denied"),
+    ),
+    (
+        "home_assistant_runtime_missing",
+        ("no module named homeassistant",),
+    ),
+    (
+        "home_assistant_cli_incompatible",
+        ("unrecognized arguments",),
+    ),
+)
 
 
 def _sandbox_environment(home: Path) -> dict[str, str]:
@@ -40,10 +65,10 @@ def _sandbox_command(command: list[str]) -> list[str]:
         "--no-new-privs",
         "--",
         "prlimit",
-        "--as=2147483648:2147483648",
+        f"--as={MAX_VIRTUAL_MEMORY_BYTES}:{MAX_VIRTUAL_MEMORY_BYTES}",
         "--nproc=256:256",
         "--nofile=1024:1024",
-        "--fsize=536870912:536870912",
+        f"--fsize={MAX_OUTPUT_FILE_BYTES}:{MAX_OUTPUT_FILE_BYTES}",
         "--core=0:0",
         "--",
         *command,
@@ -112,6 +137,27 @@ def _stop_process(process: subprocess.Popen[bytes]) -> None:
     except subprocess.TimeoutExpired:
         process.kill()
         process.wait(timeout=10)
+
+
+def _classify_startup_failure(log_path: Path, *, timed_out: bool) -> str:
+    """Map a bounded log tail to one stable, non-sensitive error code."""
+    if timed_out:
+        return "home_assistant_start_timeout"
+    try:
+        with log_path.open("rb") as log_file:
+            log_file.seek(0, os.SEEK_END)
+            size = log_file.tell()
+            log_file.seek(max(0, size - STARTUP_LOG_TAIL_BYTES))
+            tail = log_file.read(STARTUP_LOG_TAIL_BYTES).decode(
+                "utf-8", errors="replace"
+            )
+    except OSError:
+        return "home_assistant_exited"
+    normalized = tail.casefold()
+    for error_code, signatures in STARTUP_ERROR_SIGNATURES:
+        if any(signature in normalized for signature in signatures):
+            return error_code
+    return "home_assistant_exited"
 
 
 def main() -> int:
@@ -200,8 +246,9 @@ def main() -> int:
         "child_exit_code": process.returncode,
     }
     if not ready:
-        result["error_code"] = (
-            "home_assistant_start_timeout" if timed_out else "home_assistant_exited"
+        result["error_code"] = _classify_startup_failure(
+            log_path,
+            timed_out=timed_out,
         )
     _write_json(result_path, result)
     return 0 if ready else 1

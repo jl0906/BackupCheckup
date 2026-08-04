@@ -29,7 +29,7 @@ from typing import Any, BinaryIO
 from securetar import SecureTarArchive
 
 PROTOCOL_VERSION = 1
-RUNNER_VERSION = "3.0.8"
+RUNNER_VERSION = "3.0.9"
 LISTEN_PORT = 8099
 DATA_DIR = Path("/data")
 TOKEN_PATH = DATA_DIR / "api_token"
@@ -38,8 +38,11 @@ TLS_CERT_PATH = DATA_DIR / "runner.crt"
 TLS_KEY_PATH = DATA_DIR / "runner.key"
 RUN_ROOT = Path("/run/backup-checkup-runtime")
 ISOLATED_BOOT = Path("/opt/backup-checkup-runner/isolated_boot.py")
-# The Supervisor API is a mandatory private container-network proxy.
-SUPERVISOR_API = "http://supervisor"
+# Home Assistant exposes this mandatory authenticated proxy only on its private
+# app network. It is never used for client traffic or outside the Supervisor.
+SUPERVISOR_API = "http://supervisor"  # NOSONAR
+BACKUP_METADATA_NAME = "backup.json"
+BACKUP_METADATA_PATH = (BACKUP_METADATA_NAME,)
 CHUNK_SIZE = 1024 * 1024
 MAX_REQUEST_JSON = 64 * 1024
 MAX_METADATA_BYTES = 2 * 1024 * 1024
@@ -50,6 +53,18 @@ SANDBOX_UID = 65534
 SANDBOX_GID = 65534
 SAFE_PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 CLIENT_SOCKET_TIMEOUT = 30
+CHILD_ERROR_CODES = frozenset(
+    {
+        "home_assistant_cli_incompatible",
+        "home_assistant_exited",
+        "home_assistant_file_limit",
+        "home_assistant_memory_limit",
+        "home_assistant_permission_denied",
+        "home_assistant_runtime_missing",
+        "home_assistant_start_timeout",
+        "sandbox_preflight_failed",
+    }
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -214,25 +229,30 @@ def _safe_member_path(name: str) -> PurePosixPath:
     return path
 
 
+def _find_backup_metadata_member(archive: tarfile.TarFile) -> tarfile.TarInfo:
+    """Locate the single root metadata file while validating every path."""
+    member = None
+    for members, candidate in enumerate(archive, start=1):
+        if members > MAX_MEMBERS:
+            raise RunnerFailure("archive_member_limit")
+        candidate_path = _safe_member_path(candidate.name)
+        if (
+            candidate_path.name == BACKUP_METADATA_NAME
+            and candidate_path.parts != BACKUP_METADATA_PATH
+        ):
+            raise RunnerFailure("backup_metadata_invalid")
+        if candidate_path.parts == BACKUP_METADATA_PATH:
+            if member is not None:
+                raise RunnerFailure("backup_metadata_invalid")
+            member = candidate
+    if member is None:
+        raise RunnerFailure("backup_metadata_missing")
+    return member
+
+
 def _read_backup_metadata(archive_path: Path, password: str | None) -> dict[str, Any]:
     with SecureTarArchive(archive_path, "r", password=password) as outer:
-        member = None
-        members = 0
-        for candidate in outer.tar:
-            members += 1
-            if members > MAX_MEMBERS:
-                raise RunnerFailure("archive_member_limit")
-            candidate_path = _safe_member_path(candidate.name)
-            if candidate_path.name == "backup.json" and candidate_path.parts != (
-                "backup.json",
-            ):
-                raise RunnerFailure("backup_metadata_invalid")
-            if candidate_path.parts == ("backup.json",):
-                if member is not None:
-                    raise RunnerFailure("backup_metadata_invalid")
-                member = candidate
-        if member is None:
-            raise RunnerFailure("backup_metadata_missing")
+        member = _find_backup_metadata_member(outer.tar)
         if not member.isfile() or member.size > MAX_METADATA_BYTES:
             raise RunnerFailure("backup_metadata_invalid")
         reader = outer.tar.extractfile(member)
@@ -261,9 +281,7 @@ def _homeassistant_stream(
         raise RunnerFailure("password_required")
     with SecureTarArchive(archive_path, "r", password=password) as outer:
         candidates = []
-        members = 0
-        for member in outer.tar:
-            members += 1
+        for members, member in enumerate(outer.tar, start=1):
             if members > MAX_MEMBERS:
                 raise RunnerFailure("archive_member_limit")
             member_path = _safe_member_path(member.name)
@@ -511,7 +529,7 @@ class RunManager:
         except RunnerFailure as err:
             run.status = self._failure_status(err.code)
             run.error_code = err.code
-            _LOGGER.error("run failed error_code=%s", err.code)
+            _LOGGER.exception("run failed with controlled runner error")
         except Exception:
             run.status = "inconclusive"
             run.error_code = "runner_internal_error"
@@ -641,18 +659,18 @@ class RunManager:
         version = result.get("home_assistant_version")
         run.home_assistant_version = version[:64] if isinstance(version, str) else None
         error_code = result.get("error_code")
-        run.error_code = error_code[:96] if isinstance(error_code, str) else None
+        run.error_code = error_code if error_code in CHILD_ERROR_CODES else None
         run.status = (
             "passed"
             if run.ready and run.isolation_verified and run.recovery_mode
             else "failed"
         )
         _LOGGER.info(
-            "run result_applied ready=%s isolation_verified=%s recovery_mode=%s error_code=%s",
+            "run result_applied ready=%s isolation_verified=%s recovery_mode=%s has_error=%s",
             run.ready,
             run.isolation_verified,
             run.recovery_mode,
-            run.error_code or "none",
+            run.error_code is not None,
         )
 
     @staticmethod
@@ -970,8 +988,9 @@ def main() -> None:
     server.socket = tls_context.wrap_socket(server.socket, server_side=True)
     threading.Thread(target=_register_discovery, daemon=True).start()
     _LOGGER.info("runner listening port=%d tls=true", LISTEN_PORT)
-    # The listening socket was wrapped in TLS immediately above.
-    server.serve_forever(poll_interval=0.25)
+    # The listening socket was wrapped in TLS immediately above. Sonar cannot
+    # infer that reassignment through ssl.wrap_socket secures this HTTP server.
+    server.serve_forever(poll_interval=0.25)  # NOSONAR
 
 
 if __name__ == "__main__":

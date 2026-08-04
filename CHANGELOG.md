@@ -1,5 +1,22 @@
 # Changelog
 
+## 3.0.9
+
+### Fixed
+
+- Replaced duplicated multilingual frontend object structures with shared,
+  data-driven translation schemas while preserving the rendered panel texts.
+- Resolved the open runner maintainability findings by simplifying backup
+  metadata discovery and centralizing its metadata filename.
+- Sanitized child-process error values before publishing or logging them and
+  documented the two required private/TLS transport boundaries for static
+  security analysis.
+- Raised the isolated Home Assistant virtual-memory and output-file limits so
+  large verified backups no longer abort during startup despite low real memory
+  use, while retaining hard process, descriptor, file, and address-space caps.
+- Classify a bounded startup-log tail into stable, non-sensitive runner error
+  codes instead of returning only the generic `home_assistant_exited` result.
+
 ## 3.0.8
 
 ### Fixed
