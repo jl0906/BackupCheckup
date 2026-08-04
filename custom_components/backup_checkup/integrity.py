@@ -949,8 +949,6 @@ class BackupIntegrityVerifier:
             "encrypted_backup_extract" if prepared.protected else "backup_extract"
         )
         self._record_activity(extract_action, ACTIVITY_OUTCOME_STARTED)
-        if database_check:
-            self._record_activity("database_read", ACTIVITY_OUTCOME_STARTED)
         archive_future = self.hass.async_add_executor_job(
             self._verify_archive,
             prepared.path,

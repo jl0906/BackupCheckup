@@ -74,9 +74,12 @@ _ACTION_STAGES = {
     "verification_prepare": (STAGE_PREPARE, 5, 8),
     "storage_copy_prepare": (STAGE_STORAGE, 9, 14),
     "backup_download": (STAGE_DOWNLOAD, 15, 45),
-    "backup_extract": (STAGE_ARCHIVES, 50, 78),
-    "encrypted_backup_extract": (STAGE_ARCHIVES, 50, 78),
-    "database_read": (STAGE_DATABASE, 80, 90),
+    # Archive inspection also contains the optional SQLite check. Keep the
+    # long-running combined operation in one broad range instead of reporting
+    # the database stage as started before archive inspection has done work.
+    "backup_extract": (STAGE_ARCHIVES, 46, 88),
+    "encrypted_backup_extract": (STAGE_ARCHIVES, 46, 88),
+    "database_read": (STAGE_DATABASE, 88, 91),
     "temporary_data_cleanup": (STAGE_CLEANUP, 94, 98),
 }
 _OUTCOME_CHANGED = "changed"

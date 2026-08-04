@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import logging
 import os
 import secrets
 import shutil
@@ -28,7 +29,7 @@ from typing import Any, BinaryIO
 from securetar import SecureTarArchive
 
 PROTOCOL_VERSION = 1
-RUNNER_VERSION = "3.0.3"
+RUNNER_VERSION = "3.0.4"
 LISTEN_PORT = 8099
 DATA_DIR = Path("/data")
 TOKEN_PATH = DATA_DIR / "api_token"
@@ -38,11 +39,17 @@ TLS_KEY_PATH = DATA_DIR / "runner.key"
 RUN_ROOT = Path("/run/backup-checkup-runtime")
 ISOLATED_BOOT = Path("/opt/backup-checkup-runner/isolated_boot.py")
 # The Supervisor API is a mandatory private container-network proxy.
-SUPERVISOR_API = "http://supervisor"  # NOSONAR
+SUPERVISOR_API = "http://supervisor"
 CHUNK_SIZE = 1024 * 1024
 MAX_REQUEST_JSON = 64 * 1024
 MAX_METADATA_BYTES = 2 * 1024 * 1024
 MAX_MEMBERS = 1_000_000
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s backup_checkup.runner %(message)s",
+)
+_LOGGER = logging.getLogger("backup_checkup.runner")
 
 
 class RunnerFailure(Exception):
@@ -298,8 +305,11 @@ class RunState:
 
     def update(self, stage: str, percent: int) -> None:
         with self.lock:
+            previous_stage = self.stage
             self.stage = stage
             self.progress_percent = max(self.progress_percent, min(100, percent))
+        if stage != previous_stage:
+            _LOGGER.info("run stage_changed stage=%s progress=%d", stage, percent)
 
     def public(self) -> dict[str, Any]:
         with self.lock:
@@ -382,6 +392,11 @@ class RunManager:
                 runner_id=self.runner_id,
             )
             self._runs[run_id] = run
+            _LOGGER.info(
+                "run created archive_bytes=%d timeout_seconds=%d",
+                archive_size,
+                timeout_seconds,
+            )
             return run
 
     def get(self, run_id: str) -> RunState:
@@ -400,6 +415,7 @@ class RunManager:
                 raise RunnerFailure("run_still_active")
             self._runs.pop(run_id, None)
         shutil.rmtree(run.directory, ignore_errors=True)
+        _LOGGER.info("run deleted")
 
     def start(self, run: RunState) -> None:
         if not self.isolation_available:
@@ -412,6 +428,7 @@ class RunManager:
             target=self._execute, args=(run,), name=f"runtime-{run.run_id}", daemon=True
         )
         run.thread.start()
+        _LOGGER.info("run started")
 
     def _execute(self, run: RunState) -> None:
         try:
@@ -422,9 +439,11 @@ class RunManager:
         except RunnerFailure as err:
             run.status = self._failure_status(err.code)
             run.error_code = err.code
-        except Exception:  # noqa: BLE001 - worker must emit a terminal state
+            _LOGGER.error("run failed error_code=%s", err.code)
+        except Exception:
             run.status = "inconclusive"
             run.error_code = "runner_internal_error"
+            _LOGGER.exception("run failed error_code=runner_internal_error")
         finally:
             self._finish_run(run)
 
@@ -442,6 +461,7 @@ class RunManager:
         run.password = None
         run.archive_path.unlink(missing_ok=True)
         run.update("runtime_restore", 58)
+        _LOGGER.info("run archive_restored")
         progress_path = run.directory / "progress.json"
         result_path = run.directory / "result.json"
         command = [
@@ -460,12 +480,12 @@ class RunManager:
 
     @staticmethod
     def _start_runtime(command: list[str]) -> subprocess.Popen[bytes]:
-        """Start the namespace owner without inheriting runner streams."""
+        """Start the namespace owner and retain its error stream in app logs."""
         return subprocess.Popen(
             command,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stderr=None,
         )
 
     @staticmethod
@@ -503,7 +523,9 @@ class RunManager:
             )
             time.sleep(0.25)
         if process.poll() is not None:
+            _LOGGER.info("run isolated_process_exited exit_code=%s", process.returncode)
             return
+        _LOGGER.error("run isolated_process_timeout")
         self._stop_timed_out_process(process)
         raise RunnerFailure("runtime_timeout")
 
@@ -543,6 +565,13 @@ class RunManager:
             if run.ready and run.isolation_verified and run.recovery_mode
             else "failed"
         )
+        _LOGGER.info(
+            "run result_applied ready=%s isolation_verified=%s recovery_mode=%s error_code=%s",
+            run.ready,
+            run.isolation_verified,
+            run.recovery_mode,
+            run.error_code or "none",
+        )
 
     @staticmethod
     def _failure_status(code: str) -> str:
@@ -567,6 +596,7 @@ class RunManager:
         try:
             self._cleanup_run(run)
         except OSError:
+            _LOGGER.exception("run cleanup_failed")
             if run.status == "passed":
                 run.status = "inconclusive"
                 run.error_code = "cleanup_failed"
@@ -577,6 +607,12 @@ class RunManager:
             run.duration_seconds = round(
                 time.monotonic() - run.started_monotonic, 2
             )
+        _LOGGER.info(
+            "run completed status=%s error_code=%s duration_seconds=%.2f",
+            run.status,
+            run.error_code or "none",
+            run.duration_seconds,
+        )
 
 
 TOKEN: str
@@ -592,6 +628,11 @@ def _initialize_runtime() -> None:
     RUNNER_ID = hashlib.sha256(TOKEN.encode()).hexdigest()[:32]
     TLS_CERTIFICATE = _load_or_create_tls_certificate()
     MANAGER = RunManager(TOKEN, RUNNER_ID, _load_options())
+    _LOGGER.info(
+        "runner initialized version=%s isolation_available=%s",
+        RUNNER_VERSION,
+        MANAGER.isolation_available,
+    )
 
 
 def _signed_payload(payload: dict[str, Any]) -> dict[str, Any]:
@@ -659,6 +700,7 @@ class Handler(BaseHTTPRequestHandler):
         if self._authorized():
             return True
         self._json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
+        _LOGGER.warning("request rejected error_code=unauthorized")
         return False
 
     def do_GET(self) -> None:
@@ -732,9 +774,11 @@ class Handler(BaseHTTPRequestHandler):
                 run.archive_path.unlink(missing_ok=True)
                 raise RunnerFailure("archive_checksum_mismatch")
             run.update("runtime_upload", 30)
+            _LOGGER.info("run archive_uploaded bytes=%d checksum_verified=true", length)
             self._empty(HTTPStatus.NO_CONTENT)
         except (OSError, ValueError, RunnerFailure) as err:
             code = err.code if isinstance(err, RunnerFailure) else "archive_upload_failed"
+            _LOGGER.error("run archive_upload_failed error_code=%s", code)
             self._json(HTTPStatus.BAD_REQUEST, {"error": code})
 
     def do_DELETE(self) -> None:
@@ -758,7 +802,7 @@ def _register_discovery_once(supervisor_token: str) -> None:
     request = urllib.request.Request(
         f"{SUPERVISOR_API}/addons/self/info", headers=headers
     )
-    with urllib.request.urlopen(request, timeout=10) as response:  # NOSONAR
+    with urllib.request.urlopen(request, timeout=10) as response:
         info = json.load(response)
     hostname = info.get("data", {}).get("hostname")
     if (
@@ -787,7 +831,7 @@ def _register_discovery_once(supervisor_token: str) -> None:
         method="POST",
         headers={**headers, "Content-Type": "application/json"},
     )
-    with urllib.request.urlopen(discovery, timeout=10) as response:  # NOSONAR
+    with urllib.request.urlopen(discovery, timeout=10) as response:
         response.read(0)
 
 
@@ -795,35 +839,36 @@ def _register_discovery() -> None:
     """Retry discovery until Supervisor accepts the service registration."""
     supervisor_token = os.environ.get("SUPERVISOR_TOKEN")
     if not supervisor_token:
-        print("Runtime Runner discovery disabled: Supervisor token missing", flush=True)
+        _LOGGER.error("discovery disabled error_code=supervisor_token_missing")
         return
     retry_delay = 1
     while True:
         try:
             _register_discovery_once(supervisor_token)
         except (OSError, ValueError, KeyError, RunnerFailure) as err:
-            print(
-                "Runtime Runner discovery failed; retrying: "
-                f"{type(err).__name__}",
-                flush=True,
+            _LOGGER.warning(
+                "discovery failed error_type=%s retry_seconds=%d",
+                type(err).__name__,
+                retry_delay,
             )
             time.sleep(retry_delay)
             retry_delay = min(60, retry_delay * 2)
             continue
-        print("Runtime Runner discovery registered", flush=True)
+        _LOGGER.info("discovery registered")
         return
 
 
 def main() -> None:
     _initialize_runtime()
-    server = ThreadingHTTPServer(("0.0.0.0", LISTEN_PORT), Handler)  # NOSONAR
+    server = ThreadingHTTPServer(("0.0.0.0", LISTEN_PORT), Handler)
     tls_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     tls_context.minimum_version = ssl.TLSVersion.TLSv1_2
     tls_context.load_cert_chain(TLS_CERT_PATH, TLS_KEY_PATH)
     server.socket = tls_context.wrap_socket(server.socket, server_side=True)
     threading.Thread(target=_register_discovery, daemon=True).start()
+    _LOGGER.info("runner listening port=%d tls=true", LISTEN_PORT)
     # The listening socket was wrapped in TLS immediately above.
-    server.serve_forever(poll_interval=0.25)  # NOSONAR
+    server.serve_forever(poll_interval=0.25)
 
 
 if __name__ == "__main__":

@@ -1,5 +1,20 @@
 # Changelog
 
+## 3.0.4
+
+### Fixed
+
+- Prevented the backup protection progress bar from jumping to 80% at the
+  beginning of archive inspection by sequencing the database stage correctly.
+- Added structured Runtime Runner lifecycle, stage, upload, timeout, cleanup,
+  discovery, and error logging for diagnostics without logging credentials,
+  backup names, archive contents, or filesystem paths.
+
+### Changed
+
+- Smoothed progress-bar transitions and assigned the long combined archive and
+  database inspection a more representative share of the progress range.
+
 ## 3.0.3
 
 ### Security

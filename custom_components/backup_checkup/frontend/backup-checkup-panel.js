@@ -1,4 +1,4 @@
-const PANEL_ELEMENT_NAME = "backup-checkup-panel-v3-0-3-r1";
+const PANEL_ELEMENT_NAME = "backup-checkup-panel-v3-0-4-r1";
 
 const TRANSLATION_SEPARATOR = "\u001f";
 const TRANSLATION_KEYS = Object.freeze({
@@ -2467,7 +2467,7 @@ class BackupCheckupPanel extends HTMLElement {
       .simulation-current { align-items:flex-end; text-align:right; }
       .simulation-current strong { font-size:13px; }
       .simulation-progress { height:10px; overflow:hidden; border-radius:999px; background:color-mix(in srgb, var(--divider-color) 72%, transparent); }
-      .simulation-progress > div { height:100%; min-width:0; border-radius:inherit; background:linear-gradient(90deg, color-mix(in srgb, var(--simulation-tone) 72%, white), var(--simulation-tone)); transition:width .35s ease; }
+      .simulation-progress > div { height:100%; min-width:0; border-radius:inherit; background:linear-gradient(90deg, color-mix(in srgb, var(--simulation-tone) 72%, white), var(--simulation-tone)); transition:width 1.2s cubic-bezier(.22, 1, .36, 1); }
       .simulation-progress-label { display:flex; justify-content:space-between; margin-top:-8px; color:var(--secondary-text-color); font-size:11px; }
       .simulation-progress-label strong { color:var(--simulation-tone); }
       .simulation-pipeline { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:9px; }

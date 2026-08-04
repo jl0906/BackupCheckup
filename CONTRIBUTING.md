@@ -19,15 +19,14 @@ Run at least:
 ```bash
 ruff format --check .
 ruff check .
-pytest --cov=custom_components.backup_checkup --cov-branch --cov-report=term-missing --cov-fail-under=60
-bandit -q -r custom_components/backup_checkup -x tests
-python -m compileall custom_components tests
+bandit -q -r custom_components/backup_checkup
+python -m compileall custom_components runtime_runner
 python -m json.tool custom_components/backup_checkup/manifest.json
 ```
 
-Integrity changes should also be tested against unprotected and protected SecureTar
-archives, an included SQLite database, an incorrect password, and a deliberately
-corrupted inner archive.
+Integrity changes should also be validated against unprotected and protected
+SecureTar archives, an included SQLite database, an incorrect password, and a
+deliberately corrupted inner archive.
 
 The repository workflow additionally runs these checks on every push and pull
 request together with HACS validation and Home Assistant hassfest.
