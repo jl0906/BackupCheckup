@@ -12,6 +12,73 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+SANDBOX_UID = 65534
+SANDBOX_GID = 65534
+SAFE_PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+
+def _sandbox_environment(home: Path) -> dict[str, str]:
+    """Return a minimal environment with no inherited runner credentials."""
+    return {
+        "HOME": str(home),
+        "LANG": "C.UTF-8",
+        "PATH": SAFE_PATH,
+        "PYTHONUNBUFFERED": "1",
+    }
+
+
+def _sandbox_command(command: list[str]) -> list[str]:
+    """Drop identity, capabilities, privilege gains, and basic process limits."""
+    return [
+        "setpriv",
+        f"--reuid={SANDBOX_UID}",
+        f"--regid={SANDBOX_GID}",
+        "--clear-groups",
+        "--bounding-set=-all",
+        "--inh-caps=-all",
+        "--ambient-caps=-all",
+        "--no-new-privs",
+        "--",
+        "prlimit",
+        "--as=2147483648:2147483648",
+        "--nproc=256:256",
+        "--nofile=1024:1024",
+        "--fsize=536870912:536870912",
+        "--core=0:0",
+        "--",
+        *command,
+    ]
+
+
+def _sandbox_preflight(config_dir: Path) -> bool:
+    """Verify the exact privilege boundary used for Home Assistant."""
+    check = (
+        "import os,pathlib;"
+        "s={};"
+        "[s.setdefault(*line.split(':',1)) for line in "
+        "pathlib.Path('/proc/self/status').read_text().splitlines() if ':' in line];"
+        f"ok=os.getuid()=={SANDBOX_UID} and os.getgid()=={SANDBOX_GID} "
+        "and 'SUPERVISOR_TOKEN' not in os.environ "
+        "and int(s.get('CapEff','1').strip(),16)==0 "
+        "and s.get('NoNewPrivs','').strip()=='1';"
+        "raise SystemExit(0 if ok else 1)"
+    )
+    try:
+        completed = subprocess.run(
+            _sandbox_command([sys.executable, "-c", check]),
+            check=False,
+            cwd=config_dir,
+            env=_sandbox_environment(config_dir.parent),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=10,
+            close_fds=True,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+    return completed.returncode == 0
+
 
 def _write_json(path: Path, value: dict[str, object]) -> None:
     temporary = path.with_suffix(".tmp")
@@ -65,8 +132,20 @@ def main() -> int:
     )
     _progress(progress_path, "runtime_boot", 65)
 
+    if not _sandbox_preflight(config_dir):
+        _write_json(
+            result_path,
+            {
+                "ready": False,
+                "isolation_verified": False,
+                "recovery_mode": True,
+                "error_code": "sandbox_preflight_failed",
+            },
+        )
+        return 3
+
     log_path = config_dir.parent / "ephemeral-home-assistant.log"
-    command = [
+    command = _sandbox_command([
         sys.executable,
         "-m",
         "homeassistant",
@@ -77,7 +156,7 @@ def main() -> int:
         "--log-no-color",
         "--log-file",
         str(log_path),
-    ]
+    ])
     started = time.monotonic()
     with log_path.open("ab", buffering=0) as log_file:
         process = subprocess.Popen(
@@ -85,7 +164,10 @@ def main() -> int:
             stdin=subprocess.DEVNULL,
             stdout=log_file,
             stderr=subprocess.STDOUT,
+            cwd=config_dir,
+            env=_sandbox_environment(config_dir.parent),
             start_new_session=True,
+            close_fds=True,
         )
         try:
             _progress(progress_path, "runtime_probe", 72)

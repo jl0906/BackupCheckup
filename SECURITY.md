@@ -26,3 +26,19 @@ Assistant's private integration storage. Diagnostics and normal entity attribute
 exclude user-defined backup names, native backup IDs, and raw third-party exception
 messages. An explicit expert option can expose full newest-backup metadata in entity
 attributes when required.
+
+## Runtime runner boundary
+
+The optional runtime runner treats every uploaded backup as untrusted. It rejects
+unsafe archive paths and non-regular members, enforces member and expanded-size
+limits, and does not start an archive until its complete upload has been verified.
+The restored Home Assistant copy runs in dedicated network, mount, PID, IPC, and
+UTS namespaces as an unprivileged account. It receives an allowlisted environment
+without Supervisor or runner credentials, has no Linux capabilities, cannot gain
+new privileges, and is subject to process and file resource limits.
+
+The runner app itself necessarily retains `NET_ADMIN` and `SYS_ADMIN` inside its
+protected app container to create those namespaces. It has no host networking,
+Docker socket, production Home Assistant configuration, or Home Assistant API
+access. Disabling the platform's app protection mode weakens this boundary and is
+not supported.

@@ -1,5 +1,5 @@
 name: BackupCheckup Runtime Runner
-version: "3.0.5"
+version: "3.0.6"
 slug: backup_checkup_runtime_runner
 description: Starts a verified backup in an ephemeral, network-isolated Home Assistant instance.
 url: https://github.com/jl0906/BackupCheckup

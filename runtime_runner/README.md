@@ -1,9 +1,10 @@
 # BackupCheckup Runtime Runner
 
-Optional companion app for BackupCheckup 3.0.5. It receives only a backup that
+Optional companion app for BackupCheckup 3.0.6. It receives only a backup that
 has already passed structural verification, restores the Home Assistant portion
-into a temporary private directory, and starts it in Recovery Mode inside a
-separate network namespace.
+into a temporary private directory, and starts it in Recovery Mode inside separate
+network, mount, PID, IPC, and UTS namespaces. The restored process runs under an
+unprivileged account without Linux capabilities or inherited runner credentials.
 
 The app does not expose a host port and does not receive Home Assistant API
 access. Supervisor discovery connects it to the BackupCheckup integration with

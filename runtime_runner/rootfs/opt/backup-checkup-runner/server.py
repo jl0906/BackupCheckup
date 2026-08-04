@@ -29,7 +29,7 @@ from typing import Any, BinaryIO
 from securetar import SecureTarArchive
 
 PROTOCOL_VERSION = 1
-RUNNER_VERSION = "3.0.5"
+RUNNER_VERSION = "3.0.6"
 LISTEN_PORT = 8099
 DATA_DIR = Path("/data")
 TOKEN_PATH = DATA_DIR / "api_token"
@@ -44,6 +44,12 @@ CHUNK_SIZE = 1024 * 1024
 MAX_REQUEST_JSON = 64 * 1024
 MAX_METADATA_BYTES = 2 * 1024 * 1024
 MAX_MEMBERS = 1_000_000
+MAX_ARCHIVE_PATH_LENGTH = 4096
+MAX_ARCHIVE_PATH_DEPTH = 64
+SANDBOX_UID = 65534
+SANDBOX_GID = 65534
+SAFE_PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+CLIENT_SOCKET_TIMEOUT = 30
 
 logging.basicConfig(
     level=logging.INFO,
@@ -154,7 +160,7 @@ def _load_or_create_tls_certificate() -> str:
 def _probe_isolation() -> bool:
     try:
         completed = subprocess.run(
-            ["unshare", "--net", "--fork", "ip", "link", "set", "lo", "up"],
+            _namespace_command(["ip", "link", "set", "lo", "up"]),
             check=False,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
@@ -166,6 +172,32 @@ def _probe_isolation() -> bool:
     return completed.returncode == 0
 
 
+def _namespace_command(command: list[str]) -> list[str]:
+    """Run a command without access to the runner's network or process view."""
+    return [
+        "unshare",
+        "--mount",
+        "--pid",
+        "--net",
+        "--ipc",
+        "--uts",
+        "--fork",
+        "--kill-child",
+        "--mount-proc",
+        *command,
+    ]
+
+
+def _sandbox_environment(home: Path) -> dict[str, str]:
+    """Return the complete, secret-free environment for isolated processes."""
+    return {
+        "HOME": str(home),
+        "LANG": "C.UTF-8",
+        "PATH": SAFE_PATH,
+        "PYTHONUNBUFFERED": "1",
+    }
+
+
 def _safe_run_id(value: str) -> bool:
     try:
         return str(uuid.UUID(value)) == value
@@ -175,7 +207,14 @@ def _safe_run_id(value: str) -> bool:
 
 def _safe_member_path(name: str) -> PurePosixPath:
     path = PurePosixPath(name)
-    if not name or path.is_absolute() or ".." in path.parts or "\x00" in name:
+    if (
+        not name
+        or len(name) > MAX_ARCHIVE_PATH_LENGTH
+        or len(path.parts) > MAX_ARCHIVE_PATH_DEPTH
+        or path.is_absolute()
+        or ".." in path.parts
+        or "\x00" in name
+    ):
         raise RunnerFailure("unsafe_archive_path")
     return path
 
@@ -183,7 +222,11 @@ def _safe_member_path(name: str) -> PurePosixPath:
 def _read_backup_metadata(archive_path: Path, password: str | None) -> dict[str, Any]:
     with SecureTarArchive(archive_path, "r", password=password) as outer:
         member = None
+        members = 0
         for candidate in outer.tar:
+            members += 1
+            if members > MAX_MEMBERS:
+                raise RunnerFailure("archive_member_limit")
             candidate_path = _safe_member_path(candidate.name)
             if candidate_path.name == "backup.json" and candidate_path.parts != (
                 "backup.json",
@@ -193,7 +236,6 @@ def _read_backup_metadata(archive_path: Path, password: str | None) -> dict[str,
                 if member is not None:
                     raise RunnerFailure("backup_metadata_invalid")
                 member = candidate
-                break
         if member is None:
             raise RunnerFailure("backup_metadata_missing")
         if not member.isfile() or member.size > MAX_METADATA_BYTES:
@@ -223,13 +265,19 @@ def _homeassistant_stream(
     if protected and not password:
         raise RunnerFailure("password_required")
     with SecureTarArchive(archive_path, "r", password=password) as outer:
-        candidates = [
-            member
-            for member in outer.tar.getmembers()
-            if len(PurePosixPath(member.name).parts) == 1
-            and PurePosixPath(member.name).name
-            in {"homeassistant.tar", "homeassistant.tar.gz", "homeassistant.tgz"}
-        ]
+        candidates = []
+        members = 0
+        for member in outer.tar:
+            members += 1
+            if members > MAX_MEMBERS:
+                raise RunnerFailure("archive_member_limit")
+            member_path = _safe_member_path(member.name)
+            if len(member_path.parts) == 1 and member_path.name in {
+                "homeassistant.tar",
+                "homeassistant.tar.gz",
+                "homeassistant.tgz",
+            }:
+                candidates.append(member)
         if len(candidates) != 1:
             raise RunnerFailure("homeassistant_archive_missing")
         member = candidates[0]
@@ -306,6 +354,8 @@ class RunState:
     recovery_mode: bool = True
     home_assistant_version: str | None = None
     error_code: str | None = None
+    archive_verified: bool = False
+    uploading: bool = False
     thread: threading.Thread | None = field(default=None, repr=False)
     lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
     _logged_progress_percent: int = field(default=0, repr=False)
@@ -361,7 +411,9 @@ class RunManager:
         self._runs: dict[str, RunState] = {}
         self._lock = threading.Lock()
         shutil.rmtree(RUN_ROOT, ignore_errors=True)
-        RUN_ROOT.mkdir(mode=0o700, parents=True, exist_ok=True)
+        RUN_ROOT.mkdir(mode=0o710, parents=True, exist_ok=True)
+        os.chown(RUN_ROOT, 0, SANDBOX_GID)
+        os.chmod(RUN_ROOT, 0o710)
 
     def create(self, payload: dict[str, Any]) -> RunState:
         if payload.get("protocol") != PROTOCOL_VERSION:
@@ -400,7 +452,8 @@ class RunManager:
                 raise RunnerFailure("runner_busy")
             run_id = str(uuid.uuid4())
             directory = Path(tempfile.mkdtemp(prefix=f"{run_id}-", dir=RUN_ROOT))
-            os.chmod(directory, 0o700)
+            os.chown(directory, 0, SANDBOX_GID)
+            os.chmod(directory, 0o710)
             run = RunState(
                 run_id=run_id,
                 directory=directory,
@@ -440,14 +493,18 @@ class RunManager:
     def start(self, run: RunState) -> None:
         if not self.isolation_available:
             raise RunnerFailure("isolation_unavailable")
-        if not run.archive_path.is_file():
-            raise RunnerFailure("archive_missing")
-        if run.thread is not None:
-            raise RunnerFailure("run_already_started")
-        run.thread = threading.Thread(
-            target=self._execute, args=(run,), name=f"runtime-{run.run_id}", daemon=True
-        )
-        run.thread.start()
+        with run.lock:
+            if run.uploading or not run.archive_verified:
+                raise RunnerFailure("archive_not_verified")
+            if run.thread is not None:
+                raise RunnerFailure("run_already_started")
+            run.thread = threading.Thread(
+                target=self._execute,
+                args=(run,),
+                name=f"runtime-{run.run_id}",
+                daemon=True,
+            )
+            run.thread.start()
         _LOGGER.info("run started")
 
     def _execute(self, run: RunState) -> None:
@@ -478,25 +535,33 @@ class RunManager:
             run.password,
             self.options["maximum_expanded_gb"] * 1_000_000_000,
         )
+        self._assign_sandbox_tree(config_dir.parent)
         run.password = None
         run.archive_path.unlink(missing_ok=True)
         run.update("runtime_restore", 58)
         _LOGGER.info("run archive_restored")
         progress_path = run.directory / "progress.json"
         result_path = run.directory / "result.json"
-        command = [
-            "unshare",
-            "--net",
-            "--fork",
-            "--kill-child",
+        command = _namespace_command([
             "python3",
             str(ISOLATED_BOOT),
             str(config_dir),
             str(progress_path),
             str(result_path),
             str(run.timeout_seconds),
-        ]
+        ])
         return progress_path, result_path, command
+
+    @staticmethod
+    def _assign_sandbox_tree(root: Path) -> None:
+        """Give only the extracted copy to the unprivileged runtime account."""
+        for directory, names, files in os.walk(root):
+            current = Path(directory)
+            os.chown(current, SANDBOX_UID, SANDBOX_GID)
+            os.chmod(current, 0o700)
+            for name in (*names, *files):
+                child = current / name
+                os.chown(child, SANDBOX_UID, SANDBOX_GID, follow_symlinks=False)
 
     @staticmethod
     def _start_runtime(command: list[str]) -> subprocess.Popen[bytes]:
@@ -506,6 +571,8 @@ class RunManager:
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=None,
+            env=_sandbox_environment(RUN_ROOT),
+            close_fds=True,
         )
 
     @staticmethod
@@ -667,6 +734,11 @@ def _signed_payload(payload: dict[str, Any]) -> dict[str, Any]:
 class Handler(BaseHTTPRequestHandler):
     server_version = "BackupCheckupRuntime/3.0"
 
+    def setup(self) -> None:
+        """Bound slow or stalled clients before reading any request body."""
+        super().setup()
+        self.connection.settimeout(CLIENT_SOCKET_TIMEOUT)
+
     def log_message(self, _format: str, *_args: object) -> None:
         return
 
@@ -700,6 +772,8 @@ class Handler(BaseHTTPRequestHandler):
             raise RunnerFailure("request_size_invalid")
         try:
             payload = json.loads(self.rfile.read(length))
+        except OSError as err:
+            raise RunnerFailure("request_body_failed") from err
         except (UnicodeDecodeError, json.JSONDecodeError) as err:
             raise RunnerFailure("request_json_invalid") from err
         if not isinstance(payload, dict):
@@ -778,22 +852,35 @@ class Handler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", ""))
             if length != run.archive_size:
                 raise RunnerFailure("archive_size_mismatch")
+            with run.lock:
+                if run.uploading or run.archive_verified or run.thread is not None:
+                    raise RunnerFailure("archive_state_invalid")
+                run.uploading = True
             digest = hashlib.sha256()
             remaining = length
-            with run.archive_path.open("xb") as output:
-                os.chmod(run.archive_path, 0o600)
-                while remaining:
-                    chunk = self.rfile.read(min(CHUNK_SIZE, remaining))
-                    if not chunk:
-                        raise RunnerFailure("archive_upload_incomplete")
-                    output.write(chunk)
-                    digest.update(chunk)
-                    remaining -= len(chunk)
-                    uploaded = length - remaining
-                    run.update("runtime_upload", uploaded * 30 // length)
-            if not hmac.compare_digest(digest.hexdigest(), run.backup_sha256):
+            upload_verified = False
+            try:
+                with run.archive_path.open("xb") as output:
+                    os.chmod(run.archive_path, 0o600)
+                    while remaining:
+                        chunk = self.rfile.read(min(CHUNK_SIZE, remaining))
+                        if not chunk:
+                            raise RunnerFailure("archive_upload_incomplete")
+                        output.write(chunk)
+                        digest.update(chunk)
+                        remaining -= len(chunk)
+                        uploaded = length - remaining
+                        run.update("runtime_upload", uploaded * 30 // length)
+                if not hmac.compare_digest(digest.hexdigest(), run.backup_sha256):
+                    raise RunnerFailure("archive_checksum_mismatch")
+                upload_verified = True
+            except Exception:
                 run.archive_path.unlink(missing_ok=True)
-                raise RunnerFailure("archive_checksum_mismatch")
+                raise
+            finally:
+                with run.lock:
+                    run.uploading = False
+                    run.archive_verified = upload_verified
             run.update("runtime_upload", 30)
             _LOGGER.info("run archive_uploaded bytes=%d checksum_verified=true", length)
             self._empty(HTTPStatus.NO_CONTENT)

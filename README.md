@@ -10,7 +10,7 @@
 
 <p align="center">
   <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-orange.svg">
-  <img alt="Version 3.0.5" src="https://img.shields.io/badge/version-3.0.5-blue.svg">
+  <img alt="Version 3.0.6" src="https://img.shields.io/badge/version-3.0.6-blue.svg">
   <img alt="Home Assistant 2026.3 or newer" src="https://img.shields.io/badge/Home_Assistant-2026.3_or_newer-41BDF5.svg">
   <img alt="AI coded and maintained" src="https://img.shields.io/badge/AI-coded%20%26%20maintained-8A2BE2.svg">
   <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg">
