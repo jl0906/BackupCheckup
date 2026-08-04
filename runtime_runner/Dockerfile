@@ -9,9 +9,11 @@ LABEL \
     io.hass.type="app" \
     io.hass.arch="${BUILD_ARCH}"
 
-USER root
+# Namespace creation requires NET_ADMIN/SYS_ADMIN and root inside this protected
+# app container. No host network, Docker socket, or production config is mounted.
+USER root  # NOSONAR
 
-RUN apk add --no-cache iproute2 util-linux
+RUN apk add --no-cache iproute2 openssl util-linux
 
 COPY rootfs /
 

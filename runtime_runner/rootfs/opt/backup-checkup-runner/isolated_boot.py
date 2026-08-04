@@ -25,7 +25,10 @@ def _progress(path: Path, stage: str, percent: int) -> None:
 
 def _endpoint_ready() -> bool:
     try:
-        with urllib.request.urlopen("http://127.0.0.1:8123/", timeout=2) as response:
+        # This is a loopback-only readiness probe inside the isolated namespace.
+        with urllib.request.urlopen(  # NOSONAR
+            "http://127.0.0.1:8123/", timeout=2
+        ) as response:
             return 100 <= response.status < 500
     except urllib.error.HTTPError as err:
         return 100 <= err.code < 500

@@ -2,8 +2,29 @@
 
 ## 3.0.1
 
-**Fixed**
-- Fixed automatic discovery of the installed and running BackupCheckup Runtime Runner. The companion app now receives Supervisor API access required to register its authenticated internal endpoint with Home Assistant.
+### Security
+
+- Encrypted all integration-to-runner traffic with a persistent, certificate-pinned
+  TLS connection.
+- Moved temporary runtime data from the shared temporary directory to a private
+  runtime directory and restricted persistent credentials to the app user.
+- Documented the required root privileges and internal Supervisor proxy as
+  reviewed exceptions for the isolated network-namespace setup.
+
+### Fixed
+
+- Fixed Home Assistant app discovery by reading the structured discovery payload
+  correctly.
+- Retried runner registration while Home Assistant or the Supervisor is still
+  starting instead of giving up after the first failed attempt.
+- Fixed inconsistent 3.0.0 version identifiers that prevented the updated frontend
+  element from registering as 3.0.1.
+
+### Changed
+
+- Consolidated repeated recovery-assessment serialization.
+- Excluded packed frontend localization tables from duplication analysis while
+  retaining all other Sonar security and code-quality checks for the panel.
 
 ## 3.0.0
 

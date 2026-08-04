@@ -6,6 +6,7 @@ import asyncio
 import hashlib
 import hmac
 import json
+import ssl
 import time
 from collections.abc import AsyncIterator, Callable, Mapping
 from dataclasses import dataclass, field
@@ -66,6 +67,7 @@ _CHUNK_SIZE = 1024 * 1024
 _MAX_IDENTIFIER_LENGTH = 160
 _MAX_ERROR_CODE_LENGTH = 96
 _MAX_RUNNER_VERSION_LENGTH = 64
+_MAX_TLS_CERTIFICATE_LENGTH = 8192
 _MIN_POLL_INTERVAL = 0.25
 _MAX_POLL_INTERVAL = 5.0
 
@@ -101,6 +103,16 @@ def _empty_stages() -> dict[str, str]:
     return {stage: "pending" for stage in RUNTIME_STAGE_OPTIONS}
 
 
+def _tls_context(certificate: str) -> ssl.SSLContext | None:
+    """Build a TLS context pinned to the runner's discovered certificate."""
+    try:
+        context = ssl.create_default_context(cadata=certificate)
+    except ssl.SSLError:
+        return None
+    context.check_hostname = False
+    return context
+
+
 @dataclass(frozen=True, slots=True)
 class RuntimeRunnerConnection:
     """Authenticated endpoint discovered from the companion app."""
@@ -108,6 +120,34 @@ class RuntimeRunnerConnection:
     base_url: str
     token: str
     runner_id: str
+    tls_certificate: str
+
+    @classmethod
+    def from_discovery(
+        cls, value: Mapping[str, Any]
+    ) -> RuntimeRunnerConnection | None:
+        """Build a pinned private connection from Supervisor discovery data."""
+        host = value.get("host")
+        port = value.get("port")
+        if (
+            value.get("protocol") != _PROTOCOL_VERSION
+            or value.get("ssl") is not True
+            or not isinstance(host, str)
+            or not host
+            or any(character in host for character in "/\\?#@")
+            or isinstance(port, bool)
+            or not isinstance(port, int)
+            or not 1 <= port <= 65535
+        ):
+            return None
+        return cls.from_mapping(
+            {
+                "base_url": f"https://{host}:{port}/",
+                "token": value.get("token"),
+                "runner_id": value.get("runner_id"),
+                "tls_certificate": value.get("tls_certificate"),
+            }
+        )
 
     @classmethod
     def from_mapping(
@@ -119,12 +159,23 @@ class RuntimeRunnerConnection:
         base_url = _bounded_text(value.get("base_url"), maximum=512)
         token = _bounded_text(value.get("token"), maximum=512)
         runner_id = _bounded_text(value.get("runner_id"), maximum=128)
-        if not base_url or not token or not runner_id:
+        raw_certificate = value.get("tls_certificate")
+        tls_certificate = (
+            raw_certificate.strip()
+            if isinstance(raw_certificate, str)
+            and len(raw_certificate) <= _MAX_TLS_CERTIFICATE_LENGTH
+            and "\x00" not in raw_certificate
+            else None
+        )
+        if not base_url or not token or not runner_id or not tls_certificate:
             return None
-        if not base_url.startswith(("http://", "https://")):
+        if not base_url.startswith("https://") or _tls_context(tls_certificate) is None:
             return None
         return cls(
-            base_url=base_url.rstrip("/") + "/", token=token, runner_id=runner_id
+            base_url=base_url.rstrip("/") + "/",
+            token=token,
+            runner_id=runner_id,
+            tls_certificate=tls_certificate,
         )
 
     def as_dict(self) -> dict[str, str]:
@@ -133,6 +184,7 @@ class RuntimeRunnerConnection:
             "base_url": self.base_url,
             "token": self.token,
             "runner_id": self.runner_id,
+            "tls_certificate": self.tls_certificate,
         }
 
 
@@ -388,6 +440,9 @@ class RuntimeRunnerClient:
         """Initialize the authenticated HTTP client."""
         self._session = session
         self._connection = connection
+        self._ssl_context = _tls_context(connection.tls_certificate)
+        if self._ssl_context is None:
+            raise RuntimeRunnerError("runner_tls_invalid")
 
     @property
     def _headers(self) -> dict[str, str]:
@@ -412,7 +467,10 @@ class RuntimeRunnerClient:
         """Return validated runner capability information."""
         try:
             async with self._session.get(
-                self._url("v1/health"), headers=self._headers, timeout=10
+                self._url("v1/health"),
+                headers=self._headers,
+                timeout=10,
+                ssl=self._ssl_context,
             ) as response:
                 if response.status != 200:
                     raise RuntimeRunnerError("runner_unavailable")
@@ -501,6 +559,7 @@ class RuntimeRunnerClient:
                 headers=self._headers,
                 json=payload,
                 timeout=15,
+                ssl=self._ssl_context,
             ) as response:
                 data = await response.json()
                 if response.status != 201 or not isinstance(data, Mapping):
@@ -553,6 +612,7 @@ class RuntimeRunnerClient:
                 headers=headers,
                 data=self._archive_chunks(archive_path, progress_callback),
                 timeout=None,
+                ssl=self._ssl_context,
             ) as response:
                 if response.status != 204:
                     try:
@@ -571,6 +631,7 @@ class RuntimeRunnerClient:
                 self._url(f"v1/runs/{run_id}/start"),
                 headers=self._headers,
                 timeout=15,
+                ssl=self._ssl_context,
             ) as response:
                 if response.status != 202:
                     try:
@@ -598,6 +659,7 @@ class RuntimeRunnerClient:
                     self._url(f"v1/runs/{run_id}"),
                     headers=self._headers,
                     timeout=10,
+                    ssl=self._ssl_context,
                 ) as response:
                     payload = await response.json()
                     if response.status != 200 or not isinstance(payload, Mapping):
@@ -625,6 +687,7 @@ class RuntimeRunnerClient:
                 self._url(f"v1/runs/{run_id}"),
                 headers=self._headers,
                 timeout=10,
+                ssl=self._ssl_context,
             ):
                 pass
         except Exception:  # noqa: BLE001 - best-effort remote cleanup

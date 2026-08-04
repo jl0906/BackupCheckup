@@ -35,7 +35,11 @@ from .activity import (
 )
 from .adaptive_policy import resolve_adaptive_policy
 from .age import completed_age_days, precise_age_days
-from .analytics import calculate_health_score, calculate_inventory_analytics
+from .analytics import (
+    HealthScore,
+    calculate_health_score,
+    calculate_inventory_analytics,
+)
 from .backup_normalizer import BackupRecordNormalizer, ThirdPartyBoundary
 from .classification import (
     automatic_backup_failed as evaluate_automatic_backup_failed,
@@ -77,7 +81,7 @@ from .native_backup import (
 )
 from .notifications import BackupCheckupNotificationManager
 from .problem_state import evaluate_problem_state
-from .recovery import assess_recovery_readiness
+from .recovery import RecoveryReadiness, assess_recovery_readiness
 from .recovery_preparedness import (
     RecoveryPreparednessStore,
     detect_recovery_dependencies,
@@ -166,6 +170,33 @@ class InventoryState:
     latest_automatic: BackupRecord | None
     latest_manual: BackupRecord | None
     ignored_update_count: int
+
+
+def _assessment_fields(
+    health: HealthScore, recovery: RecoveryReadiness
+) -> dict[str, Any]:
+    """Return shared health and recovery fields for coordinator snapshots."""
+    return {
+        "health_score": health.score,
+        "health_rating": health.rating,
+        "health_score_deductions": health.deductions,
+        "health_score_components": health.component_deductions,
+        "health_score_raw_deductions": health.raw_deductions,
+        "health_score_suppressed_deductions": health.suppressed_deductions,
+        "recovery_readiness_score": recovery.score,
+        "recovery_status": recovery.status,
+        "recovery_recommendation": recovery.recommendation,
+        "recovery_deductions": recovery.deductions,
+        "recovery_checks": recovery.checks,
+        "recovery_content_inventory": recovery.content_inventory,
+        "recovery_content_comparison": recovery.content_comparison,
+        "recovery_storage_resilience": recovery.storage_resilience,
+        "recovery_preparedness": recovery.preparedness,
+        "recovery_restore_simulation": recovery.restore_simulation,
+        "recovery_runtime_test": recovery.runtime_test,
+        "recovery_restore_test": recovery.restore_test,
+        "recovery_plan": recovery.recovery_plan,
+    }
 
 
 class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
@@ -724,25 +755,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             active_problems=problem_state.active,
             size_check_mode=self.size_check_mode,
             analytics_window_days=self.analytics_window_days,
-            health_score=health.score,
-            health_rating=health.rating,
-            health_score_deductions=health.deductions,
-            health_score_components=health.component_deductions,
-            health_score_raw_deductions=health.raw_deductions,
-            health_score_suppressed_deductions=health.suppressed_deductions,
-            recovery_readiness_score=recovery.score,
-            recovery_status=recovery.status,
-            recovery_recommendation=recovery.recommendation,
-            recovery_deductions=recovery.deductions,
-            recovery_checks=recovery.checks,
-            recovery_content_inventory=recovery.content_inventory,
-            recovery_content_comparison=recovery.content_comparison,
-            recovery_storage_resilience=recovery.storage_resilience,
-            recovery_preparedness=recovery.preparedness,
-            recovery_restore_simulation=recovery.restore_simulation,
-            recovery_runtime_test=recovery.runtime_test,
-            recovery_restore_test=recovery.restore_test,
-            recovery_plan=recovery.recovery_plan,
+            **_assessment_fields(health, recovery),
             recovery_evidence=recovery.evidence,
             recovery_adaptive_policy=recovery.adaptive_policy,
             recovery_open_risks=recovery.open_risks,
@@ -1360,25 +1373,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             recommendation=state.recommendation,
             problem_count=len(state.active),
             active_problems=state.active,
-            health_score=health.score,
-            health_rating=health.rating,
-            health_score_deductions=health.deductions,
-            health_score_components=health.component_deductions,
-            health_score_raw_deductions=health.raw_deductions,
-            health_score_suppressed_deductions=health.suppressed_deductions,
-            recovery_readiness_score=recovery.score,
-            recovery_status=recovery.status,
-            recovery_recommendation=recovery.recommendation,
-            recovery_deductions=recovery.deductions,
-            recovery_checks=recovery.checks,
-            recovery_content_inventory=recovery.content_inventory,
-            recovery_content_comparison=recovery.content_comparison,
-            recovery_storage_resilience=recovery.storage_resilience,
-            recovery_preparedness=recovery.preparedness,
-            recovery_restore_simulation=recovery.restore_simulation,
-            recovery_runtime_test=recovery.runtime_test,
-            recovery_restore_test=recovery.restore_test,
-            recovery_plan=recovery.recovery_plan,
+            **_assessment_fields(health, recovery),
             last_restore_test=restore_test.tested_at,
             restore_test_result=restore_test.result,
             restore_test_scope=restore_test.scope,

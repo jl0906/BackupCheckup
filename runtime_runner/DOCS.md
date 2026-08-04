@@ -19,14 +19,14 @@ in the BackupCheckup Recovery page.
 - The child process has its own network namespace with loopback only.
 - The uploaded archive, extracted copy, password, and logs are removed when the
   run completes.
-- The API is reachable only on the internal app network and requires a generated
-  bearer token. Terminal evidence is authenticated with HMAC.
+- The API is reachable only on the internal app network. Connections use a
+  certificate-pinned TLS channel and require a generated bearer token. Terminal
+  evidence is authenticated with HMAC.
 
 The app needs `NET_ADMIN` and `SYS_ADMIN` solely to create and initialize the
-network namespace. It does not enable general Supervisor API access, host
-networking, the Docker API, or the Home Assistant API. The limited discovery
-and self-information endpoints are available to apps without enabling the
-general Supervisor API.
+network namespace. Supervisor API access is used only for the app's self-information
+and discovery endpoints. The app does not enable host networking, Docker API
+access, or Home Assistant API access.
 
 ## Options
 

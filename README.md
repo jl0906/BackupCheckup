@@ -12,6 +12,7 @@
   <img alt="HACS Custom" src="https://img.shields.io/badge/HACS-Custom-orange.svg">
   <img alt="Version 3.0.1" src="https://img.shields.io/badge/version-3.0.1-blue.svg">
   <img alt="Home Assistant 2026.3 or newer" src="https://img.shields.io/badge/Home_Assistant-2026.3_or_newer-41BDF5.svg">
+  <img alt="AI coded and maintained" src="https://img.shields.io/badge/AI-coded%20%26%20maintained-8A2BE2.svg">
   <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg">
 </p>
 
@@ -73,8 +74,9 @@ from structural verification through these additional stages:
 
 The runner uses a temporary copy and an isolated network namespace. It does not
 call the Supervisor restore API, mount the production configuration, or expose the
-temporary instance to the normal network. See the [Runtime Runner documentation](runtime_runner/DOCS.md)
-for installation, permissions, and limits.
+temporary instance to the normal network. Communication uses certificate-pinned
+TLS. See the [Runtime Runner documentation](runtime_runner/DOCS.md) for installation,
+permissions, and limits.
 
 ## Configuration and interface
 

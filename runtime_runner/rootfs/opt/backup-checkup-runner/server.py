@@ -8,6 +8,7 @@ import json
 import os
 import secrets
 import shutil
+import ssl
 import subprocess
 import tarfile
 import tempfile
@@ -32,8 +33,11 @@ LISTEN_PORT = 8099
 DATA_DIR = Path("/data")
 TOKEN_PATH = DATA_DIR / "api_token"
 OPTIONS_PATH = DATA_DIR / "options.json"
-RUN_ROOT = Path("/tmp/backup-checkup-runtime")
+TLS_CERT_PATH = DATA_DIR / "runner.crt"
+TLS_KEY_PATH = DATA_DIR / "runner.key"
+RUN_ROOT = Path("/run/backup-checkup-runtime")
 ISOLATED_BOOT = Path("/opt/backup-checkup-runner/isolated_boot.py")
+SUPERVISOR_API = "http://supervisor"  # NOSONAR: mandatory internal API proxy
 CHUNK_SIZE = 1024 * 1024
 MAX_REQUEST_JSON = 64 * 1024
 MAX_METADATA_BYTES = 2 * 1024 * 1024
@@ -71,7 +75,8 @@ def _load_options() -> dict[str, int]:
 
 
 def _load_or_create_token() -> str:
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    DATA_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
+    os.chmod(DATA_DIR, 0o700)
     try:
         token = TOKEN_PATH.read_text(encoding="utf-8").strip()
     except OSError:
@@ -82,7 +87,59 @@ def _load_or_create_token() -> str:
         temporary.write_text(token, encoding="utf-8")
         os.chmod(temporary, 0o600)
         os.replace(temporary, TOKEN_PATH)
+    os.chmod(TOKEN_PATH, 0o600)
     return token
+
+
+def _load_or_create_tls_certificate() -> str:
+    """Return a persistent self-signed certificate for pinned internal TLS."""
+    DATA_DIR.mkdir(mode=0o700, parents=True, exist_ok=True)
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    try:
+        context.load_cert_chain(TLS_CERT_PATH, TLS_KEY_PATH)
+        return TLS_CERT_PATH.read_text(encoding="ascii")
+    except (OSError, ssl.SSLError):
+        TLS_CERT_PATH.unlink(missing_ok=True)
+        TLS_KEY_PATH.unlink(missing_ok=True)
+
+    temporary_cert = TLS_CERT_PATH.with_suffix(".crt.tmp")
+    temporary_key = TLS_KEY_PATH.with_suffix(".key.tmp")
+    temporary_cert.unlink(missing_ok=True)
+    temporary_key.unlink(missing_ok=True)
+    try:
+        subprocess.run(
+            [
+                "openssl",
+                "req",
+                "-x509",
+                "-newkey",
+                "rsa:2048",
+                "-sha256",
+                "-nodes",
+                "-days",
+                "3650",
+                "-subj",
+                "/CN=backup-checkup-runtime",
+                "-keyout",
+                str(temporary_key),
+                "-out",
+                str(temporary_cert),
+            ],
+            check=True,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=30,
+        )
+        os.chmod(temporary_cert, 0o600)
+        os.chmod(temporary_key, 0o600)
+        os.replace(temporary_cert, TLS_CERT_PATH)
+        os.replace(temporary_key, TLS_KEY_PATH)
+        context.load_cert_chain(TLS_CERT_PATH, TLS_KEY_PATH)
+        return TLS_CERT_PATH.read_text(encoding="ascii")
+    finally:
+        temporary_cert.unlink(missing_ok=True)
+        temporary_key.unlink(missing_ok=True)
 
 
 def _probe_isolation() -> bool:
@@ -520,9 +577,19 @@ class RunManager:
             )
 
 
-TOKEN = _load_or_create_token()
-RUNNER_ID = hashlib.sha256(TOKEN.encode()).hexdigest()[:32]
-MANAGER = RunManager(TOKEN, RUNNER_ID, _load_options())
+TOKEN: str
+RUNNER_ID: str
+TLS_CERTIFICATE: str
+MANAGER: RunManager
+
+
+def _initialize_runtime() -> None:
+    """Initialize private persistent state immediately before serving requests."""
+    global MANAGER, RUNNER_ID, TLS_CERTIFICATE, TOKEN
+    TOKEN = _load_or_create_token()
+    RUNNER_ID = hashlib.sha256(TOKEN.encode()).hexdigest()[:32]
+    TLS_CERTIFICATE = _load_or_create_tls_certificate()
+    MANAGER = RunManager(TOKEN, RUNNER_ID, _load_options())
 
 
 def _signed_payload(payload: dict[str, Any]) -> dict[str, Any]:
@@ -683,49 +750,75 @@ class Handler(BaseHTTPRequestHandler):
         self._empty(HTTPStatus.NO_CONTENT)
 
 
+def _register_discovery_once(supervisor_token: str) -> None:
+    """Publish one authenticated endpoint through the Supervisor proxy."""
+    headers = {"Authorization": f"Bearer {supervisor_token}"}
+    request = urllib.request.Request(
+        f"{SUPERVISOR_API}/addons/self/info", headers=headers
+    )
+    with urllib.request.urlopen(request, timeout=10) as response:  # NOSONAR
+        info = json.load(response)
+    hostname = info.get("data", {}).get("hostname")
+    if (
+        not isinstance(hostname, str)
+        or not hostname
+        or any(character in hostname for character in "/\\?#@")
+    ):
+        raise RunnerFailure("supervisor_hostname_invalid")
+    payload = json.dumps(
+        {
+            "service": "backup_checkup",
+            "config": {
+                "host": hostname,
+                "port": LISTEN_PORT,
+                "protocol": PROTOCOL_VERSION,
+                "ssl": True,
+                "token": TOKEN,
+                "runner_id": RUNNER_ID,
+                "tls_certificate": TLS_CERTIFICATE,
+            },
+        }
+    ).encode()
+    discovery = urllib.request.Request(
+        f"{SUPERVISOR_API}/discovery",
+        data=payload,
+        method="POST",
+        headers={**headers, "Content-Type": "application/json"},
+    )
+    with urllib.request.urlopen(discovery, timeout=10):  # NOSONAR
+        pass
+
+
 def _register_discovery() -> None:
+    """Retry discovery until Supervisor accepts the service registration."""
     supervisor_token = os.environ.get("SUPERVISOR_TOKEN")
     if not supervisor_token:
+        print("Runtime Runner discovery disabled: Supervisor token missing", flush=True)
         return
-    try:
-        request = urllib.request.Request(
-            "http://supervisor/addons/self/info",
-            headers={"Authorization": f"Bearer {supervisor_token}"},
-        )
-        with urllib.request.urlopen(request, timeout=10) as response:
-            info = json.load(response)
-        hostname = info.get("data", {}).get("hostname")
-        if not isinstance(hostname, str) or not hostname:
-            return
-        payload = json.dumps(
-            {
-                "service": "backup_checkup",
-                "config": {
-                    "host": hostname,
-                    "port": LISTEN_PORT,
-                    "protocol": PROTOCOL_VERSION,
-                    "token": TOKEN,
-                    "runner_id": RUNNER_ID,
-                },
-            }
-        ).encode()
-        discovery = urllib.request.Request(
-            "http://supervisor/discovery",
-            data=payload,
-            method="POST",
-            headers={
-                "Authorization": f"Bearer {supervisor_token}",
-                "Content-Type": "application/json",
-            },
-        )
-        with urllib.request.urlopen(discovery, timeout=10):
-            pass
-    except (OSError, ValueError, KeyError):
+    retry_delay = 1
+    while True:
+        try:
+            _register_discovery_once(supervisor_token)
+        except (OSError, ValueError, KeyError, RunnerFailure) as err:
+            print(
+                "Runtime Runner discovery failed; retrying: "
+                f"{type(err).__name__}",
+                flush=True,
+            )
+            time.sleep(retry_delay)
+            retry_delay = min(60, retry_delay * 2)
+            continue
+        print("Runtime Runner discovery registered", flush=True)
         return
 
 
 def main() -> None:
-    server = ThreadingHTTPServer(("0.0.0.0", LISTEN_PORT), Handler)
+    _initialize_runtime()
+    server = ThreadingHTTPServer(("0.0.0.0", LISTEN_PORT), Handler)  # NOSONAR
+    tls_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    tls_context.minimum_version = ssl.TLSVersion.TLSv1_2
+    tls_context.load_cert_chain(TLS_CERT_PATH, TLS_KEY_PATH)
+    server.socket = tls_context.wrap_socket(server.socket, server_side=True)
     threading.Thread(target=_register_discovery, daemon=True).start()
     server.serve_forever(poll_interval=0.25)
 

@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
+
+if TYPE_CHECKING:
+    from homeassistant.helpers.service_info.hassio import HassioServiceInfo
 
 from .configuration import normalize_configuration
 from .const import (
@@ -230,37 +233,14 @@ class BackupCheckupConfigFlow(
         self._recommended_verification_size_gb = None
         self._runtime_runner: RuntimeRunnerConnection | None = None
 
-    @staticmethod
-    def _runtime_connection_from_discovery(
-        discovery_info: Mapping[str, Any],
-    ) -> RuntimeRunnerConnection | None:
-        """Build a private runner connection from Supervisor discovery data."""
-        if discovery_info.get("protocol") != 1:
-            return None
-        host = discovery_info.get("host")
-        port = discovery_info.get("port")
-        if (
-            not isinstance(host, str)
-            or not host
-            or any(character in host for character in "/\\?#@")
-            or isinstance(port, bool)
-            or not isinstance(port, int)
-            or not 1 <= port <= 65535
-        ):
-            return None
-        return RuntimeRunnerConnection.from_mapping(
-            {
-                "base_url": f"http://{host}:{port}/",
-                "token": discovery_info.get("token"),
-                "runner_id": discovery_info.get("runner_id"),
-            }
-        )
-
     async def async_step_hassio(
-        self, discovery_info: Mapping[str, Any]
+        self, discovery_info: HassioServiceInfo
     ) -> FlowResult:
         """Attach the companion app without creating a second config entry."""
-        connection = self._runtime_connection_from_discovery(discovery_info)
+        discovery_config = getattr(discovery_info, "config", None)
+        if not isinstance(discovery_config, Mapping):
+            return self.async_abort(reason="invalid_runtime_runner")
+        connection = RuntimeRunnerConnection.from_discovery(discovery_config)
         if connection is None:
             return self.async_abort(reason="invalid_runtime_runner")
         entries = self._async_current_entries()
