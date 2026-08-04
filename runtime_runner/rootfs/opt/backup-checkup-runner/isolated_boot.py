@@ -139,6 +139,18 @@ def _stop_process(process: subprocess.Popen[bytes]) -> None:
         process.wait(timeout=10)
 
 
+def _prepare_sandbox_log(log_path: Path) -> None:
+    """Create the startup log for the unprivileged Home Assistant child."""
+    log_path.touch(mode=0o600, exist_ok=True)
+    os.chown(
+        log_path,
+        SANDBOX_UID,
+        SANDBOX_GID,
+        follow_symlinks=False,
+    )
+    os.chmod(log_path, 0o600, follow_symlinks=False)
+
+
 def _classify_startup_failure(log_path: Path, *, timed_out: bool) -> str:
     """Map a bounded log tail to one stable, non-sensitive error code."""
     if timed_out:
@@ -191,6 +203,7 @@ def main() -> int:
         return 3
 
     log_path = config_dir.parent / "ephemeral-home-assistant.log"
+    _prepare_sandbox_log(log_path)
     command = _sandbox_command([
         sys.executable,
         "-m",

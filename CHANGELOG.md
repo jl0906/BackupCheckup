@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.0.11
+
+### Fixed
+
+- Prepared the ephemeral Home Assistant log with the sandbox UID/GID before
+  startup so the unprivileged runtime can open its configured log file instead
+  of exiting with `home_assistant_permission_denied`.
+
+### Compatibility
+
+- Integration, frontend asset, and Runtime Runner versions are synchronized as
+  3.0.11. Existing configuration and stored analysis data remain compatible.
+
 ## 3.0.10
 
 ### Changed
