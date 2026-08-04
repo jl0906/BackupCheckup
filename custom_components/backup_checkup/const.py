@@ -14,7 +14,7 @@ PLATFORMS: tuple[Platform, ...] = (
 )
 
 DOCUMENTATION_URL = "https://github.com/jl0906/BackupCheckup/wiki"
-TROUBLESHOOTING_URL = f"{DOCUMENTATION_URL}/Fehlerbehebung"
+TROUBLESHOOTING_URL = f"{DOCUMENTATION_URL}/Troubleshooting"
 
 CONF_MAX_AGE_DAYS = "max_age_days"
 CONF_UPDATE_INTERVAL_MINUTES = "update_interval_minutes"
