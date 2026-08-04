@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.0.7
+
+### Fixed
+
+- Synchronized the registered Home Assistant panel component with the 3.0.7
+  frontend asset so the sidebar panel renders instead of remaining black.
+- Published the fix under a new versioned asset URL to bypass cached copies of
+  the broken 3.0.6 frontend module.
+
 ## 3.0.6
 
 ### Security
@@ -12,3 +21,16 @@
 - Prevented incomplete or concurrently replaced uploads from being started and
   bounded archive path length, path depth, and outer archive member processing.
 - Added client socket timeouts to limit stalled authenticated requests.
+
+## 3.0.5
+
+### Fixed
+
+- Kept the backup protection progress moving during the blocking archive scan
+  with bounded heartbeat updates until verified phase results are available.
+- Fixed Runtime Runner metadata discovery for valid archives whose canonical
+  `backup.json` entry cannot be resolved by random-access TAR lookup.
+
+### Changed
+
+- Reported Runtime Runner progress in consistent 10-percentage-point log steps.
