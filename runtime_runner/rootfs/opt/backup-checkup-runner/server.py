@@ -29,7 +29,7 @@ from typing import Any, BinaryIO
 from securetar import SecureTarArchive
 
 PROTOCOL_VERSION = 1
-RUNNER_VERSION = "3.0.6"
+RUNNER_VERSION = "3.0.7"
 LISTEN_PORT = 8099
 DATA_DIR = Path("/data")
 TOKEN_PATH = DATA_DIR / "api_token"
