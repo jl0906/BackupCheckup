@@ -29,7 +29,7 @@ from typing import Any, BinaryIO
 from securetar import SecureTarArchive
 
 PROTOCOL_VERSION = 1
-RUNNER_VERSION = "3.0.12"
+RUNNER_VERSION = "3.0.13"
 LISTEN_PORT = 8099
 DATA_DIR = Path("/data")
 TOKEN_PATH = DATA_DIR / "api_token"
@@ -38,6 +38,8 @@ TLS_CERT_PATH = DATA_DIR / "runner.crt"
 TLS_KEY_PATH = DATA_DIR / "runner.key"
 RUN_ROOT = Path("/run/backup-checkup-runtime")
 ISOLATED_BOOT = Path("/opt/backup-checkup-runner/isolated_boot.py")
+RUN_RETENTION_SECONDS = 10 * 60
+RUN_REAPER_INTERVAL_SECONDS = 60
 # Home Assistant exposes this mandatory authenticated proxy only on its private
 # app network. It is never used for client traffic or outside the Supervisor.
 SUPERVISOR_API = "http://supervisor"  # NOSONAR
@@ -372,6 +374,7 @@ class RunState:
     thread: threading.Thread | None = field(default=None, repr=False)
     lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
     _logged_progress_percent: int = field(default=0, repr=False)
+    last_activity_monotonic: float = field(default_factory=time.monotonic, repr=False)
 
     @property
     def archive_path(self) -> Path:
@@ -382,6 +385,7 @@ class RunState:
             previous_stage = self.stage
             self.stage = stage
             self.progress_percent = max(self.progress_percent, min(100, percent))
+            self.last_activity_monotonic = time.monotonic()
             progress_bucket = self.progress_percent // 10 * 10
             first_bucket = self._logged_progress_percent + 10
             progress_updates = tuple(range(first_bucket, progress_bucket + 1, 10))
@@ -423,10 +427,47 @@ class RunManager:
         self.isolation_available = _probe_isolation()
         self._runs: dict[str, RunState] = {}
         self._lock = threading.Lock()
-        shutil.rmtree(RUN_ROOT, ignore_errors=True)
+        if RUN_ROOT.exists():
+            shutil.rmtree(RUN_ROOT)
         RUN_ROOT.mkdir(mode=0o710, parents=True, exist_ok=True)
         os.chown(RUN_ROOT, 0, SANDBOX_GID)
         os.chmod(RUN_ROOT, 0o710)
+        self._reaper = threading.Thread(
+            target=self._reap_stale_runs,
+            name="runtime-storage-reaper",
+            daemon=True,
+        )
+        self._reaper.start()
+
+    def _reap_stale_runs(self) -> None:
+        """Remove abandoned uploads and retained terminal evidence on a timer."""
+        while True:
+            time.sleep(RUN_REAPER_INTERVAL_SECONDS)
+            cutoff = time.monotonic() - RUN_RETENTION_SECONDS
+            with self._lock:
+                candidates = tuple(
+                    run
+                    for run in self._runs.values()
+                    if not run.uploading
+                    and not (run.thread is not None and run.thread.is_alive())
+                    and run.last_activity_monotonic <= cutoff
+                )
+            for run in candidates:
+                self._discard_stale_run(run)
+
+    def _discard_stale_run(self, run: RunState) -> None:
+        """Delete one stale run and retain it for retry if cleanup fails."""
+        try:
+            shutil.rmtree(run.directory)
+        except FileNotFoundError:
+            pass
+        except OSError:
+            _LOGGER.exception("stale run cleanup_failed")
+            return
+        with self._lock:
+            if self._runs.get(run.run_id) is run:
+                self._runs.pop(run.run_id)
+        _LOGGER.info("stale run deleted")
 
     def create(self, payload: dict[str, Any]) -> RunState:
         if payload.get("protocol") != PROTOCOL_VERSION:
@@ -499,8 +540,16 @@ class RunManager:
                 return
             if run.thread is not None and run.thread.is_alive():
                 raise RunnerFailure("run_still_active")
-            self._runs.pop(run_id, None)
-        shutil.rmtree(run.directory, ignore_errors=True)
+        try:
+            shutil.rmtree(run.directory)
+        except FileNotFoundError:
+            pass
+        except OSError as err:
+            _LOGGER.exception("run delete cleanup_failed")
+            raise RunnerFailure("cleanup_failed") from err
+        with self._lock:
+            if self._runs.get(run_id) is run:
+                self._runs.pop(run_id)
         _LOGGER.info("run deleted")
 
     def start(self, run: RunState) -> None:
@@ -685,7 +734,7 @@ class RunManager:
             if child.name in {"result.json", "progress.json"}:
                 continue
             if child.is_dir():
-                shutil.rmtree(child, ignore_errors=True)
+                shutil.rmtree(child)
             else:
                 child.unlink(missing_ok=True)
 

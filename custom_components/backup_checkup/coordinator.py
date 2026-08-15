@@ -17,7 +17,7 @@ from typing import Any, cast
 from homeassistant.components.backup import async_get_manager
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.event import async_track_state_change_event
@@ -354,6 +354,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             )
             self._adaptive_unsubscribers.append(unsubscribe)
 
+    @callback
     def _handle_native_backup_state_change(self, event: Any) -> None:
         """React to backup-manager and automatic-backup state changes."""
         data = getattr(event, "data", {})

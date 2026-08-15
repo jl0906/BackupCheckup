@@ -1,6 +1,6 @@
 # BackupCheckup Runtime Runner
 
-Optional companion app for BackupCheckup 3.0.12. It starts an already verified
+Optional companion app for BackupCheckup 3.0.13. It starts an already verified
 backup in a temporary, network-isolated Home Assistant Recovery Mode instance.
 
 Install and configure the BackupCheckup integration first, then start this app and

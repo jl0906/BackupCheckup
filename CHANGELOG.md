@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.0.13
+
+### Fixed
+
+- Marked the native backup state listener as a Home Assistant `@callback` so
+  adaptive-refresh state and `hass.async_create_task` remain on the event-loop
+  thread instead of being invoked from an executor worker.
+- Added a CI regression check requiring callbacks passed to
+  `async_track_state_change_event` to be explicitly event-loop safe.
+
+### Compatibility
+
+- Integration, frontend asset, and Runtime Runner versions are synchronized as
+  3.0.13. Existing configuration, entities, and stored analysis remain
+  compatible.
+
 ## 3.0.12
 
 ### Fixed
@@ -11,6 +27,9 @@
   panel registration, and JavaScript custom-element name diverge.
 - Added a lightweight browser-environment probe that loads, registers, and
   renders the panel during CI instead of checking JavaScript syntax alone.
+- Stopped suppressing runtime-directory deletion errors and added a ten-minute
+  reaper for abandoned uploads and retained terminal results, preventing stale
+  backup copies from occupying the runner container until its next restart.
 
 ### Compatibility
 
