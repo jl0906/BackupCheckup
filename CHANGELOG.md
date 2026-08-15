@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.0.14
+
+### Changed
+
+- Moved the optional Runtime Runner's archive, expanded-size, and startup-time
+  limits into the BackupCheckup panel. The section is shown only when a runner
+  has been discovered, and changes are sent with every runtime test.
+- Removed the duplicated Home Assistant app options from Runtime Runner 2.
+- Established independent versioning for the integration and runner. Runner
+  version 2 implements protocol 2 and remains compatible with future BackupCheckup
+  releases until the runner protocol or implementation actually changes.
+
+### Security
+
+- Kept immutable runner-side safety ranges for every integration-supplied limit,
+  so a malformed or compromised client cannot request unbounded extraction or
+  runtime duration.
+
+### Compatibility
+
+- BackupCheckup 3.0.14 requires the one-time Runtime Runner 2 update for
+  isolated runtime tests. Structural verification remains available without it.
+
 ## 3.0.13
 
 ### Fixed

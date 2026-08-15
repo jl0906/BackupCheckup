@@ -1,4 +1,4 @@
-"""Authenticated BackupCheckup protocol-v1 runtime runner."""
+"""Authenticated BackupCheckup protocol-v2 runtime runner."""
 
 from __future__ import annotations
 
@@ -28,12 +28,11 @@ from typing import Any, BinaryIO
 
 from securetar import SecureTarArchive
 
-PROTOCOL_VERSION = 1
-RUNNER_VERSION = "3.0.13"
+PROTOCOL_VERSION = 2
+RUNNER_VERSION = "2"
 LISTEN_PORT = 8099
 DATA_DIR = Path("/data")
 TOKEN_PATH = DATA_DIR / "api_token"
-OPTIONS_PATH = DATA_DIR / "options.json"
 TLS_CERT_PATH = DATA_DIR / "runner.crt"
 TLS_KEY_PATH = DATA_DIR / "runner.key"
 RUN_ROOT = Path("/run/backup-checkup-runtime")
@@ -55,6 +54,12 @@ SANDBOX_UID = 65534
 SANDBOX_GID = 65534
 SAFE_PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 CLIENT_SOCKET_TIMEOUT = 30
+MINIMUM_ARCHIVE_GB = 1
+MAXIMUM_ARCHIVE_GB = 2048
+MINIMUM_EXPANDED_GB = 1
+MAXIMUM_EXPANDED_GB = 8192
+MINIMUM_TIMEOUT_MINUTES = 2
+MAXIMUM_TIMEOUT_MINUTES = 60
 CHILD_ERROR_CODES = frozenset(
     {
         "home_assistant_cli_incompatible",
@@ -81,28 +86,6 @@ class RunnerFailure(Exception):
     def __init__(self, code: str) -> None:
         self.code = code
         super().__init__(code)
-
-
-def _load_options() -> dict[str, int]:
-    defaults = {
-        "maximum_archive_gb": 50,
-        "maximum_expanded_gb": 250,
-        "runtime_timeout_minutes": 20,
-    }
-    try:
-        value = json.loads(OPTIONS_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return defaults
-    if not isinstance(value, dict):
-        return defaults
-    result = dict(defaults)
-    for key, default in defaults.items():
-        candidate = value.get(key)
-        if isinstance(candidate, int) and not isinstance(candidate, bool) and candidate > 0:
-            result[key] = candidate
-        else:
-            result[key] = default
-    return result
 
 
 def _load_or_create_token() -> str:
@@ -357,6 +340,7 @@ class RunState:
     archive_size: int
     password: str | None
     timeout_seconds: int
+    maximum_expanded_bytes: int
     runner_id: str
     status: str = "running"
     stage: str = "runtime_prepare"
@@ -420,10 +404,9 @@ class RunState:
 
 
 class RunManager:
-    def __init__(self, token: str, runner_id: str, options: dict[str, int]) -> None:
+    def __init__(self, token: str, runner_id: str) -> None:
         self.token = token
         self.runner_id = runner_id
-        self.options = options
         self.isolation_available = _probe_isolation()
         self._runs: dict[str, RunState] = {}
         self._lock = threading.Lock()
@@ -476,8 +459,24 @@ class RunManager:
         digest = payload.get("backup_sha256")
         archive_size = payload.get("archive_size")
         password = payload.get("password")
-        timeout_seconds = payload.get("timeout_seconds")
-        maximum_size = self.options["maximum_archive_gb"] * 1_000_000_000
+        maximum_archive_gb = self._required_limit(
+            payload, "maximum_archive_gb", MINIMUM_ARCHIVE_GB, MAXIMUM_ARCHIVE_GB
+        )
+        maximum_expanded_gb = self._required_limit(
+            payload,
+            "maximum_expanded_gb",
+            MINIMUM_EXPANDED_GB,
+            MAXIMUM_EXPANDED_GB,
+        )
+        timeout_minutes = self._required_limit(
+            payload,
+            "runtime_timeout_minutes",
+            MINIMUM_TIMEOUT_MINUTES,
+            MAXIMUM_TIMEOUT_MINUTES,
+        )
+        if maximum_expanded_gb < maximum_archive_gb:
+            raise RunnerFailure("runner_limits_invalid")
+        maximum_size = maximum_archive_gb * 1_000_000_000
         if not isinstance(reference, str) or not 1 <= len(reference) <= 160:
             raise RunnerFailure("backup_reference_invalid")
         if (
@@ -497,10 +496,7 @@ class RunManager:
             not isinstance(password, str) or len(password) > 1024
         ):
             raise RunnerFailure("password_invalid")
-        configured_timeout = self.options["runtime_timeout_minutes"] * 60
-        if isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, int):
-            timeout_seconds = configured_timeout
-        timeout_seconds = max(60, min(timeout_seconds, configured_timeout))
+        timeout_seconds = timeout_minutes * 60
         with self._lock:
             if any(run.status == "running" for run in self._runs.values()):
                 raise RunnerFailure("runner_busy")
@@ -516,15 +512,29 @@ class RunManager:
                 archive_size=archive_size,
                 password=password,
                 timeout_seconds=timeout_seconds,
+                maximum_expanded_bytes=maximum_expanded_gb * 1_000_000_000,
                 runner_id=self.runner_id,
             )
             self._runs[run_id] = run
             _LOGGER.info(
-                "run created archive_bytes=%d timeout_seconds=%d",
+                "run created archive_bytes=%d timeout_seconds=%d expanded_limit_gb=%d",
                 archive_size,
                 timeout_seconds,
+                maximum_expanded_gb,
             )
             return run
+
+    @staticmethod
+    def _required_limit(
+        payload: dict[str, Any], key: str, minimum: int, maximum: int
+    ) -> int:
+        """Validate a per-run limit against the runner's immutable safety range."""
+        value = payload.get(key)
+        if isinstance(value, bool) or not isinstance(value, int):
+            raise RunnerFailure("runner_limits_invalid")
+        if not minimum <= value <= maximum:
+            raise RunnerFailure("runner_limits_invalid")
+        return value
 
     def get(self, run_id: str) -> RunState:
         with self._lock:
@@ -595,7 +605,7 @@ class RunManager:
             run.archive_path,
             run.directory / "restored",
             run.password,
-            self.options["maximum_expanded_gb"] * 1_000_000_000,
+            run.maximum_expanded_bytes,
         )
         self._assign_sandbox_tree(config_dir.parent)
         run.password = None
@@ -775,7 +785,7 @@ def _initialize_runtime() -> None:
     TOKEN = _load_or_create_token()
     RUNNER_ID = hashlib.sha256(TOKEN.encode()).hexdigest()[:32]
     TLS_CERTIFICATE = _load_or_create_tls_certificate()
-    MANAGER = RunManager(TOKEN, RUNNER_ID, _load_options())
+    MANAGER = RunManager(TOKEN, RUNNER_ID)
     _LOGGER.info(
         "runner initialized version=%s isolation_available=%s",
         RUNNER_VERSION,

@@ -310,6 +310,9 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self.manual_verification_cooldown_minutes = (
             settings.manual_verification_cooldown_minutes
         )
+        self.runner_maximum_archive_gb = settings.runner_maximum_archive_gb
+        self.runner_maximum_expanded_gb = settings.runner_maximum_expanded_gb
+        self.runner_timeout_minutes = settings.runner_timeout_minutes
         self.expose_backup_metadata = settings.expose_backup_metadata
         self.notifications_enabled = settings.notifications_enabled
         self.notification_targets = settings.notification_targets
@@ -1781,7 +1784,9 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 backup_reference=record.backup_reference,
                 backup_sha256=verified.sha256,
                 password=password,
-                timeout_seconds=max(60, self.verification_timeout_minutes * 60),
+                maximum_archive_gb=self.runner_maximum_archive_gb,
+                maximum_expanded_gb=self.runner_maximum_expanded_gb,
+                timeout_minutes=self.runner_timeout_minutes,
                 progress_callback=lambda stage, percent: (
                     self._handle_runtime_progress(record, stage, percent)
                 ),

@@ -1,7 +1,7 @@
 ARG BUILD_FROM=ghcr.io/home-assistant/home-assistant:stable
 FROM ${BUILD_FROM}
 
-ARG BUILD_VERSION=3.0.13
+ARG BUILD_VERSION=2
 ARG BUILD_ARCH
 
 LABEL \

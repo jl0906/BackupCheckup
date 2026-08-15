@@ -36,6 +36,9 @@ from .const import (
     CONF_NOTIFY_ON_RECOVERY,
     CONF_PRESET_REVISION,
     CONF_REPAIR_ISSUES_ENABLED,
+    CONF_RUNNER_MAXIMUM_ARCHIVE_GB,
+    CONF_RUNNER_MAXIMUM_EXPANDED_GB,
+    CONF_RUNNER_TIMEOUT_MINUTES,
     CONF_RUNTIME_PROFILE,
     CONF_SHOW_SIDEBAR_PANEL,
     CONF_SIZE_CHECK_MODE,
@@ -68,6 +71,9 @@ from .const import (
     DEFAULT_NOTIFICATIONS_ENABLED,
     DEFAULT_NOTIFY_ON_RECOVERY,
     DEFAULT_REPAIR_ISSUES_ENABLED,
+    DEFAULT_RUNNER_MAXIMUM_ARCHIVE_GB,
+    DEFAULT_RUNNER_MAXIMUM_EXPANDED_GB,
+    DEFAULT_RUNNER_TIMEOUT_MINUTES,
     DEFAULT_RUNTIME_PROFILE,
     DEFAULT_SHOW_SIDEBAR_PANEL,
     DEFAULT_SIZE_CHECK_MODE,
@@ -88,6 +94,9 @@ from .const import (
     MAX_MAXIMUM_SIZE_DROP_PERCENT,
     MAX_MINIMUM_BACKUP_SIZE_MB,
     MAX_REDUNDANT_LOCATIONS,
+    MAX_RUNNER_MAXIMUM_ARCHIVE_GB,
+    MAX_RUNNER_MAXIMUM_EXPANDED_GB,
+    MAX_RUNNER_TIMEOUT_MINUTES,
     MAX_UPDATE_INTERVAL_MINUTES,
     MAX_VERIFICATION_TIMEOUT_MINUTES,
     MIN_ACTIVE_UPDATE_INTERVAL_MINUTES,
@@ -103,6 +112,9 @@ from .const import (
     MIN_MAXIMUM_SIZE_DROP_PERCENT,
     MIN_MINIMUM_BACKUP_SIZE_MB,
     MIN_REDUNDANT_LOCATIONS,
+    MIN_RUNNER_MAXIMUM_ARCHIVE_GB,
+    MIN_RUNNER_MAXIMUM_EXPANDED_GB,
+    MIN_RUNNER_TIMEOUT_MINUTES,
     MIN_UPDATE_INTERVAL_MINUTES,
     MIN_VERIFICATION_TIMEOUT_MINUTES,
     MONITORING_POLICY_BALANCED,
@@ -194,6 +206,21 @@ _INTEGER_OPTIONS: dict[str, tuple[int, int, int]] = {
         DEFAULT_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
         MIN_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
         MAX_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
+    ),
+    CONF_RUNNER_MAXIMUM_ARCHIVE_GB: (
+        DEFAULT_RUNNER_MAXIMUM_ARCHIVE_GB,
+        MIN_RUNNER_MAXIMUM_ARCHIVE_GB,
+        MAX_RUNNER_MAXIMUM_ARCHIVE_GB,
+    ),
+    CONF_RUNNER_MAXIMUM_EXPANDED_GB: (
+        DEFAULT_RUNNER_MAXIMUM_EXPANDED_GB,
+        MIN_RUNNER_MAXIMUM_EXPANDED_GB,
+        MAX_RUNNER_MAXIMUM_EXPANDED_GB,
+    ),
+    CONF_RUNNER_TIMEOUT_MINUTES: (
+        DEFAULT_RUNNER_TIMEOUT_MINUTES,
+        MIN_RUNNER_TIMEOUT_MINUTES,
+        MAX_RUNNER_TIMEOUT_MINUTES,
     ),
     CONF_PRESET_REVISION: (PRESET_REVISION, 1, 1000),
 }
@@ -388,6 +415,9 @@ class RuntimeSettings:
     manual_verification_cooldown_minutes: int
     preset_revision: int
     hardware_detection: dict[str, str]
+    runner_maximum_archive_gb: int
+    runner_maximum_expanded_gb: int
+    runner_timeout_minutes: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -462,6 +492,9 @@ class BackupCheckupSettings:
                 ],
                 preset_revision=values[CONF_PRESET_REVISION],
                 hardware_detection=values[CONF_HARDWARE_DETECTION],
+                runner_maximum_archive_gb=values[CONF_RUNNER_MAXIMUM_ARCHIVE_GB],
+                runner_maximum_expanded_gb=values[CONF_RUNNER_MAXIMUM_EXPANDED_GB],
+                runner_timeout_minutes=values[CONF_RUNNER_TIMEOUT_MINUTES],
             ),
             monitoring=MonitoringSettings(
                 policy=values[CONF_MONITORING_POLICY],
@@ -515,6 +548,9 @@ class BackupCheckupSettings:
             ),
             CONF_PRESET_REVISION: self.runtime.preset_revision,
             CONF_HARDWARE_DETECTION: dict(self.runtime.hardware_detection),
+            CONF_RUNNER_MAXIMUM_ARCHIVE_GB: self.runtime.runner_maximum_archive_gb,
+            CONF_RUNNER_MAXIMUM_EXPANDED_GB: self.runtime.runner_maximum_expanded_gb,
+            CONF_RUNNER_TIMEOUT_MINUTES: self.runtime.runner_timeout_minutes,
             CONF_MONITORING_POLICY: self.monitoring.policy,
             CONF_MAX_AGE_DAYS: self.monitoring.max_age_days,
             CONF_MINIMUM_BACKUP_SIZE_MB: self.monitoring.minimum_backup_size_mb,
@@ -593,6 +629,18 @@ class BackupCheckupSettings:
     @property
     def manual_verification_cooldown_minutes(self) -> int:
         return self.runtime.manual_verification_cooldown_minutes
+
+    @property
+    def runner_maximum_archive_gb(self) -> int:
+        return self.runtime.runner_maximum_archive_gb
+
+    @property
+    def runner_maximum_expanded_gb(self) -> int:
+        return self.runtime.runner_maximum_expanded_gb
+
+    @property
+    def runner_timeout_minutes(self) -> int:
+        return self.runtime.runner_timeout_minutes
 
     @property
     def max_age_days(self) -> int:

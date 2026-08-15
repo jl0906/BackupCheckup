@@ -1,5 +1,5 @@
 name: BackupCheckup Runtime Runner
-version: "3.0.13"
+version: "2"
 slug: backup_checkup_runtime_runner
 description: Starts a verified backup in an ephemeral, network-isolated Home Assistant instance.
 url: https://github.com/jl0906/BackupCheckup
@@ -24,11 +24,3 @@ privileged:
   - SYS_ADMIN
 tmpfs: false
 backup: cold
-options:
-  maximum_archive_gb: 50
-  maximum_expanded_gb: 250
-  runtime_timeout_minutes: 20
-schema:
-  maximum_archive_gb: int(1,2048)
-  maximum_expanded_gb: int(1,8192)
-  runtime_timeout_minutes: int(2,60)

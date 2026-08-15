@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version 3.0.13" src="https://img.shields.io/badge/version-3.0.13-blue.svg">
+  <img alt="Version 3.0.14" src="https://img.shields.io/badge/version-3.0.14-blue.svg">
   <img alt="Home Assistant 2026.3 or newer" src="https://img.shields.io/badge/Home_Assistant-2026.3_or_newer-41BDF5.svg">
   <img alt="AI coded and maintained" src="https://img.shields.io/badge/AI-coded%20%26%20maintained-8A2BE2.svg">
   <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg">
@@ -25,6 +25,8 @@ logging and Recovery Readiness guidance are included.
 BackupCheckup never restores or changes the production system. The optional
 **BackupCheckup Runtime Runner** for Home Assistant OS can additionally start an
 already verified backup in a temporary, network-isolated Home Assistant instance.
+The runner has its own version line and only needs an update when its protocol or
+runtime implementation changes.
 
 ## Installation
 

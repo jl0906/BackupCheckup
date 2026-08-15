@@ -39,6 +39,9 @@ from .const import (
     CONF_NOTIFY_ON_RECOVERY,
     CONF_PRESET_REVISION,
     CONF_REPAIR_ISSUES_ENABLED,
+    CONF_RUNNER_MAXIMUM_ARCHIVE_GB,
+    CONF_RUNNER_MAXIMUM_EXPANDED_GB,
+    CONF_RUNNER_TIMEOUT_MINUTES,
     CONF_RUNTIME_PROFILE,
     CONF_RUNTIME_RUNNER,
     CONF_SHOW_SIDEBAR_PANEL,
@@ -61,6 +64,9 @@ from .const import (
     MAX_MAXIMUM_SIZE_DROP_PERCENT,
     MAX_MINIMUM_BACKUP_SIZE_MB,
     MAX_REDUNDANT_LOCATIONS,
+    MAX_RUNNER_MAXIMUM_ARCHIVE_GB,
+    MAX_RUNNER_MAXIMUM_EXPANDED_GB,
+    MAX_RUNNER_TIMEOUT_MINUTES,
     MAX_UPDATE_INTERVAL_MINUTES,
     MAX_VERIFICATION_TIMEOUT_MINUTES,
     MIN_ACTIVE_UPDATE_INTERVAL_MINUTES,
@@ -76,6 +82,9 @@ from .const import (
     MIN_MAXIMUM_SIZE_DROP_PERCENT,
     MIN_MINIMUM_BACKUP_SIZE_MB,
     MIN_REDUNDANT_LOCATIONS,
+    MIN_RUNNER_MAXIMUM_ARCHIVE_GB,
+    MIN_RUNNER_MAXIMUM_EXPANDED_GB,
+    MIN_RUNNER_TIMEOUT_MINUTES,
     MIN_UPDATE_INTERVAL_MINUTES,
     MIN_VERIFICATION_TIMEOUT_MINUTES,
     MONITORING_POLICY_CUSTOM,
@@ -156,6 +165,18 @@ _INTEGER_LIMITS: dict[str, tuple[int, int]] = {
     CONF_ACTIVITY_LOG_RETENTION_DAYS: (
         MIN_ACTIVITY_LOG_RETENTION_DAYS,
         MAX_ACTIVITY_LOG_RETENTION_DAYS,
+    ),
+    CONF_RUNNER_MAXIMUM_ARCHIVE_GB: (
+        MIN_RUNNER_MAXIMUM_ARCHIVE_GB,
+        MAX_RUNNER_MAXIMUM_ARCHIVE_GB,
+    ),
+    CONF_RUNNER_MAXIMUM_EXPANDED_GB: (
+        MIN_RUNNER_MAXIMUM_EXPANDED_GB,
+        MAX_RUNNER_MAXIMUM_EXPANDED_GB,
+    ),
+    CONF_RUNNER_TIMEOUT_MINUTES: (
+        MIN_RUNNER_TIMEOUT_MINUTES,
+        MAX_RUNNER_TIMEOUT_MINUTES,
     ),
 }
 
@@ -375,6 +396,23 @@ def _resolve_presentation_settings(
         errors[CONF_NOTIFICATION_TARGETS] = "notification_target_required"
 
 
+def _resolve_runner_settings(
+    source: Mapping[str, Any], values: dict[str, Any], errors: dict[str, str]
+) -> None:
+    """Validate limits sent to the optional runner for each test run."""
+    for key in (
+        CONF_RUNNER_MAXIMUM_ARCHIVE_GB,
+        CONF_RUNNER_MAXIMUM_EXPANDED_GB,
+        CONF_RUNNER_TIMEOUT_MINUTES,
+    ):
+        values[key] = _bounded_int(source[key], key, errors)
+    if (
+        values[CONF_RUNNER_MAXIMUM_EXPANDED_GB]
+        < values[CONF_RUNNER_MAXIMUM_ARCHIVE_GB]
+    ):
+        errors[CONF_RUNNER_MAXIMUM_EXPANDED_GB] = "expanded_size_too_small"
+
+
 def resolve_frontend_configuration(
     current: Mapping[str, Any], submitted: Mapping[str, Any]
 ) -> dict[str, Any]:
@@ -395,6 +433,7 @@ def resolve_frontend_configuration(
     _resolve_monitoring_settings(source, values, errors)
     _resolve_verification_settings(source, values, errors)
     _resolve_presentation_settings(source, values, errors)
+    _resolve_runner_settings(source, values, errors)
 
     if errors:
         raise FrontendConfigurationError(errors)
@@ -430,6 +469,7 @@ def frontend_configuration_payload(
             ),
         },
         "hardware": dict(values[CONF_HARDWARE_DETECTION]),
+        "runner": {"available": CONF_RUNTIME_RUNNER in entry.data},
         "reload_required": True,
     }
 

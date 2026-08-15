@@ -63,7 +63,7 @@ _TERMINAL_STATUSES = {
     RUNTIME_STATUS_INCONCLUSIVE,
 }
 _STORAGE_VERSION = 1
-_PROTOCOL_VERSION = 1
+_PROTOCOL_VERSION = 2
 _CHUNK_SIZE = 1024 * 1024
 _MAX_IDENTIFIER_LENGTH = 160
 _MAX_ERROR_CODE_LENGTH = 96
@@ -458,7 +458,7 @@ ProgressCallback = Callable[[str, int], None]
 
 
 class RuntimeRunnerClient:
-    """Protocol-v1 client for the isolated companion runner."""
+    """Protocol-v2 client for the isolated companion runner."""
 
     def __init__(self, session: Any, connection: RuntimeRunnerConnection) -> None:
         """Initialize the authenticated HTTP client."""
@@ -519,7 +519,9 @@ class RuntimeRunnerClient:
         backup_reference: str,
         backup_sha256: str,
         password: str | None,
-        timeout_seconds: int,
+        maximum_archive_gb: int,
+        maximum_expanded_gb: int,
+        timeout_minutes: int,
         progress_callback: ProgressCallback,
     ) -> RuntimeTestSnapshot:
         """Upload and execute one isolated runtime test."""
@@ -531,13 +533,15 @@ class RuntimeRunnerClient:
                 backup_reference=backup_reference,
                 backup_sha256=backup_sha256,
                 password=password,
-                timeout_seconds=timeout_seconds,
+                maximum_archive_gb=maximum_archive_gb,
+                maximum_expanded_gb=maximum_expanded_gb,
+                timeout_minutes=timeout_minutes,
             )
             await self._async_upload(run_id, archive_path, progress_callback)
             await self._async_start(run_id)
             payload = await self._async_poll(
                 run_id,
-                timeout_seconds=timeout_seconds,
+                timeout_seconds=timeout_minutes * 60,
                 progress_callback=progress_callback,
             )
             self._verify_signature(payload)
@@ -566,7 +570,9 @@ class RuntimeRunnerClient:
         backup_reference: str,
         backup_sha256: str,
         password: str | None,
-        timeout_seconds: int,
+        maximum_archive_gb: int,
+        maximum_expanded_gb: int,
+        timeout_minutes: int,
     ) -> str:
         size = archive_path.stat().st_size
         payload = {
@@ -575,7 +581,9 @@ class RuntimeRunnerClient:
             "backup_sha256": backup_sha256,
             "archive_size": size,
             "password": password,
-            "timeout_seconds": timeout_seconds,
+            "maximum_archive_gb": maximum_archive_gb,
+            "maximum_expanded_gb": maximum_expanded_gb,
+            "runtime_timeout_minutes": timeout_minutes,
         }
         try:
             async with self._session.post(
