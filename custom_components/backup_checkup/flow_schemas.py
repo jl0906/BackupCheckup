@@ -14,6 +14,9 @@ from homeassistant.helpers.selector import (
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
 )
 
 from .const import (
@@ -45,6 +48,7 @@ from .const import (
     CONF_SIZE_CHECK_MODE,
     CONF_UPDATE_INTERVAL_MINUTES,
     CONF_VERIFICATION_POLICY,
+    CONF_VERIFICATION_STAGING_DIRECTORY,
     CONF_VERIFICATION_TIMEOUT_MINUTES,
     ENTITY_MODE_OPTIONS,
     MAX_ACTIVE_UPDATE_INTERVAL_MINUTES,
@@ -96,6 +100,11 @@ def integer_selector(minimum: int, maximum: int) -> NumberSelector:
             mode=NumberSelectorMode.BOX,
         )
     )
+
+
+def staging_directory_selector() -> TextSelector:
+    """Return the free-text selector for an optional absolute staging directory."""
+    return TextSelector(TextSelectorConfig(type=TextSelectorType.TEXT))
 
 
 def translated_select(options: list[str], translation_key: str) -> SelectSelector:
@@ -186,6 +195,14 @@ def runtime_custom_schema(values: dict[str, Any]) -> vol.Schema:
                 MIN_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
                 MAX_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
             ),
+            vol.Optional(
+                CONF_VERIFICATION_STAGING_DIRECTORY,
+                description={
+                    "suggested_value": values.get(
+                        CONF_VERIFICATION_STAGING_DIRECTORY, ""
+                    )
+                },
+            ): staging_directory_selector(),
         }
     )
 
@@ -256,6 +273,14 @@ def verification_policy_schema(values: dict[str, Any]) -> vol.Schema:
                 MIN_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
                 MAX_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
             ),
+            vol.Optional(
+                CONF_VERIFICATION_STAGING_DIRECTORY,
+                description={
+                    "suggested_value": values.get(
+                        CONF_VERIFICATION_STAGING_DIRECTORY, ""
+                    )
+                },
+            ): staging_directory_selector(),
         }
     )
 

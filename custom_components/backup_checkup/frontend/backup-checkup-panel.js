@@ -1,4 +1,4 @@
-const PANEL_ELEMENT_NAME = "backup-checkup-panel-v3-0-14-r1";
+const PANEL_ELEMENT_NAME = "backup-checkup-panel-v3-1-0-r1";
 
 const TRANSLATION_SEPARATOR = "\u001f";
 const PACKED_TRANSLATION_KEYS = Object.freeze({"scalar":"dashboard\u001fsubtitle\u001fhealthy\u001fattention\u001funavailable\u001fhealthScore\u001fstatus\u001frecommendation\u001flatestBackup\u001fbackupSize\u001fstoredBackups\u001fintegrity\u001fproblems\u001fnoProblems\u001fstorage\u001fnoStorage\u001fbackups\u001flastBackup\u001frefresh\u001fverify\u001fsettings\u001fupdated\u001factionFailed\u001funknownError\u001funknownRecommendation\u001fhealthDetails\u001fnoDeductions\u001fpointsDeducted\u001fintegrityDetails\u001fcheckedAt\u001fduration\u001fverifiedSize\u001ffilesChecked\u001fwarnings\u001fnextStep\u001fstatusLabel\u001fnewEntries\u001fclearLog\u001fexportLog\u001fclearConfirm\u001fpersistentLog\u001fruntimeLog\u001ffilterLabel\u001foverviewTab\u001flogTab\u001flogTitle\u001fsearchLogs\u001fnoLogs\u001floggingDisabled\u001flive","levelLabels":"all\u001finfo\u001fwarning\u001ferror","typeLabels":"all\u001fcheck\u001fbackup\u001fnotification\u001fsystem","storageStates":"online\u001fstale\u001foffline","detailLabels":"error_code\u001ferror_type\u001freason\u001fsource\u001fstatus\u001fversion\u001ftarget_count\u001fnotification_type\u001fretry_attempts\u001fremaining\u001ffailures\u001fenabled\u001fplatform_count","detailValues":"manual\u001fautomatic\u001fcooldown\u001fnot_configured\u001ftrue\u001ffalse\u001ftest","errorMessages":"timeout\u001fconnection_error\u001fnot_configured\u001fcooldown\u001fpassword_required\u001funavailable","errorRecommendations":"timeout\u001fconnection_error\u001fnot_configured\u001fcooldown\u001fpassword_required\u001funavailable","healthComponents":"availability\u001ffreshness\u001fbackup_quality\u001fintegrity\u001fstorage\u001fautomation","activityActions":"verification_prepare\u001fstorage_copy_prepare\u001fbackup_download\u001fbackup_extract\u001fencrypted_backup_extract\u001fdatabase_read\u001ftemporary_data_cleanup\u001finventory_refresh\u001fbackup_manager_read\u001fintegrity_check\u001fintegrity_check_request\u001fintegrity_result_persist\u001fhealth_state\u001fnotification_send\u001fnotification_processing\u001fconfig_entry_setup\u001fentity_platform_setup\u001frepair_issue_sync\u001ffirst_refresh\u001fcoordinator_shutdown\u001fintegrity_state_load\u001fintegrity_check_schedule\u001fintegrity_background_task\u001fpost_verification_refresh\u001fservice_refresh\u001fservice_verify_latest_backup\u001fservice_test_notification\u001fpanel_setup\u001fconfig_entry_unload\u001fconfig_entry_remove","activityOutcomes":"started\u001fcompleted\u001fchanged\u001fskipped\u001ffailed\u001fcancelled"});
@@ -101,6 +101,17 @@ const CONFIG_TEXT = Object.freeze({
 const RUNNER_CONFIG_TEXT_PATHS = Object.freeze("runner\u001frunnerHelp\u001frunner_maximum_archive_gb\u001frunner_maximum_expanded_gb\u001frunner_timeout_minutes".split(TRANSLATION_SEPARATOR));
 Object.assign(CONFIG_TEXT.en, unpackNestedTranslation(RUNNER_CONFIG_TEXT_PATHS, "Runtime Runner\u001fLimits for the optional isolated runner. They are sent with every test and take effect without restarting the runner.\u001fMaximum runner archive (GB)\u001fMaximum runner expanded size (GB)\u001fRunner startup timeout (minutes)"));
 Object.assign(CONFIG_TEXT.de, unpackNestedTranslation(RUNNER_CONFIG_TEXT_PATHS, "Runtime Runner\u001fGrenzen für den optionalen isolierten Runner. Sie werden bei jedem Test übertragen und gelten ohne Runner-Neustart.\u001fMaximales Runner-Archiv (GB)\u001fMaximal entpackte Runner-Größe (GB)\u001fRunner-Startzeitlimit (Minuten)"));
+
+const STAGING_CONFIG_TEXT_PATHS = Object.freeze("verification_staging_directory\u001fverification_staging_directory_help\u001ferrors.staging_directory_not_absolute\u001ferrors.staging_directory_missing\u001ferrors.staging_directory_invalid\u001ferrors.staging_directory_reserved\u001ferrors.staging_directory_not_writable".split(TRANSLATION_SEPARATOR));
+const STAGING_CONFIG_TEXT = {
+  en: unpackNestedTranslation(STAGING_CONFIG_TEXT_PATHS, "Verification staging directory (optional)\u001fAbsolute path of a directory with enough free space for a complete copy of your largest backup. Leave empty to use .cache/backup_checkup inside the Home Assistant configuration directory, which Home Assistant excludes from its own backups. A custom directory is not excluded automatically.\u001fEnter an absolute directory path or leave the field empty.\u001fThe staging directory does not exist. Create it first.\u001fThe staging directory must be a real directory, not a file or symbolic link.\u001fThe configuration root, .storage, backups and tmp_backups cannot be used as staging directory.\u001fBackupCheckup cannot write to the staging directory. Check its permissions."),
+  de: unpackNestedTranslation(STAGING_CONFIG_TEXT_PATHS, "Staging-Verzeichnis für Prüfungen (optional)\u001fAbsoluter Pfad eines Verzeichnisses mit genug freiem Platz für eine vollständige Kopie deines größten Backups. Leer lassen, um .cache/backup_checkup im Home-Assistant-Konfigurationsverzeichnis zu verwenden; dieses wird von Home Assistant aus den eigenen Backups ausgeschlossen. Ein eigenes Verzeichnis wird nicht automatisch ausgeschlossen.\u001fGib einen absoluten Verzeichnispfad ein oder lass das Feld leer.\u001fDas Staging-Verzeichnis existiert nicht. Lege es zuerst an.\u001fDas Staging-Verzeichnis muss ein echtes Verzeichnis sein, keine Datei und kein symbolischer Link.\u001fDas Konfigurationsverzeichnis selbst, .storage, backups und tmp_backups können nicht als Staging-Verzeichnis verwendet werden.\u001fBackupCheckup kann nicht in das Staging-Verzeichnis schreiben. Prüfe die Berechtigungen."),
+};
+Object.entries(STAGING_CONFIG_TEXT).forEach(([language, extra]) => {
+  const { errors, ...scalars } = extra;
+  Object.assign(CONFIG_TEXT[language], scalars);
+  Object.assign(CONFIG_TEXT[language].errors, errors);
+});
 
 const DEFAULT_ENTITIES = {
   status: "sensor.backup_checkup_status",
@@ -1286,6 +1297,12 @@ class BackupCheckupPanel extends HTMLElement {
     return `<label class="config-field"><span>${this._escape(text[key] || key)}</span><input type="number" step="1" min="${this._escape(limit.min ?? "")}" max="${this._escape(limit.max ?? "")}" value="${this._escape(value ?? "")}" data-config-key="${this._escape(key)}">${this._configError(key, text)}</label>`;
   }
 
+  _configText(key, text, helpKey) {
+    const value = this._configState.draft?.[key];
+    const help = helpKey && text[helpKey] ? `<small>${this._escape(text[helpKey])}</small>` : "";
+    return `<label class="config-field"><span>${this._escape(text[key] || key)}</span><input type="text" spellcheck="false" autocomplete="off" value="${this._escape(value ?? "")}" data-config-key="${this._escape(key)}">${help}${this._configError(key, text)}</label>`;
+  }
+
   _configToggle(key, text) {
     const checked = this._configState.draft?.[key] ? "checked" : "";
     return `<label class="config-toggle"><input type="checkbox" data-config-key="${this._escape(key)}" ${checked}><span><strong>${this._escape(text[key] || key)}</strong></span></label>${this._configError(key, text)}`;
@@ -1336,6 +1353,7 @@ class BackupCheckupPanel extends HTMLElement {
 
     let verificationFields = this._configSelect("verification_policy", options.verification_policies, text) + this._configNumber("manual_verification_cooldown_minutes", text, limits);
     if (verificationCustom) verificationFields += this._configToggle("auto_verify_new_backups", text) + this._configToggle("database_integrity_check", text);
+    verificationFields += this._configText("verification_staging_directory", text, "verification_staging_directory_help");
 
     const presentationFields = this._configSelect("entity_mode", options.entity_modes, text)
       + this._configToggle("expose_backup_metadata", text)

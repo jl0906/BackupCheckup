@@ -4,16 +4,17 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Mapping
+from functools import partial
 from typing import TYPE_CHECKING, Any
 
 from homeassistant import config_entries
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 
 if TYPE_CHECKING:
     from homeassistant.helpers.service_info.hassio import HassioServiceInfo
 
-from .configuration import normalize_configuration
+from .configuration import normalize_configuration, normalize_staging_directory
 from .const import (
     CONF_ACTIVITY_LOGGING_ENABLED,
     CONF_ADAPTIVE_POLLING,
@@ -33,6 +34,7 @@ from .const import (
     CONF_SHOW_SIDEBAR_PANEL,
     CONF_SIZE_CHECK_MODE,
     CONF_VERIFICATION_POLICY,
+    CONF_VERIFICATION_STAGING_DIRECTORY,
     CONFIG_ENTRY_VERSION,
     DEFAULT_ENTITY_MODE,
     DEFAULT_EXPOSE_BACKUP_METADATA,
@@ -63,6 +65,7 @@ from .hardware_profile import HardwareSnapshot, async_detect_hardware
 from .notification_selection import normalize_notification_targets
 from .presets import monitoring_values, runtime_values, verification_values
 from .recovery_runtime import RuntimeRunnerConnection
+from .security import validate_staging_directory
 from .setup_recommendation import async_recommended_verification_size_gb
 
 _OPTIONS_MENU = (
@@ -153,6 +156,26 @@ def _hardware_placeholders(snapshot: HardwareSnapshot) -> dict[str, str]:
     }
 
 
+def _staging_directory_input(user_input: Mapping[str, Any]) -> str:
+    """Return the syntactically normalized staging directory from a form."""
+    return normalize_staging_directory(
+        user_input.get(CONF_VERIFICATION_STAGING_DIRECTORY, "")
+    )
+
+
+async def _async_validate_staging_directory(
+    hass: HomeAssistant, user_input: Mapping[str, Any]
+) -> dict[str, str]:
+    """Return form errors for a custom staging directory without logging paths."""
+    raw = user_input.get(CONF_VERIFICATION_STAGING_DIRECTORY, "")
+    if not isinstance(raw, str) or not raw.strip():
+        return {}
+    code = await hass.async_add_executor_job(
+        partial(validate_staging_directory, raw, config_dir=hass.config.config_dir)
+    )
+    return {CONF_VERIFICATION_STAGING_DIRECTORY: code} if code else {}
+
+
 class _GuidedFlowState:
     """Shared state helpers for initial setup and the options setup assistant."""
 
@@ -197,6 +220,9 @@ class _GuidedFlowState:
                 CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
                 self._draft[CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES],
             )
+        )
+        self._draft[CONF_VERIFICATION_STAGING_DIRECTORY] = _staging_directory_input(
+            user_input
         )
 
     def _apply_presentation(self, user_input: dict[str, Any]) -> None:
@@ -350,12 +376,18 @@ class BackupCheckupConfigFlow(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Choose how new backups are verified."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            self._apply_verification_settings(user_input)
-            return await self.async_step_presentation()
+            errors = await _async_validate_staging_directory(self.hass, user_input)
+            if not errors:
+                self._apply_verification_settings(user_input)
+                return await self.async_step_presentation()
         return self.async_show_form(
             step_id="verification",
-            data_schema=verification_policy_schema(self._draft),
+            data_schema=verification_policy_schema(
+                {**self._draft, **(user_input or {})}
+            ),
+            errors=errors,
         )
 
     async def async_step_presentation(
@@ -544,22 +576,30 @@ class BackupCheckupOptionsFlow(_GuidedFlowState, config_entries.OptionsFlowWithR
         self._hardware = None
         self._recommended_verification_size_gb = None
         values = self._current()
+        errors: dict[str, str] = {}
         if user_input is not None:
-            policy = str(user_input[CONF_VERIFICATION_POLICY])
-            return self._save(
-                {
-                    CONF_VERIFICATION_POLICY: policy,
-                    **verification_values(policy),
-                    CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES: int(
-                        user_input.get(
-                            CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
-                            values[CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES],
-                        )
-                    ),
-                }
-            )
+            errors = await _async_validate_staging_directory(self.hass, user_input)
+            if not errors:
+                policy = str(user_input[CONF_VERIFICATION_POLICY])
+                return self._save(
+                    {
+                        CONF_VERIFICATION_POLICY: policy,
+                        **verification_values(policy),
+                        CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES: int(
+                            user_input.get(
+                                CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
+                                values[CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES],
+                            )
+                        ),
+                        CONF_VERIFICATION_STAGING_DIRECTORY: _staging_directory_input(
+                            user_input
+                        ),
+                    }
+                )
         return self.async_show_form(
-            step_id="verification", data_schema=verification_policy_schema(values)
+            step_id="verification",
+            data_schema=verification_policy_schema({**values, **(user_input or {})}),
+            errors=errors,
         )
 
     async def async_step_presentation(
@@ -660,12 +700,18 @@ class BackupCheckupOptionsFlow(_GuidedFlowState, config_entries.OptionsFlowWithR
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Choose verification while rerunning the setup assistant."""
+        errors: dict[str, str] = {}
         if user_input is not None:
-            self._apply_verification_settings(user_input)
-            return await self.async_step_setup_presentation()
+            errors = await _async_validate_staging_directory(self.hass, user_input)
+            if not errors:
+                self._apply_verification_settings(user_input)
+                return await self.async_step_setup_presentation()
         return self.async_show_form(
             step_id="setup_verification",
-            data_schema=verification_policy_schema(self._draft),
+            data_schema=verification_policy_schema(
+                {**self._draft, **(user_input or {})}
+            ),
+            errors=errors,
         )
 
     async def async_step_setup_presentation(

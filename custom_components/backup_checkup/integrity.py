@@ -492,6 +492,7 @@ class BackupIntegrityVerifier:
         timeout_minutes: int,
         database_timeout_minutes: int,
         repair_issues_enabled: bool,
+        staging_root: Path,
         verified_archive_callback: VerifiedArchiveCallback | None = None,
     ) -> BackupIntegrityResult:
         """Verify an available backup copy and fall back to another agent if needed."""
@@ -531,7 +532,9 @@ class BackupIntegrityVerifier:
             details={"available_copy_count": len(candidate_agents)},
         )
 
-        temp_dir = await self._async_create_temp_directory(record, started)
+        temp_dir = await self._async_create_temp_directory(
+            record, started, staging_root
+        )
         if isinstance(temp_dir, BackupIntegrityResult):
             return temp_dir
 
@@ -568,7 +571,9 @@ class BackupIntegrityVerifier:
             return self._aggregate_failure(record, started, failures)
         finally:
             await self._async_cleanup_verification_data(
-                temp_dir, repair_issues_enabled=repair_issues_enabled
+                temp_dir,
+                staging_root=staging_root,
+                repair_issues_enabled=repair_issues_enabled,
             )
 
     @staticmethod
@@ -596,11 +601,13 @@ class BackupIntegrityVerifier:
             )
 
     async def _async_create_temp_directory(
-        self, record: BackupRecord, started: float
+        self, record: BackupRecord, started: float, staging_root: Path
     ) -> Path | BackupIntegrityResult:
         """Create private verification storage or return a stable failure."""
         try:
-            return await self.hass.async_add_executor_job(create_private_temp_directory)
+            return await self.hass.async_add_executor_job(
+                create_private_temp_directory, staging_root
+            )
         except Exception as err:  # noqa: BLE001 - executor boundary
             _LOGGER.warning(
                 "Unable to create private verification storage: error_type=%s",
@@ -1246,7 +1253,7 @@ class BackupIntegrityVerifier:
         )
 
     async def _async_cleanup_verification_data(
-        self, temp_dir: Path, *, repair_issues_enabled: bool
+        self, temp_dir: Path, *, staging_root: Path, repair_issues_enabled: bool
     ) -> None:
         """Remove private temporary data without masking verification results."""
         self._record_activity("temporary_data_cleanup", ACTIVITY_OUTCOME_STARTED)
@@ -1265,7 +1272,7 @@ class BackupIntegrityVerifier:
 
         try:
             stale_cleanup = await self.hass.async_add_executor_job(
-                cleanup_stale_temp_directories
+                cleanup_stale_temp_directories, staging_root
             )
             issue_active = issue_active or stale_cleanup.issue_active
         except Exception as err:  # noqa: BLE001 - filesystem executor boundary

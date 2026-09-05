@@ -3,9 +3,9 @@
 from homeassistant.const import Platform
 
 DOMAIN = "backup_checkup"
-CONFIG_ENTRY_VERSION = 15
+CONFIG_ENTRY_VERSION = 16
 NAME = "BackupCheckup"
-VERSION = "3.0.14"
+VERSION = "3.1.0"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -45,6 +45,7 @@ CONF_MAX_EXPANDED_SIZE_GB = "max_expanded_size_gb"
 CONF_VERIFICATION_TIMEOUT_MINUTES = "verification_timeout_minutes"
 CONF_DATABASE_TIMEOUT_MINUTES = "database_timeout_minutes"
 CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES = "manual_verification_cooldown_minutes"
+CONF_VERIFICATION_STAGING_DIRECTORY = "verification_staging_directory"
 CONF_EXPOSE_BACKUP_METADATA = "expose_backup_metadata"
 CONF_SHOW_SIDEBAR_PANEL = "show_sidebar_panel"
 CONF_ACTIVITY_LOGGING_ENABLED = "activity_logging_enabled"
@@ -128,6 +129,8 @@ DEFAULT_MAX_EXPANDED_SIZE_GB = 250
 DEFAULT_VERIFICATION_TIMEOUT_MINUTES = 60
 DEFAULT_DATABASE_TIMEOUT_MINUTES = 15
 DEFAULT_MANUAL_VERIFICATION_COOLDOWN_MINUTES = 15
+# Empty means the automatic location below the Home Assistant configuration directory.
+DEFAULT_VERIFICATION_STAGING_DIRECTORY = ""
 DEFAULT_EXPOSE_BACKUP_METADATA = False
 DEFAULT_SHOW_SIDEBAR_PANEL = False
 DEFAULT_ACTIVITY_LOGGING_ENABLED = False
@@ -198,7 +201,14 @@ MAX_ACTIVITY_LOG_RETENTION_DAYS = 30
 MAX_ARCHIVE_MEMBERS = 1_000_000
 MAX_BACKUP_METADATA_BYTES = 2 * 1024 * 1024
 MIN_FREE_SPACE_RESERVE_BYTES = 1024 * 1024 * 1024
+MAX_FREE_SPACE_RESERVE_BYTES = 10 * 1024 * 1024 * 1024
 STALE_TEMP_DIRECTORY_AGE_HOURS = 24
+MAX_VERIFICATION_STAGING_DIRECTORY_LENGTH = 1024
+# Relative to the Home Assistant configuration directory. Home Assistant excludes
+# ".cache/*" from its own backups, so staged verification copies never end up
+# inside a backup that is created while a check is running.
+STAGING_DIRECTORY_RELATIVE_PARTS = (".cache", "backup_checkup")
+STAGING_DIRECTORY_RESERVED_RELATIVE_PARTS = ((".storage",), ("backups",), ("tmp_backups",))
 SERVICE_VERIFY_LATEST_BACKUP = "verify_latest_backup"
 SERVICE_SIMULATE_RESTORE = "simulate_restore"
 SERVICE_REFRESH = "refresh"

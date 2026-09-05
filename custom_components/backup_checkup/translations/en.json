@@ -74,14 +74,16 @@
       },
       "verification": {
         "title": "Choose an integrity-check strategy",
-        "description": "Automatic archive verification can use considerable network, CPU, and temporary disk space. Deep verification additionally checks the included SQLite database.",
+        "description": "Automatic archive verification can use considerable network, CPU, and disk space in the staging directory. Deep verification additionally checks the included SQLite database.",
         "data": {
           "verification_policy": "Integrity-check strategy",
-          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes"
+          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes",
+          "verification_staging_directory": "Verification staging directory (optional)"
         },
         "data_description": {
           "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check.",
-          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown."
+          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown.",
+          "verification_staging_directory": "Absolute path of a directory on a disk with enough free space for a complete copy of your largest backup. Leave empty to use .cache/backup_checkup inside the Home Assistant configuration directory, which Home Assistant excludes from its own backups. A custom directory is not excluded automatically."
         }
       },
       "presentation": {
@@ -124,7 +126,12 @@
       "fixed_size_required": "Enter a minimum backup size greater than 0 MB when using the fixed minimum size mode.",
       "notification_target_required": "Select at least one mobile device when mobile notifications are enabled.",
       "active_interval_too_slow": "The active polling interval must not be longer than the normal polling interval.",
-      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval."
+      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval.",
+      "staging_directory_not_absolute": "Enter an absolute directory path or leave the field empty.",
+      "staging_directory_missing": "The staging directory does not exist. Create it first.",
+      "staging_directory_invalid": "The staging directory must be a real directory, not a file or symbolic link.",
+      "staging_directory_reserved": "The configuration root, .storage, backups and tmp_backups cannot be used as staging directory.",
+      "staging_directory_not_writable": "BackupCheckup cannot write to the staging directory. Check its permissions."
     }
   },
   "options": {
@@ -211,14 +218,16 @@
       },
       "verification": {
         "title": "Choose an integrity-check strategy",
-        "description": "Automatic archive verification can use considerable network, CPU, and temporary disk space. Deep verification additionally checks the included SQLite database.",
+        "description": "Automatic archive verification can use considerable network, CPU, and disk space in the staging directory. Deep verification additionally checks the included SQLite database.",
         "data": {
           "verification_policy": "Integrity-check strategy",
-          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes"
+          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes",
+          "verification_staging_directory": "Verification staging directory (optional)"
         },
         "data_description": {
           "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check.",
-          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown."
+          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown.",
+          "verification_staging_directory": "Absolute path of a directory on a disk with enough free space for a complete copy of your largest backup. Leave empty to use .cache/backup_checkup inside the Home Assistant configuration directory, which Home Assistant excludes from its own backups. A custom directory is not excluded automatically."
         }
       },
       "presentation": {
@@ -271,14 +280,16 @@
       },
       "setup_verification": {
         "title": "Choose an integrity-check strategy",
-        "description": "Automatic archive verification can use considerable network, CPU, and temporary disk space. Deep verification additionally checks the included SQLite database.",
+        "description": "Automatic archive verification can use considerable network, CPU, and disk space in the staging directory. Deep verification additionally checks the included SQLite database.",
         "data": {
           "verification_policy": "Integrity-check strategy",
-          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes"
+          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes",
+          "verification_staging_directory": "Verification staging directory (optional)"
         },
         "data_description": {
           "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check.",
-          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown."
+          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown.",
+          "verification_staging_directory": "Absolute path of a directory on a disk with enough free space for a complete copy of your largest backup. Leave empty to use .cache/backup_checkup inside the Home Assistant configuration directory, which Home Assistant excludes from its own backups. A custom directory is not excluded automatically."
         }
       },
       "setup_presentation": {
@@ -316,7 +327,12 @@
       "fixed_size_required": "Enter a minimum backup size greater than 0 MB when using the fixed minimum size mode.",
       "notification_target_required": "Select at least one mobile device when mobile notifications are enabled.",
       "active_interval_too_slow": "The active polling interval must not be longer than the normal polling interval.",
-      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval."
+      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval.",
+      "staging_directory_not_absolute": "Enter an absolute directory path or leave the field empty.",
+      "staging_directory_missing": "The staging directory does not exist. Create it first.",
+      "staging_directory_invalid": "The staging directory must be a real directory, not a file or symbolic link.",
+      "staging_directory_reserved": "The configuration root, .storage, backups and tmp_backups cannot be used as staging directory.",
+      "staging_directory_not_writable": "BackupCheckup cannot write to the staging directory. Check its permissions."
     }
   },
   "entity": {
@@ -746,7 +762,7 @@
     },
     "temporary_cleanup_failed": {
       "title": "Temporary verification data could not be removed",
-      "description": "BackupCheckup could not remove private temporary verification data. Restart Home Assistant and check the temporary filesystem and available disk space."
+      "description": "BackupCheckup could not remove private verification data. Restart Home Assistant and check the verification staging directory and available disk space."
     },
     "backup_checksum_changed": {
       "title": "Backup checksum changed",
@@ -777,6 +793,9 @@
     },
     "verification_cooldown": {
       "message": "Manual verification is rate-limited. Wait until the configured {minutes}-minute cooldown has expired."
+    },
+    "verification_backup_in_progress": {
+      "message": "Home Assistant is currently creating, receiving or restoring a backup. Start the verification again once the backup manager is idle."
     },
     "integration_not_loaded": {
       "message": "BackupCheckup is not currently loaded."

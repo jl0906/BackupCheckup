@@ -74,14 +74,16 @@
       },
       "verification": {
         "title": "Choose an integrity-check strategy",
-        "description": "Automatic archive verification can use considerable network, CPU, and temporary disk space. Deep verification additionally checks the included SQLite database.",
+        "description": "Automatische archiefverificatie kan veel netwerk, CPU en schijfruimte in de staging-map gebruiken. Diepe verificatie controleert daarnaast de meegeleverde SQLite-database.",
         "data": {
           "verification_policy": "Integrity-check strategy",
-          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes"
+          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes",
+          "verification_staging_directory": "Staging-map voor verificaties (optioneel)"
         },
         "data_description": {
           "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check.",
-          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown."
+          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown.",
+          "verification_staging_directory": "Absoluut pad van een map op een schijf met genoeg vrije ruimte voor een volledige kopie van je grootste back-up. Laat leeg om .cache/backup_checkup in de configuratiemap van Home Assistant te gebruiken; Home Assistant sluit die uit van zijn eigen back-ups. Een eigen map wordt niet automatisch uitgesloten."
         }
       },
       "presentation": {
@@ -124,7 +126,12 @@
       "fixed_size_required": "Enter a minimum backup size greater than 0 MB when using the fixed minimum size mode.",
       "notification_target_required": "Select at least one mobile device when mobile notifications are enabled.",
       "active_interval_too_slow": "The active polling interval must not be longer than the normal polling interval.",
-      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval."
+      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval.",
+      "staging_directory_not_absolute": "Voer een absoluut mappad in of laat het veld leeg.",
+      "staging_directory_missing": "De staging-map bestaat niet. Maak deze eerst aan.",
+      "staging_directory_invalid": "De staging-map moet een echte map zijn, geen bestand of symbolische link.",
+      "staging_directory_reserved": "De configuratiemap zelf, .storage, backups en tmp_backups kunnen niet als staging-map worden gebruikt.",
+      "staging_directory_not_writable": "BackupCheckup kan niet naar de staging-map schrijven. Controleer de rechten."
     }
   },
   "options": {
@@ -211,14 +218,16 @@
       },
       "verification": {
         "title": "Choose an integrity-check strategy",
-        "description": "Automatic archive verification can use considerable network, CPU, and temporary disk space. Deep verification additionally checks the included SQLite database.",
+        "description": "Automatische archiefverificatie kan veel netwerk, CPU en schijfruimte in de staging-map gebruiken. Diepe verificatie controleert daarnaast de meegeleverde SQLite-database.",
         "data": {
           "verification_policy": "Integrity-check strategy",
-          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes"
+          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes",
+          "verification_staging_directory": "Staging-map voor verificaties (optioneel)"
         },
         "data_description": {
           "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check.",
-          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown."
+          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown.",
+          "verification_staging_directory": "Absoluut pad van een map op een schijf met genoeg vrije ruimte voor een volledige kopie van je grootste back-up. Laat leeg om .cache/backup_checkup in de configuratiemap van Home Assistant te gebruiken; Home Assistant sluit die uit van zijn eigen back-ups. Een eigen map wordt niet automatisch uitgesloten."
         }
       },
       "presentation": {
@@ -271,14 +280,16 @@
       },
       "setup_verification": {
         "title": "Choose an integrity-check strategy",
-        "description": "Automatic archive verification can use considerable network, CPU, and temporary disk space. Deep verification additionally checks the included SQLite database.",
+        "description": "Automatische archiefverificatie kan veel netwerk, CPU en schijfruimte in de staging-map gebruiken. Diepe verificatie controleert daarnaast de meegeleverde SQLite-database.",
         "data": {
           "verification_policy": "Integrity-check strategy",
-          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes"
+          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes",
+          "verification_staging_directory": "Staging-map voor verificaties (optioneel)"
         },
         "data_description": {
           "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check.",
-          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown."
+          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown.",
+          "verification_staging_directory": "Absoluut pad van een map op een schijf met genoeg vrije ruimte voor een volledige kopie van je grootste back-up. Laat leeg om .cache/backup_checkup in de configuratiemap van Home Assistant te gebruiken; Home Assistant sluit die uit van zijn eigen back-ups. Een eigen map wordt niet automatisch uitgesloten."
         }
       },
       "setup_presentation": {
@@ -316,7 +327,12 @@
       "fixed_size_required": "Enter a minimum backup size greater than 0 MB when using the fixed minimum size mode.",
       "notification_target_required": "Select at least one mobile device when mobile notifications are enabled.",
       "active_interval_too_slow": "The active polling interval must not be longer than the normal polling interval.",
-      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval."
+      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval.",
+      "staging_directory_not_absolute": "Voer een absoluut mappad in of laat het veld leeg.",
+      "staging_directory_missing": "De staging-map bestaat niet. Maak deze eerst aan.",
+      "staging_directory_invalid": "De staging-map moet een echte map zijn, geen bestand of symbolische link.",
+      "staging_directory_reserved": "De configuratiemap zelf, .storage, backups en tmp_backups kunnen niet als staging-map worden gebruikt.",
+      "staging_directory_not_writable": "BackupCheckup kan niet naar de staging-map schrijven. Controleer de rechten."
     }
   },
   "entity": {
@@ -746,7 +762,7 @@
     },
     "temporary_cleanup_failed": {
       "title": "Temporary verification data could not be removed",
-      "description": "BackupCheckup could not remove private temporary verification data. Restart Home Assistant and check the temporary filesystem and available disk space."
+      "description": "BackupCheckup kon privé-verificatiegegevens niet verwijderen. Herstart Home Assistant en controleer de staging-map en de vrije schijfruimte."
     },
     "backup_checksum_changed": {
       "title": "Backup checksum changed",
@@ -777,6 +793,9 @@
     },
     "verification_cooldown": {
       "message": "Manual verification is rate-limited. Wait until the configured {minutes}-minute cooldown has expired."
+    },
+    "verification_backup_in_progress": {
+      "message": "Home Assistant maakt, ontvangt of herstelt op dit moment een back-up. Start de verificatie opnieuw zodra de back-upmanager inactief is."
     },
     "integration_not_loaded": {
       "message": "BackupCheckup is not currently loaded."

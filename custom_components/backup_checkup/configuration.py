@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -44,6 +45,7 @@ from .const import (
     CONF_SIZE_CHECK_MODE,
     CONF_UPDATE_INTERVAL_MINUTES,
     CONF_VERIFICATION_POLICY,
+    CONF_VERIFICATION_STAGING_DIRECTORY,
     CONF_VERIFICATION_TIMEOUT_MINUTES,
     DEFAULT_ACTIVE_UPDATE_INTERVAL_MINUTES,
     DEFAULT_ACTIVITY_LOG_PERSISTENCE,
@@ -79,6 +81,7 @@ from .const import (
     DEFAULT_SIZE_CHECK_MODE,
     DEFAULT_UPDATE_INTERVAL_MINUTES,
     DEFAULT_VERIFICATION_POLICY,
+    DEFAULT_VERIFICATION_STAGING_DIRECTORY,
     DEFAULT_VERIFICATION_TIMEOUT_MINUTES,
     ENTITY_MODE_OPTIONS,
     MAX_ACTIVE_UPDATE_INTERVAL_MINUTES,
@@ -98,6 +101,7 @@ from .const import (
     MAX_RUNNER_MAXIMUM_EXPANDED_GB,
     MAX_RUNNER_TIMEOUT_MINUTES,
     MAX_UPDATE_INTERVAL_MINUTES,
+    MAX_VERIFICATION_STAGING_DIRECTORY_LENGTH,
     MAX_VERIFICATION_TIMEOUT_MINUTES,
     MIN_ACTIVE_UPDATE_INTERVAL_MINUTES,
     MIN_ACTIVITY_LOG_RETENTION_DAYS,
@@ -262,8 +266,28 @@ KNOWN_CONFIGURATION_KEYS = frozenset(
         *_ENUM_OPTIONS,
         CONF_NOTIFICATION_TARGETS,
         CONF_HARDWARE_DETECTION,
+        CONF_VERIFICATION_STAGING_DIRECTORY,
     }
 )
+
+
+def normalize_staging_directory(value: Any) -> str:
+    """Return a syntactically plausible absolute directory string or the default.
+
+    Filesystem checks are deliberately not performed here; they run in an
+    executor when the value is entered and again when a verification starts.
+    """
+    if not isinstance(value, str):
+        return DEFAULT_VERIFICATION_STAGING_DIRECTORY
+    text = value.strip()
+    if (
+        not text
+        or "\x00" in text
+        or len(text) > MAX_VERIFICATION_STAGING_DIRECTORY_LENGTH
+        or not os.path.isabs(text)
+    ):
+        return DEFAULT_VERIFICATION_STAGING_DIRECTORY
+    return os.path.normpath(text)
 
 
 def _strict_bool(value: Any, default: bool) -> bool:
@@ -395,6 +419,9 @@ def normalize_configuration(*sources: Mapping[str, Any] | None) -> dict[str, Any
     normalized[CONF_HARDWARE_DETECTION] = _hardware_detection(
         merged.get(CONF_HARDWARE_DETECTION)
     )
+    normalized[CONF_VERIFICATION_STAGING_DIRECTORY] = normalize_staging_directory(
+        merged.get(CONF_VERIFICATION_STAGING_DIRECTORY)
+    )
     return normalized
 
 
@@ -413,6 +440,7 @@ class RuntimeSettings:
     verification_timeout_minutes: int
     database_timeout_minutes: int
     manual_verification_cooldown_minutes: int
+    verification_staging_directory: str
     preset_revision: int
     hardware_detection: dict[str, str]
     runner_maximum_archive_gb: int
@@ -490,6 +518,9 @@ class BackupCheckupSettings:
                 manual_verification_cooldown_minutes=values[
                     CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES
                 ],
+                verification_staging_directory=values[
+                    CONF_VERIFICATION_STAGING_DIRECTORY
+                ],
                 preset_revision=values[CONF_PRESET_REVISION],
                 hardware_detection=values[CONF_HARDWARE_DETECTION],
                 runner_maximum_archive_gb=values[CONF_RUNNER_MAXIMUM_ARCHIVE_GB],
@@ -545,6 +576,9 @@ class BackupCheckupSettings:
             CONF_DATABASE_TIMEOUT_MINUTES: self.runtime.database_timeout_minutes,
             CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES: (
                 self.runtime.manual_verification_cooldown_minutes
+            ),
+            CONF_VERIFICATION_STAGING_DIRECTORY: (
+                self.runtime.verification_staging_directory
             ),
             CONF_PRESET_REVISION: self.runtime.preset_revision,
             CONF_HARDWARE_DETECTION: dict(self.runtime.hardware_detection),
@@ -629,6 +663,10 @@ class BackupCheckupSettings:
     @property
     def manual_verification_cooldown_minutes(self) -> int:
         return self.runtime.manual_verification_cooldown_minutes
+
+    @property
+    def verification_staging_directory(self) -> str:
+        return self.runtime.verification_staging_directory
 
     @property
     def runner_maximum_archive_gb(self) -> int:

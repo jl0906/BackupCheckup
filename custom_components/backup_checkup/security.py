@@ -19,7 +19,11 @@ from typing import BinaryIO
 from .const import (
     MAX_ARCHIVE_MEMBERS,
     MAX_BACKUP_METADATA_BYTES,
+    MAX_FREE_SPACE_RESERVE_BYTES,
+    MAX_VERIFICATION_STAGING_DIRECTORY_LENGTH,
     MIN_FREE_SPACE_RESERVE_BYTES,
+    STAGING_DIRECTORY_RELATIVE_PARTS,
+    STAGING_DIRECTORY_RESERVED_RELATIVE_PARTS,
     STALE_TEMP_DIRECTORY_AGE_HOURS,
 )
 
@@ -177,7 +181,10 @@ class VerificationBudget:
         self._require_nonnegative(required_bytes, code="insufficient_free_space")
         self.check_deadline()
         usage = shutil.disk_usage(path)
-        dynamic_reserve = max(self.free_space_reserve_bytes, usage.total // 10)
+        dynamic_reserve = max(
+            self.free_space_reserve_bytes,
+            min(usage.total // 10, MAX_FREE_SPACE_RESERVE_BYTES),
+        )
         if usage.free - required_bytes < dynamic_reserve:
             raise VerificationLimitError("insufficient_free_space")
 
@@ -273,9 +280,132 @@ def backup_scope_fingerprint(
     return hashlib.sha256(f"{entry_id}:{payload}".encode()).hexdigest()[:16]
 
 
-def create_private_temp_directory() -> Path:
-    """Create a private temporary directory for verification data."""
-    path = Path(tempfile.mkdtemp(prefix=_TEMP_PREFIX))
+@dataclass(frozen=True, slots=True)
+class StagingCapacity:
+    """Privacy-safe capacity summary of the verification staging filesystem."""
+
+    available: bool
+    total_bytes: int | None = None
+    free_bytes: int | None = None
+
+
+def default_staging_root(config_dir: str | Path) -> Path:
+    """Return the automatic staging location below the configuration directory.
+
+    Home Assistant excludes ``.cache/*`` from its own backups, so verification
+    copies staged here are never captured by a backup that starts meanwhile.
+    """
+    return Path(config_dir).joinpath(*STAGING_DIRECTORY_RELATIVE_PARTS)
+
+
+def resolve_staging_root(config_dir: str | Path, custom_directory: str) -> Path:
+    """Return the configured staging root or the automatic default."""
+    candidate = custom_directory.strip() if isinstance(custom_directory, str) else ""
+    if candidate:
+        return Path(os.path.normpath(candidate))
+    return default_staging_root(config_dir)
+
+
+def _is_within(path: Path, parent: Path) -> bool:
+    """Return whether ``path`` equals or lies below ``parent``."""
+    try:
+        return os.path.commonpath([path, parent]) == str(parent)
+    except ValueError:
+        return False
+
+
+def validate_staging_directory(candidate: str, *, config_dir: str | Path) -> str | None:
+    """Validate a user-supplied staging directory and return an error code.
+
+    This performs blocking filesystem checks and must run in an executor. The
+    returned codes are stable and never contain the checked path.
+    """
+    if not isinstance(candidate, str):
+        return "staging_directory_invalid"
+    text = candidate.strip()
+    if not text:
+        return None
+    if (
+        len(text) > MAX_VERIFICATION_STAGING_DIRECTORY_LENGTH
+        or "\x00" in text
+        or not os.path.isabs(text)
+    ):
+        return "staging_directory_not_absolute"
+    path = Path(os.path.normpath(text))
+    try:
+        stat_result = path.lstat()
+    except FileNotFoundError:
+        return "staging_directory_missing"
+    except OSError:
+        return "staging_directory_invalid"
+    if stat.S_ISLNK(stat_result.st_mode) or not stat.S_ISDIR(stat_result.st_mode):
+        return "staging_directory_invalid"
+
+    config_root = Path(config_dir).resolve()
+    resolved = path.resolve()
+    if resolved == default_staging_root(config_root).resolve():
+        # The automatic location is always acceptable; BackupCheckup owns it.
+        return None
+    if resolved == config_root or resolved.parent == resolved:
+        return "staging_directory_reserved"
+    for relative_parts in STAGING_DIRECTORY_RESERVED_RELATIVE_PARTS:
+        if _is_within(resolved, config_root.joinpath(*relative_parts)):
+            return "staging_directory_reserved"
+
+    if not os.access(path, os.W_OK | os.X_OK):
+        return "staging_directory_not_writable"
+    try:
+        probe = Path(tempfile.mkdtemp(prefix=f"{_TEMP_PREFIX}probe_", dir=path))
+    except OSError:
+        return "staging_directory_not_writable"
+    with suppress(OSError):
+        probe.rmdir()
+    return None
+
+
+def _prepare_staging_root(root: Path) -> None:
+    """Create the staging root and keep the directories BackupCheckup owns private."""
+    if root.exists():
+        if root.is_symlink() or not root.is_dir():
+            raise NotADirectoryError(str(root))
+        return
+    root.mkdir(parents=True, exist_ok=True)
+    with suppress(OSError):
+        root.chmod(0o700)
+
+
+def staging_capacity(root: Path) -> StagingCapacity:
+    """Return the capacity of the filesystem that will hold verification data."""
+    probe = root
+    while not probe.exists():
+        parent = probe.parent
+        if parent == probe:
+            return StagingCapacity(available=False)
+        probe = parent
+    try:
+        usage = shutil.disk_usage(probe)
+    except OSError:
+        return StagingCapacity(available=False)
+    return StagingCapacity(
+        available=True, total_bytes=usage.total, free_bytes=usage.free
+    )
+
+
+def remove_default_staging_root(root: Path) -> bool:
+    """Delete the automatic staging root and everything BackupCheckup staged there."""
+    try:
+        if root.is_symlink() or not root.exists():
+            return True
+        shutil.rmtree(root)
+    except OSError:
+        return False
+    return True
+
+
+def create_private_temp_directory(root: Path) -> Path:
+    """Create a private per-verification directory below the staging root."""
+    _prepare_staging_root(root)
+    path = Path(tempfile.mkdtemp(prefix=_TEMP_PREFIX, dir=root))
     try:
         path.chmod(0o700)
     except OSError:
@@ -335,9 +465,19 @@ def _stale_temp_candidate_action(
     return "recent" if stat_result.st_mtime > cutoff else "remove"
 
 
-def cleanup_stale_temp_directories() -> TempCleanupResult:
+def legacy_temp_root() -> Path:
+    """Return the process temporary directory used by releases before 3.1.0."""
+    return Path(tempfile.gettempdir())
+
+
+def cleanup_stale_temp_directories(root: Path) -> TempCleanupResult:
     """Remove stale BackupCheckup directories and report any data left behind."""
-    root = Path(tempfile.gettempdir()).resolve()
+    try:
+        root = root.resolve()
+    except OSError:
+        return TempCleanupResult(failures=1)
+    if not root.is_dir():
+        return TempCleanupResult()
     cutoff = time.time() - STALE_TEMP_DIRECTORY_AGE_HOURS * 3600
     current_uid = os.getuid() if hasattr(os, "getuid") else None
     try:

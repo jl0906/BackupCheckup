@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import partial
 from typing import Any
 
 import voluptuous as vol
@@ -10,7 +11,7 @@ from homeassistant.components import websocket_api
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .configuration import normalize_configuration
+from .configuration import normalize_configuration, normalize_staging_directory
 from .const import (
     CONF_ACTIVE_UPDATE_INTERVAL_MINUTES,
     CONF_ACTIVITY_LOG_PERSISTENCE,
@@ -48,6 +49,7 @@ from .const import (
     CONF_SIZE_CHECK_MODE,
     CONF_UPDATE_INTERVAL_MINUTES,
     CONF_VERIFICATION_POLICY,
+    CONF_VERIFICATION_STAGING_DIRECTORY,
     CONF_VERIFICATION_TIMEOUT_MINUTES,
     DOMAIN,
     ENTITY_MODE_OPTIONS,
@@ -68,6 +70,7 @@ from .const import (
     MAX_RUNNER_MAXIMUM_EXPANDED_GB,
     MAX_RUNNER_TIMEOUT_MINUTES,
     MAX_UPDATE_INTERVAL_MINUTES,
+    MAX_VERIFICATION_STAGING_DIRECTORY_LENGTH,
     MAX_VERIFICATION_TIMEOUT_MINUTES,
     MIN_ACTIVE_UPDATE_INTERVAL_MINUTES,
     MIN_ACTIVITY_LOG_RETENTION_DAYS,
@@ -104,6 +107,7 @@ from .notification_selection import (
     normalize_notification_targets,
 )
 from .presets import monitoring_values, runtime_values, verification_values
+from .security import validate_staging_directory
 
 WS_TYPE_CONFIG_GET = f"{DOMAIN}/config/get"
 WS_TYPE_CONFIG_UPDATE = f"{DOMAIN}/config/update"
@@ -211,6 +215,7 @@ _FRONTEND_KEYS = frozenset(
         *_BOOLEAN_KEYS,
         *_ENUM_OPTIONS,
         CONF_NOTIFICATION_TARGETS,
+        CONF_VERIFICATION_STAGING_DIRECTORY,
     }
 )
 
@@ -339,6 +344,21 @@ def _resolve_monitoring_settings(
         errors["monitoring"] = "fixed_size_required"
 
 
+def _staging_directory(value: Any, errors: dict[str, str]) -> str:
+    """Return the syntactically normalized staging directory or retain an error."""
+    if not isinstance(value, str):
+        errors[CONF_VERIFICATION_STAGING_DIRECTORY] = "staging_directory_invalid"
+        return ""
+    text = value.strip()
+    if not text:
+        return ""
+    normalized = normalize_staging_directory(text)
+    if not normalized or len(text) > MAX_VERIFICATION_STAGING_DIRECTORY_LENGTH:
+        errors[CONF_VERIFICATION_STAGING_DIRECTORY] = "staging_directory_not_absolute"
+        return ""
+    return normalized
+
+
 def _resolve_verification_settings(
     source: Mapping[str, Any], values: dict[str, Any], errors: dict[str, str]
 ) -> None:
@@ -351,6 +371,9 @@ def _resolve_verification_settings(
         source[CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES],
         CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES,
         errors,
+    )
+    values[CONF_VERIFICATION_STAGING_DIRECTORY] = _staging_directory(
+        source[CONF_VERIFICATION_STAGING_DIRECTORY], errors
     )
     if policy != VERIFICATION_POLICY_CUSTOM:
         values.update(verification_values(policy))
@@ -524,6 +547,27 @@ async def websocket_config_update(
             {"success": False, "errors": err.errors, "values": current},
         )
         return
+
+    staging_directory = resolved[CONF_VERIFICATION_STAGING_DIRECTORY]
+    if staging_directory:
+        # Filesystem checks are blocking and only run for a custom directory.
+        code = await hass.async_add_executor_job(
+            partial(
+                validate_staging_directory,
+                staging_directory,
+                config_dir=hass.config.config_dir,
+            )
+        )
+        if code:
+            connection.send_result(
+                msg["id"],
+                {
+                    "success": False,
+                    "errors": {CONF_VERIFICATION_STAGING_DIRECTORY: code},
+                    "values": current,
+                },
+            )
+            return
 
     hass.config_entries.async_update_entry(
         entry,

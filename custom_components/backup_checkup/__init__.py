@@ -47,6 +47,7 @@ from .const import (
     CONF_REPAIR_ISSUES_ENABLED,
     CONF_RUNTIME_RUNNER,
     CONF_SIZE_CHECK_MODE,
+    CONF_VERIFICATION_STAGING_DIRECTORY,
     CONF_VERIFICATION_TIMEOUT_MINUTES,
     CONFIG_ENTRY_VERSION,
     DEFAULT_AUTO_VERIFY_NEW_BACKUPS,
@@ -65,6 +66,7 @@ from .const import (
     DEFAULT_NOTIFY_ON_RECOVERY,
     DEFAULT_REPAIR_ISSUES_ENABLED,
     DEFAULT_SIZE_CHECK_MODE,
+    DEFAULT_VERIFICATION_STAGING_DIRECTORY,
     DEFAULT_VERIFICATION_TIMEOUT_MINUTES,
     DOMAIN,
     ENTITY_MODE_EXPERT,
@@ -113,6 +115,9 @@ from .repairs import (
 from .security import (
     TempCleanupResult,
     cleanup_stale_temp_directories,
+    default_staging_root,
+    legacy_temp_root,
+    remove_default_staging_root,
     safe_error_type,
 )
 from .storage_cleanup import cleanup_entry_store_files, cleanup_orphaned_store_files
@@ -389,6 +394,12 @@ def _legacy_schema_defaults(version: int) -> dict[str, object]:
                 CONF_EXPOSE_BACKUP_METADATA: DEFAULT_EXPOSE_BACKUP_METADATA,
             }
         )
+    if version < 16:
+        # 3.1.0 moved verification staging from the process temporary directory
+        # to the Home Assistant data path; an empty value selects that default.
+        defaults[CONF_VERIFICATION_STAGING_DIRECTORY] = (
+            DEFAULT_VERIFICATION_STAGING_DIRECTORY
+        )
     return defaults
 
 
@@ -434,12 +445,31 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+def _cleanup_stale_temporary_data(staging_root: Path) -> TempCleanupResult:
+    """Sweep the staging root plus the process temp directory of older releases."""
+    roots = [staging_root]
+    legacy_root = legacy_temp_root()
+    if legacy_root.resolve() != staging_root.resolve():
+        # Releases before 3.1.0 staged verification data in the process temporary
+        # directory. It persists across restarts on Container and Core installs.
+        roots.append(legacy_root)
+    failures = 0
+    remaining = 0
+    for root in roots:
+        result = cleanup_stale_temp_directories(root)
+        failures += result.failures
+        remaining += result.remaining
+    return TempCleanupResult(failures=failures, remaining=remaining)
+
+
 async def _async_cleanup_stale_temporary_data(
-    hass: HomeAssistant,
+    hass: HomeAssistant, staging_root: Path
 ) -> TempCleanupResult:
     """Run best-effort stale temporary-data cleanup."""
     try:
-        return await hass.async_add_executor_job(cleanup_stale_temp_directories)
+        return await hass.async_add_executor_job(
+            _cleanup_stale_temporary_data, staging_root
+        )
     except Exception as err:  # noqa: BLE001 - filesystem executor boundary
         _LOGGER.warning(
             "Unable to inspect stale BackupCheckup temporary data: error_type=%s",
@@ -511,7 +541,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         disable_others=False,
     )
 
-    stale_cleanup = await _async_cleanup_stale_temporary_data(hass)
+    stale_cleanup = await _async_cleanup_stale_temporary_data(
+        hass, coordinator.staging_root
+    )
     _record_activity(
         coordinator,
         "temporary_data_cleanup",
@@ -630,6 +662,16 @@ async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
                 "Unable to remove a BackupCheckup private store: error_type=%s",
                 safe_error_type(err),
             )
+
+    try:
+        await hass.async_add_executor_job(
+            remove_default_staging_root, default_staging_root(hass.config.config_dir)
+        )
+    except Exception as err:  # noqa: BLE001 - filesystem executor boundary
+        _LOGGER.warning(
+            "Unable to remove the BackupCheckup staging directory: error_type=%s",
+            safe_error_type(err),
+        )
 
     try:
         cleanup_result = await hass.async_add_executor_job(

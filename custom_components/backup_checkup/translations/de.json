@@ -74,14 +74,16 @@
       },
       "verification": {
         "title": "Integritätsstrategie auswählen",
-        "description": "Automatische Archivprüfungen können Netzwerk, CPU und temporären Speicher deutlich belasten. Die Tiefenprüfung kontrolliert zusätzlich die enthaltene SQLite-Datenbank.",
+        "description": "Automatische Archivprüfungen können Netzwerk, CPU und Speicherplatz im Staging-Verzeichnis deutlich belasten. Die Tiefenprüfung kontrolliert zusätzlich die enthaltene SQLite-Datenbank.",
         "data": {
           "verification_policy": "Integritätsstrategie",
-          "manual_verification_cooldown_minutes": "Wartezeit für den Admin-Button in Minuten"
+          "manual_verification_cooldown_minutes": "Wartezeit für den Admin-Button in Minuten",
+          "verification_staging_directory": "Staging-Verzeichnis für Prüfungen (optional)"
         },
         "data_description": {
           "verification_policy": "Nur manuell wird für kleine Systeme empfohlen. Automatisch prüft jedes neu erkannte neueste Backup einmal. Tiefenprüfung führt zusätzlich SQLite PRAGMA integrity_check aus.",
-          "manual_verification_cooldown_minutes": "Legt fest, wann der Admin-Button nach einer manuellen Prüfung wieder verwendet werden kann. 0 deaktiviert die Wartezeit."
+          "manual_verification_cooldown_minutes": "Legt fest, wann der Admin-Button nach einer manuellen Prüfung wieder verwendet werden kann. 0 deaktiviert die Wartezeit.",
+          "verification_staging_directory": "Absoluter Pfad eines Verzeichnisses auf einem Datenträger mit genug freiem Platz für eine vollständige Kopie deines größten Backups. Leer lassen, um .cache/backup_checkup im Home-Assistant-Konfigurationsverzeichnis zu verwenden; dieses wird von Home Assistant aus den eigenen Backups ausgeschlossen. Ein eigenes Verzeichnis wird nicht automatisch ausgeschlossen."
         }
       },
       "presentation": {
@@ -124,7 +126,12 @@
       "fixed_size_required": "Bei fester Mindestgröße muss eine Backupgröße über 0 MB eingetragen werden.",
       "notification_target_required": "Wähle mindestens ein Mobilgerät aus, wenn mobile Benachrichtigungen aktiviert sind.",
       "active_interval_too_slow": "Das aktive Abfrageintervall darf nicht länger als das normale Abfrageintervall sein.",
-      "backoff_interval_too_fast": "Das Fehler-Backoff darf nicht kürzer als das normale Abfrageintervall sein."
+      "backoff_interval_too_fast": "Das Fehler-Backoff darf nicht kürzer als das normale Abfrageintervall sein.",
+      "staging_directory_not_absolute": "Gib einen absoluten Verzeichnispfad ein oder lass das Feld leer.",
+      "staging_directory_missing": "Das Staging-Verzeichnis existiert nicht. Lege es zuerst an.",
+      "staging_directory_invalid": "Das Staging-Verzeichnis muss ein echtes Verzeichnis sein, keine Datei und kein symbolischer Link.",
+      "staging_directory_reserved": "Das Konfigurationsverzeichnis selbst, .storage, backups und tmp_backups können nicht als Staging-Verzeichnis verwendet werden.",
+      "staging_directory_not_writable": "BackupCheckup kann nicht in das Staging-Verzeichnis schreiben. Prüfe die Berechtigungen."
     }
   },
   "options": {
@@ -211,14 +218,16 @@
       },
       "verification": {
         "title": "Integritätsstrategie auswählen",
-        "description": "Automatische Archivprüfungen können Netzwerk, CPU und temporären Speicher deutlich belasten. Die Tiefenprüfung kontrolliert zusätzlich die enthaltene SQLite-Datenbank.",
+        "description": "Automatische Archivprüfungen können Netzwerk, CPU und Speicherplatz im Staging-Verzeichnis deutlich belasten. Die Tiefenprüfung kontrolliert zusätzlich die enthaltene SQLite-Datenbank.",
         "data": {
           "verification_policy": "Integritätsstrategie",
-          "manual_verification_cooldown_minutes": "Wartezeit für den Admin-Button in Minuten"
+          "manual_verification_cooldown_minutes": "Wartezeit für den Admin-Button in Minuten",
+          "verification_staging_directory": "Staging-Verzeichnis für Prüfungen (optional)"
         },
         "data_description": {
           "verification_policy": "Nur manuell wird für kleine Systeme empfohlen. Automatisch prüft jedes neu erkannte neueste Backup einmal. Tiefenprüfung führt zusätzlich SQLite PRAGMA integrity_check aus.",
-          "manual_verification_cooldown_minutes": "Legt fest, wann der Admin-Button nach einer manuellen Prüfung wieder verwendet werden kann. 0 deaktiviert die Wartezeit."
+          "manual_verification_cooldown_minutes": "Legt fest, wann der Admin-Button nach einer manuellen Prüfung wieder verwendet werden kann. 0 deaktiviert die Wartezeit.",
+          "verification_staging_directory": "Absoluter Pfad eines Verzeichnisses auf einem Datenträger mit genug freiem Platz für eine vollständige Kopie deines größten Backups. Leer lassen, um .cache/backup_checkup im Home-Assistant-Konfigurationsverzeichnis zu verwenden; dieses wird von Home Assistant aus den eigenen Backups ausgeschlossen. Ein eigenes Verzeichnis wird nicht automatisch ausgeschlossen."
         }
       },
       "presentation": {
@@ -271,14 +280,16 @@
       },
       "setup_verification": {
         "title": "Integritätsstrategie auswählen",
-        "description": "Automatische Archivprüfungen können Netzwerk, CPU und temporären Speicher deutlich belasten. Die Tiefenprüfung kontrolliert zusätzlich die enthaltene SQLite-Datenbank.",
+        "description": "Automatische Archivprüfungen können Netzwerk, CPU und Speicherplatz im Staging-Verzeichnis deutlich belasten. Die Tiefenprüfung kontrolliert zusätzlich die enthaltene SQLite-Datenbank.",
         "data": {
           "verification_policy": "Integritätsstrategie",
-          "manual_verification_cooldown_minutes": "Wartezeit für den Admin-Button in Minuten"
+          "manual_verification_cooldown_minutes": "Wartezeit für den Admin-Button in Minuten",
+          "verification_staging_directory": "Staging-Verzeichnis für Prüfungen (optional)"
         },
         "data_description": {
           "verification_policy": "Nur manuell wird für kleine Systeme empfohlen. Automatisch prüft jedes neu erkannte neueste Backup einmal. Tiefenprüfung führt zusätzlich SQLite PRAGMA integrity_check aus.",
-          "manual_verification_cooldown_minutes": "Legt fest, wann der Admin-Button nach einer manuellen Prüfung wieder verwendet werden kann. 0 deaktiviert die Wartezeit."
+          "manual_verification_cooldown_minutes": "Legt fest, wann der Admin-Button nach einer manuellen Prüfung wieder verwendet werden kann. 0 deaktiviert die Wartezeit.",
+          "verification_staging_directory": "Absoluter Pfad eines Verzeichnisses auf einem Datenträger mit genug freiem Platz für eine vollständige Kopie deines größten Backups. Leer lassen, um .cache/backup_checkup im Home-Assistant-Konfigurationsverzeichnis zu verwenden; dieses wird von Home Assistant aus den eigenen Backups ausgeschlossen. Ein eigenes Verzeichnis wird nicht automatisch ausgeschlossen."
         }
       },
       "setup_presentation": {
@@ -316,7 +327,12 @@
       "fixed_size_required": "Bei fester Mindestgröße muss eine Backupgröße über 0 MB eingetragen werden.",
       "notification_target_required": "Wähle mindestens ein Mobilgerät aus, wenn mobile Benachrichtigungen aktiviert sind.",
       "active_interval_too_slow": "Das aktive Abfrageintervall darf nicht länger als das normale Abfrageintervall sein.",
-      "backoff_interval_too_fast": "Das Fehler-Backoff darf nicht kürzer als das normale Abfrageintervall sein."
+      "backoff_interval_too_fast": "Das Fehler-Backoff darf nicht kürzer als das normale Abfrageintervall sein.",
+      "staging_directory_not_absolute": "Gib einen absoluten Verzeichnispfad ein oder lass das Feld leer.",
+      "staging_directory_missing": "Das Staging-Verzeichnis existiert nicht. Lege es zuerst an.",
+      "staging_directory_invalid": "Das Staging-Verzeichnis muss ein echtes Verzeichnis sein, keine Datei und kein symbolischer Link.",
+      "staging_directory_reserved": "Das Konfigurationsverzeichnis selbst, .storage, backups und tmp_backups können nicht als Staging-Verzeichnis verwendet werden.",
+      "staging_directory_not_writable": "BackupCheckup kann nicht in das Staging-Verzeichnis schreiben. Prüfe die Berechtigungen."
     }
   },
   "entity": {
@@ -746,7 +762,7 @@
     },
     "temporary_cleanup_failed": {
       "title": "Temporäre Prüfdaten konnten nicht gelöscht werden",
-      "description": "BackupCheckup konnte private temporäre Prüfdaten nicht entfernen. Starte Home Assistant neu und prüfe das temporäre Dateisystem sowie den freien Speicherplatz."
+      "description": "BackupCheckup konnte private Prüfdaten nicht entfernen. Starte Home Assistant neu und prüfe das Staging-Verzeichnis für Prüfungen sowie den freien Speicherplatz."
     },
     "backup_checksum_changed": {
       "title": "Backup-Prüfsumme hat sich geändert",
@@ -777,6 +793,9 @@
     },
     "verification_cooldown": {
       "message": "Die manuelle Prüfung ist vorübergehend gesperrt. Warte, bis die konfigurierte Sperrzeit von {minutes} Minuten abgelaufen ist."
+    },
+    "verification_backup_in_progress": {
+      "message": "Home Assistant erstellt, empfängt oder stellt gerade ein Backup wieder her. Starte die Prüfung erneut, sobald der Backup-Manager im Leerlauf ist."
     },
     "integration_not_loaded": {
       "message": "BackupCheckup ist derzeit nicht geladen."

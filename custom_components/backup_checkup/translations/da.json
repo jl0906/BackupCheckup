@@ -74,14 +74,16 @@
       },
       "verification": {
         "title": "Choose an integrity-check strategy",
-        "description": "Automatic archive verification can use considerable network, CPU, and temporary disk space. Deep verification additionally checks the included SQLite database.",
+        "description": "Automatisk arkivverificering kan bruge betydelig netværks-, CPU- og diskplads i staging-mappen. Dyb verificering kontrollerer desuden den medfølgende SQLite-database.",
         "data": {
           "verification_policy": "Integrity-check strategy",
-          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes"
+          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes",
+          "verification_staging_directory": "Staging-mappe til verificering (valgfri)"
         },
         "data_description": {
           "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check.",
-          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown."
+          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown.",
+          "verification_staging_directory": "Absolut sti til en mappe på et drev med plads nok til en komplet kopi af din største backup. Lad feltet stå tomt for at bruge .cache/backup_checkup i Home Assistants konfigurationsmappe, som Home Assistant udelukker fra sine egne backups. En egen mappe udelukkes ikke automatisk."
         }
       },
       "presentation": {
@@ -124,7 +126,12 @@
       "fixed_size_required": "Enter a minimum backup size greater than 0 MB when using the fixed minimum size mode.",
       "notification_target_required": "Select at least one mobile device when mobile notifications are enabled.",
       "active_interval_too_slow": "The active polling interval must not be longer than the normal polling interval.",
-      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval."
+      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval.",
+      "staging_directory_not_absolute": "Angiv en absolut mappesti, eller lad feltet stå tomt.",
+      "staging_directory_missing": "Staging-mappen findes ikke. Opret den først.",
+      "staging_directory_invalid": "Staging-mappen skal være en rigtig mappe, ikke en fil eller et symbolsk link.",
+      "staging_directory_reserved": "Konfigurationsroden, .storage, backups og tmp_backups kan ikke bruges som staging-mappe.",
+      "staging_directory_not_writable": "BackupCheckup kan ikke skrive til staging-mappen. Kontrollér rettighederne."
     }
   },
   "options": {
@@ -211,14 +218,16 @@
       },
       "verification": {
         "title": "Choose an integrity-check strategy",
-        "description": "Automatic archive verification can use considerable network, CPU, and temporary disk space. Deep verification additionally checks the included SQLite database.",
+        "description": "Automatisk arkivverificering kan bruge betydelig netværks-, CPU- og diskplads i staging-mappen. Dyb verificering kontrollerer desuden den medfølgende SQLite-database.",
         "data": {
           "verification_policy": "Integrity-check strategy",
-          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes"
+          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes",
+          "verification_staging_directory": "Staging-mappe til verificering (valgfri)"
         },
         "data_description": {
           "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check.",
-          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown."
+          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown.",
+          "verification_staging_directory": "Absolut sti til en mappe på et drev med plads nok til en komplet kopi af din største backup. Lad feltet stå tomt for at bruge .cache/backup_checkup i Home Assistants konfigurationsmappe, som Home Assistant udelukker fra sine egne backups. En egen mappe udelukkes ikke automatisk."
         }
       },
       "presentation": {
@@ -271,14 +280,16 @@
       },
       "setup_verification": {
         "title": "Choose an integrity-check strategy",
-        "description": "Automatic archive verification can use considerable network, CPU, and temporary disk space. Deep verification additionally checks the included SQLite database.",
+        "description": "Automatisk arkivverificering kan bruge betydelig netværks-, CPU- og diskplads i staging-mappen. Dyb verificering kontrollerer desuden den medfølgende SQLite-database.",
         "data": {
           "verification_policy": "Integrity-check strategy",
-          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes"
+          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes",
+          "verification_staging_directory": "Staging-mappe til verificering (valgfri)"
         },
         "data_description": {
           "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check.",
-          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown."
+          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown.",
+          "verification_staging_directory": "Absolut sti til en mappe på et drev med plads nok til en komplet kopi af din største backup. Lad feltet stå tomt for at bruge .cache/backup_checkup i Home Assistants konfigurationsmappe, som Home Assistant udelukker fra sine egne backups. En egen mappe udelukkes ikke automatisk."
         }
       },
       "setup_presentation": {
@@ -316,7 +327,12 @@
       "fixed_size_required": "Enter a minimum backup size greater than 0 MB when using the fixed minimum size mode.",
       "notification_target_required": "Select at least one mobile device when mobile notifications are enabled.",
       "active_interval_too_slow": "The active polling interval must not be longer than the normal polling interval.",
-      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval."
+      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval.",
+      "staging_directory_not_absolute": "Angiv en absolut mappesti, eller lad feltet stå tomt.",
+      "staging_directory_missing": "Staging-mappen findes ikke. Opret den først.",
+      "staging_directory_invalid": "Staging-mappen skal være en rigtig mappe, ikke en fil eller et symbolsk link.",
+      "staging_directory_reserved": "Konfigurationsroden, .storage, backups og tmp_backups kan ikke bruges som staging-mappe.",
+      "staging_directory_not_writable": "BackupCheckup kan ikke skrive til staging-mappen. Kontrollér rettighederne."
     }
   },
   "entity": {
@@ -746,7 +762,7 @@
     },
     "temporary_cleanup_failed": {
       "title": "Temporary verification data could not be removed",
-      "description": "BackupCheckup could not remove private temporary verification data. Restart Home Assistant and check the temporary filesystem and available disk space."
+      "description": "BackupCheckup kunne ikke fjerne private verificeringsdata. Genstart Home Assistant, og kontrollér staging-mappen til verificering samt den ledige diskplads."
     },
     "backup_checksum_changed": {
       "title": "Backup checksum changed",
@@ -777,6 +793,9 @@
     },
     "verification_cooldown": {
       "message": "Manual verification is rate-limited. Wait until the configured {minutes}-minute cooldown has expired."
+    },
+    "verification_backup_in_progress": {
+      "message": "Home Assistant opretter, modtager eller gendanner en backup lige nu. Start verificeringen igen, når backup-manageren er ledig."
     },
     "integration_not_loaded": {
       "message": "BackupCheckup is not currently loaded."

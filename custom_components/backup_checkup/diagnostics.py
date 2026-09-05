@@ -14,6 +14,7 @@ from homeassistant.helpers import entity_registry as er
 from .configuration import normalize_configuration
 from .const import (
     CONF_NOTIFICATION_TARGETS,
+    CONF_VERIFICATION_STAGING_DIRECTORY,
     DOMAIN,
     HEALTH_SCORE_VERSION,
     VERSION,
@@ -25,6 +26,7 @@ from .security import (
     anonymous_agent_reference,
     classify_exception,
     safe_error_type,
+    staging_capacity,
 )
 
 
@@ -304,6 +306,11 @@ async def async_get_config_entry_diagnostics(
     notification_targets = normalize_notification_targets(
         configuration.pop(CONF_NOTIFICATION_TARGETS, [])
     )
+    # The staging path itself is never included; only whether it was customized.
+    custom_staging = bool(configuration.pop(CONF_VERIFICATION_STAGING_DIRECTORY, ""))
+    capacity = await hass.async_add_executor_job(
+        staging_capacity, coordinator.staging_root
+    )
     return {
         "integration": {
             "version": VERSION,
@@ -314,6 +321,13 @@ async def async_get_config_entry_diagnostics(
         "configuration": {
             **configuration,
             "notification_target_count": len(notification_targets),
+            "custom_verification_staging_directory": custom_staging,
+        },
+        "verification_staging": {
+            "custom_directory": custom_staging,
+            "filesystem_available": capacity.available,
+            "total_bytes": capacity.total_bytes,
+            "free_bytes": capacity.free_bytes,
         },
         "notifications": {
             "enabled": coordinator.notifications_enabled,

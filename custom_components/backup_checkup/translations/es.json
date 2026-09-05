@@ -74,14 +74,16 @@
       },
       "verification": {
         "title": "Choose an integrity-check strategy",
-        "description": "Automatic archive verification can use considerable network, CPU, and temporary disk space. Deep verification additionally checks the included SQLite database.",
+        "description": "La verificación automática de archivos puede consumir bastante red, CPU y espacio en el directorio de preparación. La verificación profunda comprueba además la base de datos SQLite incluida.",
         "data": {
           "verification_policy": "Integrity-check strategy",
-          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes"
+          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes",
+          "verification_staging_directory": "Directorio de preparación para verificaciones (opcional)"
         },
         "data_description": {
           "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check.",
-          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown."
+          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown.",
+          "verification_staging_directory": "Ruta absoluta de un directorio en un disco con espacio libre suficiente para una copia completa de tu backup más grande. Déjalo vacío para usar .cache/backup_checkup dentro del directorio de configuración de Home Assistant, que Home Assistant excluye de sus propios backups. Un directorio personalizado no se excluye automáticamente."
         }
       },
       "presentation": {
@@ -124,7 +126,12 @@
       "fixed_size_required": "Enter a minimum backup size greater than 0 MB when using the fixed minimum size mode.",
       "notification_target_required": "Select at least one mobile device when mobile notifications are enabled.",
       "active_interval_too_slow": "The active polling interval must not be longer than the normal polling interval.",
-      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval."
+      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval.",
+      "staging_directory_not_absolute": "Introduce una ruta de directorio absoluta o deja el campo vacío.",
+      "staging_directory_missing": "El directorio de preparación no existe. Créalo primero.",
+      "staging_directory_invalid": "El directorio de preparación debe ser un directorio real, no un archivo ni un enlace simbólico.",
+      "staging_directory_reserved": "La raíz de configuración, .storage, backups y tmp_backups no pueden usarse como directorio de preparación.",
+      "staging_directory_not_writable": "BackupCheckup no puede escribir en el directorio de preparación. Revisa sus permisos."
     }
   },
   "options": {
@@ -211,14 +218,16 @@
       },
       "verification": {
         "title": "Choose an integrity-check strategy",
-        "description": "Automatic archive verification can use considerable network, CPU, and temporary disk space. Deep verification additionally checks the included SQLite database.",
+        "description": "La verificación automática de archivos puede consumir bastante red, CPU y espacio en el directorio de preparación. La verificación profunda comprueba además la base de datos SQLite incluida.",
         "data": {
           "verification_policy": "Integrity-check strategy",
-          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes"
+          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes",
+          "verification_staging_directory": "Directorio de preparación para verificaciones (opcional)"
         },
         "data_description": {
           "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check.",
-          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown."
+          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown.",
+          "verification_staging_directory": "Ruta absoluta de un directorio en un disco con espacio libre suficiente para una copia completa de tu backup más grande. Déjalo vacío para usar .cache/backup_checkup dentro del directorio de configuración de Home Assistant, que Home Assistant excluye de sus propios backups. Un directorio personalizado no se excluye automáticamente."
         }
       },
       "presentation": {
@@ -271,14 +280,16 @@
       },
       "setup_verification": {
         "title": "Choose an integrity-check strategy",
-        "description": "Automatic archive verification can use considerable network, CPU, and temporary disk space. Deep verification additionally checks the included SQLite database.",
+        "description": "La verificación automática de archivos puede consumir bastante red, CPU y espacio en el directorio de preparación. La verificación profunda comprueba además la base de datos SQLite incluida.",
         "data": {
           "verification_policy": "Integrity-check strategy",
-          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes"
+          "manual_verification_cooldown_minutes": "Manual button cooldown in minutes",
+          "verification_staging_directory": "Directorio de preparación para verificaciones (opcional)"
         },
         "data_description": {
           "verification_policy": "Manual only is recommended for small systems. Automatic verifies each newly detected newest backup once. Deep also runs SQLite PRAGMA integrity_check.",
-          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown."
+          "manual_verification_cooldown_minutes": "Controls when the administrator button can be used again after a manual check. Set to 0 to disable the cooldown.",
+          "verification_staging_directory": "Ruta absoluta de un directorio en un disco con espacio libre suficiente para una copia completa de tu backup más grande. Déjalo vacío para usar .cache/backup_checkup dentro del directorio de configuración de Home Assistant, que Home Assistant excluye de sus propios backups. Un directorio personalizado no se excluye automáticamente."
         }
       },
       "setup_presentation": {
@@ -316,7 +327,12 @@
       "fixed_size_required": "Enter a minimum backup size greater than 0 MB when using the fixed minimum size mode.",
       "notification_target_required": "Select at least one mobile device when mobile notifications are enabled.",
       "active_interval_too_slow": "The active polling interval must not be longer than the normal polling interval.",
-      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval."
+      "backoff_interval_too_fast": "The error-backoff interval must not be shorter than the normal polling interval.",
+      "staging_directory_not_absolute": "Introduce una ruta de directorio absoluta o deja el campo vacío.",
+      "staging_directory_missing": "El directorio de preparación no existe. Créalo primero.",
+      "staging_directory_invalid": "El directorio de preparación debe ser un directorio real, no un archivo ni un enlace simbólico.",
+      "staging_directory_reserved": "La raíz de configuración, .storage, backups y tmp_backups no pueden usarse como directorio de preparación.",
+      "staging_directory_not_writable": "BackupCheckup no puede escribir en el directorio de preparación. Revisa sus permisos."
     }
   },
   "entity": {
@@ -746,7 +762,7 @@
     },
     "temporary_cleanup_failed": {
       "title": "Temporary verification data could not be removed",
-      "description": "BackupCheckup could not remove private temporary verification data. Restart Home Assistant and check the temporary filesystem and available disk space."
+      "description": "BackupCheckup no pudo eliminar los datos privados de verificación. Reinicia Home Assistant y revisa el directorio de preparación y el espacio libre en disco."
     },
     "backup_checksum_changed": {
       "title": "Backup checksum changed",
@@ -777,6 +793,9 @@
     },
     "verification_cooldown": {
       "message": "Manual verification is rate-limited. Wait until the configured {minutes}-minute cooldown has expired."
+    },
+    "verification_backup_in_progress": {
+      "message": "Home Assistant está creando, recibiendo o restaurando un backup en este momento. Inicia la verificación de nuevo cuando el gestor de backups esté inactivo."
     },
     "integration_not_loaded": {
       "message": "BackupCheckup is not currently loaded."

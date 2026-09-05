@@ -1,5 +1,55 @@
 # Changelog
 
+## 3.1.0
+
+### Fixed
+
+- Manual and automatic integrity verification no longer aborts with
+  `insufficient_free_space` on Home Assistant OS although the data disk has
+  plenty of room. Verification copies were staged in the Core container's
+  `/tmp`, which Home Assistant OS mounts as a RAM-backed tmpfs, so any backup
+  larger than roughly half of the installed memory could never be checked.
+  Staging now defaults to `.cache/backup_checkup` inside the Home Assistant
+  configuration directory on the persistent data partition.
+- Capped the dynamic free-space reserve at 10 GB. On large data disks the
+  previous 10 % rule could keep tens of gigabytes unusable for verification.
+
+### Added
+
+- Optional **Verification staging directory** setting in the integrity
+  verification step of the setup assistant, the options flow, and the panel.
+  Point it at any directory on a disk with enough space for a complete backup
+  copy. The value is validated on entry (absolute path, existing real directory,
+  writable, not the configuration root, `.storage`, `backups` or `tmp_backups`).
+- Verification is refused while the native backup manager is creating,
+  receiving, or restoring a backup, so staged copies never race a running
+  backup. Manual requests receive a clear error; automatic checks retry on the
+  next refresh.
+- Diagnostics now report whether a custom staging directory is configured and
+  the total and free capacity of the staging filesystem, without exposing the
+  path itself.
+- CI check that fails when verification data could fall back to the process
+  temporary directory.
+
+### Changed
+
+- The automatic staging location is excluded from Home Assistant backups by
+  Home Assistant itself (`.cache/*`), so a backup created during a running
+  verification does not capture the working copy. A custom directory is not
+  excluded automatically; see the Wiki.
+- Stale verification data left in `/tmp` by earlier releases is removed once
+  during the first start after the update. On Home Assistant OS this data
+  disappears with the restart anyway.
+- The configuration entry schema is now version 16. Existing settings migrate
+  automatically; the staging directory starts empty, which selects the
+  automatic location.
+
+### Compatibility
+
+- Minimum compatible Runtime Runner: **2**. No runner update is required for
+  3.1.0; Runner 2 continues to implement protocol 2 unchanged.
+- Existing configuration, entities, and stored analysis remain compatible.
+
 ## 3.0.14
 
 ### Changed

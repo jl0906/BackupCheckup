@@ -77,6 +77,7 @@ from .models import (
 from .native_backup import (
     NativeBackupState,
     native_backup_activity_entity_ids,
+    native_backup_manager_busy,
     read_native_backup_state,
 )
 from .notifications import BackupCheckupNotificationManager
@@ -105,6 +106,7 @@ from .recovery_simulation import RecoverySimulationProgress, simulate_restore
 from .security import (
     anonymous_agent_reference,
     classify_exception,
+    resolve_staging_root,
     safe_display_name,
     safe_error_type,
 )
@@ -286,6 +288,22 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         """Attach a runner discovered after the coordinator was initialized."""
         self.runtime_runner_connection = connection
         self.recovery_policy = self._resolve_recovery_policy()
+
+    @property
+    def staging_root(self) -> Path:
+        """Return the directory that receives private verification copies."""
+        return resolve_staging_root(
+            self.hass.config.config_dir,
+            self.settings.verification_staging_directory,
+        )
+
+    def _backup_manager_busy(self) -> bool:
+        """Return whether the native backup manager is currently writing data."""
+        try:
+            manager = async_get_manager(self.hass)
+        except Exception:  # noqa: BLE001 - manager lookup boundary
+            return self._manager_backup_active
+        return native_backup_manager_busy(self.hass, manager)
 
     def _apply_settings_compatibility_attributes(self) -> None:
         """Expose stable attributes used by entities and existing tests."""
@@ -1461,6 +1479,15 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             return
         if latest is None:
             return
+        if self._backup_manager_busy():
+            # Retry on the next refresh instead of staging data while the manager
+            # is creating, receiving or restoring a backup.
+            self._record_activity(
+                "integrity_check_schedule",
+                ACTIVITY_OUTCOME_SKIPPED,
+                details={"source": "automatic", "reason": "backup_in_progress"},
+            )
+            return
         self._record_activity(
             "integrity_check_schedule",
             ACTIVITY_OUTCOME_COMPLETED,
@@ -1558,6 +1585,17 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 translation_placeholders={
                     "minutes": str(self.manual_verification_cooldown_minutes)
                 },
+            )
+        if self._backup_manager_busy():
+            self._record_activity(
+                "integrity_check_request",
+                ACTIVITY_OUTCOME_SKIPPED,
+                level=logging.WARNING,
+                details={"reason": "backup_in_progress", "source": source},
+            )
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="verification_backup_in_progress",
             )
         self._record_activity(
             "integrity_check_request",
@@ -1718,6 +1756,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 timeout_minutes=self.verification_timeout_minutes,
                 database_timeout_minutes=self.database_timeout_minutes,
                 repair_issues_enabled=self.repair_issues_enabled,
+                staging_root=self.staging_root,
                 verified_archive_callback=self._runtime_archive_callback(
                     record, simulation_run=simulation_run
                 ),

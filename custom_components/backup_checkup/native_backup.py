@@ -148,6 +148,18 @@ def _native_manager_state(hass: HomeAssistant, manager: Any) -> str:
     return state.state.casefold() if state is not None else STATE_UNKNOWN
 
 
+_MANAGER_IDLE_STATES = frozenset({"idle", "unknown", "unavailable", "none", ""})
+
+
+def native_backup_manager_busy(hass: HomeAssistant, manager: Any) -> bool:
+    """Return whether the native backup manager is creating, receiving or restoring.
+
+    Verification must not stage data while the manager writes or replaces the
+    configuration directory, so any non-idle state counts as busy.
+    """
+    return _native_manager_state(hass, manager) not in _MANAGER_IDLE_STATES
+
+
 def _native_event_state(
     hass: HomeAssistant,
     manager: Any,
