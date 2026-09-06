@@ -51,3 +51,4 @@ the same structure and placeholders as `strings.json`.
    HACS installs the integration directly from the tagged repository source.
 5. Put the user-facing release notes in the GitHub release so HACS can show them
    in Home Assistant's update dialog.
+6. Update the BackupCheckup wiki as needed
