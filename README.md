@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="custom_components/backup_checkup/brand/icon@2x.png" alt="BackupCheckup icon" width="150">
+  <img src="(https://github.com/jl0906/BackupCheckup/blob/main/custom_components/backup_checkup/brand/icon%402x.png)" alt="BackupCheckup icon" width="150">
 </p>
 
 <h1 align="center">BackupCheckup</h1>
