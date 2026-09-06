@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/jl0906/BackupCheckup/main/custom_components/backup_checkup/brand/icon%402x.png" alt="BackupCheckup icon" width="150">
-</p>
-
 <h1 align="center">BackupCheckup</h1>
 <p align="center">
   <strong>Understand whether your Home Assistant backups are current, complete, redundant, readable, and ready for recovery.</strong>
