@@ -45,6 +45,8 @@ from .const import (
     CONF_NOTIFICATIONS_ENABLED,
     CONF_NOTIFY_ON_RECOVERY,
     CONF_REPAIR_ISSUES_ENABLED,
+    CONF_RUNNER_HEALTH_INTERVAL_MINUTES,
+    CONF_RUNTIME_PROFILE,
     CONF_RUNTIME_RUNNER,
     CONF_SIZE_CHECK_MODE,
     CONF_VERIFICATION_STAGING_DIRECTORY,
@@ -65,6 +67,8 @@ from .const import (
     DEFAULT_NOTIFICATIONS_ENABLED,
     DEFAULT_NOTIFY_ON_RECOVERY,
     DEFAULT_REPAIR_ISSUES_ENABLED,
+    DEFAULT_RUNNER_HEALTH_INTERVAL_MINUTES,
+    DEFAULT_RUNTIME_PROFILE,
     DEFAULT_SIZE_CHECK_MODE,
     DEFAULT_VERIFICATION_STAGING_DIRECTORY,
     DEFAULT_VERIFICATION_TIMEOUT_MINUTES,
@@ -72,6 +76,9 @@ from .const import (
     ENTITY_MODE_EXPERT,
     PLATFORMS,
     PROFILE_CUSTOM,
+    RUNNER_CHECK_SOURCE_MANUAL,
+    RUNNER_CHECK_SOURCE_STARTUP,
+    SERVICE_CHECK_RUNNER,
     SERVICE_CLEAR_ACTIVITY_LOG,
     SERVICE_RECORD_RESTORE_TEST,
     SERVICE_REFRESH,
@@ -88,6 +95,7 @@ from .frontend_config import async_register_frontend_config
 from .history import BackupCheckupHistory
 from .integrity import BackupIntegrityStore
 from .notifications import BackupCheckupNotificationManager
+from .presets import runtime_values
 from .recovery_preparedness import (
     CHECK_STATUS_OPTIONS,
     CHECKLIST_KEYS,
@@ -109,6 +117,7 @@ from .recovery_runtime import (
 )
 from .repairs import (
     async_remove_issues,
+    async_set_runner_discovery_issue,
     async_set_temporary_cleanup_issue,
     async_update_issues,
 )
@@ -123,6 +132,10 @@ from .security import (
 from .storage_cleanup import cleanup_entry_store_files, cleanup_orphaned_store_files
 
 _LOGGER = logging.getLogger(__name__)
+
+_DISCOVERY_RETRY_START_SECONDS = 5
+_DISCOVERY_RETRY_MAX_SECONDS = 300
+_DISCOVERY_MISSING_CYCLES = 3
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
@@ -336,12 +349,34 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
         coordinator = _loaded_coordinator(hass)
         await coordinator.activity.async_clear()
 
+    async def _async_check_runner(_call: ServiceCall) -> None:
+        coordinator = _loaded_coordinator(hass)
+        health = await coordinator.async_check_runner(
+            source=RUNNER_CHECK_SOURCE_MANUAL
+        )
+        _record_activity(
+            coordinator,
+            "runner_health_check",
+            (
+                ACTIVITY_OUTCOME_COMPLETED
+                if health.usable
+                else ACTIVITY_OUTCOME_FAILED
+            ),
+            level=logging.INFO if health.usable else logging.WARNING,
+            details={
+                "status": "online" if health.usable else "offline",
+                "version": health.runner_version or "unknown",
+                "error_code": health.error_code or "none",
+            },
+        )
+
     for service, handler in (
         (SERVICE_VERIFY_LATEST_BACKUP, _async_verify_latest_backup),
         (SERVICE_SIMULATE_RESTORE, _async_simulate_restore),
         (SERVICE_REFRESH, _async_refresh),
         (SERVICE_TEST_NOTIFICATION, _async_test_notification),
         (SERVICE_CLEAR_ACTIVITY_LOG, _async_clear_activity_log),
+        (SERVICE_CHECK_RUNNER, _async_check_runner),
     ):
         async_register_admin_service(hass, DOMAIN, service, handler)
     async_register_admin_service(
@@ -400,7 +435,35 @@ def _legacy_schema_defaults(version: int) -> dict[str, object]:
         defaults[CONF_VERIFICATION_STAGING_DIRECTORY] = (
             DEFAULT_VERIFICATION_STAGING_DIRECTORY
         )
+    if version < 17:
+        # 3.2.0 checks the companion runner in the background; five minutes is
+        # the default and zero disables the interval check.
+        defaults[CONF_RUNNER_HEALTH_INTERVAL_MINUTES] = (
+            DEFAULT_RUNNER_HEALTH_INTERVAL_MINUTES
+        )
     return defaults
+
+
+def _apply_profile_defaults(entry: ConfigEntry, migrated: dict[str, object]) -> None:
+    """Give a new runtime option the value its runtime profile prescribes.
+
+    A flat default would move an energy-saving installation to the appliance
+    interval, so the preset of the effective profile wins where one exists.
+    """
+    if (
+        CONF_RUNNER_HEALTH_INTERVAL_MINUTES in entry.data
+        or CONF_RUNNER_HEALTH_INTERVAL_MINUTES in entry.options
+    ):
+        return
+    # The options flow writes the profile into options, so they decide.
+    profile = entry.options.get(
+        CONF_RUNTIME_PROFILE,
+        migrated.get(CONF_RUNTIME_PROFILE, DEFAULT_RUNTIME_PROFILE),
+    )
+    preset = runtime_values(str(profile))
+    migrated[CONF_RUNNER_HEALTH_INTERVAL_MINUTES] = preset.get(
+        CONF_RUNNER_HEALTH_INTERVAL_MINUTES, DEFAULT_RUNNER_HEALTH_INTERVAL_MINUTES
+    )
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -423,6 +486,7 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         **_legacy_schema_defaults(entry.version),
         **dict(entry.data),
     }
+    _apply_profile_defaults(entry, migrated)
     normalized = normalize_configuration(migrated, entry.options)
     private_runner = entry.data.get(CONF_RUNTIME_RUNNER)
     public_options = dict(normalized)
@@ -499,20 +563,40 @@ async def _async_monitor_runner_discovery(
     entry: ConfigEntry,
     coordinator: BackupCheckupCoordinator,
 ) -> None:
-    """Keep looking until a runner started after Home Assistant is registered."""
-    retry_delay = 5
-    while coordinator.runtime_runner_connection is None:
+    """Keep watching Supervisor discovery while the runner stays unreachable.
+
+    A reinstalled add-on publishes a new token and certificate, so the loop
+    must keep running even after a connection was found once.
+    """
+    retry_delay = _DISCOVERY_RETRY_START_SECONDS
+    missing_cycles = 0
+    while True:
         await asyncio.sleep(retry_delay)
+        if coordinator.runner_health.usable:
+            retry_delay = _DISCOVERY_RETRY_MAX_SECONDS
+            missing_cycles = 0
+            async_set_runner_discovery_issue(hass, active=False)
+            continue
         connection = await async_discover_supervisor_runner(hass)
         if connection is None:
-            retry_delay = min(60, retry_delay * 2)
+            retry_delay = min(_DISCOVERY_RETRY_MAX_SECONDS, retry_delay * 2)
+            missing_cycles += 1
+            if (
+                missing_cycles >= _DISCOVERY_MISSING_CYCLES
+                and coordinator.repair_issues_enabled
+            ):
+                async_set_runner_discovery_issue(hass, active=True)
             continue
-        hass.config_entries.async_update_entry(
-            entry,
-            data={**dict(entry.data), CONF_RUNTIME_RUNNER: connection.as_dict()},
-        )
-        coordinator.attach_runtime_runner(connection)
-        await coordinator.async_request_refresh()
+        retry_delay = _DISCOVERY_RETRY_START_SECONDS
+        missing_cycles = 0
+        async_set_runner_discovery_issue(hass, active=False)
+        if connection != coordinator.runtime_runner_connection:
+            hass.config_entries.async_update_entry(
+                entry,
+                data={**dict(entry.data), CONF_RUNTIME_RUNNER: connection.as_dict()},
+            )
+            coordinator.attach_runtime_runner(connection)
+        await coordinator.async_check_runner(source=RUNNER_CHECK_SOURCE_STARTUP)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -566,12 +650,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     entry.runtime_data = coordinator
     coordinator.async_start_adaptive_polling()
-    if coordinator.runtime_runner_connection is None:
-        runner_monitor = hass.async_create_task(
-            _async_monitor_runner_discovery(hass, entry, coordinator),
-            name=f"{DOMAIN}_runtime_runner_discovery",
-        )
-        entry.async_on_unload(runner_monitor.cancel)
+    await coordinator.async_check_runner(source=RUNNER_CHECK_SOURCE_STARTUP)
+    coordinator.async_start_runner_health_monitor()
+    runner_monitor = hass.async_create_task(
+        _async_monitor_runner_discovery(hass, entry, coordinator),
+        name=f"{DOMAIN}_runtime_runner_discovery",
+    )
+    entry.async_on_unload(runner_monitor.cancel)
 
     def _sync_repair_issues() -> None:
         if coordinator.repair_issues_enabled:

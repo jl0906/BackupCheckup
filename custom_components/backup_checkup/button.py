@@ -12,6 +12,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (
     DOMAIN,
+    SERVICE_CHECK_RUNNER,
     SERVICE_CLEAR_ACTIVITY_LOG,
     SERVICE_REFRESH,
     SERVICE_SIMULATE_RESTORE,
@@ -20,6 +21,7 @@ from .const import (
 )
 from .coordinator import BackupCheckupCoordinator
 from .entity import BackupCheckupEntity
+from .entity_mode import entity_enabled_by_default
 
 
 async def async_setup_entry(
@@ -39,6 +41,7 @@ async def async_setup_entry(
             BackupCheckupRefreshButton(coordinator, entry),
             BackupCheckupTestNotificationButton(coordinator, entry),
             BackupCheckupClearActivityLogButton(coordinator, entry),
+            BackupCheckupCheckRunnerButton(coordinator, entry),
         ]
     )
 
@@ -174,6 +177,43 @@ class BackupCheckupTestNotificationButton(BackupCheckupEntity, ButtonEntity):
         await self.hass.services.async_call(
             DOMAIN,
             SERVICE_TEST_NOTIFICATION,
+            blocking=True,
+            context=self._context,
+        )
+
+
+class BackupCheckupCheckRunnerButton(BackupCheckupEntity, ButtonEntity):
+    """Check the optional companion runner on demand."""
+
+    _attr_translation_key = "check_runner"
+    _attr_icon = "mdi:lan-connect"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(
+        self,
+        coordinator: BackupCheckupCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        """Initialize the companion-runner check button."""
+        self._attr_entity_registry_enabled_default = entity_enabled_by_default(
+            "button",
+            "check_runner",
+            coordinator.entity_mode,
+        )
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{entry.entry_id}_check_runner"
+        self.entity_id = "button.backup_checkup_check_runner"
+
+    @property
+    def available(self) -> bool:
+        """Only allow a check while a runner connection is configured."""
+        return super().available and self.coordinator.runner_health.configured
+
+    async def async_press(self) -> None:
+        """Check the companion runner through the admin-protected action."""
+        await self.hass.services.async_call(
+            DOMAIN,
+            SERVICE_CHECK_RUNNER,
             blocking=True,
             context=self._context,
         )

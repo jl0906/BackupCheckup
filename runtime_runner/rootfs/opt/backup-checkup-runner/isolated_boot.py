@@ -5,12 +5,17 @@ from __future__ import annotations
 import json
 import os
 import signal
+import socket
 import subprocess
 import sys
 import time
 import urllib.error
 import urllib.request
+from datetime import UTC, datetime
 from pathlib import Path
+
+HOME_ASSISTANT_PORT = 8123
+PROBE_INTERVAL_SECONDS = 1.0
 
 SANDBOX_UID = 65534
 SANDBOX_GID = 65534
@@ -111,15 +116,61 @@ def _write_json(path: Path, value: dict[str, object]) -> None:
     os.replace(temporary, path)
 
 
-def _progress(path: Path, stage: str, percent: int) -> None:
-    _write_json(path, {"stage": stage, "progress_percent": percent})
+class _Progress:
+    """Publish the isolated boot phase without inventing a percentage.
+
+    Starting Home Assistant gives no measurable amount of work, so the child
+    only reports which phase runs, which milestones were reached, and that it
+    is still alive.
+    """
+
+    def __init__(self, path: Path) -> None:
+        """Initialize the atomic progress writer."""
+        self._path = path
+        self._stage = "runtime_boot"
+        self._events: list[str] = []
+
+    def stage(self, stage: str) -> None:
+        """Switch to one phase and publish it immediately."""
+        self._stage = stage
+        self.write()
+
+    def event(self, key: str) -> None:
+        """Record one boot milestone exactly once."""
+        if key in self._events:
+            return
+        self._events.append(key)
+        self.write()
+
+    def write(self) -> None:
+        """Write the current phase atomically for the runner thread."""
+        _write_json(
+            self._path,
+            {
+                "stage": self._stage,
+                "determinate": False,
+                "events": list(self._events),
+                "heartbeat_at": datetime.now(UTC).isoformat(),
+            },
+        )
+
+
+def _port_is_listening() -> bool:
+    """Return whether Home Assistant accepts loopback connections yet."""
+    try:
+        with socket.create_connection(
+            ("127.0.0.1", HOME_ASSISTANT_PORT), timeout=1
+        ):
+            return True
+    except OSError:
+        return False
 
 
 def _endpoint_ready() -> bool:
     try:
         # This is a loopback-only readiness probe inside the isolated namespace.
         with urllib.request.urlopen(
-            "http://127.0.0.1:8123/", timeout=2
+            f"http://127.0.0.1:{HOME_ASSISTANT_PORT}/", timeout=2
         ) as response:
             return 100 <= response.status < 500
     except urllib.error.HTTPError as err:
@@ -188,7 +239,8 @@ def main() -> int:
         stderr=subprocess.DEVNULL,
         timeout=10,
     )
-    _progress(progress_path, "runtime_boot", 65)
+    progress = _Progress(progress_path)
+    progress.stage("runtime_boot")
 
     if not _sandbox_preflight(config_dir):
         _write_json(
@@ -202,6 +254,7 @@ def main() -> int:
         )
         return 3
 
+    progress.event("sandbox_preflight_ok")
     log_path = config_dir.parent / "ephemeral-home-assistant.log"
     _prepare_sandbox_log(log_path)
     command = _sandbox_command([
@@ -229,22 +282,27 @@ def main() -> int:
             close_fds=True,
         )
         try:
-            _progress(progress_path, "runtime_probe", 72)
+            progress.event("process_started")
+            progress.stage("runtime_probe")
             ready = False
             timed_out = False
+            listening = False
             while time.monotonic() - started < timeout_seconds:
                 if process.poll() is not None:
                     break
+                if not listening and _port_is_listening():
+                    listening = True
+                    progress.event("port_listening")
                 if _endpoint_ready():
                     ready = True
+                    progress.event("http_responding")
                     break
-                elapsed = time.monotonic() - started
-                percent = min(94, 72 + int(22 * elapsed / timeout_seconds))
-                _progress(progress_path, "runtime_probe", percent)
-                time.sleep(1)
+                # No estimate: only a heartbeat proving the child still runs.
+                progress.write()
+                time.sleep(PROBE_INTERVAL_SECONDS)
             timed_out = not ready and process.poll() is None
         finally:
-            _progress(progress_path, "runtime_cleanup", 96)
+            progress.stage("runtime_cleanup")
             _stop_process(process)
 
     try:

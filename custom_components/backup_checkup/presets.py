@@ -22,6 +22,7 @@ from .const import (
     CONF_MINIMUM_BACKUP_SIZE_MB,
     CONF_MINIMUM_REDUNDANT_LOCATIONS,
     CONF_REPAIR_ISSUES_ENABLED,
+    CONF_RUNNER_HEALTH_INTERVAL_MINUTES,
     CONF_SIZE_CHECK_MODE,
     CONF_UPDATE_INTERVAL_MINUTES,
     CONF_VERIFICATION_TIMEOUT_MINUTES,
@@ -52,6 +53,7 @@ class RuntimePreset:
     verification_timeout_minutes: int
     database_timeout_minutes: int
     manual_verification_cooldown_minutes: int
+    runner_health_interval_minutes: int
 
     def as_dict(self, *, adaptive_polling: bool = True) -> dict[str, Any]:
         """Return config-entry values for this preset."""
@@ -68,6 +70,9 @@ class RuntimePreset:
             CONF_MANUAL_VERIFICATION_COOLDOWN_MINUTES: (
                 self.manual_verification_cooldown_minutes
             ),
+            CONF_RUNNER_HEALTH_INTERVAL_MINUTES: (
+                self.runner_health_interval_minutes
+            ),
         }
 
 
@@ -82,6 +87,7 @@ RUNTIME_PRESETS: dict[str, RuntimePreset] = {
         verification_timeout_minutes=90,
         database_timeout_minutes=20,
         manual_verification_cooldown_minutes=30,
+        runner_health_interval_minutes=15,
     ),
     RUNTIME_PROFILE_APPLIANCE: RuntimePreset(
         update_interval_minutes=10,
@@ -93,6 +99,7 @@ RUNTIME_PRESETS: dict[str, RuntimePreset] = {
         verification_timeout_minutes=60,
         database_timeout_minutes=15,
         manual_verification_cooldown_minutes=15,
+        runner_health_interval_minutes=5,
     ),
     RUNTIME_PROFILE_PERFORMANCE: RuntimePreset(
         update_interval_minutes=5,
@@ -104,6 +111,7 @@ RUNTIME_PRESETS: dict[str, RuntimePreset] = {
         verification_timeout_minutes=45,
         database_timeout_minutes=10,
         manual_verification_cooldown_minutes=10,
+        runner_health_interval_minutes=5,
     ),
     RUNTIME_PROFILE_SERVER: RuntimePreset(
         update_interval_minutes=2,
@@ -115,6 +123,7 @@ RUNTIME_PRESETS: dict[str, RuntimePreset] = {
         verification_timeout_minutes=30,
         database_timeout_minutes=10,
         manual_verification_cooldown_minutes=5,
+        runner_health_interval_minutes=2,
     ),
 }
 

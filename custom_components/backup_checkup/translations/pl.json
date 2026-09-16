@@ -26,7 +26,8 @@
           "max_expanded_size_gb": "Maximum expanded archive size in GB",
           "verification_timeout_minutes": "Maximum verification duration in minutes",
           "database_timeout_minutes": "Maximum database check duration in minutes",
-          "manual_verification_cooldown_minutes": "Manual verification cooldown in minutes"
+          "manual_verification_cooldown_minutes": "Manual verification cooldown in minutes",
+          "runner_health_interval_minutes": "Interwał sprawdzania Runtime Runner w minutach"
         },
         "data_description": {
           "update_interval_minutes": "Base interval used while Home Assistant is idle.",
@@ -37,7 +38,8 @@
           "max_expanded_size_gb": "Limits the total amount of uncompressed archive data that may be read.",
           "verification_timeout_minutes": "Stops download and archive processing after this overall duration.",
           "database_timeout_minutes": "Stops SQLite PRAGMA integrity_check after this duration.",
-          "manual_verification_cooldown_minutes": "Prevents repeated manual checks. Set to 0 to disable the cooldown."
+          "manual_verification_cooldown_minutes": "Prevents repeated manual checks. Set to 0 to disable the cooldown.",
+          "runner_health_interval_minutes": "Kontrola dostępności opcjonalnego dodatku w tle. Wartość 0 sprawdza tylko przy otwarciu panelu i przed testem uruchomieniowym."
         }
       },
       "monitoring": {
@@ -170,7 +172,8 @@
           "max_expanded_size_gb": "Maximum expanded archive size in GB",
           "verification_timeout_minutes": "Maximum verification duration in minutes",
           "database_timeout_minutes": "Maximum database check duration in minutes",
-          "manual_verification_cooldown_minutes": "Manual verification cooldown in minutes"
+          "manual_verification_cooldown_minutes": "Manual verification cooldown in minutes",
+          "runner_health_interval_minutes": "Interwał sprawdzania Runtime Runner w minutach"
         },
         "data_description": {
           "update_interval_minutes": "Base interval used while Home Assistant is idle.",
@@ -181,7 +184,8 @@
           "max_expanded_size_gb": "Limits the total amount of uncompressed archive data that may be read.",
           "verification_timeout_minutes": "Stops download and archive processing after this overall duration.",
           "database_timeout_minutes": "Stops SQLite PRAGMA integrity_check after this duration.",
-          "manual_verification_cooldown_minutes": "Prevents repeated manual checks. Set to 0 to disable the cooldown."
+          "manual_verification_cooldown_minutes": "Prevents repeated manual checks. Set to 0 to disable the cooldown.",
+          "runner_health_interval_minutes": "Kontrola dostępności opcjonalnego dodatku w tle. Wartość 0 sprawdza tylko przy otwarciu panelu i przed testem uruchomieniowym."
         }
       },
       "monitoring": {
@@ -569,11 +573,21 @@
           "passed": "Passed",
           "failed": "Failed",
           "aborted": "Aborted",
-          "inconclusive": "Inconclusive"
+          "inconclusive": "Inconclusive",
+          "not_started": "Nie uruchomiono"
         }
       },
       "last_restore_test": {
         "name": "Last test restore"
+      },
+      "runtime_runner": {
+        "name": "Runtime Runner",
+        "state": {
+          "online": "Online",
+          "offline": "Offline",
+          "not_configured": "Nieskonfigurowany",
+          "incompatible": "Niezgodny"
+        }
       }
     },
     "binary_sensor": {
@@ -645,6 +659,9 @@
       },
       "recovery_plan_incomplete": {
         "name": "Recovery plan incomplete"
+      },
+      "runtime_runner": {
+        "name": "Runtime Runner osiągalny"
       }
     },
     "button": {
@@ -662,6 +679,9 @@
       },
       "run_recovery_assessment": {
         "name": "Check backup protection"
+      },
+      "check_runner": {
+        "name": "Sprawdź Runtime Runner"
       }
     }
   },
@@ -779,6 +799,18 @@
     "required_location_missing": {
       "title": "Brakuje wymaganego miejsca kopii zapasowej",
       "description": "{count} lokalizacji najnowszej kopii jest niedostępnych, nieaktualnych lub zgłasza błąd. Przywróć lokalizację albo utwórz nową redundantną kopię."
+    },
+    "runner_too_old": {
+      "title": "Dodatek Runtime Runner jest za stary",
+      "description": "Połączony Runtime Runner zgłasza wersję {version}, ale wymagana jest co najmniej wersja {minimum}. Zaktualizuj dodatek BackupCheckup Runtime Runner. Do tego czasu izolowany test uruchomieniowy nie jest uruchamiany."
+    },
+    "runner_update_recommended": {
+      "title": "Zalecana aktualizacja Runtime Runner",
+      "description": "Połączony Runtime Runner zgłasza wersję {version}. Wersja {recommended} dodaje postęp kroków na żywo i rozszerzone informacje o stanie. Test uruchomieniowy działa także bez aktualizacji, ale pokazuje tylko ogólne fazy."
+    },
+    "runner_not_discovered": {
+      "title": "Runtime Runner nie jest już ogłaszany",
+      "description": "Supervisor nie ogłasza już dodatku BackupCheckup Runtime Runner, a zapisane połączenie nie odpowiada. Sprawdź, czy dodatek jest zainstalowany i uruchomiony, a następnie wykonaj akcję Sprawdź Runtime Runner."
     }
   },
   "exceptions": {

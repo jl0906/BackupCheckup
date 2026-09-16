@@ -14,11 +14,13 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import EntityCategory
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
 
 from .agent_cleanup import async_remove_agent_entities
+from .const import runner_signal
 from .coordinator import BackupCheckupCoordinator
 from .entity import BackupCheckupAgentEntity, BackupCheckupEntity
 from .entity_mode import entity_enabled_by_default
@@ -245,6 +247,7 @@ async def async_setup_entry(
         agent_id: BackupCheckupAgentProblemBinarySensor(coordinator, entry, agent_id)
         for agent_id in sorted(known_agents)
     }
+    entities.append(BackupCheckupRunnerBinarySensor(coordinator, entry))
     entities.extend(agent_entities.values())
     async_add_entities(entities)
     missing_counts: dict[str, int] = {}
@@ -320,6 +323,72 @@ class BackupCheckupBinarySensor(BackupCheckupEntity, BinarySensorEntity):
         """Return optional privacy-safe diagnostic attributes."""
         attributes_fn = self.entity_description.attributes_fn
         return attributes_fn(self.coordinator.data) if attributes_fn else {}
+
+
+class BackupCheckupRunnerBinarySensor(BackupCheckupEntity, BinarySensorEntity):
+    """Report whether the optional companion runner answers health checks."""
+
+    _attr_translation_key = "runtime_runner"
+    _attr_icon = "mdi:server-network"
+    _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
+
+    def __init__(
+        self,
+        coordinator: BackupCheckupCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        """Initialize the companion-runner connectivity sensor."""
+        self._attr_entity_registry_enabled_default = entity_enabled_by_default(
+            "binary_sensor",
+            "runtime_runner",
+            coordinator.entity_mode,
+        )
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{entry.entry_id}_runtime_runner"
+        self.entity_id = "binary_sensor.backup_checkup_runtime_runner"
+
+    async def async_added_to_hass(self) -> None:
+        """Follow the companion-runner health channel."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                runner_signal(self._entry.entry_id),
+                self._handle_runner_health,
+            )
+        )
+
+    @callback
+    def _handle_runner_health(self) -> None:
+        """Write only this entity after a companion-runner check."""
+        self.async_write_ha_state()
+
+    @property
+    def available(self) -> bool:
+        """Stay unavailable while no runner connection is configured."""
+        return super().available and self.coordinator.runner_health.configured
+
+    @property
+    def is_on(self) -> bool:
+        """Return whether the last health check succeeded."""
+        return self.coordinator.runner_health.usable
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return privacy-safe runner details without address or token."""
+        health = self.coordinator.runner_health
+        return {
+            "runner_version": health.runner_version,
+            "protocol": health.protocol,
+            "isolation_available": health.isolation_available,
+            "last_checked": (
+                health.checked_at.isoformat() if health.checked_at else None
+            ),
+            "error_code": health.error_code,
+            "update_recommended": health.update_recommended,
+            "discovered": self.coordinator.runtime_runner_connection is not None,
+            "check_source": health.check_source,
+        }
 
 
 class BackupCheckupAgentProblemBinarySensor(

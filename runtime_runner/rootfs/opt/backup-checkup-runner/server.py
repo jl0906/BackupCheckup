@@ -17,7 +17,7 @@ import threading
 import time
 import urllib.request
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import closing, contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -29,7 +29,33 @@ from typing import Any, BinaryIO
 from securetar import SecureTarArchive
 
 PROTOCOL_VERSION = 2
-RUNNER_VERSION = "2"
+RUNNER_VERSION = "3"
+# Runner 3 reports measured steps and boot events; protocol 2 is unchanged.
+CAPABILITIES = ("step_progress", "boot_events")
+# These weights mirror RUNTIME_STEPS in
+# custom_components/backup_checkup/progress.py. Both lists must stay identical;
+# .github/scripts/check_progress_weights.py enforces that.
+RUNTIME_STEPS: tuple[tuple[str, int, bool], ...] = (
+    ("runtime_prepare", 3, False),
+    ("runtime_upload", 25, True),
+    ("runtime_restore", 30, True),
+    ("runtime_boot", 20, False),
+    ("runtime_probe", 12, False),
+    ("runtime_cleanup", 5, False),
+    ("runtime_complete", 5, False),
+)
+RUNTIME_STEP_KEYS: tuple[str, ...] = tuple(step[0] for step in RUNTIME_STEPS)
+RUNTIME_EVENT_KEYS = (
+    "sandbox_preflight_ok",
+    "process_started",
+    "port_listening",
+    "http_responding",
+)
+MAX_RUN_EVENTS = 16
+STEP_PENDING = "pending"
+STEP_RUNNING = "running"
+STEP_PASSED = "passed"
+STEP_FAILED = "failed"
 LISTEN_PORT = 8099
 DATA_DIR = Path("/data")
 TOKEN_PATH = DATA_DIR / "api_token"
@@ -72,6 +98,32 @@ CHILD_ERROR_CODES = frozenset(
         "sandbox_preflight_failed",
     }
 )
+
+def _initial_steps() -> dict[str, dict[str, Any]]:
+    """Return the pending step table of one run."""
+    return {
+        key: {
+            "key": key,
+            "weight": weight,
+            "state": STEP_PENDING,
+            "determinate": determinate,
+            "percent": None,
+            "done": None,
+            "total": None,
+            "unit": None,
+            "started_at": None,
+            "finished_at": None,
+            "heartbeat_at": None,
+            "detail": None,
+        }
+        for key, weight, determinate in RUNTIME_STEPS
+    }
+
+
+def _now() -> str:
+    """Return the current UTC timestamp."""
+    return datetime.now(UTC).isoformat()
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -256,10 +308,26 @@ def _read_backup_metadata(archive_path: Path, password: str | None) -> dict[str,
     return metadata
 
 
+def _stream_position(stream: Any) -> int | None:
+    """Return the consumed byte count of one archive stream, if it exposes it.
+
+    An encrypted backup is read through a decrypting wrapper that has no
+    position, so the caller falls back to an indeterminate step instead of
+    reporting a percentage that never moves.
+    """
+    try:
+        position = stream.tell()
+    except (OSError, ValueError, AttributeError):
+        return None
+    if not isinstance(position, int) or position < 0:
+        return None
+    return position
+
+
 @contextmanager
 def _homeassistant_stream(
     archive_path: Path, password: str | None
-) -> Iterator[BinaryIO]:
+) -> Iterator[tuple[BinaryIO, int]]:
     metadata = _read_backup_metadata(archive_path, password)
     protected = metadata.get("protected") is True
     if protected and not password:
@@ -281,13 +349,13 @@ def _homeassistant_stream(
         member = candidates[0]
         if protected:
             with outer.extract_tar(member) as stream:
-                yield stream
+                yield stream, member.size
             return
         reader = outer.tar.extractfile(member)
         if reader is None:
             raise RunnerFailure("homeassistant_archive_unreadable")
         with closing(reader):
-            yield reader
+            yield reader, member.size
 
 
 def _extract_homeassistant(
@@ -295,16 +363,22 @@ def _extract_homeassistant(
     target: Path,
     password: str | None,
     maximum_expanded_bytes: int,
+    progress: Callable[[int | None, int], None] | None = None,
 ) -> Path:
     target.mkdir(mode=0o700, parents=True)
     expanded = 0
     members = 0
     with (
-        _homeassistant_stream(archive_path, password) as stream,
-        tarfile.open(fileobj=stream, mode="r|*") as inner,
+        _homeassistant_stream(archive_path, password) as opened,
+        tarfile.open(fileobj=opened[0], mode="r|*") as inner,
     ):
+        stream, stream_size = opened
         for member in inner:
             members += 1
+            if progress is not None:
+                # The position belongs to the inner archive, so it is measured
+                # against that archive's own size.
+                progress(_stream_position(stream), stream_size)
             if members > MAX_MEMBERS:
                 raise RunnerFailure("archive_member_limit")
             path = _safe_member_path(member.name)
@@ -345,6 +419,7 @@ class RunState:
     status: str = "running"
     stage: str = "runtime_prepare"
     progress_percent: int = 0
+    pending_status: str = "running"
     started_monotonic: float = field(default_factory=time.monotonic)
     checked_at: str | None = None
     duration_seconds: float | None = None
@@ -359,36 +434,184 @@ class RunState:
     lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
     _logged_progress_percent: int = field(default=0, repr=False)
     last_activity_monotonic: float = field(default_factory=time.monotonic, repr=False)
+    steps: dict[str, dict[str, Any]] = field(default_factory=_initial_steps)
+    events: list[dict[str, str]] = field(default_factory=list)
 
     @property
     def archive_path(self) -> Path:
         return self.directory / "backup.tar"
 
-    def update(self, stage: str, percent: int) -> None:
+    def _recalculate_locked(self) -> None:
+        """Recalculate the weighted overall percentage without ever falling."""
+        total = 0
+        for step in self.steps.values():
+            if step["state"] == STEP_PASSED:
+                total += step["weight"]
+            elif (
+                step["state"] == STEP_RUNNING
+                and step["determinate"]
+                and step["percent"] is not None
+            ):
+                total += step["weight"] * step["percent"] // 100
+        self.progress_percent = max(self.progress_percent, min(100, total))
+
+    def _log_progress_locked(self) -> tuple[int, ...]:
+        """Return the completed tenths that still have to be logged."""
+        bucket = self.progress_percent // 10 * 10
+        updates = tuple(range(self._logged_progress_percent + 10, bucket + 1, 10))
+        if updates:
+            self._logged_progress_percent = updates[-1]
+        return updates
+
+    def begin(
+        self,
+        key: str,
+        *,
+        determinate: bool | None = None,
+        total: int | None = None,
+        unit: str | None = None,
+        promote: bool = True,
+    ) -> None:
+        """Start one step and complete the step that was running before it.
+
+        ``promote`` is only true while the run is still on its success path.
+        A cleanup step that starts after a failure must never mark the steps it
+        skipped as passed.
+        """
+        if key not in self.steps:
+            return
         with self.lock:
-            previous_stage = self.stage
-            self.stage = stage
-            self.progress_percent = max(self.progress_percent, min(100, percent))
+            previous = self.stage
+            for candidate in RUNTIME_STEP_KEYS:
+                if candidate == key:
+                    break
+                step = self.steps[candidate]
+                if promote and step["state"] in {STEP_PENDING, STEP_RUNNING}:
+                    step["state"] = STEP_PASSED
+                    step["percent"] = 100 if step["determinate"] else None
+                    step["finished_at"] = _now()
+            step = self.steps[key]
+            step["state"] = STEP_RUNNING
+            step["started_at"] = step["started_at"] or _now()
+            step["heartbeat_at"] = _now()
+            if determinate is not None:
+                step["determinate"] = determinate
+            if total is not None:
+                step["total"] = total
+            if unit is not None:
+                step["unit"] = unit
+            self.stage = key
             self.last_activity_monotonic = time.monotonic()
-            progress_bucket = self.progress_percent // 10 * 10
-            first_bucket = self._logged_progress_percent + 10
-            progress_updates = tuple(range(first_bucket, progress_bucket + 1, 10))
-            if progress_updates:
-                self._logged_progress_percent = progress_updates[-1]
-        if stage != previous_stage:
-            _LOGGER.info("run stage_changed stage=%s", stage)
-        for progress in progress_updates:
-            _LOGGER.info(
-                "run progress stage=%s progress_percent=%d", stage, progress
-            )
+            self._recalculate_locked()
+            updates = self._log_progress_locked()
+        if previous != key:
+            _LOGGER.info("run stage_changed stage=%s", key)
+        for progress in updates:
+            _LOGGER.info("run progress stage=%s progress_percent=%d", key, progress)
+
+    def measure(
+        self,
+        key: str,
+        *,
+        done: int | None = None,
+        total: int | None = None,
+        percent: int | None = None,
+        unit: str | None = None,
+        detail: str | None = None,
+    ) -> None:
+        """Record one real measurement of the running step."""
+        if key not in self.steps:
+            return
+        with self.lock:
+            step = self.steps[key]
+            if step["state"] != STEP_RUNNING:
+                return
+            if total is not None:
+                step["total"] = total
+            if done is not None:
+                # Counters only ever grow inside one step.
+                step["done"] = max(step["done"] or 0, done)
+            if unit is not None:
+                step["unit"] = unit
+            if detail is not None:
+                step["detail"] = detail
+            resolved = percent
+            if resolved is None and step["total"]:
+                resolved = min(100, step["done"] * 100 // step["total"])
+            if resolved is not None:
+                step["percent"] = max(step["percent"] or 0, max(0, min(100, resolved)))
+            step["heartbeat_at"] = _now()
+            self.last_activity_monotonic = time.monotonic()
+            self._recalculate_locked()
+            updates = self._log_progress_locked()
+        for progress in updates:
+            _LOGGER.info("run progress stage=%s progress_percent=%d", key, progress)
+
+    def finish_step(self, key: str, state: str = STEP_PASSED) -> None:
+        """Close one step with an explicit result."""
+        if key not in self.steps:
+            return
+        with self.lock:
+            step = self.steps[key]
+            step["state"] = state
+            if state == STEP_PASSED and step["determinate"]:
+                step["percent"] = 100
+            step["finished_at"] = _now()
+            step["heartbeat_at"] = step["finished_at"]
+            self.last_activity_monotonic = time.monotonic()
+            self._recalculate_locked()
+
+    def set_indeterminate(self, key: str) -> None:
+        """Report one step as unmeasurable instead of stuck at zero."""
+        if key not in self.steps:
+            return
+        with self.lock:
+            step = self.steps[key]
+            step["determinate"] = False
+            step["percent"] = None
+            step["heartbeat_at"] = _now()
+            self.last_activity_monotonic = time.monotonic()
+
+    def heartbeat(self, key: str) -> None:
+        """Refresh the sign of life of one indeterminate step."""
+        if key not in self.steps:
+            return
+        with self.lock:
+            if self.steps[key]["state"] == STEP_RUNNING:
+                self.steps[key]["heartbeat_at"] = _now()
+                self.last_activity_monotonic = time.monotonic()
+
+    def record_event(self, key: str) -> None:
+        """Record one bounded boot event of the isolated instance."""
+        if key not in RUNTIME_EVENT_KEYS:
+            return
+        with self.lock:
+            if any(event["key"] == key for event in self.events):
+                return
+            if len(self.events) >= MAX_RUN_EVENTS:
+                return
+            self.events.append({"at": _now(), "key": key})
+        _LOGGER.info("run event key=%s", key)
+
+    def fail_open(self) -> None:
+        """Fail every step that has not produced a result yet."""
+        with self.lock:
+            for step in self.steps.values():
+                if step["state"] in {STEP_PENDING, STEP_RUNNING}:
+                    step["state"] = STEP_FAILED
+                    step["finished_at"] = _now()
 
     def public(self) -> dict[str, Any]:
         with self.lock:
+            current = self.steps.get(self.stage)
             return {
                 "protocol": PROTOCOL_VERSION,
                 "status": self.status,
                 "stage": self.stage,
                 "progress_percent": self.progress_percent,
+                "step": dict(current) if current else None,
+                "steps": [dict(self.steps[key]) for key in RUNTIME_STEP_KEYS],
+                "events": [dict(event) for event in self.events],
                 "backup_reference": self.backup_reference,
                 "backup_sha256": self.backup_sha256,
                 "checked_at": self.checked_at,
@@ -421,6 +644,14 @@ class RunManager:
             daemon=True,
         )
         self._reaper.start()
+
+    def active_runs(self) -> int:
+        """Return how many runs are uploading or executing right now."""
+        with self._lock:
+            return sum(
+                run.uploading or (run.thread is not None and run.thread.is_alive())
+                for run in self._runs.values()
+            )
 
     def _reap_stale_runs(self) -> None:
         """Remove abandoned uploads and retained terminal evidence on a timer."""
@@ -516,6 +747,7 @@ class RunManager:
                 runner_id=self.runner_id,
             )
             self._runs[run_id] = run
+            run.begin("runtime_prepare", determinate=False)
             _LOGGER.info(
                 "run created archive_bytes=%d timeout_seconds=%d expanded_limit_gb=%d",
                 archive_size,
@@ -586,11 +818,13 @@ class RunManager:
             self._wait_for_runtime(run, process, progress_path)
             self._apply_runtime_result(run, self._load_runtime_result(result_path))
         except RunnerFailure as err:
-            run.status = self._failure_status(err.code)
+            # The status is staged; _finish_run publishes it together with the
+            # timestamps so a poll never sees a terminal run without evidence.
+            run.pending_status = self._failure_status(err.code)
             run.error_code = err.code
             _LOGGER.exception("run failed with controlled runner error")
         except Exception:
-            run.status = "inconclusive"
+            run.pending_status = "inconclusive"
             run.error_code = "runner_internal_error"
             _LOGGER.exception("run failed error_code=runner_internal_error")
         finally:
@@ -600,17 +834,20 @@ class RunManager:
         self, run: RunState
     ) -> tuple[Path, Path, list[str]]:
         """Extract the verified archive and construct the isolated command."""
-        run.update("runtime_restore", 35)
+        # The real total is the size of the inner archive, which is only known
+        # once the outer archive has been opened.
+        run.begin("runtime_restore", determinate=True, unit="bytes")
         config_dir = _extract_homeassistant(
             run.archive_path,
             run.directory / "restored",
             run.password,
             run.maximum_expanded_bytes,
+            progress=self._restore_progress(run),
         )
         self._assign_sandbox_tree(config_dir.parent)
         run.password = None
         run.archive_path.unlink(missing_ok=True)
-        run.update("runtime_restore", 58)
+        run.finish_step("runtime_restore")
         _LOGGER.info("run archive_restored")
         progress_path = run.directory / "progress.json"
         result_path = run.directory / "result.json"
@@ -623,6 +860,31 @@ class RunManager:
             str(run.timeout_seconds),
         ])
         return progress_path, result_path, command
+
+    @staticmethod
+    def _restore_progress(run: RunState) -> Callable[[int | None, int], None]:
+        """Return a throttled byte reporter for the extraction step."""
+        state = {"next": 0.0, "measurable": True}
+
+        def report(position: int | None, total: int) -> None:
+            if position is None:
+                if state["measurable"]:
+                    # An encrypted stream cannot be measured; say so once.
+                    state["measurable"] = False
+                    run.set_indeterminate("runtime_restore")
+                return
+            now = time.monotonic()
+            if now < state["next"]:
+                return
+            state["next"] = now + RESTORE_PROGRESS_INTERVAL_SECONDS
+            run.measure(
+                "runtime_restore",
+                done=min(position, total) if total else position,
+                total=total or None,
+                unit="bytes",
+            )
+
+        return report
 
     @staticmethod
     def _assign_sandbox_tree(root: Path) -> None:
@@ -662,9 +924,22 @@ class RunManager:
         if not isinstance(progress, dict):
             return mtime
         stage = progress.get("stage")
-        percent = progress.get("progress_percent")
-        if isinstance(stage, str) and isinstance(percent, int):
-            run.update(stage, percent)
+        if isinstance(stage, str) and stage in RUNTIME_STEP_KEYS:
+            if run.stage != stage:
+                # The child reaches the cleanup stage from its finally block,
+                # so that transition must never mark the boot as successful.
+                run.begin(
+                    stage,
+                    determinate=False,
+                    promote=stage != "runtime_cleanup",
+                )
+            else:
+                run.heartbeat(stage)
+        events = progress.get("events")
+        if isinstance(events, list):
+            for event in events:
+                if isinstance(event, str):
+                    run.record_event(event)
         return mtime
 
     def _wait_for_runtime(
@@ -719,7 +994,7 @@ class RunManager:
         run.home_assistant_version = version[:64] if isinstance(version, str) else None
         error_code = result.get("error_code")
         run.error_code = error_code if error_code in CHILD_ERROR_CODES else None
-        run.status = (
+        run.pending_status = (
             "passed"
             if run.ready and run.isolation_verified and run.recovery_mode
             else "failed"
@@ -751,20 +1026,37 @@ class RunManager:
     def _finish_run(self, run: RunState) -> None:
         """Clear secrets, clean artifacts, and publish one terminal state."""
         run.password = None
-        run.update("runtime_cleanup", 98)
+        passed = run.pending_status == "passed"
+        if not passed:
+            # A failed run keeps the pipeline where it really stopped.
+            run.fail_open()
+        run.begin("runtime_cleanup", determinate=False, promote=passed)
         try:
             self._cleanup_run(run)
+            cleaned = True
         except OSError:
             _LOGGER.exception("run cleanup_failed")
-            if run.status == "passed":
-                run.status = "inconclusive"
+            cleaned = False
+            if passed:
+                run.pending_status = "inconclusive"
                 run.error_code = "cleanup_failed"
-        run.update("runtime_complete", 100)
+                passed = False
+        run.finish_step(
+            "runtime_cleanup", STEP_PASSED if cleaned else STEP_FAILED
+        )
+        if passed:
+            run.begin("runtime_complete", determinate=False)
+            run.finish_step("runtime_complete")
+        else:
+            run.finish_step("runtime_complete", STEP_FAILED)
         with run.lock:
             run.checked_at = datetime.now(UTC).isoformat()
             run.duration_seconds = round(
                 time.monotonic() - run.started_monotonic, 2
             )
+            # The status is published last, so every terminal answer already
+            # carries its timestamp and duration.
+            run.status = run.pending_status
         _LOGGER.info(
             "run completed status=%s error_code=%s duration_seconds=%.2f",
             run.status,
@@ -772,6 +1064,9 @@ class RunManager:
             run.duration_seconds,
         )
 
+
+STARTED_AT = time.monotonic()
+RESTORE_PROGRESS_INTERVAL_SECONDS = 0.25
 
 TOKEN: str
 RUNNER_ID: str
@@ -804,7 +1099,7 @@ def _signed_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "BackupCheckupRuntime/3.0"
+    server_version = "BackupCheckupRuntime/3"
 
     def setup(self) -> None:
         """Bound slow or stalled clients before reading any request body."""
@@ -872,13 +1167,17 @@ class Handler(BaseHTTPRequestHandler):
         if not self._require_auth():
             return
         if self.path == "/v1/health":
+            # Capability and load information only; never a path or a host name.
             self._json(
                 HTTPStatus.OK,
                 {
                     "protocol": PROTOCOL_VERSION,
                     "runner_id": RUNNER_ID,
                     "runner_version": RUNNER_VERSION,
+                    "capabilities": list(CAPABILITIES),
                     "isolation_available": MANAGER.isolation_available,
+                    "uptime_seconds": int(max(0.0, time.monotonic() - STARTED_AT)),
+                    "active_runs": MANAGER.active_runs(),
                 },
             )
             return
@@ -928,6 +1227,12 @@ class Handler(BaseHTTPRequestHandler):
                 if run.uploading or run.archive_verified or run.thread is not None:
                     raise RunnerFailure("archive_state_invalid")
                 run.uploading = True
+            run.begin(
+                "runtime_upload",
+                determinate=bool(length),
+                total=length,
+                unit="bytes",
+            )
             digest = hashlib.sha256()
             remaining = length
             upload_verified = False
@@ -941,8 +1246,12 @@ class Handler(BaseHTTPRequestHandler):
                         output.write(chunk)
                         digest.update(chunk)
                         remaining -= len(chunk)
-                        uploaded = length - remaining
-                        run.update("runtime_upload", uploaded * 30 // length)
+                        run.measure(
+                            "runtime_upload",
+                            done=length - remaining,
+                            total=length,
+                            unit="bytes",
+                        )
                 if not hmac.compare_digest(digest.hexdigest(), run.backup_sha256):
                     raise RunnerFailure("archive_checksum_mismatch")
                 upload_verified = True
@@ -953,7 +1262,7 @@ class Handler(BaseHTTPRequestHandler):
                 with run.lock:
                     run.uploading = False
                     run.archive_verified = upload_verified
-            run.update("runtime_upload", 30)
+            run.finish_step("runtime_upload")
             _LOGGER.info("run archive_uploaded bytes=%d checksum_verified=true", length)
             self._empty(HTTPStatus.NO_CONTENT)
         except (OSError, ValueError, RunnerFailure) as err:

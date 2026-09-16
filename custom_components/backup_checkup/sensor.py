@@ -21,8 +21,9 @@ from homeassistant.const import (
     UnitOfInformation,
     UnitOfTime,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import slugify
 
@@ -38,13 +39,21 @@ from .const import (
     INTEGRITY_STATUS_NOT_CHECKED,
     INTEGRITY_STATUS_OPTIONS,
     RECOMMENDATION_OPTIONS,
+    RUNNER_STATE_INCOMPATIBLE,
+    RUNNER_STATE_NOT_CONFIGURED,
+    RUNNER_STATE_OFFLINE,
+    RUNNER_STATE_ONLINE,
+    RUNNER_STATE_OPTIONS,
     SIZE_TREND_OPTIONS,
     STATUS_OPTIONS,
+    progress_signal,
+    runner_signal,
 )
 from .coordinator import BackupCheckupCoordinator
 from .entity import BackupCheckupAgentEntity, BackupCheckupEntity
 from .entity_mode import entity_enabled_by_default
 from .models import BackupAgentSummary, BackupCheckupData
+from .progress import JOB_RUNTIME_TEST, JOB_VERIFICATION
 from .recovery import RECOVERY_RECOMMENDATION_OPTIONS, RECOVERY_STATUS_OPTIONS
 from .recovery_runtime import RUNTIME_STATUS_OPTIONS
 from .recovery_simulation import SIMULATION_STATUS_OPTIONS
@@ -56,6 +65,9 @@ class BackupCheckupSensorDescription(SensorEntityDescription):
 
     value_fn: Callable[[BackupCheckupData], Any]
     attributes_fn: Callable[[BackupCheckupData], dict[str, Any]] | None = None
+    # A job key turns this sensor into a live consumer of the progress channel
+    # so a percentage tick never refreshes the whole coordinator.
+    progress_job: str | None = None
 
 
 def _storage_name(data: BackupCheckupData, agent_id: str | None) -> str | None:
@@ -268,6 +280,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         options=SIMULATION_STATUS_OPTIONS,
         value_fn=lambda data: data.recovery_restore_simulation.get("status", "not_run"),
         attributes_fn=lambda data: data.recovery_restore_simulation,
+        progress_job=JOB_VERIFICATION,
     ),
     BackupCheckupSensorDescription(
         key="runtime_test_status",
@@ -277,6 +290,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         options=RUNTIME_STATUS_OPTIONS,
         value_fn=lambda data: data.recovery_runtime_test.get("status", "not_run"),
         attributes_fn=lambda data: data.recovery_runtime_test,
+        progress_job=JOB_RUNTIME_TEST,
     ),
     BackupCheckupSensorDescription(
         key="last_restore_test",
@@ -860,6 +874,7 @@ async def async_setup_entry(
         BackupCheckupSensor(coordinator, entry, description) for description in SENSORS
     ]
     entities.append(BackupCheckupActivitySensor(coordinator, entry))
+    entities.append(BackupCheckupRunnerSensor(coordinator, entry))
     entities.extend(_flatten_agent_entities(agent_entities))
     async_add_entities(entities)
     missing_counts: dict[str, int] = {}
@@ -914,17 +929,108 @@ class BackupCheckupSensor(BackupCheckupEntity, SensorEntity):
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
         self.entity_id = f"sensor.backup_checkup_{description.key}"
 
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to the live progress channel when this sensor needs it."""
+        await super().async_added_to_hass()
+        if self.entity_description.progress_job is None:
+            return
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                progress_signal(self._entry.entry_id),
+                self._handle_progress,
+            )
+        )
+
+    @callback
+    def _handle_progress(self, job: str) -> None:
+        """Write only this sensor when its own job reported progress."""
+        if job == self.entity_description.progress_job:
+            self.async_write_ha_state()
+
+    def _live_view(self) -> dict[str, Any] | None:
+        """Return the merged live view for a progress-backed sensor."""
+        job = self.entity_description.progress_job
+        return None if job is None else self.coordinator.progress_view(job)
+
     @property
     def native_value(self) -> Any:
         """Return the sensor value."""
+        live = self._live_view()
+        if live is not None:
+            return live.get("status", "not_run")
         return self.entity_description.value_fn(self.coordinator.data)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         """Return sensor attributes."""
+        live = self._live_view()
+        if live is not None:
+            return live
         if self.entity_description.attributes_fn is None:
             return None
         return self.entity_description.attributes_fn(self.coordinator.data)
+
+
+class BackupCheckupRunnerSensor(BackupCheckupEntity, SensorEntity):
+    """Expose the reachability of the optional companion runner."""
+
+    _attr_translation_key = "runtime_runner"
+    _attr_icon = "mdi:server-network"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_device_class = SensorDeviceClass.ENUM
+
+    def __init__(
+        self,
+        coordinator: BackupCheckupCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
+        """Initialize the companion-runner state sensor."""
+        self._attr_entity_registry_enabled_default = entity_enabled_by_default(
+            "sensor",
+            "runtime_runner",
+            coordinator.entity_mode,
+        )
+        self._attr_options = list(RUNNER_STATE_OPTIONS)
+        super().__init__(coordinator, entry)
+        self._attr_unique_id = f"{entry.entry_id}_runtime_runner"
+        self.entity_id = "sensor.backup_checkup_runtime_runner"
+
+    async def async_added_to_hass(self) -> None:
+        """Follow the companion-runner health channel."""
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            async_dispatcher_connect(
+                self.hass,
+                runner_signal(self._entry.entry_id),
+                self.async_write_ha_state,
+            )
+        )
+
+    @property
+    def native_value(self) -> str:
+        """Return the reachability state of the configured runner."""
+        health = self.coordinator.runner_health
+        if not health.configured:
+            return RUNNER_STATE_NOT_CONFIGURED
+        if health.usable:
+            return RUNNER_STATE_ONLINE
+        if health.error_code in {"runner_too_old", "runner_protocol_mismatch"}:
+            return RUNNER_STATE_INCOMPATIBLE
+        return RUNNER_STATE_OFFLINE
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return privacy-safe runner details without address or identity."""
+        health = self.coordinator.runner_health
+        details = health.as_dict()
+        # runner_id is derived from the runner token and is only needed to match
+        # a stored result; it does not belong into a public state attribute.
+        details.pop("runner_id", None)
+        return {
+            **details,
+            "discovered": self.coordinator.runtime_runner_connection is not None,
+        }
 
 
 class BackupCheckupActivitySensor(BackupCheckupEntity, SensorEntity):

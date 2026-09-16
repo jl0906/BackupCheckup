@@ -9,7 +9,8 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.components import websocket_api
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from .configuration import normalize_configuration, normalize_staging_directory
 from .const import (
@@ -40,6 +41,7 @@ from .const import (
     CONF_NOTIFY_ON_RECOVERY,
     CONF_PRESET_REVISION,
     CONF_REPAIR_ISSUES_ENABLED,
+    CONF_RUNNER_HEALTH_INTERVAL_MINUTES,
     CONF_RUNNER_MAXIMUM_ARCHIVE_GB,
     CONF_RUNNER_MAXIMUM_EXPANDED_GB,
     CONF_RUNNER_TIMEOUT_MINUTES,
@@ -66,6 +68,7 @@ from .const import (
     MAX_MAXIMUM_SIZE_DROP_PERCENT,
     MAX_MINIMUM_BACKUP_SIZE_MB,
     MAX_REDUNDANT_LOCATIONS,
+    MAX_RUNNER_HEALTH_INTERVAL_MINUTES,
     MAX_RUNNER_MAXIMUM_ARCHIVE_GB,
     MAX_RUNNER_MAXIMUM_EXPANDED_GB,
     MAX_RUNNER_TIMEOUT_MINUTES,
@@ -85,6 +88,7 @@ from .const import (
     MIN_MAXIMUM_SIZE_DROP_PERCENT,
     MIN_MINIMUM_BACKUP_SIZE_MB,
     MIN_REDUNDANT_LOCATIONS,
+    MIN_RUNNER_HEALTH_INTERVAL_MINUTES,
     MIN_RUNNER_MAXIMUM_ARCHIVE_GB,
     MIN_RUNNER_MAXIMUM_EXPANDED_GB,
     MIN_RUNNER_TIMEOUT_MINUTES,
@@ -93,6 +97,11 @@ from .const import (
     MONITORING_POLICY_CUSTOM,
     MONITORING_POLICY_OPTIONS,
     PRESET_REVISION,
+    RUNNER_CHECK_SOURCE_PANEL,
+    RUNNER_STATE_INCOMPATIBLE,
+    RUNNER_STATE_NOT_CONFIGURED,
+    RUNNER_STATE_OFFLINE,
+    RUNNER_STATE_ONLINE,
     RUNTIME_PROFILE_CUSTOM,
     RUNTIME_PROFILE_LEGACY,
     RUNTIME_PROFILE_OPTIONS,
@@ -101,16 +110,25 @@ from .const import (
     VERIFICATION_POLICY_CUSTOM,
     VERIFICATION_POLICY_STORED_OPTIONS,
     VERSION,
+    progress_signal,
 )
+from .coordinator import BackupCheckupCoordinator
 from .notification_selection import (
     mobile_notification_options,
     normalize_notification_targets,
 )
 from .presets import monitoring_values, runtime_values, verification_values
+from .progress import JOB_RUNTIME_TEST, JOB_VERIFICATION
+from .recovery_runtime import RunnerHealth
 from .security import validate_staging_directory
 
 WS_TYPE_CONFIG_GET = f"{DOMAIN}/config/get"
 WS_TYPE_CONFIG_UPDATE = f"{DOMAIN}/config/update"
+WS_TYPE_PROGRESS_SUBSCRIBE = f"{DOMAIN}/progress/subscribe"
+WS_TYPE_RUNNER_STATUS = f"{DOMAIN}/runner/status"
+
+#: A panel that switches tabs quickly must not trigger a health request storm.
+_RUNNER_REFRESH_DEBOUNCE_SECONDS = 5.0
 
 _INTEGER_LIMITS: dict[str, tuple[int, int]] = {
     CONF_UPDATE_INTERVAL_MINUTES: (
@@ -181,6 +199,10 @@ _INTEGER_LIMITS: dict[str, tuple[int, int]] = {
     CONF_RUNNER_TIMEOUT_MINUTES: (
         MIN_RUNNER_TIMEOUT_MINUTES,
         MAX_RUNNER_TIMEOUT_MINUTES,
+    ),
+    CONF_RUNNER_HEALTH_INTERVAL_MINUTES: (
+        MIN_RUNNER_HEALTH_INTERVAL_MINUTES,
+        MAX_RUNNER_HEALTH_INTERVAL_MINUTES,
     ),
 }
 
@@ -427,6 +449,7 @@ def _resolve_runner_settings(
         CONF_RUNNER_MAXIMUM_ARCHIVE_GB,
         CONF_RUNNER_MAXIMUM_EXPANDED_GB,
         CONF_RUNNER_TIMEOUT_MINUTES,
+        CONF_RUNNER_HEALTH_INTERVAL_MINUTES,
     ):
         values[key] = _bounded_int(source[key], key, errors)
     if (
@@ -473,6 +496,8 @@ def frontend_configuration_payload(
     values = normalize_configuration(entry.data, entry.options)
     if values[CONF_RUNTIME_PROFILE] == RUNTIME_PROFILE_LEGACY:
         values[CONF_RUNTIME_PROFILE] = RUNTIME_PROFILE_CUSTOM
+    coordinator = _coordinator_for_entry(entry)
+    health = coordinator.runner_health if coordinator is not None else None
     return {
         "entry_id": entry.entry_id,
         "integration_version": VERSION,
@@ -492,9 +517,62 @@ def frontend_configuration_payload(
             ),
         },
         "hardware": dict(values[CONF_HARDWARE_DETECTION]),
-        "runner": {"available": CONF_RUNTIME_RUNNER in entry.data},
+        "runner": _runner_payload(entry, health),
         "reload_required": True,
     }
+
+
+def _coordinator_for_entry(entry: ConfigEntry | None) -> BackupCheckupCoordinator | None:
+    """Return the loaded coordinator of one entry, if there is one."""
+    coordinator = getattr(entry, "runtime_data", None)
+    return coordinator if isinstance(coordinator, BackupCheckupCoordinator) else None
+
+
+def _runner_payload(
+    entry: ConfigEntry, health: RunnerHealth | None
+) -> dict[str, Any]:
+    """Return the companion-runner state the panel renders.
+
+    The payload never contains the runner address, its token, or its
+    certificate - only the facts the user needs to act on.
+    """
+    configured = CONF_RUNTIME_RUNNER in entry.data
+    if health is None:
+        return {
+            "configured": configured,
+            "reachable": False,
+            "version": None,
+            "update_recommended": False,
+            "checked_at": None,
+            "error_code": None,
+            "state": (
+                RUNNER_STATE_NOT_CONFIGURED if not configured else RUNNER_STATE_OFFLINE
+            ),
+            # Retained for 3.1.0 panels that only knew this flag.
+            "available": configured,
+        }
+    return {
+        "configured": configured or health.configured,
+        "reachable": health.usable,
+        "version": health.runner_version,
+        "update_recommended": health.update_recommended,
+        "checked_at": health.checked_at.isoformat() if health.checked_at else None,
+        "error_code": health.error_code,
+        "capabilities": list(health.capabilities),
+        "state": _runner_state(health, configured=configured),
+        "available": configured or health.configured,
+    }
+
+
+def _runner_state(health: RunnerHealth, *, configured: bool) -> str:
+    """Return the coarse runner state shown as a status dot."""
+    if not configured and not health.configured:
+        return RUNNER_STATE_NOT_CONFIGURED
+    if health.usable:
+        return RUNNER_STATE_ONLINE
+    if health.error_code in {"runner_too_old", "runner_protocol_mismatch"}:
+        return RUNNER_STATE_INCOMPATIBLE
+    return RUNNER_STATE_OFFLINE
 
 
 @websocket_api.require_admin
@@ -595,7 +673,83 @@ async def websocket_config_update(
     )
 
 
+@websocket_api.async_response
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_PROGRESS_SUBSCRIBE,
+        vol.Required("entry_id"): str,
+    }
+)
+async def websocket_progress_subscribe(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Push live verification and runtime-test progress to one panel."""
+    entry_id = msg["entry_id"]
+    coordinator = _coordinator_for_entry(_entry_for_message(hass, entry_id))
+    if coordinator is None:
+        connection.send_error(msg["id"], "entry_not_found", "Config entry not found")
+        return
+
+    @callback
+    def _forward(job: str) -> None:
+        """Send one job snapshot without refreshing any entity.
+
+        The coordinator is resolved per event so a reloaded entry keeps
+        delivering live data instead of pinning the unloaded instance.
+        """
+        current = _coordinator_for_entry(_entry_for_message(hass, entry_id))
+        if current is None:
+            return
+        connection.send_message(
+            websocket_api.event_message(
+                msg["id"], {"job": job, "progress": current.progress_view(job)}
+            )
+        )
+
+    connection.subscriptions[msg["id"]] = async_dispatcher_connect(
+        hass,
+        progress_signal(entry_id),
+        _forward,
+    )
+    connection.send_result(msg["id"])
+    for job in (JOB_VERIFICATION, JOB_RUNTIME_TEST):
+        _forward(job)
+
+
+@websocket_api.async_response
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): WS_TYPE_RUNNER_STATUS,
+        vol.Required("entry_id"): str,
+        vol.Optional("refresh", default=False): bool,
+    }
+)
+async def websocket_runner_status(
+    hass: HomeAssistant,
+    connection: websocket_api.ActiveConnection,
+    msg: dict[str, Any],
+) -> None:
+    """Return the companion-runner state, optionally after a fresh check."""
+    entry = _entry_for_message(hass, msg["entry_id"])
+    coordinator = _coordinator_for_entry(entry)
+    if entry is None or coordinator is None:
+        connection.send_error(msg["id"], "entry_not_found", "Config entry not found")
+        return
+    if msg["refresh"]:
+        await coordinator.async_check_runner(
+            source=RUNNER_CHECK_SOURCE_PANEL,
+            maximum_age_seconds=_RUNNER_REFRESH_DEBOUNCE_SECONDS,
+        )
+    connection.send_result(
+        msg["id"], _runner_payload(entry, coordinator.runner_health)
+    )
+
+
 def async_register_frontend_config(hass: HomeAssistant) -> None:
-    """Register the two admin-only panel configuration commands."""
+    """Register the admin-only configuration and the read-only live commands."""
     websocket_api.async_register_command(hass, websocket_config_get)
     websocket_api.async_register_command(hass, websocket_config_update)
+    websocket_api.async_register_command(hass, websocket_progress_subscribe)
+    websocket_api.async_register_command(hass, websocket_runner_status)

@@ -7,8 +7,15 @@ from datetime import datetime
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import issue_registry as ir
 
-from .const import DOMAIN, REPAIR_ISSUE_IDS, TROUBLESHOOTING_URL
+from .const import (
+    DOMAIN,
+    MIN_RUNNER_VERSION,
+    RECOMMENDED_RUNNER_VERSION,
+    REPAIR_ISSUE_IDS,
+    TROUBLESHOOTING_URL,
+)
 from .models import BackupCheckupData
+from .recovery_runtime import RunnerHealth
 
 
 def _integrity_is_current(data: BackupCheckupData) -> bool:
@@ -214,6 +221,73 @@ def _format_bytes(value: int | None) -> str:
             break
         size /= 1024
     return f"{size:.1f} {unit}"
+
+
+@callback
+def async_set_runner_issues(hass: HomeAssistant, health: RunnerHealth) -> None:
+    """Create or remove the companion-runner repair issues.
+
+    The issues only carry the runner version; the address and token of the
+    runner are never part of a repair message.
+    """
+    _sync_issue(
+        hass,
+        "runner_too_old",
+        active=health.error_code == "runner_too_old",
+        severity=ir.IssueSeverity.ERROR,
+        placeholders={
+            "version": health.runner_version or "unknown",
+            "minimum": str(MIN_RUNNER_VERSION),
+        },
+    )
+    _sync_issue(
+        hass,
+        "runner_update_recommended",
+        active=health.update_recommended,
+        severity=ir.IssueSeverity.WARNING,
+        placeholders={
+            "version": health.runner_version or "unknown",
+            "recommended": str(RECOMMENDED_RUNNER_VERSION),
+        },
+    )
+
+
+@callback
+def async_set_runner_discovery_issue(hass: HomeAssistant, *, active: bool) -> None:
+    """Create or remove the issue for a runner that stopped being discovered."""
+    _sync_issue(
+        hass,
+        "runner_not_discovered",
+        active=active,
+        severity=ir.IssueSeverity.WARNING,
+        placeholders={},
+    )
+
+
+@callback
+def _sync_issue(
+    hass: HomeAssistant,
+    issue_id: str,
+    *,
+    active: bool,
+    severity: ir.IssueSeverity,
+    placeholders: dict[str, str],
+) -> None:
+    """Create or delete one persistent BackupCheckup repair issue."""
+    if not active:
+        ir.async_delete_issue(hass, DOMAIN, issue_id)
+        return
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        issue_id,
+        is_fixable=False,
+        is_persistent=False,
+        learn_more_url=TROUBLESHOOTING_URL,
+        severity=severity,
+        translation_key=issue_id,
+        translation_placeholders=placeholders,
+    )
 
 
 @callback

@@ -8,8 +8,8 @@ import hmac
 import json
 import ssl
 import time
-from collections.abc import AsyncIterator, Callable, Mapping
-from dataclasses import dataclass, field
+from collections.abc import AsyncIterator, Mapping
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -19,11 +19,13 @@ import aiohttp
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
-from .const import DOMAIN
+from .const import DOMAIN, MIN_RUNNER_VERSION, RECOMMENDED_RUNNER_VERSION
 from .datetime_utils import parse_stored_utc_datetime
+from .progress import PHASE_PREPARE, PHASE_RUN, ProgressReporter
 
 RUNTIME_STATUS_NOT_AVAILABLE = "not_available"
 RUNTIME_STATUS_NOT_RUN = "not_run"
+RUNTIME_STATUS_NOT_STARTED = "not_started"
 RUNTIME_STATUS_RUNNING = "running"
 RUNTIME_STATUS_PASSED = "passed"
 RUNTIME_STATUS_FAILED = "failed"
@@ -32,6 +34,7 @@ RUNTIME_STATUS_INCONCLUSIVE = "inconclusive"
 RUNTIME_STATUS_OPTIONS = (
     RUNTIME_STATUS_NOT_AVAILABLE,
     RUNTIME_STATUS_NOT_RUN,
+    RUNTIME_STATUS_NOT_STARTED,
     RUNTIME_STATUS_RUNNING,
     RUNTIME_STATUS_PASSED,
     RUNTIME_STATUS_FAILED,
@@ -70,16 +73,27 @@ _MAX_ERROR_CODE_LENGTH = 96
 _MAX_RUNNER_VERSION_LENGTH = 64
 _MAX_TLS_CERTIFICATE_LENGTH = 8192
 _MIN_POLL_INTERVAL = 0.25
-_MAX_POLL_INTERVAL = 5.0
+# A live step display needs a fast poll; two seconds still keeps a long runtime
+# test cheap on low-power hardware.
+_MAX_POLL_INTERVAL = 2.0
+_HEALTH_TIMEOUT_SECONDS = 10
+_MAX_CAPABILITIES = 12
+CAPABILITY_STEP_PROGRESS = "step_progress"
+CAPABILITY_BOOT_EVENTS = "boot_events"
 
 
 class RuntimeRunnerError(Exception):
     """A bounded, privacy-safe runtime-runner failure."""
 
-    def __init__(self, code: str) -> None:
-        """Initialize the error from one stable code."""
+    def __init__(self, code: str, *, phase: str = PHASE_RUN) -> None:
+        """Initialize the error from one stable code and the phase it hit.
+
+        The phase decides whether the isolated test ever started, which no
+        error code alone can express.
+        """
         normalized = _bounded_text(code, maximum=_MAX_ERROR_CODE_LENGTH)
         self.code = normalized or "runner_error"
+        self.phase = phase
         super().__init__(self.code)
 
 
@@ -90,18 +104,6 @@ def _bounded_text(value: Any, *, maximum: int) -> str | None:
     cleaned = "".join(character for character in value if character.isprintable())
     cleaned = cleaned.strip()
     return cleaned[:maximum] if cleaned else None
-
-
-def _bounded_percent(value: Any) -> int:
-    """Return a strict progress percentage."""
-    if isinstance(value, bool) or not isinstance(value, int):
-        return 0
-    return max(0, min(value, 100))
-
-
-def _empty_stages() -> dict[str, str]:
-    """Return the stable runtime pipeline shape."""
-    return dict.fromkeys(RUNTIME_STAGE_OPTIONS, "pending")
 
 
 def _tls_fingerprint(certificate: str) -> aiohttp.Fingerprint | None:
@@ -276,8 +278,9 @@ class RuntimeTestSnapshot:
     def from_mapping(cls, value: Mapping[str, Any]) -> RuntimeTestSnapshot:
         """Parse bounded persisted or remotely returned data."""
         status = value.get("status")
-        if status not in RUNTIME_STATUS_OPTIONS:
-            status = RUNTIME_STATUS_INCONCLUSIVE
+        unknown_status = status not in RUNTIME_STATUS_OPTIONS
+        if unknown_status:
+            status = RUNTIME_STATUS_FAILED
         checked_at = parse_stored_utc_datetime(value.get("checked_at"))
         raw_duration = value.get("duration_seconds")
         duration = (
@@ -308,7 +311,8 @@ class RuntimeTestSnapshot:
             recovery_mode=value.get("recovery_mode") is not False,
             error_code=_bounded_text(
                 value.get("error_code"), maximum=_MAX_ERROR_CODE_LENGTH
-            ),
+            )
+            or ("runner_status_unknown" if unknown_status else None),
         )
 
 
@@ -370,91 +374,150 @@ class RuntimeTestStore:
             self._loaded = False
 
 
-@dataclass(slots=True)
-class RuntimeTestProgress:
-    """Track and publish the optional runner phase."""
+@dataclass(frozen=True, slots=True)
+class RunnerHealth:
+    """Validated capability information of one companion runner."""
 
-    running: bool = False
-    status: str = RUNTIME_STATUS_NOT_RUN
-    stage: str = RUNTIME_STAGE_PREPARE
-    progress_percent: int = 0
-    backup_reference: str | None = None
-    started_at: datetime | None = None
-    duration_seconds: float | None = None
+    reachable: bool = False
+    configured: bool = False
+    protocol: int | None = None
+    runner_version: str | None = None
+    runner_id: str | None = None
+    capabilities: tuple[str, ...] = ()
+    isolation_available: bool = False
+    uptime_seconds: int | None = None
+    active_runs: int | None = None
+    checked_at: datetime | None = None
     error_code: str | None = None
-    stages: dict[str, str] = field(default_factory=_empty_stages)
-    _started_monotonic: float | None = field(default=None, repr=False)
+    update_recommended: bool = False
+    check_source: str | None = None
 
-    def start(self, backup_reference: str) -> None:
-        """Start a new live runtime test."""
-        self.running = True
-        self.status = RUNTIME_STATUS_RUNNING
-        self.stage = RUNTIME_STAGE_PREPARE
-        self.progress_percent = 0
-        self.backup_reference = backup_reference
-        self.started_at = datetime.now(UTC)
-        self.duration_seconds = None
-        self.error_code = None
-        self.stages = _empty_stages()
-        self.stages[RUNTIME_STAGE_PREPARE] = "running"
-        self._started_monotonic = time.monotonic()
+    @property
+    def usable(self) -> bool:
+        """Return whether a runtime test may be started right now."""
+        return self.reachable and self.error_code is None
 
-    def update(self, stage: str, percent: int) -> None:
-        """Advance monotonically from a validated runner state."""
-        if not self.running or stage not in RUNTIME_STAGE_OPTIONS:
-            return
-        if self.stage != stage and self.stages.get(self.stage) == "running":
-            self.stages[self.stage] = "passed"
-        self.stage = stage
-        self.progress_percent = max(self.progress_percent, _bounded_percent(percent))
-        self.stages[stage] = "running"
+    @property
+    def version_number(self) -> int | None:
+        """Return the leading major version of the reported runner version.
 
-    def finish(self, snapshot: RuntimeTestSnapshot) -> None:
-        """Finish the live state from one authenticated result."""
-        if self.stages.get(self.stage) == "running":
-            self.stages[self.stage] = (
-                "passed" if snapshot.passed is True else "failed"
-            )
-        self.running = False
-        self.status = snapshot.status
-        self.stage = RUNTIME_STAGE_COMPLETE
-        self.progress_percent = 100
-        self.stages[RUNTIME_STAGE_COMPLETE] = (
-            "passed" if snapshot.passed is True else "failed"
-        )
-        self.error_code = snapshot.error_code
-        self.duration_seconds = snapshot.duration_seconds
-        self._started_monotonic = None
+        A runner that reports "3" or "3.1" is runner 3; only text without any
+        leading digit leaves the version unknown.
+        """
+        if self.runner_version is None:
+            return None
+        digits = ""
+        for character in self.runner_version.strip():
+            if not character.isdigit():
+                break
+            digits += character
+        return int(digits) if digits else None
 
-    def cancel(self) -> None:
-        """Cancel a pending test during shutdown."""
-        if not self.running:
-            return
-        self.running = False
-        self.status = RUNTIME_STATUS_ABORTED
-        self.stages[self.stage] = "failed"
-        self.error_code = "cancelled"
-        self._started_monotonic = None
+    @property
+    def supports_step_progress(self) -> bool:
+        """Return whether the runner reports measured step progress."""
+        return CAPABILITY_STEP_PROGRESS in self.capabilities
 
     def as_dict(self) -> dict[str, Any]:
-        """Return bounded live frontend state."""
-        duration = self.duration_seconds
-        if self.running and self._started_monotonic is not None:
-            duration = round(max(0.0, time.monotonic() - self._started_monotonic), 2)
+        """Return the JSON-safe representation used by entities and the panel."""
         return {
-            "running": self.running,
-            "status": self.status,
-            "stage": self.stage,
-            "progress_percent": self.progress_percent,
-            "backup_reference": self.backup_reference,
-            "started_at": self.started_at.isoformat() if self.started_at else None,
-            "duration_seconds": duration,
+            "reachable": self.reachable,
+            "configured": self.configured,
+            "protocol": self.protocol,
+            "runner_version": self.runner_version,
+            "runner_id": self.runner_id,
+            "capabilities": list(self.capabilities),
+            "isolation_available": self.isolation_available,
+            "uptime_seconds": self.uptime_seconds,
+            "active_runs": self.active_runs,
+            "checked_at": self.checked_at.isoformat() if self.checked_at else None,
             "error_code": self.error_code,
-            "stages": dict(self.stages),
+            "update_recommended": self.update_recommended,
+            "check_source": self.check_source,
         }
 
+    @classmethod
+    def not_configured(cls, *, check_source: str | None = None) -> RunnerHealth:
+        """Return the state used while no runner connection exists."""
+        return cls(
+            reachable=False,
+            configured=False,
+            checked_at=datetime.now(UTC),
+            error_code="runner_not_configured",
+            check_source=check_source,
+        )
 
-ProgressCallback = Callable[[str, int], None]
+    @classmethod
+    def unreachable(
+        cls, code: str, *, check_source: str | None = None
+    ) -> RunnerHealth:
+        """Return the state used after a failed health request."""
+        return cls(
+            reachable=False,
+            configured=True,
+            checked_at=datetime.now(UTC),
+            error_code=code,
+            check_source=check_source,
+        )
+
+    @classmethod
+    def from_payload(
+        cls, payload: Mapping[str, Any], *, check_source: str | None = None
+    ) -> RunnerHealth:
+        """Build bounded health information from one runner response."""
+        version = (
+            _bounded_text(
+                payload.get("runner_version"), maximum=_MAX_RUNNER_VERSION_LENGTH
+            )
+            # A protocol-2 runner that predates the version field is runner 2.
+            or "2"
+        )
+        raw_capabilities = payload.get("capabilities")
+        capabilities = (
+            tuple(
+                text
+                for value in list(raw_capabilities)[:_MAX_CAPABILITIES]
+                if (text := _bounded_text(value, maximum=64))
+            )
+            if isinstance(raw_capabilities, list)
+            else ()
+        )
+        health = cls(
+            reachable=True,
+            configured=True,
+            protocol=payload.get("protocol")
+            if isinstance(payload.get("protocol"), int)
+            else None,
+            runner_version=version,
+            runner_id=_bounded_text(payload.get("runner_id"), maximum=128),
+            capabilities=capabilities,
+            isolation_available=payload.get("isolation_available") is True,
+            uptime_seconds=_bounded_positive(payload.get("uptime_seconds")),
+            active_runs=_bounded_positive(payload.get("active_runs")),
+            checked_at=datetime.now(UTC),
+            check_source=check_source,
+        )
+        return health.validated()
+
+    def validated(self) -> RunnerHealth:
+        """Return this health with the version policy applied."""
+        number = self.version_number
+        if number is not None and number < MIN_RUNNER_VERSION:
+            return replace(self, error_code="runner_too_old")
+        if not self.isolation_available:
+            return replace(self, error_code="runner_isolation_unavailable")
+        return replace(
+            self,
+            update_recommended=number is not None
+            and number < RECOMMENDED_RUNNER_VERSION,
+        )
+
+
+def _bounded_positive(value: Any) -> int | None:
+    """Return a non-negative bounded counter or None."""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return min(value, 10**9)
 
 
 class RuntimeRunnerClient:
@@ -479,38 +542,52 @@ class RuntimeRunnerClient:
         return urljoin(self._connection.base_url, path.lstrip("/"))
 
     @staticmethod
-    def _error_from_payload(payload: Any, fallback: str) -> RuntimeRunnerError:
+    def _error_from_payload(
+        payload: Any, fallback: str, *, phase: str = PHASE_RUN
+    ) -> RuntimeRunnerError:
         """Preserve one bounded runner error without exposing response details."""
         if isinstance(payload, Mapping):
             error = _bounded_text(payload.get("error"), maximum=_MAX_ERROR_CODE_LENGTH)
             if error:
-                return RuntimeRunnerError(f"runner_{error}")
-        return RuntimeRunnerError(fallback)
+                return RuntimeRunnerError(f"runner_{error}", phase=phase)
+        return RuntimeRunnerError(fallback, phase=phase)
 
-    async def async_health(self) -> dict[str, Any]:
-        """Return validated runner capability information."""
+    async def async_health(self, *, check_source: str | None = None) -> RunnerHealth:
+        """Return validated runner capability information without raising."""
         try:
             async with self._session.get(
                 self._url("v1/health"),
                 headers=self._headers,
-                timeout=10,
+                timeout=_HEALTH_TIMEOUT_SECONDS,
                 ssl=self._tls_pin,
             ) as response:
                 if response.status != 200:
-                    raise RuntimeRunnerError("runner_unavailable")
+                    return RunnerHealth.unreachable(
+                        "runner_unavailable", check_source=check_source
+                    )
                 payload = await response.json()
-        except RuntimeRunnerError:
-            raise
-        except Exception as err:
-            raise RuntimeRunnerError("runner_unavailable") from err
-        if (
-            not isinstance(payload, Mapping)
-            or payload.get("protocol") != _PROTOCOL_VERSION
-        ):
-            raise RuntimeRunnerError("runner_protocol_mismatch")
-        if payload.get("isolation_available") is not True:
-            raise RuntimeRunnerError("runner_isolation_unavailable")
-        return dict(payload)
+        except Exception:  # noqa: BLE001 - optional companion runner boundary
+            return RunnerHealth.unreachable(
+                "runner_unavailable", check_source=check_source
+            )
+        if not isinstance(payload, Mapping):
+            return RunnerHealth.unreachable(
+                "runner_response_invalid", check_source=check_source
+            )
+        if payload.get("protocol") != _PROTOCOL_VERSION:
+            return RunnerHealth.unreachable(
+                "runner_protocol_mismatch", check_source=check_source
+            )
+        return RunnerHealth.from_payload(payload, check_source=check_source)
+
+    async def async_require_health(self) -> RunnerHealth:
+        """Return usable health or raise the stable error the run must report."""
+        health = await self.async_health()
+        if not health.usable:
+            raise RuntimeRunnerError(
+                health.error_code or "runner_unavailable", phase=PHASE_PREPARE
+            )
+        return health
 
     async def async_run(
         self,
@@ -522,10 +599,11 @@ class RuntimeRunnerClient:
         maximum_archive_gb: int,
         maximum_expanded_gb: int,
         timeout_minutes: int,
-        progress_callback: ProgressCallback,
+        reporter: ProgressReporter,
     ) -> RuntimeTestSnapshot:
         """Upload and execute one isolated runtime test."""
-        await self.async_health()
+        health = await self.async_require_health()
+        reporter.begin_step(RUNTIME_STAGE_PREPARE)
         run_id: str | None = None
         try:
             run_id = await self._async_create_run(
@@ -537,12 +615,14 @@ class RuntimeRunnerClient:
                 maximum_expanded_gb=maximum_expanded_gb,
                 timeout_minutes=timeout_minutes,
             )
-            await self._async_upload(run_id, archive_path, progress_callback)
+            reporter.complete_step(RUNTIME_STAGE_PREPARE)
+            await self._async_upload(run_id, archive_path, reporter)
             await self._async_start(run_id)
             payload = await self._async_poll(
                 run_id,
                 timeout_seconds=timeout_minutes * 60,
-                progress_callback=progress_callback,
+                reporter=reporter,
+                health=health,
             )
             self._verify_signature(payload)
             snapshot = RuntimeTestSnapshot.from_mapping(payload)
@@ -595,33 +675,32 @@ class RuntimeRunnerClient:
             ) as response:
                 data = await response.json()
                 if response.status != 201 or not isinstance(data, Mapping):
-                    raise self._error_from_payload(data, "runner_create_failed")
+                    raise self._error_from_payload(
+                        data, "runner_create_failed", phase=PHASE_PREPARE
+                    )
         except RuntimeRunnerError:
             raise
         except Exception as err:
-            raise RuntimeRunnerError("runner_create_failed") from err
+            raise RuntimeRunnerError(
+                "runner_create_failed", phase=PHASE_PREPARE
+            ) from err
         run_id = _bounded_text(data.get("run_id"), maximum=128)
         if not run_id:
-            raise RuntimeRunnerError("runner_response_invalid")
+            raise RuntimeRunnerError("runner_response_invalid", phase=PHASE_PREPARE)
         return run_id
 
     async def _archive_chunks(
         self,
         archive_path: Path,
-        progress_callback: ProgressCallback,
+        reporter: ProgressReporter,
     ) -> AsyncIterator[bytes]:
         total = archive_path.stat().st_size
         sent = 0
-        last_progress = -1
         file_handle = await asyncio.to_thread(archive_path.open, "rb")
         try:
             while chunk := await asyncio.to_thread(file_handle.read, _CHUNK_SIZE):
                 sent += len(chunk)
-                upload_percent = min(100, int(sent * 100 / total)) if total else 100
-                progress = 5 + int(upload_percent * 25 / 100)
-                if progress != last_progress:
-                    progress_callback(RUNTIME_STAGE_UPLOAD, progress)
-                    last_progress = progress
+                reporter.update(RUNTIME_STAGE_UPLOAD, done=sent, total=total)
                 yield chunk
         finally:
             await asyncio.to_thread(file_handle.close)
@@ -630,19 +709,20 @@ class RuntimeRunnerClient:
         self,
         run_id: str,
         archive_path: Path,
-        progress_callback: ProgressCallback,
+        reporter: ProgressReporter,
     ) -> None:
+        size = archive_path.stat().st_size
         headers = {
             **self._headers,
             "Content-Type": "application/octet-stream",
-            "Content-Length": str(archive_path.stat().st_size),
+            "Content-Length": str(size),
         }
-        progress_callback(RUNTIME_STAGE_UPLOAD, 5)
+        reporter.begin_step(RUNTIME_STAGE_UPLOAD, determinate=bool(size), total=size)
         try:
             async with self._session.put(
                 self._url(f"v1/runs/{run_id}/archive"),
                 headers=headers,
-                data=self._archive_chunks(archive_path, progress_callback),
+                data=self._archive_chunks(archive_path, reporter),
                 timeout=None,
                 ssl=self._tls_pin,
             ) as response:
@@ -656,6 +736,7 @@ class RuntimeRunnerClient:
             raise
         except Exception as err:
             raise RuntimeRunnerError("runner_upload_failed") from err
+        reporter.complete_step(RUNTIME_STAGE_UPLOAD)
 
     async def _async_start(self, run_id: str) -> None:
         try:
@@ -681,10 +762,14 @@ class RuntimeRunnerClient:
         run_id: str,
         *,
         timeout_seconds: int,
-        progress_callback: ProgressCallback,
+        reporter: ProgressReporter,
+        health: RunnerHealth,
     ) -> Mapping[str, Any]:
         deadline = time.monotonic() + timeout_seconds + 30
         poll_interval = _MIN_POLL_INTERVAL
+        if not health.supports_step_progress:
+            # Runner 2 only reports coarse stages; never invent a percentage.
+            reporter.mark_indeterminate()
         while time.monotonic() < deadline:
             try:
                 async with self._session.get(
@@ -702,11 +787,7 @@ class RuntimeRunnerClient:
                 raise
             except Exception as err:
                 raise RuntimeRunnerError("runner_poll_failed") from err
-            stage = payload.get("stage")
-            if stage in RUNTIME_STAGE_OPTIONS:
-                progress_callback(
-                    stage, _bounded_percent(payload.get("progress_percent"))
-                )
+            reporter.apply_runner_state(payload)
             if payload.get("status") in _TERMINAL_STATUSES:
                 return payload
             await asyncio.sleep(poll_interval)

@@ -26,7 +26,8 @@
           "max_expanded_size_gb": "Maximale entpackte Archivgröße in GB",
           "verification_timeout_minutes": "Maximale Prüfdauer in Minuten",
           "database_timeout_minutes": "Maximale Dauer der Datenbankprüfung in Minuten",
-          "manual_verification_cooldown_minutes": "Wartezeit zwischen manuellen Prüfungen in Minuten"
+          "manual_verification_cooldown_minutes": "Wartezeit zwischen manuellen Prüfungen in Minuten",
+          "runner_health_interval_minutes": "Prüfintervall für den Runtime Runner in Minuten"
         },
         "data_description": {
           "update_interval_minutes": "Basisintervall, solange Home Assistant im Leerlauf ist.",
@@ -37,7 +38,8 @@
           "max_expanded_size_gb": "Begrenzt die Gesamtmenge der gelesenen unkomprimierten Archivdaten.",
           "verification_timeout_minutes": "Beendet Download und Archivverarbeitung nach dieser Gesamtdauer.",
           "database_timeout_minutes": "Beendet SQLite PRAGMA integrity_check nach dieser Dauer.",
-          "manual_verification_cooldown_minutes": "Verhindert wiederholte manuelle Prüfungen. 0 deaktiviert die Wartezeit."
+          "manual_verification_cooldown_minutes": "Verhindert wiederholte manuelle Prüfungen. 0 deaktiviert die Wartezeit.",
+          "runner_health_interval_minutes": "Hintergrundprüfung der Erreichbarkeit des optionalen Runner-Add-ons. 0 prüft nur beim Öffnen des Panels und vor einem Laufzeittest."
         }
       },
       "monitoring": {
@@ -170,7 +172,8 @@
           "max_expanded_size_gb": "Maximale entpackte Archivgröße in GB",
           "verification_timeout_minutes": "Maximale Prüfdauer in Minuten",
           "database_timeout_minutes": "Maximale Dauer der Datenbankprüfung in Minuten",
-          "manual_verification_cooldown_minutes": "Wartezeit zwischen manuellen Prüfungen in Minuten"
+          "manual_verification_cooldown_minutes": "Wartezeit zwischen manuellen Prüfungen in Minuten",
+          "runner_health_interval_minutes": "Prüfintervall für den Runtime Runner in Minuten"
         },
         "data_description": {
           "update_interval_minutes": "Basisintervall, solange Home Assistant im Leerlauf ist.",
@@ -181,7 +184,8 @@
           "max_expanded_size_gb": "Begrenzt die Gesamtmenge der gelesenen unkomprimierten Archivdaten.",
           "verification_timeout_minutes": "Beendet Download und Archivverarbeitung nach dieser Gesamtdauer.",
           "database_timeout_minutes": "Beendet SQLite PRAGMA integrity_check nach dieser Dauer.",
-          "manual_verification_cooldown_minutes": "Verhindert wiederholte manuelle Prüfungen. 0 deaktiviert die Wartezeit."
+          "manual_verification_cooldown_minutes": "Verhindert wiederholte manuelle Prüfungen. 0 deaktiviert die Wartezeit.",
+          "runner_health_interval_minutes": "Hintergrundprüfung der Erreichbarkeit des optionalen Runner-Add-ons. 0 prüft nur beim Öffnen des Panels und vor einem Laufzeittest."
         }
       },
       "monitoring": {
@@ -569,11 +573,21 @@
           "passed": "Bestanden",
           "failed": "Fehlgeschlagen",
           "aborted": "Abgebrochen",
-          "inconclusive": "Nicht eindeutig"
+          "inconclusive": "Nicht eindeutig",
+          "not_started": "Nicht gestartet"
         }
       },
       "last_restore_test": {
         "name": "Letzter Test-Restore"
+      },
+      "runtime_runner": {
+        "name": "Runtime Runner",
+        "state": {
+          "online": "Online",
+          "offline": "Offline",
+          "not_configured": "Nicht eingerichtet",
+          "incompatible": "Nicht kompatibel"
+        }
       }
     },
     "binary_sensor": {
@@ -645,6 +659,9 @@
       },
       "recovery_plan_incomplete": {
         "name": "Notfallplan unvollständig"
+      },
+      "runtime_runner": {
+        "name": "Runtime Runner erreichbar"
       }
     },
     "button": {
@@ -662,6 +679,9 @@
       },
       "run_recovery_assessment": {
         "name": "Backup-Schutz prüfen"
+      },
+      "check_runner": {
+        "name": "Runtime Runner prüfen"
       }
     }
   },
@@ -779,6 +799,18 @@
     "required_location_missing": {
       "title": "Erforderlicher Backup-Speicherort fehlt",
       "description": "{count} Speicherort(e) des neuesten Backups sind nicht verfügbar, veraltet oder melden einen Fehler. Stelle den betroffenen Speicherort wieder her oder erstelle ein neues redundantes Backup."
+    },
+    "runner_too_old": {
+      "title": "Runtime-Runner-Add-on ist zu alt",
+      "description": "Der verbundene Runtime Runner meldet Version {version}, benötigt wird aber mindestens Version {minimum}. Aktualisiere das BackupCheckup-Runtime-Runner-Add-on. Bis dahin wird der isolierte Laufzeittest nicht gestartet."
+    },
+    "runner_update_recommended": {
+      "title": "Runtime-Runner-Update empfohlen",
+      "description": "Der verbundene Runtime Runner meldet Version {version}. Version {recommended} liefert Live-Schrittfortschritt und ausführliche Zustandsdaten. Der Laufzeittest funktioniert auch ohne das Update, zeigt dann aber nur grobe Phasen."
+    },
+    "runner_not_discovered": {
+      "title": "Runtime Runner wird nicht mehr angekündigt",
+      "description": "Der Supervisor kündigt das BackupCheckup-Runtime-Runner-Add-on nicht mehr an und die gespeicherte Verbindung antwortet nicht. Prüfe, ob das Add-on installiert und gestartet ist, und führe danach die Aktion „Runtime Runner prüfen“ aus."
     }
   },
   "exceptions": {

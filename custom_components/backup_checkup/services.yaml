@@ -23,6 +23,14 @@ test_notification:
     Sends one localized test notification to the configured notification targets.
     Administrator access is required.
 
+check_runner:
+  name: Check runtime runner
+  description: >-
+    Contacts the optional BackupCheckup Runtime Runner add-on and refreshes its
+    reachability, protocol, and version state. The check is read-only, never
+    starts a runtime test, and never logs the runner address or its token.
+    Administrator access is required.
+
 clear_activity_log:
   name: Clear live log
   description: >-

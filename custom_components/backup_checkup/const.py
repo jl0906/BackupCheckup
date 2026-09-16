@@ -3,15 +3,33 @@
 from homeassistant.const import Platform
 
 DOMAIN = "backup_checkup"
-CONFIG_ENTRY_VERSION = 16
+CONFIG_ENTRY_VERSION = 17
 NAME = "BackupCheckup"
-VERSION = "3.1.0"
+VERSION = "3.2.0"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
     Platform.BUTTON,
 )
+
+#: Live progress is dispatched on its own channel so a percentage tick never
+#: refreshes every BackupCheckup entity.
+PROGRESS_SIGNAL_TEMPLATE = f"{DOMAIN}_{{entry_id}}_progress"
+
+
+RUNNER_SIGNAL_TEMPLATE = f"{DOMAIN}_{{entry_id}}_runner"
+
+
+def progress_signal(entry_id: str) -> str:
+    """Return the dispatcher signal carrying live progress for one entry."""
+    return PROGRESS_SIGNAL_TEMPLATE.format(entry_id=entry_id)
+
+
+def runner_signal(entry_id: str) -> str:
+    """Return the dispatcher signal carrying companion-runner health."""
+    return RUNNER_SIGNAL_TEMPLATE.format(entry_id=entry_id)
+
 
 DOCUMENTATION_URL = "https://github.com/jl0906/BackupCheckup/wiki"
 TROUBLESHOOTING_URL = f"{DOCUMENTATION_URL}/Troubleshooting"
@@ -55,6 +73,7 @@ CONF_RUNTIME_RUNNER = "runtime_runner"
 CONF_RUNNER_MAXIMUM_ARCHIVE_GB = "runner_maximum_archive_gb"
 CONF_RUNNER_MAXIMUM_EXPANDED_GB = "runner_maximum_expanded_gb"
 CONF_RUNNER_TIMEOUT_MINUTES = "runner_timeout_minutes"
+CONF_RUNNER_HEALTH_INTERVAL_MINUTES = "runner_health_interval_minutes"
 
 # Legacy monitoring-profile values retained for migration.
 PROFILE_STANDARD = "standard"
@@ -139,6 +158,12 @@ DEFAULT_ACTIVITY_LOG_RETENTION_DAYS = 7
 DEFAULT_RUNNER_MAXIMUM_ARCHIVE_GB = 50
 DEFAULT_RUNNER_MAXIMUM_EXPANDED_GB = 250
 DEFAULT_RUNNER_TIMEOUT_MINUTES = 20
+DEFAULT_RUNNER_HEALTH_INTERVAL_MINUTES = 5
+
+# The integration talks protocol 2 to every runner. Runner 3 adds live step
+# progress and the extended health endpoint; runner 2 keeps working without it.
+MIN_RUNNER_VERSION = 2
+RECOMMENDED_RUNNER_VERSION = 3
 
 BACKUP_PURPOSE_AUTOMATIC = "automatic"
 BACKUP_PURPOSE_MANUAL = "manual"
@@ -191,6 +216,9 @@ MIN_RUNNER_MAXIMUM_EXPANDED_GB = 1
 MAX_RUNNER_MAXIMUM_EXPANDED_GB = 8192
 MIN_RUNNER_TIMEOUT_MINUTES = 2
 MAX_RUNNER_TIMEOUT_MINUTES = 60
+MIN_RUNNER_HEALTH_INTERVAL_MINUTES = 0
+MAX_RUNNER_HEALTH_INTERVAL_MINUTES = 60
+RUNNER_HEALTH_INTERVAL_OPTIONS = (0, 1, 2, 5, 10, 15, 30, 60)
 MIN_DATABASE_TIMEOUT_MINUTES = 1
 MAX_DATABASE_TIMEOUT_MINUTES = 1440
 MIN_MANUAL_VERIFICATION_COOLDOWN_MINUTES = 0
@@ -216,6 +244,7 @@ SERVICE_TEST_NOTIFICATION = "test_notification"
 SERVICE_CLEAR_ACTIVITY_LOG = "clear_activity_log"
 SERVICE_SET_RECOVERY_PREPAREDNESS = "set_recovery_preparedness"
 SERVICE_RECORD_RESTORE_TEST = "record_restore_test"
+SERVICE_CHECK_RUNNER = "check_runner"
 ATTR_PREPAREDNESS_SECTION = "section"
 ATTR_PREPAREDNESS_ITEM = "item"
 ATTR_PREPAREDNESS_STATUS = "status"
@@ -370,4 +399,24 @@ REPAIR_ISSUE_IDS = (
     "storage_data_invalid_integrity",
     "storage_data_invalid_history",
     "storage_data_invalid_notifications",
+    "runner_too_old",
+    "runner_update_recommended",
+    "runner_not_discovered",
 )
+
+RUNNER_STATE_ONLINE = "online"
+RUNNER_STATE_OFFLINE = "offline"
+RUNNER_STATE_NOT_CONFIGURED = "not_configured"
+RUNNER_STATE_INCOMPATIBLE = "incompatible"
+RUNNER_STATE_OPTIONS = [
+    RUNNER_STATE_ONLINE,
+    RUNNER_STATE_OFFLINE,
+    RUNNER_STATE_NOT_CONFIGURED,
+    RUNNER_STATE_INCOMPATIBLE,
+]
+
+RUNNER_CHECK_SOURCE_STARTUP = "startup"
+RUNNER_CHECK_SOURCE_INTERVAL = "interval"
+RUNNER_CHECK_SOURCE_PANEL = "panel"
+RUNNER_CHECK_SOURCE_PRE_RUN = "pre_run"
+RUNNER_CHECK_SOURCE_MANUAL = "manual"

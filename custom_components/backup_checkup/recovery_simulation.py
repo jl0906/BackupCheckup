@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import time
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
 from typing import Any
 
 from .const import (
@@ -22,6 +20,13 @@ from .const import (
     INTEGRITY_STATUS_VALID_WITH_WARNINGS,
 )
 from .models import BackupIntegrityResult, BackupRecord
+from .progress import (
+    STEP_FAILED,
+    STEP_PASSED,
+    STEP_PENDING,
+    STEP_SKIPPED,
+    VERIFICATION_STEPS,
+)
 
 SIMULATION_STATUS_PASSED = "passed"
 SIMULATION_STATUS_WARNING = "warning"
@@ -45,46 +50,27 @@ SIMULATION_STATUS_OPTIONS = (
 SIMULATION_MODE_STANDARD = "standard"
 
 STAGE_PREPARE = "prepare"
-STAGE_STORAGE = "storage"
+STAGE_STAGING = "staging"
 STAGE_DOWNLOAD = "download"
-STAGE_ARCHIVES = "archives"
-STAGE_DATABASE = "database"
+STAGE_ARCHIVE_SCAN = "archive_scan"
+STAGE_NESTED_ARCHIVES = "nested_archives"
+STAGE_DATABASE = "database_check"
 STAGE_EVALUATE = "evaluate"
 STAGE_CLEANUP = "cleanup"
-STAGE_COMPLETE = "complete"
-SIMULATION_STAGE_OPTIONS = (
-    STAGE_PREPARE,
-    STAGE_STORAGE,
-    STAGE_DOWNLOAD,
-    STAGE_ARCHIVES,
-    STAGE_DATABASE,
-    STAGE_EVALUATE,
-    STAGE_CLEANUP,
-    STAGE_COMPLETE,
-)
+# The pipeline the panel renders is the shared verification step list itself.
+SIMULATION_STAGE_OPTIONS = tuple(step.key for step in VERIFICATION_STEPS)
+_STAGE_WEIGHTS = {step.key: step.weight for step in VERIFICATION_STEPS}
 
-STAGE_PENDING = "pending"
+STAGE_PENDING = STEP_PENDING
 STAGE_RUNNING = "running"
-STAGE_PASSED = "passed"
+STAGE_PASSED = STEP_PASSED
 STAGE_WARNING = "warning"
-STAGE_FAILED = "failed"
-STAGE_NOT_APPLICABLE = "not_applicable"
+STAGE_FAILED = STEP_FAILED
+STAGE_NOT_APPLICABLE = STEP_SKIPPED
 
-_ACTION_STAGES = {
-    "verification_prepare": (STAGE_PREPARE, 5, 8),
-    "storage_copy_prepare": (STAGE_STORAGE, 9, 14),
-    "backup_download": (STAGE_DOWNLOAD, 15, 45),
-    # Archive inspection also contains the optional SQLite check. Keep the
-    # long-running combined operation in one broad range instead of reporting
-    # the database stage as started before archive inspection has done work.
-    "backup_extract": (STAGE_ARCHIVES, 46, 88),
-    "encrypted_backup_extract": (STAGE_ARCHIVES, 46, 88),
-    "database_read": (STAGE_DATABASE, 88, 91),
-    "temporary_data_cleanup": (STAGE_CLEANUP, 94, 98),
-}
-_OUTCOME_CHANGED = "changed"
-_OUTCOME_STARTED = "started"
-_FAILED_OUTCOMES = {"cancelled", "failed", "skipped"}
+_TERMINAL_LIVE_STATUSES = frozenset(
+    {"passed", "failed", "aborted", "inconclusive", "not_started"}
+)
 
 
 def _empty_stages(*, database_check_enabled: bool) -> dict[str, str]:
@@ -95,114 +81,36 @@ def _empty_stages(*, database_check_enabled: bool) -> dict[str, str]:
     return stages
 
 
-@dataclass(slots=True)
-class RecoverySimulationProgress:
-    """Track one live execution of the existing safe verification pipeline."""
-
-    running: bool = False
-    backup_reference: str | None = None
-    database_check_enabled: bool = False
-    stage: str = STAGE_PREPARE
-    progress_percent: int = 0
-    started_at: datetime | None = None
-    duration_seconds: float | None = None
-    stages: dict[str, str] = field(
-        default_factory=lambda: _empty_stages(database_check_enabled=False)
+def _stage_percent(stages: Mapping[str, str]) -> int:
+    """Return the percentage a reconstructed pipeline really reached."""
+    reached = sum(
+        _STAGE_WEIGHTS.get(key, 0)
+        for key, state in stages.items()
+        if state in {STAGE_PASSED, STAGE_NOT_APPLICABLE}
     )
-    _started_monotonic: float | None = field(default=None, repr=False)
+    return max(0, min(reached, 100))
 
-    def start(self, record: BackupRecord, *, database_check_enabled: bool) -> None:
-        """Start a live simulation for one anonymous backup reference."""
-        self.running = True
-        self.backup_reference = record.backup_reference
-        self.database_check_enabled = database_check_enabled
-        self.stage = STAGE_PREPARE
-        self.progress_percent = 1
-        self.started_at = datetime.now(UTC)
-        self.duration_seconds = None
-        self.stages = _empty_stages(database_check_enabled=database_check_enabled)
-        self.stages[STAGE_PREPARE] = STAGE_RUNNING
-        self._started_monotonic = time.monotonic()
 
-    def activity(
-        self,
-        action: str,
-        outcome: str,
-        details: Mapping[str, object] | None = None,
-    ) -> None:
-        """Advance the graphical pipeline from privacy-safe verifier activity."""
-        if not self.running or action not in _ACTION_STAGES:
-            return
-        stage, start_percent, end_percent = _ACTION_STAGES[action]
-        self.stage = stage
-        if outcome == _OUTCOME_CHANGED and stage in {STAGE_DOWNLOAD, STAGE_ARCHIVES}:
-            raw_progress = (details or {}).get("progress_percent")
-            stage_progress = raw_progress if isinstance(raw_progress, int) else 0
-            bounded = max(0, min(stage_progress, 100))
-            self.progress_percent = max(
-                self.progress_percent,
-                start_percent + ((end_percent - start_percent) * bounded // 100),
-            )
-            self.stages[stage] = STAGE_RUNNING
-            return
-        if outcome == _OUTCOME_STARTED:
-            self.progress_percent = max(self.progress_percent, start_percent)
-            self.stages[stage] = STAGE_RUNNING
-            return
-        self.progress_percent = max(self.progress_percent, end_percent)
-        self.stages[stage] = (
-            STAGE_FAILED if outcome in _FAILED_OUTCOMES else STAGE_PASSED
-        )
-
-    def finish(self, result: BackupIntegrityResult) -> None:
-        """Finish the live pipeline and retain its timing for the result view."""
-        if not self.running:
-            return
-        self.running = False
-        self.stage = STAGE_COMPLETE
-        self.progress_percent = 100
-        if self.stages[STAGE_EVALUATE] == STAGE_PENDING:
-            self.stages[STAGE_EVALUATE] = (
-                STAGE_PASSED
-                if result.status
-                in {INTEGRITY_STATUS_VALID, INTEGRITY_STATUS_VALID_WITH_WARNINGS}
-                else STAGE_FAILED
-            )
-        if self.stages[STAGE_CLEANUP] == STAGE_PENDING:
-            self.stages[STAGE_CLEANUP] = STAGE_PASSED
-        self.stages[STAGE_COMPLETE] = (
-            STAGE_PASSED
-            if result.status
-            in {INTEGRITY_STATUS_VALID, INTEGRITY_STATUS_VALID_WITH_WARNINGS}
-            else STAGE_FAILED
-        )
-        if self._started_monotonic is not None:
-            self.duration_seconds = round(
-                max(0.0, time.monotonic() - self._started_monotonic), 2
-            )
-        self._started_monotonic = None
-
-    def cancel(self) -> None:
-        """Mark a running simulation as cancelled during integration shutdown."""
-        if not self.running:
-            return
-        self.running = False
-        self.stages[self.stage] = STAGE_FAILED
-        self.duration_seconds = None
-        self._started_monotonic = None
-
-    def as_dict(self) -> dict[str, Any]:
-        """Return bounded live state suitable for entity attributes."""
-        return {
-            "running": self.running,
-            "mode": SIMULATION_MODE_STANDARD,
-            "stage": self.stage,
-            "progress_percent": self.progress_percent,
-            "started_at": self.started_at.isoformat() if self.started_at else None,
-            "duration_seconds": self.duration_seconds,
-            "stages": dict(self.stages),
-            "backup_reference": self.backup_reference,
+def _steps_from_stages(stages: Mapping[str, str]) -> list[dict[str, Any]]:
+    """Return a step list for a persisted result without live measurements."""
+    return [
+        {
+            "key": step.key,
+            "label_key": step.label_key,
+            "weight": step.weight,
+            "state": stages.get(step.key, STAGE_PENDING),
+            "determinate": False,
+            "percent": None,
+            "done": None,
+            "total": None,
+            "unit": step.unit,
+            "started_at": None,
+            "finished_at": None,
+            "heartbeat_at": None,
+            "detail": None,
         }
+        for step in VERIFICATION_STEPS
+    ]
 
 
 @dataclass(frozen=True, slots=True)
@@ -216,12 +124,17 @@ class RecoverySimulation:
     backup_reference: str | None
     checked_at: str | None
     mode: str = SIMULATION_MODE_STANDARD
-    stage: str = STAGE_COMPLETE
-    progress_percent: int = 100
+    stage: str = STAGE_CLEANUP
+    progress_percent: int = 0
     running: bool = False
     started_at: str | None = None
     duration_seconds: float | None = None
     stages: dict[str, str] = field(default_factory=dict)
+    steps: list[dict[str, Any]] = field(default_factory=list)
+    current_step: str | None = None
+    determinate: bool = False
+    heartbeat_at: str | None = None
+    error_code: str | None = None
     archive_count: int = 0
     file_count: int = 0
     verified_size: int | None = None
@@ -253,6 +166,13 @@ class RecoverySimulation:
             "checked_at": self.checked_at,
             "duration_seconds": self.duration_seconds,
             "stages": self.stages,
+            "steps": self.steps,
+            "overall_percent": self.progress_percent,
+            "current_step": self.current_step,
+            "determinate": self.determinate,
+            "heartbeat_at": self.heartbeat_at,
+            "error_code": self.error_code,
+            "source": "integration",
             "checks": self.checks,
             "blocking_failures": list(self.blocking_failures),
             "warnings": list(self.warnings),
@@ -374,13 +294,16 @@ def _final_stages(
     stages = _empty_stages(database_check_enabled=database_check_enabled)
     successful_read = integrity.archive_count > 0 and integrity.file_count > 0
     stages[STAGE_PREPARE] = STAGE_PASSED
-    stages[STAGE_STORAGE] = STAGE_PASSED if integrity.agent_id else STAGE_FAILED
+    stages[STAGE_STAGING] = STAGE_PASSED if integrity.agent_id else STAGE_FAILED
     stages[STAGE_DOWNLOAD] = (
         STAGE_PASSED
         if integrity.verified_size and integrity.verified_size > 0
         else STAGE_FAILED
     )
-    stages[STAGE_ARCHIVES] = STAGE_PASSED if successful_read else STAGE_FAILED
+    stages[STAGE_ARCHIVE_SCAN] = STAGE_PASSED if successful_read else STAGE_FAILED
+    stages[STAGE_NESTED_ARCHIVES] = (
+        STAGE_PASSED if integrity.archive_count > 0 else STAGE_FAILED
+    )
     if database_check_enabled:
         stages[STAGE_DATABASE] = {
             INTEGRITY_DATABASE_PASSED: STAGE_PASSED,
@@ -393,7 +316,6 @@ def _final_stages(
         else STAGE_FAILED
     )
     stages[STAGE_CLEANUP] = STAGE_PASSED
-    stages[STAGE_COMPLETE] = stages[STAGE_EVALUATE]
     return stages
 
 
@@ -402,6 +324,7 @@ def _live_simulation(
     progress: Mapping[str, Any],
 ) -> RecoverySimulation:
     """Render an in-progress run without treating incomplete checks as failures."""
+    steps = progress.get("steps")
     return RecoverySimulation(
         status=SIMULATION_STATUS_RUNNING,
         checks={"backup_available": True},
@@ -410,12 +333,28 @@ def _live_simulation(
         backup_reference=latest.backup_reference,
         checked_at=None,
         stage=str(progress.get("stage") or STAGE_PREPARE),
-        progress_percent=max(0, min(int(progress.get("progress_percent") or 0), 100)),
+        progress_percent=max(0, min(int(progress.get("overall_percent") or 0), 100)),
         running=True,
         started_at=progress.get("started_at"),
         duration_seconds=progress.get("duration_seconds"),
         stages=dict(progress.get("stages") or {}),
+        steps=list(steps) if isinstance(steps, list) else [],
+        current_step=progress.get("current_step"),
+        determinate=bool(progress.get("determinate")),
+        heartbeat_at=progress.get("heartbeat_at"),
+        error_code=progress.get("error_code"),
     )
+
+
+def _measured_pipeline(
+    progress: Mapping[str, Any], reference: str | None
+) -> Mapping[str, Any] | None:
+    """Return the finished live pipeline belonging to this backup, if any."""
+    if not progress or progress.get("backup_reference") != reference:
+        return None
+    if progress.get("status") not in _TERMINAL_LIVE_STATUSES:
+        return None
+    return progress
 
 
 def simulate_restore(
@@ -437,6 +376,9 @@ def simulate_restore(
             progress_percent=0,
             stage=STAGE_PREPARE,
             stages=_empty_stages(database_check_enabled=database_check_enabled),
+            steps=_steps_from_stages(
+                _empty_stages(database_check_enabled=database_check_enabled)
+            ),
         )
     if (
         live_progress
@@ -461,6 +403,25 @@ def simulate_restore(
         else _empty_stages(database_check_enabled=database_check_enabled)
     )
     progress = live_progress or {}
+    # A finished run keeps the pipeline it really measured; only an older
+    # result is reconstructed from the stored integrity outcome.
+    measured = _measured_pipeline(progress, latest.backup_reference)
+    if measured is not None and has_run:
+        stages = dict(measured.get("stages") or stages)
+        measured_steps = measured.get("steps")
+        steps = (
+            list(measured_steps)
+            if isinstance(measured_steps, list)
+            else _steps_from_stages(stages)
+        )
+        percent = max(0, min(int(measured.get("overall_percent") or 0), 100))
+        stage = str(measured.get("stage") or STAGE_CLEANUP)
+        error_code = measured.get("error_code") or integrity.error_code
+    else:
+        steps = _steps_from_stages(stages)
+        percent = _stage_percent(stages) if has_run else 0
+        stage = STAGE_CLEANUP if has_run else STAGE_PREPARE
+        error_code = integrity.error_code
     return RecoverySimulation(
         status=status,
         checks=checks,
@@ -468,11 +429,13 @@ def simulate_restore(
         warnings=warnings,
         backup_reference=latest.backup_reference,
         checked_at=integrity.checked_at.isoformat() if integrity.checked_at else None,
-        stage=STAGE_COMPLETE if has_run else STAGE_PREPARE,
-        progress_percent=100 if has_run else 0,
+        stage=stage,
+        progress_percent=percent,
         started_at=progress.get("started_at"),
         duration_seconds=integrity.duration_seconds,
         stages=stages,
+        steps=steps,
+        error_code=error_code,
         archive_count=integrity.archive_count,
         file_count=integrity.file_count,
         verified_size=integrity.verified_size,

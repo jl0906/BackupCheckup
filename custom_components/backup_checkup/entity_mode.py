@@ -67,6 +67,7 @@ STANDARD_BINARY_SENSOR_KEYS = frozenset(
         "external_dependency_unprotected",
         "restore_test_overdue",
         "recovery_plan_incomplete",
+        "runtime_runner",
         "backup_integrity_problem",
         "backup_integrity_warning",
         "backup_checksum_changed",

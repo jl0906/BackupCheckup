@@ -20,7 +20,11 @@ from homeassistant.const import STATE_UNAVAILABLE
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.event import (
+    async_track_state_change_event,
+    async_track_time_interval,
+)
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
@@ -61,10 +65,15 @@ from .const import (
     INTEGRITY_STATUS_INTERNAL_ERROR,
     INTEGRITY_STATUS_PASSWORD_REQUIRED,
     INTEGRITY_STATUS_UNREADABLE,
+    INTEGRITY_STATUS_VALID,
     INTEGRITY_STATUS_VALID_WITH_WARNINGS,
+    RUNNER_CHECK_SOURCE_INTERVAL,
+    RUNNER_CHECK_SOURCE_PRE_RUN,
     SIZE_CHECK_AUTO,
     SIZE_CHECK_FIXED,
     SIZE_CHECK_OFF,
+    progress_signal,
+    runner_signal,
 )
 from .history import BackupCheckupHistory
 from .integrity import BackupIntegrityVerifier
@@ -82,6 +91,20 @@ from .native_backup import (
 )
 from .notifications import BackupCheckupNotificationManager
 from .problem_state import evaluate_problem_state
+from .progress import (
+    JOB_ABORTED,
+    JOB_FAILED,
+    JOB_IDLE,
+    JOB_INCONCLUSIVE,
+    JOB_NOT_STARTED,
+    JOB_PASSED,
+    JOB_RUNNING,
+    JOB_RUNTIME_TEST,
+    JOB_VERIFICATION,
+    JobProgress,
+    ProgressReporter,
+    runtime_status_for_error,
+)
 from .recovery import (
     RecoveryAssessmentContext,
     RecoveryReadiness,
@@ -93,16 +116,16 @@ from .recovery_preparedness import (
 )
 from .recovery_restore import RecoveryRestoreTestStore
 from .recovery_runtime import (
-    RUNTIME_STATUS_ABORTED,
-    RUNTIME_STATUS_INCONCLUSIVE,
+    RUNTIME_STATUS_NOT_STARTED,
+    RunnerHealth,
     RuntimeRunnerClient,
     RuntimeRunnerConnection,
     RuntimeRunnerError,
-    RuntimeTestProgress,
     RuntimeTestSnapshot,
     RuntimeTestStore,
 )
-from .recovery_simulation import RecoverySimulationProgress, simulate_restore
+from .recovery_simulation import simulate_restore
+from .repairs import async_set_runner_issues
 from .security import (
     anonymous_agent_reference,
     classify_exception,
@@ -120,6 +143,45 @@ _AUTOMATIC_RETRY_LIMIT = 3
 _MAX_AGENT_ID_LENGTH = 512
 _CREDENTIAL_MARKER_CONTEXT = "backup-checkup-credential-marker"
 _SIZE_BASELINE_RECORDS = 5
+_RUNNER_HEALTH_WARNING_THRESHOLD = 3
+
+#: While a runtime test runs, the previous proof is no longer valid evidence.
+_RUNNING_RUNTIME_EVIDENCE = {
+    "passed": None,
+    "ready": False,
+    "isolation_verified": False,
+    "home_assistant_version": None,
+    "checked_at": None,
+    "error_code": None,
+    "backup_sha256": None,
+    "runner_id": None,
+    "duration_seconds": None,
+}
+
+#: Activity actions that keep the established translation keys for the two
+#: measured verification steps.
+_VERIFICATION_PROGRESS_ACTIONS = {
+    "download": "backup_download",
+    "archive_scan": "backup_extract",
+}
+
+_RUNTIME_ACTIVITY_OUTCOMES = {
+    JOB_PASSED: ACTIVITY_OUTCOME_COMPLETED,
+    JOB_NOT_STARTED: ACTIVITY_OUTCOME_SKIPPED,
+    JOB_ABORTED: ACTIVITY_OUTCOME_CANCELLED,
+}
+
+_VERIFICATION_JOB_STATUS = {
+    INTEGRITY_STATUS_VALID: JOB_PASSED,
+    INTEGRITY_STATUS_VALID_WITH_WARNINGS: JOB_PASSED,
+    INTEGRITY_STATUS_ABORTED: JOB_ABORTED,
+    INTEGRITY_STATUS_INTERNAL_ERROR: JOB_INCONCLUSIVE,
+}
+
+
+def _verification_job_status(status: str) -> str:
+    """Map one integrity status to the shared job status."""
+    return _VERIFICATION_JOB_STATUS.get(status, JOB_FAILED)
 
 
 @dataclass(frozen=True, slots=True)
@@ -179,9 +241,16 @@ class InventoryState:
 
 
 def _assessment_fields(
-    health: HealthScore, recovery: RecoveryReadiness
+    health: HealthScore,
+    recovery: RecoveryReadiness,
+    *,
+    runtime_test: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Return shared health and recovery fields for coordinator snapshots."""
+    """Return shared health and recovery fields for coordinator snapshots.
+
+    ``runtime_test`` replaces the assessed runtime result with the merged live
+    view; passing it as a separate keyword would duplicate the argument.
+    """
     return {
         "health_score": health.score,
         "health_rating": health.rating,
@@ -199,7 +268,9 @@ def _assessment_fields(
         "recovery_storage_resilience": recovery.storage_resilience,
         "recovery_preparedness": recovery.preparedness,
         "recovery_restore_simulation": recovery.restore_simulation,
-        "recovery_runtime_test": recovery.runtime_test,
+        "recovery_runtime_test": (
+            recovery.runtime_test if runtime_test is None else runtime_test
+        ),
         "recovery_restore_test": recovery.restore_test,
         "recovery_plan": recovery.recovery_plan,
     }
@@ -240,8 +311,35 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self.recovery_preparedness = RecoveryPreparednessStore(hass, entry.entry_id)
         self.recovery_restore_tests = RecoveryRestoreTestStore(hass, entry.entry_id)
         self.runtime_tests = RuntimeTestStore(hass, entry.entry_id)
-        self.recovery_simulation_progress = RecoverySimulationProgress()
-        self.runtime_test_progress = RuntimeTestProgress()
+        self.verification_progress = JobProgress.create(JOB_VERIFICATION)
+        self.runtime_progress = JobProgress.create(JOB_RUNTIME_TEST)
+        self._verification_reporter = ProgressReporter(
+            self.verification_progress,
+            lambda: self._publish_progress(JOB_VERIFICATION),
+            loop=hass.loop,
+            activity=lambda key, outcome, details: self._record_step_activity(
+                JOB_VERIFICATION, key, outcome, details
+            ),
+        )
+        self._runtime_reporter = ProgressReporter(
+            self.runtime_progress,
+            lambda: self._publish_progress(JOB_RUNTIME_TEST),
+            loop=hass.loop,
+            activity=lambda key, outcome, details: self._record_step_activity(
+                JOB_RUNTIME_TEST, key, outcome, details
+            ),
+        )
+        self._progress_record: BackupRecord | None = None
+        self._runner_health = (
+            # A configured runner starts as "configured but not checked yet",
+            # never as "not configured".
+            RunnerHealth(configured=True)
+            if self.runtime_runner_connection is not None
+            else RunnerHealth.not_configured()
+        )
+        self._runner_health_lock = asyncio.Lock()
+        self._runner_health_failures = 0
+        self._runner_health_unsubscribe: Callable[[], None] | None = None
         self._normalizer = BackupRecordNormalizer(entry.entry_id)
 
         self.integrity_result = BackupIntegrityResult.not_checked()
@@ -288,6 +386,10 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         """Attach a runner discovered after the coordinator was initialized."""
         self.runtime_runner_connection = connection
         self.recovery_policy = self._resolve_recovery_policy()
+        self._runner_health_failures = 0
+        # The interval check is skipped while no runner exists, so it has to be
+        # started once one appears.
+        self.async_start_runner_health_monitor()
 
     @property
     def staging_root(self) -> Path:
@@ -331,6 +433,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self.runner_maximum_archive_gb = settings.runner_maximum_archive_gb
         self.runner_maximum_expanded_gb = settings.runner_maximum_expanded_gb
         self.runner_timeout_minutes = settings.runner_timeout_minutes
+        self.runner_health_interval_minutes = settings.runner_health_interval_minutes
         self.expose_backup_metadata = settings.expose_backup_metadata
         self.notifications_enabled = settings.notifications_enabled
         self.notification_targets = settings.notification_targets
@@ -445,9 +548,10 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         if self._integrity_task is not None and not self._integrity_task.done():
             self._integrity_task.cancel()
             await asyncio.gather(self._integrity_task, return_exceptions=True)
-        self.recovery_simulation_progress.cancel()
-        self.runtime_test_progress.cancel()
-        self.integrity_verifier.set_progress_listener(None)
+        self._verification_reporter.cancel()
+        self._runtime_reporter.cancel()
+        self.integrity_verifier.set_progress_reporter(None)
+        self.async_stop_runner_health_monitor()
         if (
             self._adaptive_refresh_task is not None
             and not self._adaptive_refresh_task.done()
@@ -725,9 +829,10 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                     getattr(self.hass, "config", None), "language", "en"
                 ),
             ),
-            simulation_progress=self.recovery_simulation_progress.as_dict(),
+            simulation_progress=self._verification_reporter.snapshot(),
             adaptive_policy=self.recovery_policy,
             runtime_test=self.runtime_tests.snapshot(),
+            runner_reachable=self._runner_health.usable,
         )
 
         public_locations = self._public_location_ids(latest_locations)
@@ -794,7 +899,9 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             active_problems=problem_state.active,
             size_check_mode=self.size_check_mode,
             analytics_window_days=self.analytics_window_days,
-            **_assessment_fields(health, recovery),
+            **_assessment_fields(
+                health, recovery, runtime_test=self._runtime_view(latest)
+            ),
             recovery_evidence=recovery.evidence,
             recovery_adaptive_policy=recovery.adaptive_policy,
             recovery_open_risks=recovery.open_risks,
@@ -1394,7 +1501,10 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                     getattr(self.hass, "config", None), "language", "en"
                 ),
             ),
+            simulation_progress=self._verification_reporter.snapshot(),
+            adaptive_policy=self.recovery_policy,
             runtime_test=self.runtime_tests.snapshot(),
+            runner_reachable=self._runner_health.usable,
         )
         return cast(
             BackupCheckupData,
@@ -1418,7 +1528,13 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 recommendation=state.recommendation,
                 problem_count=len(state.active),
                 active_problems=state.active,
-                **_assessment_fields(health, recovery),
+                **_assessment_fields(
+                    health,
+                    recovery,
+                    runtime_test=self._runtime_view(
+                        self.data.latest_monitored_backup_record
+                    ),
+                ),
                 last_restore_test=restore_test.tested_at,
                 restore_test_result=restore_test.result,
                 restore_test_scope=restore_test.scope,
@@ -1620,6 +1736,143 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             record, path, password, verified
         )
 
+    def _record_step_activity(
+        self, job: str, key: str, outcome: str, details: Mapping[str, Any]
+    ) -> None:
+        """Write one bounded journal record for measured step progress.
+
+        Only completed tenths reach the journal; the live percentage itself is
+        published on the progress channel and never through the activity log.
+        """
+        if outcome != ACTIVITY_OUTCOME_CHANGED:
+            return
+        if job == JOB_RUNTIME_TEST:
+            action = "runtime_test"
+            payload: dict[str, Any] = {"step": key, **dict(details)}
+        else:
+            action = _VERIFICATION_PROGRESS_ACTIONS.get(key)
+            if action is None:
+                return
+            payload = dict(details)
+        self._record_activity(action, ACTIVITY_OUTCOME_CHANGED, details=payload)
+
+    @callback
+    def _publish_progress(self, job: str) -> None:
+        """Notify only the progress entities and the panel subscription."""
+        async_dispatcher_send(
+            self.hass, progress_signal(self.config_entry.entry_id), job
+        )
+
+    def _refresh_progress_data(self) -> None:
+        """Fold the current progress views into the shared coordinator data.
+
+        This runs on job transitions only; a percentage tick never refreshes
+        every entity.
+        """
+        if self.data is None:
+            return
+        self.async_set_updated_data(
+            replace(
+                self.data,
+                integrity_check_running=self.integrity_check_running,
+                recovery_restore_simulation=self.progress_view(JOB_VERIFICATION),
+                recovery_runtime_test=self.progress_view(JOB_RUNTIME_TEST),
+            )
+        )
+
+    def progress_view(
+        self, job: str, latest: BackupRecord | None = None
+    ) -> dict[str, Any]:
+        """Return the merged stored and live view of one job."""
+        if job == JOB_RUNTIME_TEST:
+            return self._runtime_view(latest)
+        return self._simulation_view(latest)
+
+    def _progress_backup_record(
+        self, latest: BackupRecord | None = None
+    ) -> BackupRecord | None:
+        """Return the backup the progress views describe.
+
+        A running job owns the view; otherwise the current latest backup does,
+        so a newer backup is never shown with the result of an older one. While
+        a snapshot is being built the caller passes the latest record it just
+        read, because ``self.data`` still holds the previous one.
+        """
+        running = JOB_RUNNING in {
+            self.verification_progress.status,
+            self.runtime_progress.status,
+        }
+        if running and self._progress_record is not None:
+            return self._progress_record
+        if latest is None and self.data is not None:
+            latest = self.data.latest_monitored_backup_record
+        return latest if latest is not None else self._progress_record
+
+    def _simulation_view(
+        self, latest: BackupRecord | None = None
+    ) -> dict[str, Any]:
+        """Return the restore simulation including any live measurement."""
+        return simulate_restore(
+            self._progress_backup_record(latest),
+            self.integrity_result,
+            database_check_enabled=self.database_integrity_check,
+            live_progress=self._verification_reporter.snapshot(),
+        ).as_dict()
+
+    def _runtime_view(self, latest: BackupRecord | None = None) -> dict[str, Any]:
+        """Combine stored proof details with the current live pipeline."""
+        state = self.runtime_tests.snapshot().as_dict()
+        progress = self._runtime_reporter.snapshot()
+        record = self._progress_backup_record(latest)
+        reference = record.backup_reference if record else None
+        belongs = progress["status"] != JOB_IDLE and (
+            reference is None or progress.get("backup_reference") == reference
+        )
+        if not belongs:
+            # The live pipeline belongs to another backup, so this view shows an
+            # untouched one instead of finished steps without a percentage.
+            empty = JobProgress.create(JOB_RUNTIME_TEST).as_dict()
+            state.update(
+                {
+                    "running": False,
+                    "steps": empty["steps"],
+                    "stages": empty["stages"],
+                    "overall_percent": 0,
+                    "progress_percent": 0,
+                    "current_step": None,
+                    "determinate": False,
+                    "heartbeat_at": None,
+                    "events": [],
+                    "source": empty["source"],
+                    **self._runner_fields(),
+                }
+            )
+            return state
+        live = {key: value for key, value in progress.items() if key != "job"}
+        for key in ("duration_seconds", "runner_version"):
+            if live.get(key) is None:
+                # Keep the stored value instead of erasing it with a live None.
+                live.pop(key)
+        if progress["status"] == JOB_RUNNING:
+            # A running test must not keep presenting the previous proof.
+            state.update(_RUNNING_RUNTIME_EVIDENCE)
+        state.update(live)
+        state.update(self._runner_fields())
+        return state
+
+    def _runner_fields(self) -> dict[str, Any]:
+        """Return the runner facts every runtime-test view carries."""
+        return {
+            "runner_reachable": self._runner_health.usable,
+            "runner_configured": self._runner_health.configured,
+            "runner_update_recommended": self._runner_health.update_recommended,
+            "runner_checked_at": (
+                self._runner_health.checked_at.isoformat()
+                if self._runner_health.checked_at
+                else None
+            ),
+        }
+
     def _publish_integrity_result(
         self,
         record: BackupRecord,
@@ -1628,10 +1881,14 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         simulation_run: bool,
     ) -> None:
         """Publish one verifier result to all in-memory consumers."""
+        del simulation_run
         self.integrity_result = result
-        if simulation_run:
-            self.recovery_simulation_progress.finish(result)
-            self._publish_simulation_progress(record)
+        self._progress_record = record
+        self._verification_reporter.finish(
+            _verification_job_status(result.status),
+            error_code=result.error_code,
+        )
+        self._refresh_progress_data()
         self._update_integrity_retry_state(result)
 
     async def _async_complete_integrity_check(
@@ -1687,9 +1944,10 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self, record: BackupRecord, *, source: str, simulation_run: bool
     ) -> None:
         """Publish a cancelled verifier invocation."""
-        if simulation_run:
-            self.recovery_simulation_progress.cancel()
-            self._publish_simulation_progress(record)
+        del simulation_run
+        self._progress_record = record
+        self._verification_reporter.cancel()
+        self._refresh_progress_data()
         self._record_activity(
             "integrity_check",
             ACTIVITY_OUTCOME_CANCELLED,
@@ -1700,8 +1958,8 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self, *, simulation_run: bool, cancelled: bool
     ) -> None:
         """Release verifier state and refresh the inventory when appropriate."""
-        if simulation_run:
-            self.integrity_verifier.set_progress_listener(None)
+        del simulation_run
+        self.integrity_verifier.set_progress_reporter(None)
         self.integrity_check_running = False
         self._integrity_task = release_current_task_reference(self._integrity_task)
         if cancelled:
@@ -1728,16 +1986,9 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         cancelled = False
         self.integrity_check_running = True
         simulation_run = source == "simulation"
-        if simulation_run:
-            self.recovery_simulation_progress.start(
-                record,
-                database_check_enabled=self.database_integrity_check,
-            )
-            self.integrity_verifier.set_progress_listener(
-                lambda action, outcome, details: self._handle_simulation_progress(
-                    record, action, outcome, details
-                )
-            )
+        self._progress_record = record
+        self._verification_reporter.start(reference=record.backup_reference)
+        self.integrity_verifier.set_progress_reporter(self._verification_reporter)
         try:
             self._record_activity(
                 "integrity_check",
@@ -1746,8 +1997,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                     "source": source,
                 },
             )
-            if self.data is not None:
-                self._publish_simulation_progress(record)
+            self._refresh_progress_data()
             result = await self.integrity_verifier.async_verify(
                 record,
                 database_check=self.database_integrity_check,
@@ -1785,17 +2035,6 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 simulation_run=simulation_run, cancelled=cancelled
             )
 
-    def _handle_simulation_progress(
-        self,
-        record: BackupRecord,
-        action: str,
-        outcome: str,
-        details: Mapping[str, object] | None,
-    ) -> None:
-        """Publish one privacy-safe simulation stage immediately to entities."""
-        self.recovery_simulation_progress.activity(action, outcome, details)
-        self._publish_simulation_progress(record)
-
     async def _async_run_runtime_test(
         self,
         record: BackupRecord,
@@ -1809,11 +2048,35 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             return
 
         self.integrity_result = verified
-        self.recovery_simulation_progress.finish(verified)
-        self.runtime_test_progress.start(record.backup_reference)
+        self._progress_record = record
+        # The verification keeps running: its cleanup step only starts once this
+        # callback returns, so its result is published by the verifier itself.
+        self._runtime_reporter.start(reference=record.backup_reference)
         self._record_activity("runtime_test", ACTIVITY_OUTCOME_STARTED)
-        self._publish_simulation_progress(record)
+        self._refresh_progress_data()
         started = time.monotonic()
+
+        health = await self.async_check_runner(
+            source=RUNNER_CHECK_SOURCE_PRE_RUN, maximum_age_seconds=60
+        )
+        if not health.usable:
+            # An unreachable runner means the isolated test never ran. Reporting
+            # it as an inconclusive result would contradict the empty pipeline.
+            await self._async_finish_runtime_test(
+                RuntimeTestSnapshot(
+                    status=RUNTIME_STATUS_NOT_STARTED,
+                    backup_reference=record.backup_reference,
+                    backup_sha256=verified.sha256,
+                    checked_at=dt_util.utcnow(),
+                    duration_seconds=0.0,
+                    runner_id=connection.runner_id,
+                    runner_version=health.runner_version,
+                    error_code=health.error_code or "runner_unavailable",
+                ),
+                outcome=ACTIVITY_OUTCOME_SKIPPED,
+            )
+            return
+
         try:
             client = RuntimeRunnerClient(
                 async_get_clientsession(self.hass), connection
@@ -1826,49 +2089,63 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 maximum_archive_gb=self.runner_maximum_archive_gb,
                 maximum_expanded_gb=self.runner_maximum_expanded_gb,
                 timeout_minutes=self.runner_timeout_minutes,
-                progress_callback=lambda stage, percent: (
-                    self._handle_runtime_progress(record, stage, percent)
-                ),
+                reporter=self._runtime_reporter,
             )
         except asyncio.CancelledError:
-            self.runtime_test_progress.cancel()
-            self._publish_simulation_progress(record)
+            self._runtime_reporter.cancel()
+            self._refresh_progress_data()
             raise
         except RuntimeRunnerError as err:
-            status = (
-                RUNTIME_STATUS_ABORTED
-                if err.code
-                in {
-                    "runner_isolation_unavailable",
-                    "runner_timeout",
-                    "cancelled",
-                }
-                else RUNTIME_STATUS_INCONCLUSIVE
-            )
-            snapshot = RuntimeTestSnapshot(
-                status=status,
-                backup_reference=record.backup_reference,
-                backup_sha256=verified.sha256,
-                checked_at=dt_util.utcnow(),
-                duration_seconds=round(time.monotonic() - started, 2),
-                runner_id=connection.runner_id,
+            snapshot = self._runtime_failure_snapshot(
+                record,
+                verified,
+                connection,
+                started=started,
                 error_code=err.code,
+                status=runtime_status_for_error(err.code, phase=err.phase),
             )
         except Exception as err:  # noqa: BLE001 - optional runner boundary
-            snapshot = RuntimeTestSnapshot(
-                status=RUNTIME_STATUS_INCONCLUSIVE,
-                backup_reference=record.backup_reference,
-                backup_sha256=verified.sha256,
-                checked_at=dt_util.utcnow(),
-                duration_seconds=round(time.monotonic() - started, 2),
-                runner_id=connection.runner_id,
+            snapshot = self._runtime_failure_snapshot(
+                record,
+                verified,
+                connection,
+                started=started,
                 error_code="runner_internal_error",
+                status=JOB_INCONCLUSIVE,
             )
             _LOGGER.warning(
                 "Runtime runner failed unexpectedly: error_type=%s",
                 safe_error_type(err),
             )
 
+        await self._async_finish_runtime_test(snapshot)
+
+    def _runtime_failure_snapshot(
+        self,
+        record: BackupRecord,
+        verified: BackupIntegrityResult,
+        connection: RuntimeRunnerConnection,
+        *,
+        started: float,
+        error_code: str,
+        status: str,
+    ) -> RuntimeTestSnapshot:
+        """Build one bounded failure snapshot for a runner error."""
+        return RuntimeTestSnapshot(
+            status=status,
+            backup_reference=record.backup_reference,
+            backup_sha256=verified.sha256,
+            checked_at=dt_util.utcnow(),
+            duration_seconds=round(time.monotonic() - started, 2),
+            runner_id=connection.runner_id,
+            runner_version=self._runner_health.runner_version,
+            error_code=error_code,
+        )
+
+    async def _async_finish_runtime_test(
+        self, snapshot: RuntimeTestSnapshot, *, outcome: str | None = None
+    ) -> None:
+        """Persist, publish and journal one finished runtime test."""
         try:
             await self.runtime_tests.async_save(snapshot)
         except Exception as err:  # noqa: BLE001 - private store boundary
@@ -1876,52 +2153,123 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 "Unable to persist runtime-test result: error_type=%s",
                 safe_error_type(err),
             )
-        self.runtime_test_progress.finish(snapshot)
+        self._runtime_reporter.finish(
+            snapshot.status, error_code=snapshot.error_code
+        )
         self._record_activity(
             "runtime_test",
-            (
-                ACTIVITY_OUTCOME_COMPLETED
-                if snapshot.passed is True
-                else ACTIVITY_OUTCOME_FAILED
+            outcome or _RUNTIME_ACTIVITY_OUTCOMES.get(
+                snapshot.status, ACTIVITY_OUTCOME_FAILED
             ),
             level=logging.INFO if snapshot.passed is True else logging.WARNING,
-            details={"status": snapshot.status},
+            details={
+                "status": snapshot.status,
+                "error_code": snapshot.error_code or "none",
+            },
         )
-        self._publish_simulation_progress(record)
+        self._refresh_progress_data()
 
-    def _handle_runtime_progress(
-        self, record: BackupRecord, stage: str, percent: int
-    ) -> None:
-        """Publish authenticated runner progress immediately."""
-        self.runtime_test_progress.update(stage, percent)
-        self._publish_simulation_progress(record)
+    # -- companion runner health ------------------------------------------
 
-    def _runtime_public_state(self, record: BackupRecord) -> dict[str, Any]:
-        """Combine stored proof details with the current live pipeline."""
-        state = self.runtime_tests.snapshot().as_dict()
-        progress = self.runtime_test_progress.as_dict()
-        if progress.get("backup_reference") == record.backup_reference:
-            state.update(progress)
-        return state
+    @property
+    def runner_health(self) -> RunnerHealth:
+        """Return the last known companion-runner state."""
+        return self._runner_health
 
-    def _publish_simulation_progress(self, record: BackupRecord) -> None:
-        """Update the simulation sensor without waiting for an inventory refresh."""
-        if self.data is None:
-            return
-        simulation = simulate_restore(
-            record,
-            self.integrity_result,
-            database_check_enabled=self.database_integrity_check,
-            live_progress=self.recovery_simulation_progress.as_dict(),
-        )
-        self.async_set_updated_data(
-            replace(
-                self.data,
-                integrity_check_running=self.integrity_check_running,
-                recovery_restore_simulation=simulation.as_dict(),
-                recovery_runtime_test=self._runtime_public_state(record),
+    async def async_check_runner(
+        self,
+        *,
+        source: str,
+        maximum_age_seconds: float | None = None,
+    ) -> RunnerHealth:
+        """Check the companion runner and publish one bounded result."""
+        if self._runner_health_is_fresh(maximum_age_seconds):
+            return self._runner_health
+        async with self._runner_health_lock:
+            if self._runner_health_is_fresh(maximum_age_seconds):
+                return self._runner_health
+            health = await self._async_request_runner_health(source)
+            self._apply_runner_health(health)
+            return health
+
+    def _runner_health_is_fresh(self, maximum_age_seconds: float | None) -> bool:
+        """Return whether the stored health is young enough to be reused."""
+        if maximum_age_seconds is None:
+            return False
+        checked_at = self._runner_health.checked_at
+        if checked_at is None:
+            return False
+        age = (dt_util.utcnow() - checked_at).total_seconds()
+        return 0 <= age <= maximum_age_seconds
+
+    async def _async_request_runner_health(self, source: str) -> RunnerHealth:
+        """Ask the configured runner for its state without leaking its address."""
+        connection = self.runtime_runner_connection
+        if connection is None:
+            return RunnerHealth.not_configured(check_source=source)
+        try:
+            client = RuntimeRunnerClient(
+                async_get_clientsession(self.hass), connection
             )
+        except RuntimeRunnerError as err:
+            return RunnerHealth.unreachable(err.code, check_source=source)
+        return await client.async_health(check_source=source)
+
+    @callback
+    def _apply_runner_health(self, health: RunnerHealth) -> None:
+        """Store one health result and report repeated failures once."""
+        self._runner_health = health
+        if health.usable or not health.configured:
+            # An installation without the optional add-on is not a failure.
+            self._runner_health_failures = 0
+        else:
+            self._runner_health_failures += 1
+            if self._runner_health_failures == _RUNNER_HEALTH_WARNING_THRESHOLD:
+                _LOGGER.warning(
+                    "Runtime runner unreachable: error_code=%s attempts=%d",
+                    health.error_code or "unknown",
+                    self._runner_health_failures,
+                )
+            else:
+                _LOGGER.debug(
+                    "Runtime runner check failed: error_code=%s",
+                    health.error_code or "unknown",
+                )
+        async_dispatcher_send(
+            self.hass, runner_signal(self.config_entry.entry_id)
         )
+        if self.repair_issues_enabled:
+            async_set_runner_issues(self.hass, health)
+
+    @callback
+    def async_start_runner_health_monitor(self) -> None:
+        """Start the configurable background check for the companion runner."""
+        self.async_stop_runner_health_monitor()
+        minutes = self.runner_health_interval_minutes
+        if minutes <= 0 or self.runtime_runner_connection is None:
+            return
+        self._runner_health_unsubscribe = async_track_time_interval(
+            self.hass,
+            self._async_scheduled_runner_check,
+            timedelta(minutes=minutes),
+        )
+
+    @callback
+    def async_stop_runner_health_monitor(self) -> None:
+        """Stop the background runner check."""
+        if self._runner_health_unsubscribe is not None:
+            self._runner_health_unsubscribe()
+            self._runner_health_unsubscribe = None
+
+    async def _async_scheduled_runner_check(self, _now: datetime) -> None:
+        """Run one interval check without destabilizing the event loop."""
+        try:
+            await self.async_check_runner(source=RUNNER_CHECK_SOURCE_INTERVAL)
+        except Exception as err:  # noqa: BLE001 - optional runner boundary
+            _LOGGER.debug(
+                "Scheduled runtime-runner check failed: error_type=%s",
+                safe_error_type(err),
+            )
 
     async def _try_persist_integrity_result(
         self,

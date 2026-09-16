@@ -252,6 +252,30 @@ def _open_risks(
     return tuple(risks)
 
 
+def _runtime_result_is_current(
+    snapshot: RuntimeTestSnapshot,
+    integrity: BackupIntegrityResult,
+    latest: BackupRecord | None,
+) -> bool:
+    """Return whether a stored runtime result still describes the last check.
+
+    A result that still names the current backup and its checksum stays valid
+    proof; only a result for an older backup, or one from before a newer
+    verification, becomes stale.
+    """
+    if snapshot.status in {RUNTIME_STATUS_NOT_RUN, RUNTIME_STATUS_NOT_AVAILABLE}:
+        return False
+    if snapshot.checked_at is None:
+        return False
+    if snapshot.verified_for(
+        latest.backup_reference if latest else None, integrity.sha256
+    ):
+        return True
+    if integrity.checked_at is None:
+        return True
+    return snapshot.checked_at >= integrity.checked_at
+
+
 def assess_recovery_readiness(
     latest: BackupRecord | None,
     integrity: BackupIntegrityResult,
@@ -267,6 +291,7 @@ def assess_recovery_readiness(
     simulation_progress: dict[str, Any] | None = None,
     adaptive_policy: AdaptiveRecoveryPolicy | None = None,
     runtime_test: RuntimeTestSnapshot | None = None,
+    runner_reachable: bool | None = None,
 ) -> RecoveryReadiness:
     """Assess whether the latest backup is suitable for disaster recovery."""
     del required_locations  # Superseded by failure-domain-aware redundancy.
@@ -275,11 +300,16 @@ def assess_recovery_readiness(
     preparedness_snapshot = preparedness or RecoveryPreparednessSnapshot.empty()
     restore_test_snapshot = restore_test or RestoreTestSnapshot.empty()
     runtime_test_snapshot = runtime_test or RuntimeTestSnapshot()
-    if (
-        runtime_test_snapshot.status == RUNTIME_STATUS_NOT_RUN
-        and adaptive_policy is not None
-        and not adaptive_policy.ephemeral_runner_available
+    runner_usable = (
+        runner_reachable
+        if runner_reachable is not None
+        else bool(adaptive_policy and adaptive_policy.ephemeral_runner_available)
+    )
+    if not runner_usable and not _runtime_result_is_current(
+        runtime_test_snapshot, integrity, latest
     ):
+        # Without a reachable runner an outdated result must not keep claiming
+        # runtime evidence for a backup it never covered.
         runtime_test_snapshot = RuntimeTestSnapshot(
             status=RUNTIME_STATUS_NOT_AVAILABLE
         )

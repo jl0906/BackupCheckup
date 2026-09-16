@@ -25,7 +25,6 @@ from securetar import InvalidPasswordError, SecureTarArchive, SecureTarError
 
 from .activity import (
     ACTIVITY_OUTCOME_CANCELLED,
-    ACTIVITY_OUTCOME_CHANGED,
     ACTIVITY_OUTCOME_COMPLETED,
     ACTIVITY_OUTCOME_FAILED,
     ACTIVITY_OUTCOME_STARTED,
@@ -47,6 +46,12 @@ from .const import (
 )
 from .datetime_utils import parse_stored_utc_datetime
 from .models import BackupIntegrityResult, BackupRecord
+from .progress import (
+    STEP_FAILED,
+    STEP_PASSED,
+    STEP_SKIPPED,
+    ProgressReporter,
+)
 from .repairs import (
     async_set_storage_data_issue,
     async_set_temporary_cleanup_issue,
@@ -91,6 +96,88 @@ _GLOBAL_LIMIT_CODES = frozenset(
 VerifiedArchiveCallback = Callable[
     [Path, str | None, BackupIntegrityResult], Awaitable[None]
 ]
+
+STEP_PREPARE = "prepare"
+STEP_STAGING = "staging"
+STEP_DOWNLOAD = "download"
+STEP_ARCHIVE_SCAN = "archive_scan"
+STEP_NESTED_ARCHIVES = "nested_archives"
+STEP_DATABASE_CHECK = "database_check"
+STEP_EVALUATE = "evaluate"
+STEP_CLEANUP = "cleanup"
+
+
+@dataclass(slots=True)
+class _ScanProgress:
+    """Report measured outer-archive progress from the verification worker.
+
+    The scan runs in an executor thread; :class:`ProgressReporter` is the only
+    object it touches and is safe to call from there.
+    """
+
+    reporter: ProgressReporter | None
+    total: int
+    fileobj: Any = None
+    archives_total: int = 0
+    archives_done: int = 0
+
+    def bind(self, archive: Any) -> None:
+        """Remember the file object whose position measures real progress."""
+        self.fileobj = getattr(getattr(archive, "tar", None), "fileobj", None)
+
+    def _position(self) -> int | None:
+        """Return the consumed byte count of the outer archive."""
+        if self.fileobj is None:
+            return None
+        try:
+            position = self.fileobj.tell()
+        except (OSError, ValueError, AttributeError):
+            return None
+        if not isinstance(position, int) or position < 0:
+            return None
+        return min(position, self.total) if self.total else position
+
+    def _detail(self) -> str | None:
+        """Return a privacy-safe position inside the nested archives."""
+        if not self.archives_total:
+            return None
+        return f"archive {self.archives_done + 1}/{self.archives_total}"
+
+    def report(self) -> None:
+        """Publish one throttled measurement of the outer archive."""
+        if self.reporter is None:
+            return
+        self.reporter.update(
+            STEP_ARCHIVE_SCAN,
+            done=self._position(),
+            total=self.total or None,
+            detail=self._detail(),
+        )
+
+    def archive_finished(self) -> None:
+        """Count one completely read inner archive."""
+        self.archives_done += 1
+        self.report()
+
+    def begin(self, key: str, **values: Any) -> None:
+        """Start one step from the verification worker thread."""
+        if self.reporter is not None:
+            self.reporter.begin_step(key, **values)
+
+    def done(self, key: str, state: str = STEP_PASSED, **values: Any) -> None:
+        """Finish one step from the verification worker thread."""
+        if self.reporter is not None:
+            self.reporter.complete_step(key, state=state, **values)
+
+    def update(self, key: str, **values: Any) -> None:
+        """Report one measurement from the verification worker thread."""
+        if self.reporter is not None:
+            self.reporter.update(key, **values)
+
+    def heartbeat(self, key: str) -> None:
+        """Refresh the liveness of one indeterminate step."""
+        if self.reporter is not None:
+            self.reporter.heartbeat(key)
 
 
 class _DuplicateJsonKeyError(ValueError):
@@ -444,17 +531,12 @@ class BackupIntegrityVerifier:
         self.hass = hass
         self._entry_id = entry_id
         self._activity = activity
-        self._progress_listener: (
-            Callable[[str, str, Mapping[str, object] | None], None] | None
-        ) = None
+        self._progress: ProgressReporter | None = None
         self.store = BackupIntegrityStore(hass, entry_id)
 
-    def set_progress_listener(
-        self,
-        listener: Callable[[str, str, Mapping[str, object] | None], None] | None,
-    ) -> None:
-        """Attach one task-scoped listener for live simulation progress."""
-        self._progress_listener = listener
+    def set_progress_reporter(self, reporter: ProgressReporter | None) -> None:
+        """Attach one task-scoped reporter for the live verification steps."""
+        self._progress = reporter
 
     def _record_activity(
         self,
@@ -473,14 +555,37 @@ class BackupIntegrityVerifier:
                 activity_visible=False,
                 details=details,
             )
-        if self._progress_listener is not None:
-            try:
-                self._progress_listener(action, outcome, details)
-            except Exception:
-                _LOGGER.debug(
-                    "Unable to publish restore-simulation progress",
-                    exc_info=True,
-                )
+
+    def _step_begin(
+        self,
+        key: str,
+        *,
+        determinate: bool | None = None,
+        total: int | None = None,
+        detail: str | None = None,
+        promote: bool = True,
+    ) -> None:
+        """Start one live verification step when a reporter is attached."""
+        if self._progress is not None:
+            self._progress.begin_step(
+                key,
+                determinate=determinate,
+                total=total,
+                detail=detail,
+                promote=promote,
+            )
+
+    def _step_done(
+        self, key: str, state: str = STEP_PASSED, *, detail: str | None = None
+    ) -> None:
+        """Finish one live verification step when a reporter is attached."""
+        if self._progress is not None:
+            self._progress.complete_step(key, state=state, detail=detail)
+
+    def _step_update(self, key: str, **values: Any) -> None:
+        """Report measured progress for one step when a reporter is attached."""
+        if self._progress is not None:
+            self._progress.update(key, **values)
 
     async def async_verify(
         self,
@@ -498,6 +603,7 @@ class BackupIntegrityVerifier:
         """Verify an available backup copy and fall back to another agent if needed."""
         started = time.monotonic()
         self._record_activity("verification_prepare", ACTIVITY_OUTCOME_STARTED)
+        self._step_begin(STEP_PREPARE)
         budget_or_failure = self._verification_budget(
             record,
             started=started,
@@ -506,11 +612,13 @@ class BackupIntegrityVerifier:
             timeout_minutes=timeout_minutes,
         )
         if isinstance(budget_or_failure, BackupIntegrityResult):
+            self._step_done(STEP_PREPARE, STEP_FAILED)
             return budget_or_failure
 
         manager = async_get_manager(self.hass)
         manager_agents = getattr(manager, "backup_agents", None)
         if not isinstance(manager_agents, Mapping):
+            self._step_done(STEP_PREPARE, STEP_FAILED)
             return self._failure(
                 INTEGRITY_STATUS_UNREADABLE,
                 record,
@@ -519,6 +627,7 @@ class BackupIntegrityVerifier:
             )
         candidate_agents = self._candidate_agents(record, manager_agents)
         if not candidate_agents:
+            self._step_done(STEP_PREPARE, STEP_FAILED)
             return self._failure(
                 INTEGRITY_STATUS_UNREADABLE,
                 record,
@@ -531,6 +640,7 @@ class BackupIntegrityVerifier:
             ACTIVITY_OUTCOME_COMPLETED,
             details={"available_copy_count": len(candidate_agents)},
         )
+        self._step_done(STEP_PREPARE)
 
         temp_dir = await self._async_create_temp_directory(
             record, started, staging_root
@@ -570,11 +680,15 @@ class BackupIntegrityVerifier:
 
             return self._aggregate_failure(record, started, failures)
         finally:
+            # Cleanup also runs after an unexpected failure, so it must not
+            # mark the step it interrupted as passed.
+            self._step_begin(STEP_CLEANUP, determinate=False, promote=False)
             await self._async_cleanup_verification_data(
                 temp_dir,
                 staging_root=staging_root,
                 repair_issues_enabled=repair_issues_enabled,
             )
+            self._step_done(STEP_CLEANUP)
 
     @staticmethod
     def _verification_budget(
@@ -683,6 +797,7 @@ class BackupIntegrityVerifier:
     ) -> _PreparedCandidate | _CandidateOutcome:
         """Allocate and validate one independent per-copy resource budget."""
         self._record_activity("storage_copy_prepare", ACTIVITY_OUTCOME_STARTED)
+        self._step_begin(STEP_STAGING)
         try:
             copy_budget = overall_budget.for_copy()
         except VerificationLimitError as err:
@@ -692,6 +807,7 @@ class BackupIntegrityVerifier:
                 level=logging.WARNING,
                 details={"error_code": err.code},
             )
+            self._step_done(STEP_STAGING, STEP_FAILED)
             return _CandidateOutcome(
                 self._failure(
                     INTEGRITY_STATUS_ABORTED,
@@ -721,6 +837,7 @@ class BackupIntegrityVerifier:
                 level=logging.WARNING,
                 details={"error_code": err.code},
             )
+            self._step_done(STEP_STAGING, STEP_FAILED)
             failure = self._failure(
                 INTEGRITY_STATUS_ABORTED,
                 record,
@@ -734,6 +851,7 @@ class BackupIntegrityVerifier:
             ACTIVITY_OUTCOME_COMPLETED,
             details={"encrypted": protected},
         )
+        self._step_done(STEP_STAGING)
         return _PreparedCandidate(
             agent_id=candidate_id,
             path=candidate_path,
@@ -752,10 +870,11 @@ class BackupIntegrityVerifier:
         previous: BackupIntegrityResult,
     ) -> _DownloadedCandidate | _CandidateOutcome:
         """Download one copy and map controlled boundary failures."""
-        self._record_activity(
-            "backup_download",
-            ACTIVITY_OUTCOME_STARTED,
-            details={"progress_percent": 0},
+        self._record_activity("backup_download", ACTIVITY_OUTCOME_STARTED)
+        self._step_begin(
+            STEP_DOWNLOAD,
+            determinate=bool(prepared.expected_size),
+            total=prepared.expected_size,
         )
         try:
             downloaded_size, digest = await self._async_download(
@@ -772,6 +891,7 @@ class BackupIntegrityVerifier:
                 level=logging.WARNING,
                 details={"error_code": err.code},
             )
+            self._step_done(STEP_DOWNLOAD, STEP_FAILED)
             _LOGGER.warning(
                 "Backup verification download stopped by safety limit: "
                 "agent=%s code=%s",
@@ -796,6 +916,7 @@ class BackupIntegrityVerifier:
                 level=logging.WARNING,
                 details={"error_code": "verification_timeout"},
             )
+            self._step_done(STEP_DOWNLOAD, STEP_FAILED)
             await self._async_remove_candidate_file(prepared.path)
             return _CandidateOutcome(
                 self._failure(
@@ -814,6 +935,7 @@ class BackupIntegrityVerifier:
                 level=logging.WARNING,
                 details={"error_type": safe_error_type(err)},
             )
+            self._step_done(STEP_DOWNLOAD, STEP_FAILED)
             _LOGGER.warning(
                 "Unable to download one backup copy; trying another: "
                 "agent=%s error_type=%s",
@@ -826,8 +948,9 @@ class BackupIntegrityVerifier:
         self._record_activity(
             "backup_download",
             ACTIVITY_OUTCOME_COMPLETED,
-            details={"progress_percent": 100},
+            details={"downloaded_bytes": downloaded_size},
         )
+        self._step_done(STEP_DOWNLOAD)
 
         warnings = self._candidate_warnings(
             record,
@@ -924,12 +1047,20 @@ class BackupIntegrityVerifier:
                 await self._async_remove_candidate_file(prepared.path)
             return archive_result
 
+        self._step_begin(STEP_EVALUATE)
         result = self._completed_result(
             record,
             started=started,
             downloaded=downloaded,
             details=archive_result,
             prior_copy_failures=prior_copy_failures,
+        )
+        self._step_done(
+            STEP_EVALUATE,
+            STEP_PASSED
+            if result.status
+            in {INTEGRITY_STATUS_VALID, INTEGRITY_STATUS_VALID_WITH_WARNINGS}
+            else STEP_FAILED,
         )
         if verified_archive_callback is not None:
             await verified_archive_callback(
@@ -956,6 +1087,9 @@ class BackupIntegrityVerifier:
             "encrypted_backup_extract" if prepared.protected else "backup_extract"
         )
         self._record_activity(extract_action, ACTIVITY_OUTCOME_STARTED)
+        scan_progress = _ScanProgress(
+            reporter=self._progress, total=downloaded.downloaded_size
+        )
         archive_future = self.hass.async_add_executor_job(
             self._verify_archive,
             prepared.path,
@@ -965,19 +1099,17 @@ class BackupIntegrityVerifier:
             database_check,
             database_timeout_minutes,
             prepared.budget,
+            scan_progress,
         )
         try:
-            heartbeat = 0
             while not archive_future.done():
-                done, _pending = await asyncio.wait({archive_future}, timeout=2.0)
+                done, _pending = await asyncio.wait({archive_future}, timeout=1.0)
                 if done:
                     break
-                heartbeat = min(95, heartbeat + 5)
-                self._record_activity(
-                    extract_action,
-                    ACTIVITY_OUTCOME_CHANGED,
-                    details={"progress_percent": heartbeat},
-                )
+                # The worker owns the measured progress; this loop only proves
+                # that the verification task is still alive.
+                if self._progress is not None:
+                    self._progress.heartbeat()
             details = await asyncio.shield(archive_future)
             self._record_activity(
                 extract_action,
@@ -1110,6 +1242,14 @@ class BackupIntegrityVerifier:
                 level=level,
                 details=details,
             )
+        if self._progress is not None:
+            # A disabled database check never runs, so it is skipped, not failed.
+            open_steps = [STEP_ARCHIVE_SCAN, STEP_NESTED_ARCHIVES]
+            if database_check:
+                open_steps.append(STEP_DATABASE_CHECK)
+            else:
+                self._step_done(STEP_DATABASE_CHECK, STEP_SKIPPED)
+            self._progress.fail_open(*open_steps)
 
     def _archive_failure_outcome(
         self,
@@ -1324,7 +1464,6 @@ class BackupIntegrityVerifier:
         attempt_downloaded_bytes = 0
         bytes_since_space_check = 0
         stream: Any | None = None
-        last_progress = 0
         try:
             async with asyncio.timeout(budget.remaining_seconds()):
                 stream = await agent.async_download_backup(backup_id)
@@ -1333,19 +1472,11 @@ class BackupIntegrityVerifier:
                         raise TypeError("Backup agent returned a non-bytes chunk")
                     budget.add_downloaded(len(chunk))
                     attempt_downloaded_bytes += len(chunk)
-                    if expected_size:
-                        progress = min(
-                            99,
-                            int(attempt_downloaded_bytes * 100 / expected_size),
-                        )
-                        progress -= progress % 5
-                        if progress > last_progress:
-                            last_progress = progress
-                            self._record_activity(
-                                "backup_download",
-                                ACTIVITY_OUTCOME_CHANGED,
-                                details={"progress_percent": progress},
-                            )
+                    self._step_update(
+                        STEP_DOWNLOAD,
+                        done=attempt_downloaded_bytes,
+                        total=expected_size,
+                    )
                     digest.update(chunk)
                     await self.hass.async_add_executor_job(file_handle.write, chunk)
                     bytes_since_space_check += len(chunk)
@@ -1401,13 +1532,16 @@ class BackupIntegrityVerifier:
         database_check: bool,
         database_timeout_minutes: int,
         budget: VerificationBudget,
+        progress: _ScanProgress,
     ) -> dict[str, Any]:
         """Synchronously stream every outer and inner archive member."""
+        progress.begin(STEP_ARCHIVE_SCAN, determinate=bool(progress.total))
         metadata = cls._read_metadata(backup_path, password, budget)
         effective_protected = cls._effective_protection(metadata, protected)
         if effective_protected and password is None:
             raise _BackupPasswordRequiredError
 
+        progress.archives_total = len(cls._expected_archives(metadata))
         database_path = working_dir / _DATABASE_FILENAME
         scan = cls._scan_outer_archive(
             backup_path,
@@ -1416,14 +1550,29 @@ class BackupIntegrityVerifier:
             database_check=database_check,
             database_path=database_path,
             budget=budget,
+            progress=progress,
+        )
+        progress.done(STEP_ARCHIVE_SCAN)
+
+        progress.begin(
+            STEP_NESTED_ARCHIVES,
+            total=max(progress.archives_total, scan.archive_count),
         )
         warnings = cls._validate_archive_inventory(metadata, scan)
-        database_status = cls._database_verification_status(
+        progress.update(
+            STEP_NESTED_ARCHIVES,
+            done=scan.archive_count,
+            total=max(progress.archives_total, scan.archive_count),
+        )
+        progress.done(STEP_NESTED_ARCHIVES)
+
+        database_status = cls._database_status_with_progress(
             metadata,
             database_path=database_path,
             database_check=database_check,
             database_timeout_minutes=database_timeout_minutes,
             budget=budget,
+            progress=progress,
         )
         return {
             "archive_count": scan.archive_count,
@@ -1449,6 +1598,7 @@ class BackupIntegrityVerifier:
         database_check: bool,
         database_path: Path,
         budget: VerificationBudget,
+        progress: _ScanProgress,
     ) -> _ArchiveScan:
         """Stream the outer archive and all declared inner archives."""
         scan = _ArchiveScan()
@@ -1458,6 +1608,7 @@ class BackupIntegrityVerifier:
             bufsize=_BUFFER_SIZE,
             password=password,
         ) as outer:
+            progress.bind(outer)
             for member in outer.tar:
                 cls._scan_outer_member(
                     outer,
@@ -1467,8 +1618,41 @@ class BackupIntegrityVerifier:
                     database_check=database_check,
                     database_path=database_path,
                     budget=budget,
+                    progress=progress,
                 )
+                progress.report()
         return scan
+
+    @classmethod
+    def _database_status_with_progress(
+        cls,
+        metadata: dict[str, Any],
+        *,
+        database_path: Path,
+        database_check: bool,
+        database_timeout_minutes: int,
+        budget: VerificationBudget,
+        progress: _ScanProgress,
+    ) -> str:
+        """Run the optional database check as one indeterminate live step."""
+        if not database_check:
+            progress.done(STEP_DATABASE_CHECK, STEP_SKIPPED)
+            return INTEGRITY_DATABASE_NOT_CHECKED
+        progress.begin(
+            STEP_DATABASE_CHECK, determinate=False, detail="integrity_check"
+        )
+        status = cls._database_verification_status(
+            metadata,
+            database_path=database_path,
+            database_check=database_check,
+            database_timeout_minutes=database_timeout_minutes,
+            budget=budget,
+        )
+        progress.done(
+            STEP_DATABASE_CHECK,
+            STEP_PASSED if status != INTEGRITY_DATABASE_FAILED else STEP_FAILED,
+        )
+        return status
 
     @classmethod
     def _scan_outer_member(
@@ -1481,6 +1665,7 @@ class BackupIntegrityVerifier:
         database_check: bool,
         database_path: Path,
         budget: VerificationBudget,
+        progress: _ScanProgress,
     ) -> None:
         """Validate and consume one outer TAR member."""
         budget.add_member()
@@ -1494,7 +1679,11 @@ class BackupIntegrityVerifier:
             raise KeyError("backup_metadata_path_invalid")
         if member_path == _METADATA_PATH:
             cls._consume_outer_member(
-                outer, member, budget=budget, unreadable="backup_metadata_unreadable"
+                outer,
+                member,
+                budget=budget,
+                unreadable="backup_metadata_unreadable",
+                progress=progress,
             )
             scan.file_count += 1
             return
@@ -1507,10 +1696,16 @@ class BackupIntegrityVerifier:
                 database_check=database_check,
                 database_path=database_path,
                 budget=budget,
+                progress=progress,
             )
+            progress.archive_finished()
             return
         cls._consume_outer_member(
-            outer, member, budget=budget, unreadable="archive_member_unreadable"
+            outer,
+            member,
+            budget=budget,
+            unreadable="archive_member_unreadable",
+            progress=progress,
         )
         scan.file_count += 1
 
@@ -1522,6 +1717,7 @@ class BackupIntegrityVerifier:
         *,
         budget: VerificationBudget,
         unreadable: str,
+        progress: _ScanProgress,
     ) -> None:
         """Consume one regular outer member and close its reader deterministically."""
         budget.ensure_expanded_capacity(member.size)
@@ -1529,7 +1725,9 @@ class BackupIntegrityVerifier:
         if reader is None:
             raise tarfile.ReadError(unreadable)
         with closing(reader):
-            cls._consume_all(reader, budget=budget, count_expanded=True)
+            cls._consume_all(
+                reader, budget=budget, count_expanded=True, progress=progress
+            )
 
     @classmethod
     def _scan_inner_member(
@@ -1542,6 +1740,7 @@ class BackupIntegrityVerifier:
         database_check: bool,
         database_path: Path,
         budget: VerificationBudget,
+        progress: _ScanProgress,
     ) -> None:
         """Validate and fully consume one root-level inner archive."""
         member_path = PurePosixPath(member.name)
@@ -1559,8 +1758,11 @@ class BackupIntegrityVerifier:
                 database_check=inspect_database,
                 database_path=database_path,
                 budget=budget,
+                progress=progress,
             )
-            cls._consume_all(inner_stream, budget=budget, count_expanded=False)
+            cls._consume_all(
+                inner_stream, budget=budget, count_expanded=False, progress=progress
+            )
 
     @staticmethod
     @contextmanager
@@ -1778,6 +1980,7 @@ class BackupIntegrityVerifier:
         database_check: bool,
         database_path: Path,
         budget: VerificationBudget,
+        progress: _ScanProgress,
     ) -> int:
         """Read every member of one inner archive and return its file count."""
         file_count = 0
@@ -1796,6 +1999,7 @@ class BackupIntegrityVerifier:
                     database_path=database_path,
                     database_candidates=database_candidates,
                     budget=budget,
+                    progress=progress,
                 )
         return file_count
 
@@ -1809,6 +2013,7 @@ class BackupIntegrityVerifier:
         database_path: Path,
         database_candidates: int,
         budget: VerificationBudget,
+        progress: _ScanProgress,
     ) -> int:
         """Consume one regular inner member and track database candidates."""
         budget.ensure_expanded_capacity(member.size)
@@ -1819,7 +2024,9 @@ class BackupIntegrityVerifier:
         is_database = database_check and member_path.name == _DATABASE_FILENAME
         with closing(reader):
             if not is_database:
-                cls._consume_all(reader, budget=budget, count_expanded=True)
+                cls._consume_all(
+                    reader, budget=budget, count_expanded=True, progress=progress
+                )
                 return database_candidates
             database_candidates += 1
             if member_path != _DATABASE_PATH:
@@ -1832,6 +2039,7 @@ class BackupIntegrityVerifier:
                     db_file,
                     budget=budget,
                     free_space_path=database_path.parent,
+                    progress=progress,
                 )
         return database_candidates
 
@@ -1894,6 +2102,7 @@ class BackupIntegrityVerifier:
         *,
         budget: VerificationBudget,
         count_expanded: bool,
+        progress: _ScanProgress | None = None,
     ) -> int:
         """Read a file-like object to EOF while checking the deadline."""
         total = 0
@@ -1902,6 +2111,8 @@ class BackupIntegrityVerifier:
             total += len(chunk)
             if count_expanded:
                 budget.add_expanded(len(chunk))
+            if progress is not None:
+                progress.report()
         return total
 
     @staticmethod
@@ -1911,6 +2122,7 @@ class BackupIntegrityVerifier:
         *,
         budget: VerificationBudget,
         free_space_path: Path,
+        progress: _ScanProgress | None = None,
     ) -> int:
         """Copy a file-like object completely with resource checks."""
         total = 0
@@ -1920,6 +2132,8 @@ class BackupIntegrityVerifier:
             writer.write(chunk)
             total += len(chunk)
             bytes_since_space_check += len(chunk)
+            if progress is not None:
+                progress.report()
             if bytes_since_space_check >= _FREE_SPACE_CHECK_INTERVAL:
                 budget.check_free_space(free_space_path)
                 bytes_since_space_check = 0
