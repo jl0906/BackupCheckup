@@ -52,3 +52,9 @@ the same structure and placeholders as `strings.json`.
 5. Put the user-facing release notes in the GitHub release so HACS can show them
    in Home Assistant's update dialog.
 6. Update the BackupCheckup wiki as needed
+7. Whenever the Runtime Runner version changes, add a `## <runner version>`
+   section at the top of `runtime_runner/CHANGELOG.md` that also names the
+   minimum required BackupCheckup version. Home Assistant shows this file in the
+   app update dialog, and `.github/scripts/check_frontend_component.py` fails
+   when the section for the shipped `RUNNER_VERSION` is missing or not the
+   newest one.

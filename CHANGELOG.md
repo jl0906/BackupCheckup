@@ -1,5 +1,32 @@
 # Changelog
 
+## 3.2.1
+
+### Fixed
+
+- Verification is no longer skipped with `backup_in_progress` while Home
+  Assistant is still starting. The native backup manager reports `blocked`
+  until all integrations have started; BackupCheckup treated every non-idle
+  state as a running backup since 3.1.0. Only `create_backup`,
+  `receive_backup` and `restore_backup` block verification now, and the
+  activity log records the manager state that caused a skip.
+- Adaptive polling uses the same three states, so the `blocked` start phase no
+  longer switches BackupCheckup to the shorter active refresh interval.
+
+### Added
+
+- Runtime Runner ships its own `CHANGELOG.md`, so the Home Assistant app
+  update dialog shows release notes instead of "no changelog available".
+- CI check for the backup-manager states that block verification, and a
+  version check that requires a runner changelog section for the shipped
+  runner version.
+
+### Compatibility
+
+- Minimum compatible Runtime Runner: **2**. Runtime Runner **3** is
+  recommended. No runner update is required for 3.2.1; Runner 3 is unchanged.
+- Configuration entry schema stays at version 17; no migration.
+
 ## 3.2.0
 
 ### Fixed

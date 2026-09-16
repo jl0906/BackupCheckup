@@ -9,7 +9,9 @@ are configured in the BackupCheckup panel and sent to the runner with each test.
 The next **Check backup protection** run includes the isolated runtime phase.
 
 The runner is versioned independently from the integration. It does not need an
-update when only the BackupCheckup integration version changes.
+update when only the BackupCheckup integration version changes. Changes of every
+runner version are listed in this app's `CHANGELOG.md`, which Home Assistant
+shows in the app update dialog.
 
 ## Runner 3
 

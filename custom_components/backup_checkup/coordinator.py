@@ -16,7 +16,7 @@ from typing import Any, cast
 
 from homeassistant.components.backup import async_get_manager
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import STATE_UNAVAILABLE
+from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -87,6 +87,7 @@ from .native_backup import (
     NativeBackupState,
     native_backup_activity_entity_ids,
     native_backup_manager_busy,
+    native_backup_manager_state_busy,
     read_native_backup_state,
 )
 from .notifications import BackupCheckupNotificationManager
@@ -357,6 +358,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self._last_inventory_success_at: datetime | None = None
         self._inventory_error_count = 0
         self._manager_backup_active = False
+        self._manager_state_seen = STATE_UNKNOWN
         self._adaptive_refresh_task: asyncio.Task[None] | None = None
         self._adaptive_refresh_pending = False
         self._adaptive_unsubscribers: list[Callable[[], None]] = []
@@ -399,12 +401,16 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             self.settings.verification_staging_directory,
         )
 
-    def _backup_manager_busy(self) -> bool:
-        """Return whether the native backup manager is currently writing data."""
+    def _backup_manager_busy(self) -> tuple[bool, str]:
+        """Return whether the native backup manager is busy, and its state.
+
+        The state is recorded with a skipped verification so the activity log
+        shows which manager state caused it.
+        """
         try:
             manager = async_get_manager(self.hass)
         except Exception:  # noqa: BLE001 - manager lookup boundary
-            return self._manager_backup_active
+            return self._manager_backup_active, self._manager_state_seen
         return native_backup_manager_busy(self.hass, manager)
 
     def _apply_settings_compatibility_attributes(self) -> None:
@@ -486,12 +492,8 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         new_state = data.get("new_state") if isinstance(data, Mapping) else None
         state = str(getattr(new_state, "state", "unknown")).casefold()
         if entity_id == self._adaptive_manager_entity_id:
-            self._manager_backup_active = state not in {
-                "idle",
-                "unknown",
-                "unavailable",
-                "none",
-            }
+            self._manager_state_seen = state
+            self._manager_backup_active = native_backup_manager_state_busy(state)
             self._set_adaptive_interval()
         self._schedule_adaptive_refresh()
 
@@ -534,12 +536,8 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         """Reset adaptive error backoff and reflect the manager state."""
         self._inventory_error_count = 0
         state = str(manager_state).casefold()
-        self._manager_backup_active = state not in {
-            "idle",
-            "unknown",
-            "unavailable",
-            "none",
-        }
+        self._manager_state_seen = state
+        self._manager_backup_active = native_backup_manager_state_busy(state)
         self._set_adaptive_interval()
 
     async def async_shutdown(self) -> None:
@@ -1595,13 +1593,18 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             return
         if latest is None:
             return
-        if self._backup_manager_busy():
+        manager_busy, manager_state = self._backup_manager_busy()
+        if manager_busy:
             # Retry on the next refresh instead of staging data while the manager
             # is creating, receiving or restoring a backup.
             self._record_activity(
                 "integrity_check_schedule",
                 ACTIVITY_OUTCOME_SKIPPED,
-                details={"source": "automatic", "reason": "backup_in_progress"},
+                details={
+                    "source": "automatic",
+                    "reason": "backup_in_progress",
+                    "manager_state": manager_state,
+                },
             )
             return
         self._record_activity(
@@ -1702,12 +1705,17 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                     "minutes": str(self.manual_verification_cooldown_minutes)
                 },
             )
-        if self._backup_manager_busy():
+        manager_busy, manager_state = self._backup_manager_busy()
+        if manager_busy:
             self._record_activity(
                 "integrity_check_request",
                 ACTIVITY_OUTCOME_SKIPPED,
                 level=logging.WARNING,
-                details={"reason": "backup_in_progress", "source": source},
+                details={
+                    "reason": "backup_in_progress",
+                    "source": source,
+                    "manager_state": manager_state,
+                },
             )
             raise HomeAssistantError(
                 translation_domain=DOMAIN,

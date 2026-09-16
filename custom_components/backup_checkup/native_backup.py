@@ -148,16 +148,44 @@ def _native_manager_state(hass: HomeAssistant, manager: Any) -> str:
     return state.state.casefold() if state is not None else STATE_UNKNOWN
 
 
-_MANAGER_IDLE_STATES = frozenset({"idle", "unknown", "unavailable", "none", ""})
+#: Manager states that write a new backup. Home Assistant reports the enum
+#: values; the spelled-out variants are accepted defensively as before.
+_MANAGER_WRITING_STATES = frozenset(
+    {
+        "create_backup",
+        "creating_a_backup",
+        "creating a backup",
+        "receive_backup",
+        "receiving_a_backup",
+        "receiving a backup",
+    }
+)
+#: Manager states that write a backup or replace the configuration directory.
+#: ``blocked`` is deliberately absent: the manager reports it from its creation
+#: until Home Assistant has started, without doing any backup work.
+_MANAGER_BUSY_STATES = _MANAGER_WRITING_STATES | frozenset(
+    {
+        "restore_backup",
+        "restoring_a_backup",
+        "restoring a backup",
+    }
+)
 
 
-def native_backup_manager_busy(hass: HomeAssistant, manager: Any) -> bool:
-    """Return whether the native backup manager is creating, receiving or restoring.
+def native_backup_manager_state_busy(manager_state: object) -> bool:
+    """Return whether one manager state creates, receives or restores a backup."""
+    return _enum_value(manager_state) in _MANAGER_BUSY_STATES
 
-    Verification must not stage data while the manager writes or replaces the
-    configuration directory, so any non-idle state counts as busy.
+
+def native_backup_manager_busy(hass: HomeAssistant, manager: Any) -> tuple[bool, str]:
+    """Return whether the native backup manager is busy, and the state read.
+
+    Verification must not stage data while the manager writes a backup or
+    replaces the configuration directory. Every other state, including
+    ``idle``, ``blocked``, ``unknown`` and ``unavailable``, allows verification.
     """
-    return _native_manager_state(hass, manager) not in _MANAGER_IDLE_STATES
+    manager_state = _native_manager_state(hass, manager)
+    return native_backup_manager_state_busy(manager_state), manager_state
 
 
 def _native_event_state(
@@ -243,14 +271,8 @@ def read_native_backup_state(
     )
     manager_state = _native_manager_state(hass, manager)
     event_type, event_at = _native_event_state(hass, manager)
-    manager_in_progress = manager_state in {
-        "create_backup",
-        "creating_a_backup",
-        "creating a backup",
-        "receive_backup",
-        "receiving_a_backup",
-        "receiving a backup",
-    }
+    # A restore is not a running backup, so only writing states count here.
+    manager_in_progress = manager_state in _MANAGER_WRITING_STATES
     event_type = _validated_event_type(
         event_type,
         event_relevant=_event_is_relevant(event_at, last_attempt, now),
