@@ -16,6 +16,7 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     CONF_UNIT_OF_MEASUREMENT,
+    MATCH_ALL,
     PERCENTAGE,
     EntityCategory,
     UnitOfInformation,
@@ -68,6 +69,11 @@ class BackupCheckupSensorDescription(SensorEntityDescription):
     # A job key turns this sensor into a live consumer of the progress channel
     # so a percentage tick never refreshes the whole coordinator.
     progress_job: str | None = None
+    # Detail attributes that carry whole panel sections stay out of the
+    # recorder: the shared attribute row is capped at 16 KiB, and the recorder
+    # would drop the complete row for every state write. The state itself is
+    # still recorded, so history and long-term statistics are unaffected.
+    record_attributes: bool = True
 
 
 def _storage_name(data: BackupCheckupData, agent_id: str | None) -> str | None:
@@ -227,6 +233,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
         value_fn=lambda data: data.recovery_readiness_score,
+        record_attributes=False,
         attributes_fn=lambda data: {
             "status": data.recovery_status,
             "recommendation": data.recovery_recommendation,
@@ -252,6 +259,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         device_class=SensorDeviceClass.ENUM,
         options=RECOVERY_STATUS_OPTIONS,
         value_fn=lambda data: data.recovery_status,
+        record_attributes=False,
         attributes_fn=lambda data: {
             "score": data.recovery_readiness_score,
             "checks": data.recovery_checks,
@@ -267,6 +275,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         device_class=SensorDeviceClass.ENUM,
         options=RECOVERY_RECOMMENDATION_OPTIONS,
         value_fn=lambda data: data.recovery_recommendation,
+        record_attributes=False,
         attributes_fn=lambda data: {
             "score": data.recovery_readiness_score,
             "deductions": data.recovery_deductions,
@@ -279,6 +288,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         device_class=SensorDeviceClass.ENUM,
         options=SIMULATION_STATUS_OPTIONS,
         value_fn=lambda data: data.recovery_restore_simulation.get("status", "not_run"),
+        record_attributes=False,
         attributes_fn=lambda data: data.recovery_restore_simulation,
         progress_job=JOB_VERIFICATION,
     ),
@@ -289,6 +299,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         device_class=SensorDeviceClass.ENUM,
         options=RUNTIME_STATUS_OPTIONS,
         value_fn=lambda data: data.recovery_runtime_test.get("status", "not_run"),
+        record_attributes=False,
         attributes_fn=lambda data: data.recovery_runtime_test,
         progress_job=JOB_RUNTIME_TEST,
     ),
@@ -298,6 +309,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         icon="mdi:history",
         device_class=SensorDeviceClass.TIMESTAMP,
         value_fn=lambda data: data.last_restore_test,
+        record_attributes=False,
         attributes_fn=lambda data: data.recovery_restore_test,
     ),
     BackupCheckupSensorDescription(
@@ -663,6 +675,7 @@ SENSORS: tuple[BackupCheckupSensorDescription, ...] = (
         device_class=SensorDeviceClass.ENUM,
         options=BACKUP_RESULT_OPTIONS,
         value_fn=lambda data: data.latest_backup_result,
+        record_attributes=False,
         attributes_fn=lambda data: (
             data.latest_monitored_backup_record.as_dict(
                 expose_metadata=data.expose_backup_metadata,
@@ -871,7 +884,12 @@ async def async_setup_entry(
         for agent_id in sorted(known_agents)
     }
     entities: list[SensorEntity] = [
-        BackupCheckupSensor(coordinator, entry, description) for description in SENSORS
+        (
+            BackupCheckupSensor
+            if description.record_attributes
+            else BackupCheckupUnrecordedAttributesSensor
+        )(coordinator, entry, description)
+        for description in SENSORS
     ]
     entities.append(BackupCheckupActivitySensor(coordinator, entry))
     entities.append(BackupCheckupRunnerSensor(coordinator, entry))
@@ -972,6 +990,17 @@ class BackupCheckupSensor(BackupCheckupEntity, SensorEntity):
         return self.entity_description.attributes_fn(self.coordinator.data)
 
 
+class BackupCheckupUnrecordedAttributesSensor(BackupCheckupSensor):
+    """A sensor whose detail attributes are never written to the recorder.
+
+    The state and its long-term statistics are recorded unchanged; only the
+    nested detail blocks that feed the panel are skipped, because the recorder
+    drops the whole attribute row once it exceeds 16 KiB.
+    """
+
+    _unrecorded_attributes = frozenset({MATCH_ALL})
+
+
 class BackupCheckupRunnerSensor(BackupCheckupEntity, SensorEntity):
     """Expose the reachability of the optional companion runner."""
 
@@ -1036,6 +1065,10 @@ class BackupCheckupRunnerSensor(BackupCheckupEntity, SensorEntity):
 class BackupCheckupActivitySensor(BackupCheckupEntity, SensorEntity):
     """Expose the bounded privacy-safe journal to the local frontend."""
 
+    # The journal grows to 250 entries and is rewritten with every recorded
+    # action, which is far above the 16 KiB attribute limit of the recorder.
+    # Only the entry list is excluded; the small counters stay in history.
+    _unrecorded_attributes = frozenset({"entries"})
     _attr_translation_key = "activity_log"
     _attr_icon = "mdi:text-box-search-outline"
     _attr_entity_category = EntityCategory.DIAGNOSTIC

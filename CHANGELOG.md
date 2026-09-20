@@ -1,5 +1,34 @@
 # Changelog
 
+## 3.2.2
+
+### Fixed
+
+- Recorder no longer logs "State attributes ... exceed maximum size of 16384
+  bytes" for `sensor.backup_checkup_activity_log` and
+  `sensor.backup_checkup_recovery_readiness`. The large detail attributes that
+  feed the panel are now excluded from recording; states, scores and
+  long-term statistics are still recorded and the panel is unchanged.
+- No more "problem detected" push followed by "all problems resolved" on
+  every Home Assistant restart. Storage agents of other integrations are not
+  ready during startup; notifications and repair issues now wait until Home
+  Assistant has started plus a 120 second settle period.
+
+### Changed
+
+- A newly detected problem is confirmed by a second check after 3 minutes
+  before a push notification is sent. Short storage or network dropouts no
+  longer produce a problem/resolved notification pair. Recovery and test
+  notifications are sent immediately. Both delays are fixed and not
+  configurable.
+
+### Compatibility
+
+- Minimum compatible Runtime Runner: **2**. Runtime Runner **3** is
+  recommended. No runner update is required for 3.2.2; Runner 3 is unchanged.
+- Configuration entry schema stays at version 17; no migration. Entity IDs
+  and unique IDs are unchanged.
+
 ## 3.2.1
 
 ### Fixed

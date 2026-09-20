@@ -17,14 +17,16 @@ from typing import Any, cast
 from homeassistant.components.backup import async_get_manager
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import CoreState, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import (
+    async_call_later,
     async_track_state_change_event,
     async_track_time_interval,
 )
+from homeassistant.helpers.start import async_at_started
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
@@ -67,11 +69,13 @@ from .const import (
     INTEGRITY_STATUS_UNREADABLE,
     INTEGRITY_STATUS_VALID,
     INTEGRITY_STATUS_VALID_WITH_WARNINGS,
+    NOTIFICATION_CONFIRM_RECHECK_SECONDS,
     RUNNER_CHECK_SOURCE_INTERVAL,
     RUNNER_CHECK_SOURCE_PRE_RUN,
     SIZE_CHECK_AUTO,
     SIZE_CHECK_FIXED,
     SIZE_CHECK_OFF,
+    STARTUP_SETTLE_SECONDS,
     progress_signal,
     runner_signal,
 )
@@ -363,6 +367,15 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self._adaptive_refresh_pending = False
         self._adaptive_unsubscribers: list[Callable[[], None]] = []
         self._adaptive_manager_entity_id: str | None = None
+        # Backup agents of other integrations are registered while Home
+        # Assistant starts, so the first snapshots of a restart report
+        # problems that do not exist. A setup in a running instance
+        # (installation, reload, options change) needs no hold at all.
+        self._startup_settled = hass.state is CoreState.running
+        self._startup_grace_logged = False
+        self._started_unsubscribe: Callable[[], None] | None = None
+        self._settle_unsubscribe: Callable[[], None] | None = None
+        self._confirmation_unsubscribe: Callable[[], None] | None = None
 
         super().__init__(
             hass,
@@ -371,6 +384,79 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             name=DOMAIN,
             update_interval=timedelta(minutes=self.settings.update_interval_minutes),
         )
+        self._async_arm_startup_settle()
+
+    @property
+    def startup_settled(self) -> bool:
+        """Return whether the Home Assistant start phase is over."""
+        return self._startup_settled
+
+    @callback
+    def async_mark_startup_settled(self) -> None:
+        """Release the hold on notifications and health repair issues."""
+        self._startup_settled = True
+
+    @callback
+    def _async_arm_startup_settle(self) -> None:
+        """Wait for the started event plus the settle window when starting."""
+        if self._startup_settled:
+            return
+        self._started_unsubscribe = async_at_started(
+            self.hass, self._async_home_assistant_started
+        )
+
+    @callback
+    def _async_home_assistant_started(self, _hass: HomeAssistant) -> None:
+        """Give late storage agents the settle window before reporting."""
+        self._started_unsubscribe = None
+        self._settle_unsubscribe = async_call_later(
+            self.hass, STARTUP_SETTLE_SECONDS, self._async_startup_settled
+        )
+
+    async def _async_startup_settled(self, _now: datetime) -> None:
+        """Evaluate the first snapshot that is allowed to report problems."""
+        self._settle_unsubscribe = None
+        self.async_mark_startup_settled()
+        await self.async_request_refresh()
+
+    @callback
+    def _async_cancel_startup_settle(self) -> None:
+        """Make sure an unload during the hold cannot refresh afterwards."""
+        if self._started_unsubscribe is not None:
+            self._started_unsubscribe()
+            self._started_unsubscribe = None
+        if self._settle_unsubscribe is not None:
+            self._settle_unsubscribe()
+            self._settle_unsubscribe = None
+
+    @callback
+    def _async_schedule_notification_confirmation(self) -> None:
+        """Schedule the one refresh that confirms a newly seen problem.
+
+        The base interval can be up to 60 minutes, so waiting for the next
+        regular refresh would delay every problem message. Only one timer is
+        armed at a time; a pending problem that is still present when it fires
+        reschedules it from the refresh it triggered.
+        """
+        if self._confirmation_unsubscribe is not None:
+            return
+        self._confirmation_unsubscribe = async_call_later(
+            self.hass,
+            NOTIFICATION_CONFIRM_RECHECK_SECONDS,
+            self._async_confirm_notifications,
+        )
+
+    async def _async_confirm_notifications(self, _now: datetime) -> None:
+        """Re-evaluate the snapshot once the confirmation window is over."""
+        self._confirmation_unsubscribe = None
+        await self.async_request_refresh()
+
+    @callback
+    def _async_cancel_notification_confirmation(self) -> None:
+        """Drop a pending confirmation refresh on shutdown."""
+        if self._confirmation_unsubscribe is not None:
+            self._confirmation_unsubscribe()
+            self._confirmation_unsubscribe = None
 
     def _resolve_recovery_policy(self) -> AdaptiveRecoveryPolicy:
         """Resolve adaptive policy against the current runner availability."""
@@ -550,6 +636,8 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         self._runtime_reporter.cancel()
         self.integrity_verifier.set_progress_reporter(None)
         self.async_stop_runner_health_monitor()
+        self._async_cancel_startup_settle()
+        self._async_cancel_notification_confirmation()
         if (
             self._adaptive_refresh_task is not None
             and not self._adaptive_refresh_task.done()
@@ -1393,10 +1481,28 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             last_manual_verification_at=self._last_manual_verification_at,
         )
 
+    def _record_startup_grace_skip(self) -> None:
+        """Record the single entry that explains the hold after a restart."""
+        if self._startup_grace_logged:
+            return
+        self._startup_grace_logged = True
+        self._record_activity(
+            "notification_processing",
+            ACTIVITY_OUTCOME_SKIPPED,
+            activity_visible=False,
+            details={"reason": "startup_grace"},
+        )
+
     async def _async_process_notifications(self, data: BackupCheckupData) -> None:
         """Process notifications without allowing service failures to escape."""
+        if not self._startup_settled:
+            # The stored signature stays untouched, so a problem that was
+            # already reported before the restart is not pushed again and a
+            # change during the start phase is still detected afterwards.
+            self._record_startup_grace_skip()
+            return
         try:
-            await self.notification_manager.async_process(
+            confirmation_pending = await self.notification_manager.async_process(
                 data,
                 enabled=self.notifications_enabled,
                 targets=self.notification_targets,
@@ -1404,6 +1510,9 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             )
         except Exception:
             _LOGGER.exception("Unexpected error while processing notifications")
+            return
+        if confirmation_pending:
+            self._async_schedule_notification_confirmation()
 
     def _manager_error_snapshot(self, error_code: str) -> BackupCheckupData:
         """Return the last snapshot with dynamically aged unavailable state."""

@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 DOMAIN = "backup_checkup"
 CONFIG_ENTRY_VERSION = 17
 NAME = "BackupCheckup"
-VERSION = "3.2.1"
+VERSION = "3.2.2"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -225,6 +225,20 @@ MIN_MANUAL_VERIFICATION_COOLDOWN_MINUTES = 0
 MAX_MANUAL_VERIFICATION_COOLDOWN_MINUTES = 1440
 MIN_ACTIVITY_LOG_RETENTION_DAYS = 1
 MAX_ACTIVITY_LOG_RETENTION_DAYS = 30
+
+# Backup agents of other integrations register while Home Assistant starts, so
+# the first snapshots of a restart report problems that do not exist. Push
+# notifications and health repair issues wait for the started event plus this
+# window. Fixed on purpose: this is a correctness guard, not a preference.
+STARTUP_SETTLE_SECONDS = 120
+# A newly seen problem set is only pushed once a later refresh still reports
+# it, so a short storage or network dropout no longer produces a
+# problem/resolved notification pair. Recovery and test messages stay
+# immediate. Fixed on purpose, exactly like the startup window above.
+NOTIFICATION_CONFIRM_SECONDS = 180
+# The confirmation refresh is scheduled slightly behind the window so the
+# deadline has certainly passed when the new snapshot is evaluated.
+NOTIFICATION_CONFIRM_RECHECK_SECONDS = NOTIFICATION_CONFIRM_SECONDS + 5
 
 MAX_ARCHIVE_MEMBERS = 1_000_000
 MAX_BACKUP_METADATA_BYTES = 2 * 1024 * 1024

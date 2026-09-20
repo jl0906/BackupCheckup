@@ -4,22 +4,31 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from datetime import datetime
 from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.translation import async_get_translations
+from homeassistant.util import dt as dt_util
 
 from .activity import (
     ACTIVITY_OUTCOME_CHANGED,
     ACTIVITY_OUTCOME_COMPLETED,
     ACTIVITY_OUTCOME_FAILED,
+    ACTIVITY_OUTCOME_SKIPPED,
     ACTIVITY_OUTCOME_STARTED,
     BackupCheckupActivityLog,
 )
-from .const import DOMAIN
+from .const import DOMAIN, NOTIFICATION_CONFIRM_SECONDS
 from .models import BackupCheckupData
+from .notification_policy import (
+    NOTIFICATION_ACTION_SEND_PROBLEM,
+    NOTIFICATION_ACTION_SEND_RECOVERY,
+    NotificationDecision,
+    evaluate_notification_change,
+)
 from .notification_selection import normalize_notification_targets
 from .repairs import async_set_storage_data_issue
 from .security import classify_exception, safe_error_type
@@ -168,6 +177,11 @@ class BackupCheckupNotificationManager:
         self._last_signature = ""
         self._last_targets: tuple[str, ...] = ()
         self._was_enabled = False
+        # The confirmation window lives in memory only. A restart drops it,
+        # which is correct: the startup hold of the coordinator already covers
+        # that phase and the store format stays unchanged.
+        self._pending_signature = ""
+        self._pending_since: datetime | None = None
         self._lock = asyncio.Lock()
         self.last_error: str | None = None
 
@@ -236,6 +250,56 @@ class BackupCheckupNotificationManager:
         self._last_targets = targets
         await self._async_save()
 
+    def _clear_pending(self) -> None:
+        """Drop a confirmation window that no longer applies."""
+        self._pending_signature = ""
+        self._pending_since = None
+
+    async def _async_sync_targets(
+        self,
+        data: BackupCheckupData,
+        signature: str,
+        targets: tuple[str, ...],
+    ) -> None:
+        """Notify devices that were selected after the reported state."""
+        if targets == self._last_targets:
+            return
+        if not signature:
+            self._last_targets = targets
+            await self._async_save()
+            return
+        await self._async_sync_targets_for_existing_problem(data, targets)
+
+    async def _async_apply_decision(
+        self,
+        data: BackupCheckupData,
+        decision: NotificationDecision,
+        signature: str,
+        targets: tuple[str, ...],
+        *,
+        notify_on_recovery: bool,
+    ) -> None:
+        """Carry out one policy decision and keep the target list in sync."""
+        if decision.action in (
+            NOTIFICATION_ACTION_SEND_PROBLEM,
+            NOTIFICATION_ACTION_SEND_RECOVERY,
+        ):
+            await self._async_send_state_change(
+                data,
+                signature,
+                targets,
+                notify_on_recovery=notify_on_recovery,
+            )
+            return
+        if (reason := decision.skip_reason) is not None:
+            self._record_activity(
+                "notification_processing",
+                ACTIVITY_OUTCOME_SKIPPED,
+                details={"reason": reason},
+            )
+        if signature == self._last_signature:
+            await self._async_sync_targets(data, signature, targets)
+
     async def async_process(
         self,
         data: BackupCheckupData,
@@ -243,40 +307,48 @@ class BackupCheckupNotificationManager:
         enabled: bool,
         targets: tuple[str, ...],
         notify_on_recovery: bool,
-    ) -> None:
-        """Send a message only when the active problem set changes."""
+    ) -> bool:
+        """Send a message when a confirmed problem set changes.
+
+        Returns whether a newly seen problem still waits for the refresh that
+        confirms it, so the caller can schedule exactly that refresh.
+        """
         async with self._lock:
             await self._async_load()
             signature = "|".join(sorted(data.active_problems))
             normalized_targets = tuple(sorted(set(targets)))
             if not enabled or not normalized_targets:
+                self._clear_pending()
                 await self._async_disable()
-                return
+                return False
             if not self._was_enabled:
+                # Enabling notifications is an explicit user action, so an
+                # already active problem is reported without a delay.
+                self._clear_pending()
                 await self._async_enable_first_problem(
                     data,
                     signature,
                     normalized_targets,
                 )
-                return
-            if signature == self._last_signature:
-                if normalized_targets == self._last_targets:
-                    return
-                if not signature:
-                    self._last_targets = normalized_targets
-                    await self._async_save()
-                    return
-                await self._async_sync_targets_for_existing_problem(
-                    data,
-                    normalized_targets,
-                )
-                return
-            await self._async_send_state_change(
+                return False
+            decision = evaluate_notification_change(
+                signature=signature,
+                last_signature=self._last_signature,
+                pending_signature=self._pending_signature,
+                pending_since=self._pending_since,
+                now=dt_util.utcnow(),
+                confirm_seconds=NOTIFICATION_CONFIRM_SECONDS,
+            )
+            self._pending_signature = decision.pending_signature
+            self._pending_since = decision.pending_since
+            await self._async_apply_decision(
                 data,
+                decision,
                 signature,
                 normalized_targets,
                 notify_on_recovery=notify_on_recovery,
             )
+            return decision.confirmation_pending
 
     async def async_send_test(self, targets: tuple[str, ...]) -> bool:
         """Send one localized test notification."""

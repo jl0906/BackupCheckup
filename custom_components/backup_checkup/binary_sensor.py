@@ -13,7 +13,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory
+from homeassistant.const import MATCH_ALL, EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -33,6 +33,11 @@ class BackupCheckupBinarySensorDescription(BinarySensorEntityDescription):
 
     value_fn: Callable[[BackupCheckupData], bool]
     attributes_fn: Callable[[BackupCheckupData], dict[str, Any]] | None = None
+    # Detail attributes that carry whole recovery blocks stay out of the
+    # recorder: the shared attribute row is capped at 16 KiB, and the recorder
+    # would drop the complete row for every state write. The on/off state
+    # itself is still recorded.
+    record_attributes: bool = True
 
 
 BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
@@ -171,6 +176,7 @@ BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
         icon="mdi:cloud-off-outline",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda data: data.external_copy_missing,
+        record_attributes=False,
         attributes_fn=lambda data: data.recovery_storage_resilience,
     ),
     BackupCheckupBinarySensorDescription(
@@ -179,6 +185,7 @@ BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
         icon="mdi:archive-sync-outline",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda data: data.backup_content_changed,
+        record_attributes=False,
         attributes_fn=lambda data: data.recovery_content_comparison,
     ),
     BackupCheckupBinarySensorDescription(
@@ -187,6 +194,7 @@ BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
         icon="mdi:clipboard-alert-outline",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda data: data.recovery_checklist_incomplete,
+        record_attributes=False,
         attributes_fn=lambda data: data.recovery_preparedness,
     ),
     BackupCheckupBinarySensorDescription(
@@ -195,6 +203,7 @@ BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
         icon="mdi:connection",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda data: data.external_dependency_unprotected,
+        record_attributes=False,
         attributes_fn=lambda data: data.recovery_preparedness,
     ),
     BackupCheckupBinarySensorDescription(
@@ -203,6 +212,7 @@ BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
         icon="mdi:restore-alert",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda data: data.restore_test_overdue,
+        record_attributes=False,
         attributes_fn=lambda data: data.recovery_restore_test,
     ),
     BackupCheckupBinarySensorDescription(
@@ -211,6 +221,7 @@ BINARY_SENSORS: tuple[BackupCheckupBinarySensorDescription, ...] = (
         icon="mdi:file-document-alert-outline",
         device_class=BinarySensorDeviceClass.PROBLEM,
         value_fn=lambda data: data.recovery_plan_incomplete,
+        record_attributes=False,
         attributes_fn=lambda data: {
             "warnings": data.recovery_plan.get("warnings", []),
             "generated_at": data.recovery_plan.get("generated_at"),
@@ -238,7 +249,11 @@ async def async_setup_entry(
     await asyncio.sleep(0)
     coordinator: BackupCheckupCoordinator = entry.runtime_data
     entities: list[BinarySensorEntity] = [
-        BackupCheckupBinarySensor(coordinator, entry, description)
+        (
+            BackupCheckupBinarySensor
+            if description.record_attributes
+            else BackupCheckupUnrecordedAttributesBinarySensor
+        )(coordinator, entry, description)
         for description in BINARY_SENSORS
     ]
 
@@ -323,6 +338,17 @@ class BackupCheckupBinarySensor(BackupCheckupEntity, BinarySensorEntity):
         """Return optional privacy-safe diagnostic attributes."""
         attributes_fn = self.entity_description.attributes_fn
         return attributes_fn(self.coordinator.data) if attributes_fn else {}
+
+
+class BackupCheckupUnrecordedAttributesBinarySensor(BackupCheckupBinarySensor):
+    """A binary sensor whose attributes are never written to the recorder.
+
+    The on/off state is recorded unchanged; only the nested recovery blocks
+    that feed the panel are skipped, because the recorder drops the whole
+    attribute row once it exceeds 16 KiB.
+    """
+
+    _unrecorded_attributes = frozenset({MATCH_ALL})
 
 
 class BackupCheckupRunnerBinarySensor(BackupCheckupEntity, BinarySensorEntity):

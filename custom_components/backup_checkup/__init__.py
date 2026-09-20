@@ -659,6 +659,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(runner_monitor.cancel)
 
     def _sync_repair_issues() -> None:
+        # Health issues of the start phase describe storage agents that are
+        # not registered yet. They are not persistent, so nothing has to be
+        # created or removed before the coordinator reports a settled start;
+        # the refresh at the end of the hold calls this listener again.
+        if not coordinator.startup_settled:
+            return
         if coordinator.repair_issues_enabled:
             async_update_issues(hass, coordinator.data)
         else:
