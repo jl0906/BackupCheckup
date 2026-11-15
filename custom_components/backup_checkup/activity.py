@@ -293,7 +293,7 @@ class BackupCheckupActivityLog:
         if not isinstance(timestamp, str):
             return None
         try:
-            parsed = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+            parsed = datetime.fromisoformat(timestamp)
         except ValueError:
             return None
         if parsed.tzinfo is None:
