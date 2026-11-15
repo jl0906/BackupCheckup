@@ -500,6 +500,14 @@
           "password_required": "Password required",
           "aborted": "Aborted by safety limit",
           "internal_error": "Internal verification error"
+        },
+        "state_attributes": {
+          "warnings": {
+            "state": {
+              "archive_links_unsafe": "Unsafe links skipped",
+              "archive_members_skipped": "Special files skipped"
+            }
+          }
         }
       },
       "last_integrity_check": {
@@ -575,6 +583,40 @@
           "aborted": "Aborted",
           "inconclusive": "Inconclusive",
           "not_started": "Not started"
+        },
+        "state_attributes": {
+          "error_code": {
+            "state": {
+              "unsafe_archive_path": "The backup contains an unsafe file path.",
+              "runner_unsafe_archive_path": "The backup contains an unsafe file path.",
+              "archive_member_limit": "The backup contains more entries than the runner accepts.",
+              "runner_archive_member_limit": "The backup contains more entries than the runner accepts.",
+              "archive_member_duplicate": "The backup contains the same entry more than once.",
+              "runner_archive_member_duplicate": "The backup contains the same entry more than once.",
+              "expanded_size_limit": "The unpacked backup exceeds the configured runner size limit.",
+              "runner_expanded_size_limit": "The unpacked backup exceeds the configured runner size limit.",
+              "homeassistant_archive_missing": "The backup does not contain a Home Assistant archive.",
+              "runner_homeassistant_archive_missing": "The backup does not contain a Home Assistant archive.",
+              "homeassistant_archive_unreadable": "The Home Assistant archive in the backup could not be read.",
+              "runner_homeassistant_archive_unreadable": "The Home Assistant archive in the backup could not be read.",
+              "homeassistant_config_missing": "The backup does not contain a Home Assistant configuration folder.",
+              "runner_homeassistant_config_missing": "The backup does not contain a Home Assistant configuration folder.",
+              "archive_member_unreadable": "A file in the backup could not be read.",
+              "runner_archive_member_unreadable": "A file in the backup could not be read.",
+              "backup_metadata_invalid": "The backup metadata is invalid.",
+              "runner_backup_metadata_invalid": "The backup metadata is invalid.",
+              "backup_metadata_too_large": "The backup metadata is too large.",
+              "runner_backup_metadata_too_large": "The backup metadata is too large.",
+              "backup_metadata_missing": "The backup metadata is missing.",
+              "runner_backup_metadata_missing": "The backup metadata is missing.",
+              "backup_metadata_unreadable": "The backup metadata could not be read.",
+              "runner_backup_metadata_unreadable": "The backup metadata could not be read.",
+              "password_required": "The backup is encrypted, but no password is available.",
+              "runner_password_required": "The backup is encrypted, but no password is available.",
+              "unsupported_archive_member": "Backup contains link entries; update the Runtime Runner to version 4.",
+              "runner_unsupported_archive_member": "Backup contains link entries; update the Runtime Runner to version 4."
+            }
+          }
         }
       },
       "last_restore_test": {
@@ -806,7 +848,7 @@
     },
     "runner_update_recommended": {
       "title": "Runtime Runner update recommended",
-      "description": "The connected Runtime Runner reports version {version}. Version {recommended} adds live step progress and extended health details. The runtime test keeps working without the update, but only shows coarse phases."
+      "description": "The connected Runtime Runner reports version {version}. Version {recommended} is recommended: runner 3 adds live step progress and extended health details, runner 4 can also test backups that contain symbolic or hard links. The runtime test keeps working without the update, but with these limitations."
     },
     "runner_not_discovered": {
       "title": "Runtime Runner is no longer announced",

@@ -500,6 +500,14 @@
           "password_required": "Mot de passe requis",
           "aborted": "Aborted by safety limit",
           "internal_error": "Internal verification error"
+        },
+        "state_attributes": {
+          "warnings": {
+            "state": {
+              "archive_links_unsafe": "Liens non sûrs ignorés",
+              "archive_members_skipped": "Fichiers spéciaux ignorés"
+            }
+          }
         }
       },
       "last_integrity_check": {
@@ -575,6 +583,40 @@
           "aborted": "Aborted",
           "inconclusive": "Inconclusive",
           "not_started": "Non démarré"
+        },
+        "state_attributes": {
+          "error_code": {
+            "state": {
+              "unsafe_archive_path": "La sauvegarde contient un chemin de fichier non sûr.",
+              "runner_unsafe_archive_path": "La sauvegarde contient un chemin de fichier non sûr.",
+              "archive_member_limit": "La sauvegarde contient plus d'entrées que le runner n'en accepte.",
+              "runner_archive_member_limit": "La sauvegarde contient plus d'entrées que le runner n'en accepte.",
+              "archive_member_duplicate": "La sauvegarde contient plusieurs fois la même entrée.",
+              "runner_archive_member_duplicate": "La sauvegarde contient plusieurs fois la même entrée.",
+              "expanded_size_limit": "La sauvegarde décompressée dépasse la limite de taille configurée du runner.",
+              "runner_expanded_size_limit": "La sauvegarde décompressée dépasse la limite de taille configurée du runner.",
+              "homeassistant_archive_missing": "La sauvegarde ne contient pas d'archive Home Assistant.",
+              "runner_homeassistant_archive_missing": "La sauvegarde ne contient pas d'archive Home Assistant.",
+              "homeassistant_archive_unreadable": "L'archive Home Assistant de la sauvegarde n'a pas pu être lue.",
+              "runner_homeassistant_archive_unreadable": "L'archive Home Assistant de la sauvegarde n'a pas pu être lue.",
+              "homeassistant_config_missing": "La sauvegarde ne contient pas de dossier de configuration Home Assistant.",
+              "runner_homeassistant_config_missing": "La sauvegarde ne contient pas de dossier de configuration Home Assistant.",
+              "archive_member_unreadable": "Un fichier de la sauvegarde n'a pas pu être lu.",
+              "runner_archive_member_unreadable": "Un fichier de la sauvegarde n'a pas pu être lu.",
+              "backup_metadata_invalid": "Les métadonnées de la sauvegarde sont invalides.",
+              "runner_backup_metadata_invalid": "Les métadonnées de la sauvegarde sont invalides.",
+              "backup_metadata_too_large": "Les métadonnées de la sauvegarde sont trop volumineuses.",
+              "runner_backup_metadata_too_large": "Les métadonnées de la sauvegarde sont trop volumineuses.",
+              "backup_metadata_missing": "Les métadonnées de la sauvegarde sont absentes.",
+              "runner_backup_metadata_missing": "Les métadonnées de la sauvegarde sont absentes.",
+              "backup_metadata_unreadable": "Les métadonnées de la sauvegarde n'ont pas pu être lues.",
+              "runner_backup_metadata_unreadable": "Les métadonnées de la sauvegarde n'ont pas pu être lues.",
+              "password_required": "La sauvegarde est chiffrée, mais aucun mot de passe n'est disponible.",
+              "runner_password_required": "La sauvegarde est chiffrée, mais aucun mot de passe n'est disponible.",
+              "unsupported_archive_member": "La sauvegarde contient des liens ; mettez à jour le Runtime Runner vers la version 4.",
+              "runner_unsupported_archive_member": "La sauvegarde contient des liens ; mettez à jour le Runtime Runner vers la version 4."
+            }
+          }
         }
       },
       "last_restore_test": {
@@ -806,7 +848,7 @@
     },
     "runner_update_recommended": {
       "title": "Mise à jour du Runtime Runner recommandée",
-      "description": "Le Runtime Runner connecté annonce la version {version}. La version {recommended} ajoute la progression détaillée en direct et des informations d'état étendues. Le test d'exécution fonctionne sans la mise à jour, mais n'affiche que des phases approximatives."
+      "description": "Le Runtime Runner connecté annonce la version {version}. La version {recommended} est recommandée : le runner 3 ajoute la progression détaillée en direct et des informations d'état étendues, le runner 4 peut aussi tester les sauvegardes contenant des liens symboliques ou physiques. Le test d'exécution fonctionne sans la mise à jour, mais avec ces limitations."
     },
     "runner_not_discovered": {
       "title": "Le Runtime Runner n'est plus annoncé",

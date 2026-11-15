@@ -500,6 +500,14 @@
           "password_required": "Lösenord krävs",
           "aborted": "Aborted by safety limit",
           "internal_error": "Internal verification error"
+        },
+        "state_attributes": {
+          "warnings": {
+            "state": {
+              "archive_links_unsafe": "Osäkra länkar hoppades över",
+              "archive_members_skipped": "Specialfiler hoppades över"
+            }
+          }
         }
       },
       "last_integrity_check": {
@@ -575,6 +583,40 @@
           "aborted": "Aborted",
           "inconclusive": "Inconclusive",
           "not_started": "Inte startad"
+        },
+        "state_attributes": {
+          "error_code": {
+            "state": {
+              "unsafe_archive_path": "Säkerhetskopian innehåller en osäker filsökväg.",
+              "runner_unsafe_archive_path": "Säkerhetskopian innehåller en osäker filsökväg.",
+              "archive_member_limit": "Säkerhetskopian innehåller fler poster än runnern accepterar.",
+              "runner_archive_member_limit": "Säkerhetskopian innehåller fler poster än runnern accepterar.",
+              "archive_member_duplicate": "Säkerhetskopian innehåller samma post flera gånger.",
+              "runner_archive_member_duplicate": "Säkerhetskopian innehåller samma post flera gånger.",
+              "expanded_size_limit": "Den uppackade säkerhetskopian överskrider runnerns konfigurerade storleksgräns.",
+              "runner_expanded_size_limit": "Den uppackade säkerhetskopian överskrider runnerns konfigurerade storleksgräns.",
+              "homeassistant_archive_missing": "Säkerhetskopian innehåller inget Home Assistant-arkiv.",
+              "runner_homeassistant_archive_missing": "Säkerhetskopian innehåller inget Home Assistant-arkiv.",
+              "homeassistant_archive_unreadable": "Home Assistant-arkivet i säkerhetskopian kunde inte läsas.",
+              "runner_homeassistant_archive_unreadable": "Home Assistant-arkivet i säkerhetskopian kunde inte läsas.",
+              "homeassistant_config_missing": "Säkerhetskopian innehåller ingen konfigurationsmapp för Home Assistant.",
+              "runner_homeassistant_config_missing": "Säkerhetskopian innehåller ingen konfigurationsmapp för Home Assistant.",
+              "archive_member_unreadable": "En fil i säkerhetskopian kunde inte läsas.",
+              "runner_archive_member_unreadable": "En fil i säkerhetskopian kunde inte läsas.",
+              "backup_metadata_invalid": "Säkerhetskopians metadata är ogiltiga.",
+              "runner_backup_metadata_invalid": "Säkerhetskopians metadata är ogiltiga.",
+              "backup_metadata_too_large": "Säkerhetskopians metadata är för stora.",
+              "runner_backup_metadata_too_large": "Säkerhetskopians metadata är för stora.",
+              "backup_metadata_missing": "Säkerhetskopians metadata saknas.",
+              "runner_backup_metadata_missing": "Säkerhetskopians metadata saknas.",
+              "backup_metadata_unreadable": "Säkerhetskopians metadata kunde inte läsas.",
+              "runner_backup_metadata_unreadable": "Säkerhetskopians metadata kunde inte läsas.",
+              "password_required": "Säkerhetskopian är krypterad, men inget lösenord finns tillgängligt.",
+              "runner_password_required": "Säkerhetskopian är krypterad, men inget lösenord finns tillgängligt.",
+              "unsupported_archive_member": "Säkerhetskopian innehåller länkposter; uppdatera Runtime Runner till version 4.",
+              "runner_unsupported_archive_member": "Säkerhetskopian innehåller länkposter; uppdatera Runtime Runner till version 4."
+            }
+          }
         }
       },
       "last_restore_test": {
@@ -806,7 +848,7 @@
     },
     "runner_update_recommended": {
       "title": "Uppdatering av Runtime Runner rekommenderas",
-      "description": "Den anslutna Runtime Runner rapporterar version {version}. Version {recommended} ger stegvis liveförlopp och utökade statusdetaljer. Runtimetestet fungerar även utan uppdateringen men visar bara grova faser."
+      "description": "Den anslutna Runtime Runner rapporterar version {version}. Version {recommended} rekommenderas: runner 3 ger stegförlopp i realtid och utökade statusdetaljer, runner 4 kan dessutom testa säkerhetskopior med symboliska eller hårda länkar. Körtestet fungerar även utan uppdateringen, men med dessa begränsningar."
     },
     "runner_not_discovered": {
       "title": "Runtime Runner annonseras inte längre",

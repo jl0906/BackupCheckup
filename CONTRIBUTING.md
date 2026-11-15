@@ -29,7 +29,7 @@ SecureTar archives, an included SQLite database, an incorrect password, and a
 deliberately corrupted inner archive.
 
 The repository workflow additionally runs these checks on every push and pull
-request together with HACS validation and Home Assistant hassfest.
+request together with Marketplace (HACS) validation and Home Assistant hassfest.
 
 ## Translations
 
@@ -45,12 +45,21 @@ the same structure and placeholders as `strings.json`.
    `custom_components/backup_checkup/const.py`, the README, and the changelog.
 2. Create a Git tag and GitHub release with the same version, for example
    `v2.2.5`. Mark beta versions as pre-releases and stable versions as regular releases.
-3. Keep the standard HACS repository layout under
+3. Keep the standard Marketplace (HACS) repository layout under
    `custom_components/backup_checkup`.
-4. Do not enable `zip_release` and do not attach a required integration ZIP asset.
-   HACS installs the integration directly from the tagged repository source.
-5. Put the user-facing release notes in the GitHub release so HACS can show them
-   in Home Assistant's update dialog.
+4. Starting with 3.2.3 the integration is published as a ZIP release:
+   `hacs.json` sets `zip_release` and `filename`, and the Marketplace (HACS)
+   installs the release asset `backup_checkup.zip` instead of the tagged
+   repository source. The asset contains the files of
+   `custom_components/backup_checkup` at its top level, without a wrapping
+   folder. Publishing the GitHub release starts
+   `.github/workflows/release.yml`, which checks that the tag matches the
+   manifest version, builds the asset with `.github/scripts/build_release_zip.py`
+   and attaches it. A release without this asset cannot be installed, so confirm
+   the asset is present after the workflow has finished. Releases up to 3.2.2
+   have no asset and were installed from the repository source.
+5. Put the user-facing release notes in the GitHub release so the Marketplace
+   (HACS) can show them in Home Assistant's update dialog.
 6. Update the BackupCheckup wiki as needed
 7. Whenever the Runtime Runner version changes, add a `## <runner version>`
    section at the top of `runtime_runner/CHANGELOG.md` that also names the

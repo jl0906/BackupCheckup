@@ -13,11 +13,13 @@ import time
 import unicodedata
 from contextlib import suppress
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import BinaryIO
 
 from .const import (
     MAX_ARCHIVE_MEMBERS,
+    MAX_ARCHIVE_PATH_DEPTH,
+    MAX_ARCHIVE_PATH_LENGTH,
     MAX_BACKUP_METADATA_BYTES,
     MAX_FREE_SPACE_RESERVE_BYTES,
     MAX_VERIFICATION_STAGING_DIRECTORY_LENGTH,
@@ -187,6 +189,44 @@ class VerificationBudget:
         )
         if usage.free - required_bytes < dynamic_reserve:
             raise VerificationLimitError("insufficient_free_space")
+
+
+def _safe_link_target(member_path: str, linkname: str) -> PurePosixPath | None:
+    """Return the normalized in-archive target of one link, or None if unsafe.
+
+    A link is safe when its target is relative, stays inside the archive and
+    only climbs with leading ``..`` segments. A ``..`` after a named segment is
+    rejected because that segment may itself be a link, which would make the
+    computed target differ from the one the file system resolves.
+
+    This function must stay identical in the Runtime Runner (server.py) and in
+    the integration (security.py); .github/scripts/check_link_policy.py
+    enforces that.
+    """
+    if (
+        not isinstance(linkname, str)
+        or not linkname
+        or "\x00" in linkname
+        or len(linkname) > MAX_ARCHIVE_PATH_LENGTH
+    ):
+        return None
+    target = PurePosixPath(linkname)
+    if target.is_absolute():
+        return None
+    resolved = list(PurePosixPath(member_path).parent.parts)
+    descended = False
+    for part in target.parts:
+        if part == "..":
+            if descended or not resolved:
+                return None
+            resolved.pop()
+        else:
+            descended = True
+            resolved.append(part)
+    if len(resolved) > MAX_ARCHIVE_PATH_DEPTH:
+        return None
+    return PurePosixPath(*resolved)
+
 
 
 def classify_exception(error: BaseException) -> str:

@@ -500,6 +500,14 @@
           "password_required": "Password richiesta",
           "aborted": "Aborted by safety limit",
           "internal_error": "Internal verification error"
+        },
+        "state_attributes": {
+          "warnings": {
+            "state": {
+              "archive_links_unsafe": "Collegamenti non sicuri ignorati",
+              "archive_members_skipped": "File speciali ignorati"
+            }
+          }
         }
       },
       "last_integrity_check": {
@@ -575,6 +583,40 @@
           "aborted": "Aborted",
           "inconclusive": "Inconclusive",
           "not_started": "Non avviato"
+        },
+        "state_attributes": {
+          "error_code": {
+            "state": {
+              "unsafe_archive_path": "Il backup contiene un percorso di file non sicuro.",
+              "runner_unsafe_archive_path": "Il backup contiene un percorso di file non sicuro.",
+              "archive_member_limit": "Il backup contiene più voci di quante il runner ne accetti.",
+              "runner_archive_member_limit": "Il backup contiene più voci di quante il runner ne accetti.",
+              "archive_member_duplicate": "Il backup contiene la stessa voce più volte.",
+              "runner_archive_member_duplicate": "Il backup contiene la stessa voce più volte.",
+              "expanded_size_limit": "Il backup estratto supera il limite di dimensione configurato del runner.",
+              "runner_expanded_size_limit": "Il backup estratto supera il limite di dimensione configurato del runner.",
+              "homeassistant_archive_missing": "Il backup non contiene un archivio di Home Assistant.",
+              "runner_homeassistant_archive_missing": "Il backup non contiene un archivio di Home Assistant.",
+              "homeassistant_archive_unreadable": "Non è stato possibile leggere l'archivio di Home Assistant nel backup.",
+              "runner_homeassistant_archive_unreadable": "Non è stato possibile leggere l'archivio di Home Assistant nel backup.",
+              "homeassistant_config_missing": "Il backup non contiene una cartella di configurazione di Home Assistant.",
+              "runner_homeassistant_config_missing": "Il backup non contiene una cartella di configurazione di Home Assistant.",
+              "archive_member_unreadable": "Non è stato possibile leggere un file del backup.",
+              "runner_archive_member_unreadable": "Non è stato possibile leggere un file del backup.",
+              "backup_metadata_invalid": "I metadati del backup non sono validi.",
+              "runner_backup_metadata_invalid": "I metadati del backup non sono validi.",
+              "backup_metadata_too_large": "I metadati del backup sono troppo grandi.",
+              "runner_backup_metadata_too_large": "I metadati del backup sono troppo grandi.",
+              "backup_metadata_missing": "I metadati del backup sono mancanti.",
+              "runner_backup_metadata_missing": "I metadati del backup sono mancanti.",
+              "backup_metadata_unreadable": "Non è stato possibile leggere i metadati del backup.",
+              "runner_backup_metadata_unreadable": "Non è stato possibile leggere i metadati del backup.",
+              "password_required": "Il backup è cifrato, ma non è disponibile alcuna password.",
+              "runner_password_required": "Il backup è cifrato, ma non è disponibile alcuna password.",
+              "unsupported_archive_member": "Il backup contiene voci di collegamento; aggiorna il Runtime Runner alla versione 4.",
+              "runner_unsupported_archive_member": "Il backup contiene voci di collegamento; aggiorna il Runtime Runner alla versione 4."
+            }
+          }
         }
       },
       "last_restore_test": {
@@ -806,7 +848,7 @@
     },
     "runner_update_recommended": {
       "title": "Aggiornamento di Runtime Runner consigliato",
-      "description": "Il Runtime Runner collegato riporta la versione {version}. La versione {recommended} aggiunge l'avanzamento live per passo e dettagli di stato estesi. Il test di runtime funziona anche senza l'aggiornamento, ma mostra solo fasi approssimative."
+      "description": "Il Runtime Runner collegato riporta la versione {version}. È consigliata la versione {recommended}: il runner 3 aggiunge l'avanzamento live per passo e dettagli di stato estesi, il runner 4 può inoltre testare i backup con collegamenti simbolici o fisici. Il test di runtime funziona anche senza l'aggiornamento, ma con queste limitazioni."
     },
     "runner_not_discovered": {
       "title": "Runtime Runner non viene più annunciato",

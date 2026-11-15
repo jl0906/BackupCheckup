@@ -2279,9 +2279,14 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
                 snapshot.status, ACTIVITY_OUTCOME_FAILED
             ),
             level=logging.INFO if snapshot.passed is True else logging.WARNING,
+            # A journal entry only carries an error code when there is one.
             details={
                 "status": snapshot.status,
-                "error_code": snapshot.error_code or "none",
+                **(
+                    {"error_code": snapshot.error_code}
+                    if snapshot.error_code
+                    else {}
+                ),
             },
         )
         self._refresh_progress_data()

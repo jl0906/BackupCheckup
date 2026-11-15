@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 DOMAIN = "backup_checkup"
 CONFIG_ENTRY_VERSION = 17
 NAME = "BackupCheckup"
-VERSION = "3.2.2"
+VERSION = "3.2.3"
 
 PLATFORMS: tuple[Platform, ...] = (
     Platform.SENSOR,
@@ -161,9 +161,10 @@ DEFAULT_RUNNER_TIMEOUT_MINUTES = 20
 DEFAULT_RUNNER_HEALTH_INTERVAL_MINUTES = 5
 
 # The integration talks protocol 2 to every runner. Runner 3 adds live step
-# progress and the extended health endpoint; runner 2 keeps working without it.
+# progress and the extended health endpoint, runner 4 accepts backups with
+# link entries; runner 2 and 3 keep working without those.
 MIN_RUNNER_VERSION = 2
-RECOMMENDED_RUNNER_VERSION = 3
+RECOMMENDED_RUNNER_VERSION = 4
 
 BACKUP_PURPOSE_AUTOMATIC = "automatic"
 BACKUP_PURPOSE_MANUAL = "manual"
@@ -241,6 +242,9 @@ NOTIFICATION_CONFIRM_SECONDS = 180
 NOTIFICATION_CONFIRM_RECHECK_SECONDS = NOTIFICATION_CONFIRM_SECONDS + 5
 
 MAX_ARCHIVE_MEMBERS = 1_000_000
+# Limits of one link target. They mirror the Runtime Runner (server.py).
+MAX_ARCHIVE_PATH_LENGTH = 4096
+MAX_ARCHIVE_PATH_DEPTH = 64
 MAX_BACKUP_METADATA_BYTES = 2 * 1024 * 1024
 MIN_FREE_SPACE_RESERVE_BYTES = 1024 * 1024 * 1024
 MAX_FREE_SPACE_RESERVE_BYTES = 10 * 1024 * 1024 * 1024

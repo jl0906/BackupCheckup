@@ -500,6 +500,14 @@
           "password_required": "Adgangskode kræves",
           "aborted": "Aborted by safety limit",
           "internal_error": "Internal verification error"
+        },
+        "state_attributes": {
+          "warnings": {
+            "state": {
+              "archive_links_unsafe": "Usikre links sprunget over",
+              "archive_members_skipped": "Specialfiler sprunget over"
+            }
+          }
         }
       },
       "last_integrity_check": {
@@ -575,6 +583,40 @@
           "aborted": "Aborted",
           "inconclusive": "Inconclusive",
           "not_started": "Ikke startet"
+        },
+        "state_attributes": {
+          "error_code": {
+            "state": {
+              "unsafe_archive_path": "Backuppen indeholder en usikker filsti.",
+              "runner_unsafe_archive_path": "Backuppen indeholder en usikker filsti.",
+              "archive_member_limit": "Backuppen indeholder flere poster, end runneren accepterer.",
+              "runner_archive_member_limit": "Backuppen indeholder flere poster, end runneren accepterer.",
+              "archive_member_duplicate": "Backuppen indeholder den samme post flere gange.",
+              "runner_archive_member_duplicate": "Backuppen indeholder den samme post flere gange.",
+              "expanded_size_limit": "Den udpakkede backup overskrider runnerens konfigurerede størrelsesgrænse.",
+              "runner_expanded_size_limit": "Den udpakkede backup overskrider runnerens konfigurerede størrelsesgrænse.",
+              "homeassistant_archive_missing": "Backuppen indeholder ikke et Home Assistant-arkiv.",
+              "runner_homeassistant_archive_missing": "Backuppen indeholder ikke et Home Assistant-arkiv.",
+              "homeassistant_archive_unreadable": "Home Assistant-arkivet i backuppen kunne ikke læses.",
+              "runner_homeassistant_archive_unreadable": "Home Assistant-arkivet i backuppen kunne ikke læses.",
+              "homeassistant_config_missing": "Backuppen indeholder ikke en Home Assistant-konfigurationsmappe.",
+              "runner_homeassistant_config_missing": "Backuppen indeholder ikke en Home Assistant-konfigurationsmappe.",
+              "archive_member_unreadable": "En fil i backuppen kunne ikke læses.",
+              "runner_archive_member_unreadable": "En fil i backuppen kunne ikke læses.",
+              "backup_metadata_invalid": "Backuppens metadata er ugyldige.",
+              "runner_backup_metadata_invalid": "Backuppens metadata er ugyldige.",
+              "backup_metadata_too_large": "Backuppens metadata er for store.",
+              "runner_backup_metadata_too_large": "Backuppens metadata er for store.",
+              "backup_metadata_missing": "Backuppens metadata mangler.",
+              "runner_backup_metadata_missing": "Backuppens metadata mangler.",
+              "backup_metadata_unreadable": "Backuppens metadata kunne ikke læses.",
+              "runner_backup_metadata_unreadable": "Backuppens metadata kunne ikke læses.",
+              "password_required": "Backuppen er krypteret, men der er ingen adgangskode tilgængelig.",
+              "runner_password_required": "Backuppen er krypteret, men der er ingen adgangskode tilgængelig.",
+              "unsupported_archive_member": "Backuppen indeholder linkposter; opdater Runtime Runner til version 4.",
+              "runner_unsupported_archive_member": "Backuppen indeholder linkposter; opdater Runtime Runner til version 4."
+            }
+          }
         }
       },
       "last_restore_test": {
@@ -806,7 +848,7 @@
     },
     "runner_update_recommended": {
       "title": "Opdatering af Runtime Runner anbefales",
-      "description": "Den forbundne Runtime Runner melder version {version}. Version {recommended} giver live-trinfremdrift og udvidede statusdetaljer. Runtime-testen virker også uden opdateringen, men viser kun grove faser."
+      "description": "Den forbundne Runtime Runner melder version {version}. Version {recommended} anbefales: runner 3 giver live-trinfremdrift og udvidede statusdetaljer, runner 4 kan også teste backups med symbolske eller hårde links. Runtime-testen virker også uden opdateringen, men med disse begrænsninger."
     },
     "runner_not_discovered": {
       "title": "Runtime Runner annonceres ikke længere",

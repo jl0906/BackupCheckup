@@ -366,7 +366,7 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
             details={
                 "status": "online" if health.usable else "offline",
                 "version": health.runner_version or "unknown",
-                "error_code": health.error_code or "none",
+                **({"error_code": health.error_code} if health.error_code else {}),
             },
         )
 

@@ -500,6 +500,14 @@
           "password_required": "Se requiere contraseña",
           "aborted": "Aborted by safety limit",
           "internal_error": "Internal verification error"
+        },
+        "state_attributes": {
+          "warnings": {
+            "state": {
+              "archive_links_unsafe": "Enlaces no seguros omitidos",
+              "archive_members_skipped": "Archivos especiales omitidos"
+            }
+          }
         }
       },
       "last_integrity_check": {
@@ -575,6 +583,40 @@
           "aborted": "Aborted",
           "inconclusive": "Inconclusive",
           "not_started": "No iniciada"
+        },
+        "state_attributes": {
+          "error_code": {
+            "state": {
+              "unsafe_archive_path": "La copia contiene una ruta de archivo no segura.",
+              "runner_unsafe_archive_path": "La copia contiene una ruta de archivo no segura.",
+              "archive_member_limit": "La copia contiene más entradas de las que acepta el runner.",
+              "runner_archive_member_limit": "La copia contiene más entradas de las que acepta el runner.",
+              "archive_member_duplicate": "La copia contiene la misma entrada más de una vez.",
+              "runner_archive_member_duplicate": "La copia contiene la misma entrada más de una vez.",
+              "expanded_size_limit": "La copia descomprimida supera el límite de tamaño configurado del runner.",
+              "runner_expanded_size_limit": "La copia descomprimida supera el límite de tamaño configurado del runner.",
+              "homeassistant_archive_missing": "La copia no contiene un archivo de Home Assistant.",
+              "runner_homeassistant_archive_missing": "La copia no contiene un archivo de Home Assistant.",
+              "homeassistant_archive_unreadable": "No se pudo leer el archivo de Home Assistant de la copia.",
+              "runner_homeassistant_archive_unreadable": "No se pudo leer el archivo de Home Assistant de la copia.",
+              "homeassistant_config_missing": "La copia no contiene una carpeta de configuración de Home Assistant.",
+              "runner_homeassistant_config_missing": "La copia no contiene una carpeta de configuración de Home Assistant.",
+              "archive_member_unreadable": "No se pudo leer un archivo de la copia.",
+              "runner_archive_member_unreadable": "No se pudo leer un archivo de la copia.",
+              "backup_metadata_invalid": "Los metadatos de la copia no son válidos.",
+              "runner_backup_metadata_invalid": "Los metadatos de la copia no son válidos.",
+              "backup_metadata_too_large": "Los metadatos de la copia son demasiado grandes.",
+              "runner_backup_metadata_too_large": "Los metadatos de la copia son demasiado grandes.",
+              "backup_metadata_missing": "Faltan los metadatos de la copia.",
+              "runner_backup_metadata_missing": "Faltan los metadatos de la copia.",
+              "backup_metadata_unreadable": "No se pudieron leer los metadatos de la copia.",
+              "runner_backup_metadata_unreadable": "No se pudieron leer los metadatos de la copia.",
+              "password_required": "La copia está cifrada, pero no hay ninguna contraseña disponible.",
+              "runner_password_required": "La copia está cifrada, pero no hay ninguna contraseña disponible.",
+              "unsupported_archive_member": "La copia contiene entradas de enlace; actualiza el Runtime Runner a la versión 4.",
+              "runner_unsupported_archive_member": "La copia contiene entradas de enlace; actualiza el Runtime Runner a la versión 4."
+            }
+          }
         }
       },
       "last_restore_test": {
@@ -806,7 +848,7 @@
     },
     "runner_update_recommended": {
       "title": "Se recomienda actualizar Runtime Runner",
-      "description": "El Runtime Runner conectado informa de la versión {version}. La versión {recommended} añade progreso en vivo por pasos y detalles de estado ampliados. La prueba de ejecución sigue funcionando sin la actualización, pero solo muestra fases aproximadas."
+      "description": "El Runtime Runner conectado informa de la versión {version}. Se recomienda la versión {recommended}: el runner 3 añade progreso en vivo por pasos y detalles de estado ampliados, y el runner 4 también puede probar copias con enlaces simbólicos o físicos. La prueba de ejecución sigue funcionando sin la actualización, pero con estas limitaciones."
     },
     "runner_not_discovered": {
       "title": "Runtime Runner ya no se anuncia",

@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <img alt="Version 3.2.2" src="https://img.shields.io/badge/version-3.2.2-blue.svg">
+  <img alt="Version 3.2.3" src="https://img.shields.io/badge/version-3.2.3-blue.svg">
   <img alt="Home Assistant 2026.3 or newer" src="https://img.shields.io/badge/Home_Assistant-2026.3_or_newer-41BDF5.svg">
   <img alt="AI coded and maintained" src="https://img.shields.io/badge/AI-coded%20%26%20maintained-8A2BE2.svg">
   <img alt="MIT License" src="https://img.shields.io/badge/license-MIT-yellow.svg">
@@ -26,16 +26,20 @@ invented percentage.
 BackupCheckup never restores or changes the production system. The optional
 **BackupCheckup Runtime Runner** for Home Assistant OS can additionally start an
 already verified backup in a temporary, network-isolated Home Assistant instance.
-Its reachability is monitored, and **Runtime Runner 3** adds live step progress
-and boot events. The runner has its own version line; runner 2 keeps working
+Its reachability is monitored, **Runtime Runner 3** adds live step progress
+and boot events, and **Runtime Runner 4** tests backups that contain symbolic
+or hard links. The runner has its own version line; runner 2 keeps working
 without the live detail.
 
 ## Installation
 
-[![Open your Home Assistant instance and add BackupCheckup to HACS.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jl0906&repository=BackupCheckup&category=integration)
+[![Open your Home Assistant instance and add BackupCheckup to the Marketplace (HACS).](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jl0906&repository=BackupCheckup&category=integration)
 
-Install BackupCheckup through HACS, restart Home Assistant, then add the integration
-under **Settings → Devices & services**. Home Assistant 2026.3.0 or newer is required.
+Install BackupCheckup through the Marketplace (HACS), restart Home Assistant, then add
+the integration under **Settings → Devices & services**. Home Assistant 2026.3.0 or
+newer is required. Since Home Assistant 2026.11 the Marketplace is built in under
+**Settings → Marketplace**; on Home Assistant 2026.10 and older it is the separately
+installed HACS.
 
 ## Documentation
 

@@ -59,6 +59,7 @@ from .repairs import (
 from .security import (
     VerificationBudget,
     VerificationLimitError,
+    _safe_link_target,
     anonymous_agent_reference,
     cleanup_stale_temp_directories,
     cleanup_temp_directory,
@@ -96,6 +97,9 @@ _GLOBAL_LIMIT_CODES = frozenset(
 VerifiedArchiveCallback = Callable[
     [Path, str | None, BackupIntegrityResult], Awaitable[None]
 ]
+
+WARNING_ARCHIVE_LINKS_UNSAFE = "archive_links_unsafe"
+WARNING_ARCHIVE_MEMBERS_SKIPPED = "archive_members_skipped"
 
 STEP_PREPARE = "prepare"
 STEP_STAGING = "staging"
@@ -273,6 +277,11 @@ class _ArchiveScan:
     archive_count: int = 0
     file_count: int = 0
     inner_names: set[str] = field(default_factory=set)
+    # Members that are neither files nor directories. A safe link is only
+    # counted; unsafe links and special files additionally raise a warning.
+    link_count: int = 0
+    unsafe_link_count: int = 0
+    skipped_member_count: int = 0
 
 
 @dataclass(slots=True)
@@ -1117,6 +1126,15 @@ class BackupIntegrityVerifier:
                 details={
                     "archive_count": details["archive_count"],
                     "file_count": details["file_count"],
+                    **{
+                        key: details[key]
+                        for key in (
+                            "link_count",
+                            "unsafe_link_count",
+                            "skipped_member_count",
+                        )
+                        if details[key]
+                    },
                 },
             )
             if database_check:
@@ -1559,6 +1577,7 @@ class BackupIntegrityVerifier:
             total=max(progress.archives_total, scan.archive_count),
         )
         warnings = cls._validate_archive_inventory(metadata, scan)
+        warnings.extend(cls._member_policy_warnings(scan))
         progress.update(
             STEP_NESTED_ARCHIVES,
             done=scan.archive_count,
@@ -1577,6 +1596,9 @@ class BackupIntegrityVerifier:
         return {
             "archive_count": scan.archive_count,
             "file_count": scan.file_count,
+            "link_count": scan.link_count,
+            "unsafe_link_count": scan.unsafe_link_count,
+            "skipped_member_count": scan.skipped_member_count,
             "database_status": database_status,
             "protected": effective_protected,
             "warnings": warnings,
@@ -1670,7 +1692,10 @@ class BackupIntegrityVerifier:
         """Validate and consume one outer TAR member."""
         budget.add_member()
         cls._validate_member_path(member.name)
-        if member.isdir() or not member.isfile():
+        if member.isdir():
+            return
+        if not member.isfile():
+            cls._count_special_member(member, scan, None)
             return
 
         member_path = PurePosixPath(member.name)
@@ -1755,6 +1780,7 @@ class BackupIntegrityVerifier:
         with cls._inner_archive_stream(outer, member, protected) as inner_stream:
             scan.file_count += cls._read_inner_archive(
                 inner_stream,
+                scan=scan,
                 database_check=inspect_database,
                 database_path=database_path,
                 budget=budget,
@@ -1977,19 +2003,30 @@ class BackupIntegrityVerifier:
         cls,
         stream: Any,
         *,
+        scan: _ArchiveScan,
         database_check: bool,
         database_path: Path,
         budget: VerificationBudget,
         progress: _ScanProgress,
     ) -> int:
-        """Read every member of one inner archive and return its file count."""
+        """Read every member of one inner archive and return its file count.
+
+        Links and special files follow the member policy of the Runtime
+        Runner, so both always reach the same verdict on one archive.
+        """
         file_count = 0
         database_candidates = 0
+        links: set[PurePosixPath] = set()
         with tarfile.open(fileobj=stream, mode="r|*", bufsize=_BUFFER_SIZE) as inner:
             for inner_member in inner:
                 budget.add_member()
                 cls._validate_member_path(inner_member.name)
+                if links:
+                    cls._reject_member_behind_link(inner_member.name, links)
+                if inner_member.isdir():
+                    continue
                 if not inner_member.isfile():
+                    cls._count_special_member(inner_member, scan, links)
                     continue
                 file_count += 1
                 database_candidates = cls._consume_inner_file(
@@ -2002,6 +2039,47 @@ class BackupIntegrityVerifier:
                     progress=progress,
                 )
         return file_count
+
+    @staticmethod
+    def _reject_member_behind_link(name: str, links: set[PurePosixPath]) -> None:
+        """Reject a member that an extraction would write through a link."""
+        path = PurePosixPath(name)
+        if path in links or any(parent in links for parent in path.parents):
+            raise tarfile.ReadError("unsafe_archive_member_path")
+
+    @staticmethod
+    def _count_special_member(
+        member: tarfile.TarInfo,
+        scan: _ArchiveScan,
+        links: set[PurePosixPath] | None,
+    ) -> None:
+        """Classify one member that is neither a file nor a directory."""
+        if member.issym():
+            if _safe_link_target(member.name, member.linkname) is None:
+                scan.unsafe_link_count += 1
+                return
+            scan.link_count += 1
+            if links is not None:
+                links.add(PurePosixPath(member.name))
+        elif member.islnk():
+            # A hard link names its target relative to the archive root.
+            target = _safe_link_target("link", member.linkname)
+            if target is None or not target.parts:
+                scan.unsafe_link_count += 1
+            else:
+                scan.link_count += 1
+        else:
+            scan.skipped_member_count += 1
+
+    @staticmethod
+    def _member_policy_warnings(scan: _ArchiveScan) -> list[str]:
+        """Return the non-fatal warnings for skipped links and special files."""
+        warnings: list[str] = []
+        if scan.unsafe_link_count:
+            warnings.append(WARNING_ARCHIVE_LINKS_UNSAFE)
+        if scan.skipped_member_count:
+            warnings.append(WARNING_ARCHIVE_MEMBERS_SKIPPED)
+        return warnings
 
     @classmethod
     def _consume_inner_file(

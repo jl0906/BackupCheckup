@@ -500,6 +500,14 @@
           "password_required": "Wachtwoord vereist",
           "aborted": "Aborted by safety limit",
           "internal_error": "Internal verification error"
+        },
+        "state_attributes": {
+          "warnings": {
+            "state": {
+              "archive_links_unsafe": "Onveilige koppelingen overgeslagen",
+              "archive_members_skipped": "Speciale bestanden overgeslagen"
+            }
+          }
         }
       },
       "last_integrity_check": {
@@ -575,6 +583,40 @@
           "aborted": "Aborted",
           "inconclusive": "Inconclusive",
           "not_started": "Niet gestart"
+        },
+        "state_attributes": {
+          "error_code": {
+            "state": {
+              "unsafe_archive_path": "De back-up bevat een onveilig bestandspad.",
+              "runner_unsafe_archive_path": "De back-up bevat een onveilig bestandspad.",
+              "archive_member_limit": "De back-up bevat meer items dan de runner accepteert.",
+              "runner_archive_member_limit": "De back-up bevat meer items dan de runner accepteert.",
+              "archive_member_duplicate": "De back-up bevat hetzelfde item meer dan eens.",
+              "runner_archive_member_duplicate": "De back-up bevat hetzelfde item meer dan eens.",
+              "expanded_size_limit": "De uitgepakte back-up overschrijdt de ingestelde groottelimiet van de runner.",
+              "runner_expanded_size_limit": "De uitgepakte back-up overschrijdt de ingestelde groottelimiet van de runner.",
+              "homeassistant_archive_missing": "De back-up bevat geen Home Assistant-archief.",
+              "runner_homeassistant_archive_missing": "De back-up bevat geen Home Assistant-archief.",
+              "homeassistant_archive_unreadable": "Het Home Assistant-archief in de back-up kon niet worden gelezen.",
+              "runner_homeassistant_archive_unreadable": "Het Home Assistant-archief in de back-up kon niet worden gelezen.",
+              "homeassistant_config_missing": "De back-up bevat geen Home Assistant-configuratiemap.",
+              "runner_homeassistant_config_missing": "De back-up bevat geen Home Assistant-configuratiemap.",
+              "archive_member_unreadable": "Een bestand in de back-up kon niet worden gelezen.",
+              "runner_archive_member_unreadable": "Een bestand in de back-up kon niet worden gelezen.",
+              "backup_metadata_invalid": "De metadata van de back-up zijn ongeldig.",
+              "runner_backup_metadata_invalid": "De metadata van de back-up zijn ongeldig.",
+              "backup_metadata_too_large": "De metadata van de back-up zijn te groot.",
+              "runner_backup_metadata_too_large": "De metadata van de back-up zijn te groot.",
+              "backup_metadata_missing": "De metadata van de back-up ontbreken.",
+              "runner_backup_metadata_missing": "De metadata van de back-up ontbreken.",
+              "backup_metadata_unreadable": "De metadata van de back-up konden niet worden gelezen.",
+              "runner_backup_metadata_unreadable": "De metadata van de back-up konden niet worden gelezen.",
+              "password_required": "De back-up is versleuteld, maar er is geen wachtwoord beschikbaar.",
+              "runner_password_required": "De back-up is versleuteld, maar er is geen wachtwoord beschikbaar.",
+              "unsupported_archive_member": "De back-up bevat koppelingen; werk de Runtime Runner bij naar versie 4.",
+              "runner_unsupported_archive_member": "De back-up bevat koppelingen; werk de Runtime Runner bij naar versie 4."
+            }
+          }
         }
       },
       "last_restore_test": {
@@ -806,7 +848,7 @@
     },
     "runner_update_recommended": {
       "title": "Update van Runtime Runner aanbevolen",
-      "description": "De verbonden Runtime Runner meldt versie {version}. Versie {recommended} biedt live stapvoortgang en uitgebreide statusdetails. De runtimetest blijft zonder de update werken, maar toont alleen globale fasen."
+      "description": "De verbonden Runtime Runner meldt versie {version}. Versie {recommended} wordt aanbevolen: runner 3 biedt live stapvoortgang en uitgebreide statusdetails, runner 4 kan ook back-ups met symbolische of harde koppelingen testen. De runtimetest blijft zonder de update werken, maar met deze beperkingen."
     },
     "runner_not_discovered": {
       "title": "Runtime Runner wordt niet meer aangekondigd",

@@ -500,6 +500,14 @@
           "password_required": "Passwort erforderlich",
           "aborted": "Durch Sicherheitsgrenze abgebrochen",
           "internal_error": "Interner Prüffehler"
+        },
+        "state_attributes": {
+          "warnings": {
+            "state": {
+              "archive_links_unsafe": "Unsichere Links übersprungen",
+              "archive_members_skipped": "Spezialdateien übersprungen"
+            }
+          }
         }
       },
       "last_integrity_check": {
@@ -575,6 +583,40 @@
           "aborted": "Abgebrochen",
           "inconclusive": "Nicht eindeutig",
           "not_started": "Nicht gestartet"
+        },
+        "state_attributes": {
+          "error_code": {
+            "state": {
+              "unsafe_archive_path": "Das Backup enthält einen unsicheren Dateipfad.",
+              "runner_unsafe_archive_path": "Das Backup enthält einen unsicheren Dateipfad.",
+              "archive_member_limit": "Das Backup enthält mehr Einträge, als der Runner akzeptiert.",
+              "runner_archive_member_limit": "Das Backup enthält mehr Einträge, als der Runner akzeptiert.",
+              "archive_member_duplicate": "Das Backup enthält denselben Eintrag mehrfach.",
+              "runner_archive_member_duplicate": "Das Backup enthält denselben Eintrag mehrfach.",
+              "expanded_size_limit": "Das entpackte Backup überschreitet die eingestellte Größengrenze des Runners.",
+              "runner_expanded_size_limit": "Das entpackte Backup überschreitet die eingestellte Größengrenze des Runners.",
+              "homeassistant_archive_missing": "Das Backup enthält kein Home-Assistant-Archiv.",
+              "runner_homeassistant_archive_missing": "Das Backup enthält kein Home-Assistant-Archiv.",
+              "homeassistant_archive_unreadable": "Das Home-Assistant-Archiv im Backup konnte nicht gelesen werden.",
+              "runner_homeassistant_archive_unreadable": "Das Home-Assistant-Archiv im Backup konnte nicht gelesen werden.",
+              "homeassistant_config_missing": "Das Backup enthält keinen Home-Assistant-Konfigurationsordner.",
+              "runner_homeassistant_config_missing": "Das Backup enthält keinen Home-Assistant-Konfigurationsordner.",
+              "archive_member_unreadable": "Eine Datei im Backup konnte nicht gelesen werden.",
+              "runner_archive_member_unreadable": "Eine Datei im Backup konnte nicht gelesen werden.",
+              "backup_metadata_invalid": "Die Backup-Metadaten sind ungültig.",
+              "runner_backup_metadata_invalid": "Die Backup-Metadaten sind ungültig.",
+              "backup_metadata_too_large": "Die Backup-Metadaten sind zu groß.",
+              "runner_backup_metadata_too_large": "Die Backup-Metadaten sind zu groß.",
+              "backup_metadata_missing": "Die Backup-Metadaten fehlen.",
+              "runner_backup_metadata_missing": "Die Backup-Metadaten fehlen.",
+              "backup_metadata_unreadable": "Die Backup-Metadaten konnten nicht gelesen werden.",
+              "runner_backup_metadata_unreadable": "Die Backup-Metadaten konnten nicht gelesen werden.",
+              "password_required": "Das Backup ist verschlüsselt, aber es ist kein Passwort verfügbar.",
+              "runner_password_required": "Das Backup ist verschlüsselt, aber es ist kein Passwort verfügbar.",
+              "unsupported_archive_member": "Das Backup enthält Link-Einträge; aktualisiere den Runtime Runner auf Version 4.",
+              "runner_unsupported_archive_member": "Das Backup enthält Link-Einträge; aktualisiere den Runtime Runner auf Version 4."
+            }
+          }
         }
       },
       "last_restore_test": {
@@ -806,7 +848,7 @@
     },
     "runner_update_recommended": {
       "title": "Runtime-Runner-Update empfohlen",
-      "description": "Der verbundene Runtime Runner meldet Version {version}. Version {recommended} liefert Live-Schrittfortschritt und ausführliche Zustandsdaten. Der Laufzeittest funktioniert auch ohne das Update, zeigt dann aber nur grobe Phasen."
+      "description": "Der verbundene Runtime Runner meldet Version {version}. Empfohlen ist Version {recommended}: Runner 3 liefert Live-Schrittfortschritt und ausführliche Zustandsdaten, Runner 4 kann zusätzlich Backups mit symbolischen oder harten Links testen. Der Laufzeittest funktioniert auch ohne das Update, aber mit diesen Einschränkungen."
     },
     "runner_not_discovered": {
       "title": "Runtime Runner wird nicht mehr angekündigt",

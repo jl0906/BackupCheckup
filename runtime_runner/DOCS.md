@@ -13,6 +13,23 @@ update when only the BackupCheckup integration version changes. Changes of every
 runner version are listed in this app's `CHANGELOG.md`, which Home Assistant
 shows in the app update dialog.
 
+## Runner 4
+
+Protocol 2 is unchanged and no field was added.
+
+- Archives with symbolic or hard links inside `homeassistant.tar` no longer
+  abort extraction with `unsupported_archive_member`.
+- A symbolic link is recreated when its target is relative and stays inside the
+  archive. A hard link becomes a private copy of its already extracted target.
+- Links with an unsafe target (absolute, leaving the archive, or climbing with
+  `..` behind a named segment) and special files (FIFOs, devices) are skipped
+  and counted in the app log. The log names the member type, never a path.
+- The structural verification of BackupCheckup 3.2.3 applies the same policy,
+  so both always reach the same verdict on one backup.
+
+BackupCheckup 3.2.3 recommends runner 4. Runner 3 keeps working, but cannot
+test backups that contain link entries.
+
 ## Runner 3
 
 Protocol 2 is unchanged. Every new field is additive, so BackupCheckup 3.1.0 and

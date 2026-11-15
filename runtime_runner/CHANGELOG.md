@@ -1,5 +1,14 @@
 # Changelog
 
+## 4
+
+### Fixed
+
+- Archives with symbolic or hard links no longer abort extraction with
+  `unsupported_archive_member`. Safe relative links are recreated inside the
+  temporary instance, unsafe links and special files are skipped and
+  counted. Protocol version stays at 2.
+
 ## 3
 
 ### Added

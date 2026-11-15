@@ -1,0 +1,26 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  zip-asset:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Build the Marketplace (HACS) ZIP asset
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: python .github/scripts/build_release_zip.py --tag "$RELEASE_TAG" --output backup_checkup.zip
+      - name: Attach the asset to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$RELEASE_TAG" backup_checkup.zip --clobber

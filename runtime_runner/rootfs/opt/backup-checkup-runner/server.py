@@ -29,8 +29,9 @@ from typing import Any, BinaryIO
 from securetar import SecureTarArchive
 
 PROTOCOL_VERSION = 2
-RUNNER_VERSION = "3"
-# Runner 3 reports measured steps and boot events; protocol 2 is unchanged.
+RUNNER_VERSION = "4"
+# Runner 3 reports measured steps and boot events, runner 4 accepts link
+# entries; protocol 2 is unchanged.
 CAPABILITIES = ("step_progress", "boot_events")
 # These weights mirror RUNTIME_STEPS in
 # custom_components/backup_checkup/progress.py. Both lists must stay identical;
@@ -266,6 +267,43 @@ def _safe_member_path(name: str) -> PurePosixPath:
     return path
 
 
+def _safe_link_target(member_path: str, linkname: str) -> PurePosixPath | None:
+    """Return the normalized in-archive target of one link, or None if unsafe.
+
+    A link is safe when its target is relative, stays inside the archive and
+    only climbs with leading ``..`` segments. A ``..`` after a named segment is
+    rejected because that segment may itself be a link, which would make the
+    computed target differ from the one the file system resolves.
+
+    This function must stay identical in the Runtime Runner (server.py) and in
+    the integration (security.py); .github/scripts/check_link_policy.py
+    enforces that.
+    """
+    if (
+        not isinstance(linkname, str)
+        or not linkname
+        or "\x00" in linkname
+        or len(linkname) > MAX_ARCHIVE_PATH_LENGTH
+    ):
+        return None
+    target = PurePosixPath(linkname)
+    if target.is_absolute():
+        return None
+    resolved = list(PurePosixPath(member_path).parent.parts)
+    descended = False
+    for part in target.parts:
+        if part == "..":
+            if descended or not resolved:
+                return None
+            resolved.pop()
+        else:
+            descended = True
+            resolved.append(part)
+    if len(resolved) > MAX_ARCHIVE_PATH_DEPTH:
+        return None
+    return PurePosixPath(*resolved)
+
+
 def _find_backup_metadata_member(archive: tarfile.TarFile) -> tarfile.TarInfo:
     """Locate the single root metadata file while validating every path."""
     member = None
@@ -358,14 +396,170 @@ def _homeassistant_stream(
             yield reader, member.size
 
 
+@dataclass(slots=True)
+class ExtractionCounts:
+    """Link and special members met while extracting one archive."""
+
+    link_count: int = 0
+    unsafe_link_count: int = 0
+    skipped_member_count: int = 0
+
+
+def _member_type(member: tarfile.TarInfo) -> str:
+    """Return a path-free type label of one skipped member for the log."""
+    if member.issym():
+        return "symlink"
+    if member.islnk():
+        return "hardlink"
+    if member.isfifo():
+        return "fifo"
+    if member.ischr():
+        return "character_device"
+    if member.isblk():
+        return "block_device"
+    return "other"
+
+
+def _restore_symlink(
+    member: tarfile.TarInfo,
+    path: PurePosixPath,
+    destination: Path,
+    links: set[PurePosixPath],
+    counts: ExtractionCounts,
+) -> None:
+    """Recreate one safe relative symlink or skip an unsafe one."""
+    if _safe_link_target(member.name, member.linkname) is None:
+        counts.unsafe_link_count += 1
+        _LOGGER.warning("run member_skipped member_type=symlink reason=unsafe_target")
+        return
+    destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    try:
+        # The raw relative target keeps the restored tree identical to the
+        # original; it was proven above to stay inside the extraction root.
+        os.symlink(member.linkname, destination)
+    except FileExistsError as err:
+        raise RunnerFailure("archive_member_duplicate") from err
+    links.add(path)
+    counts.link_count += 1
+
+
+def _restore_hardlink(
+    member: tarfile.TarInfo,
+    target: Path,
+    destination: Path,
+    links: set[PurePosixPath],
+    counts: ExtractionCounts,
+    remaining_bytes: int,
+) -> int:
+    """Materialize one hard link as a private copy and return its size."""
+    # A hard link names its target relative to the archive root.
+    source_path = _safe_link_target("link", member.linkname)
+    if source_path is None or not source_path.parts:
+        counts.unsafe_link_count += 1
+        _LOGGER.warning("run member_skipped member_type=hardlink reason=unsafe_target")
+        return 0
+    source = target.joinpath(*source_path.parts)
+    if (
+        source_path in links
+        or any(parent in links for parent in source_path.parents)
+        or source.is_symlink()
+        or not source.is_file()
+    ):
+        counts.skipped_member_count += 1
+        _LOGGER.warning("run member_skipped member_type=hardlink reason=target_missing")
+        return 0
+    size = source.stat().st_size
+    if size > remaining_bytes:
+        raise RunnerFailure("expanded_size_limit")
+    destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    try:
+        with source.open("rb") as reader, destination.open("xb") as output:
+            os.chmod(destination, 0o600)
+            while chunk := reader.read(CHUNK_SIZE):
+                output.write(chunk)
+    except FileExistsError as err:
+        raise RunnerFailure("archive_member_duplicate") from err
+    counts.link_count += 1
+    return size
+
+
+def _restore_file(
+    inner: tarfile.TarFile, member: tarfile.TarInfo, destination: Path
+) -> None:
+    """Write one regular member into a new private file."""
+    destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    reader = inner.extractfile(member)
+    if reader is None:
+        raise RunnerFailure("archive_member_unreadable")
+    try:
+        with closing(reader), destination.open("xb") as output:
+            os.chmod(destination, 0o600)
+            while chunk := reader.read(CHUNK_SIZE):
+                output.write(chunk)
+    except FileExistsError as err:
+        raise RunnerFailure("archive_member_duplicate") from err
+
+
+def _restore_member(
+    inner: tarfile.TarFile,
+    member: tarfile.TarInfo,
+    target: Path,
+    links: set[PurePosixPath],
+    counts: ExtractionCounts,
+    remaining_bytes: int,
+) -> int:
+    """Apply the member policy to one entry and return its expanded bytes."""
+    path = _safe_member_path(member.name)
+    if links:
+        if any(parent in links for parent in path.parents):
+            # Writing through a link would leave the checked location.
+            raise RunnerFailure("unsafe_archive_path")
+        if path in links:
+            raise RunnerFailure("archive_member_duplicate")
+    destination = target.joinpath(*path.parts)
+    if member.isdir():
+        destination.mkdir(mode=0o700, parents=True, exist_ok=True)
+        return 0
+    if member.isfile():
+        if member.size > remaining_bytes:
+            raise RunnerFailure("expanded_size_limit")
+        _restore_file(inner, member, destination)
+        return member.size
+    if member.issym():
+        _restore_symlink(member, path, destination, links, counts)
+        return 0
+    if member.islnk():
+        return _restore_hardlink(
+            member, target, destination, links, counts, remaining_bytes
+        )
+    counts.skipped_member_count += 1
+    _LOGGER.warning("run member_skipped member_type=%s", _member_type(member))
+    return 0
+
+
 def _extract_homeassistant(
     archive_path: Path,
     target: Path,
     password: str | None,
     maximum_expanded_bytes: int,
     progress: Callable[[int | None, int], None] | None = None,
+    counts: ExtractionCounts | None = None,
 ) -> Path:
+    """Extract the Home Assistant archive under one shared member policy.
+
+    Regular files and directories are restored, safe relative symlinks are
+    recreated, hard links become private copies, and unsafe links and special
+    files are skipped and counted. The structural verification of the
+    integration applies the same policy, so both always agree on one archive.
+
+    Every created symlink resolves inside ``target``: its target only climbs
+    with leading ``..`` segments from a directory that is never itself reached
+    through a link, because members at or below a link path are rejected. A
+    link to a member that was not extracted is a dangling link, not an escape.
+    """
     target.mkdir(mode=0o700, parents=True)
+    counts = counts if counts is not None else ExtractionCounts()
+    links: set[PurePosixPath] = set()
     expanded = 0
     members = 0
     with (
@@ -381,26 +575,26 @@ def _extract_homeassistant(
                 progress(_stream_position(stream), stream_size)
             if members > MAX_MEMBERS:
                 raise RunnerFailure("archive_member_limit")
-            path = _safe_member_path(member.name)
-            destination = target.joinpath(*path.parts)
-            if member.isdir():
-                destination.mkdir(mode=0o700, parents=True, exist_ok=True)
-                continue
-            if not member.isfile():
-                raise RunnerFailure("unsupported_archive_member")
-            expanded += member.size
-            if expanded > maximum_expanded_bytes:
-                raise RunnerFailure("expanded_size_limit")
-            destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-            reader = inner.extractfile(member)
-            if reader is None:
-                raise RunnerFailure("archive_member_unreadable")
-            with closing(reader), destination.open("xb") as output:
-                os.chmod(destination, 0o600)
-                while chunk := reader.read(CHUNK_SIZE):
-                    output.write(chunk)
+            expanded += _restore_member(
+                inner,
+                member,
+                target,
+                links,
+                counts,
+                maximum_expanded_bytes - expanded,
+            )
+    if counts.link_count or counts.unsafe_link_count or counts.skipped_member_count:
+        _LOGGER.info(
+            "run archive_links link_count=%d unsafe_link_count=%d "
+            "skipped_member_count=%d",
+            counts.link_count,
+            counts.unsafe_link_count,
+            counts.skipped_member_count,
+        )
     config_dir = target / "data"
-    if not config_dir.is_dir():
+    # The configuration directory itself must be real, so nothing outside the
+    # extracted tree is ever handed to the isolated instance.
+    if config_dir.is_symlink() or not config_dir.is_dir():
         raise RunnerFailure("homeassistant_config_missing")
     return config_dir
 
@@ -1099,7 +1293,7 @@ def _signed_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "BackupCheckupRuntime/3"
+    server_version = "BackupCheckupRuntime/4"
 
     def setup(self) -> None:
         """Bound slow or stalled clients before reading any request body."""

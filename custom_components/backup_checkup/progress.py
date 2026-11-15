@@ -130,6 +130,7 @@ RUNNER_NOT_STARTED_CODES = frozenset(
         "runner_tls_invalid",
         "runner_too_old",
         "runner_create_failed",
+        "runner_password_required",
     }
 )
 #: Runner failures that stopped a started test without a usable verdict.
@@ -138,6 +139,11 @@ RUNNER_ABORTED_CODES = frozenset(
         "runner_isolation_unavailable",
         "runner_timeout",
         "cancelled",
+        # Safety limits of the runner stopped the extraction.
+        "runner_unsafe_archive_path",
+        "runner_archive_member_limit",
+        "runner_archive_member_duplicate",
+        "runner_expanded_size_limit",
     }
 )
 #: Runner failures that leave the outcome of a started test unknown.
@@ -147,6 +153,49 @@ RUNNER_INCONCLUSIVE_CODES = frozenset(
         "runner_cleanup_failed",
         "runner_poll_failed",
         "runner_response_invalid",
+    }
+)
+#: Runner failures that are a real negative result: the request or the backup
+#: content is the problem. They are listed explicitly so that every code the
+#: runner can raise is classified on purpose;
+#: .github/scripts/check_runner_error_codes.py enforces that.
+RUNNER_FAILED_CODES = frozenset(
+    {
+        # Backup content.
+        "runner_homeassistant_archive_missing",
+        "runner_homeassistant_archive_unreadable",
+        "runner_homeassistant_config_missing",
+        "runner_archive_member_unreadable",
+        "runner_backup_metadata_invalid",
+        "runner_backup_metadata_missing",
+        "runner_backup_metadata_too_large",
+        "runner_backup_metadata_unreadable",
+        # Only raised by Runtime Runner 3 and older.
+        "runner_unsupported_archive_member",
+        # Rejected request, transfer or run state.
+        "runner_archive_checksum_mismatch",
+        "runner_archive_not_verified",
+        "runner_archive_size_limit",
+        "runner_archive_size_mismatch",
+        "runner_archive_state_invalid",
+        "runner_archive_upload_incomplete",
+        "runner_backup_checksum_invalid",
+        "runner_backup_reference_invalid",
+        "runner_content_length_invalid",
+        "runner_not_found",
+        "runner_password_invalid",
+        "runner_request_body_failed",
+        "runner_request_json_invalid",
+        "runner_request_size_invalid",
+        "runner_run_already_started",
+        "runner_run_not_found",
+        "runner_run_still_active",
+        "runner_runner_busy",
+        "runner_runner_limits_invalid",
+        "runner_runtime_result_invalid",
+        "runner_runtime_result_missing",
+        "runner_runtime_timeout",
+        "runner_supervisor_hostname_invalid",
     }
 )
 

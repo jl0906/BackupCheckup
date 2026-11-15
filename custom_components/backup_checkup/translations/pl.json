@@ -500,6 +500,14 @@
           "password_required": "Wymagane hasło",
           "aborted": "Aborted by safety limit",
           "internal_error": "Internal verification error"
+        },
+        "state_attributes": {
+          "warnings": {
+            "state": {
+              "archive_links_unsafe": "Pominięto niebezpieczne dowiązania",
+              "archive_members_skipped": "Pominięto pliki specjalne"
+            }
+          }
         }
       },
       "last_integrity_check": {
@@ -575,6 +583,40 @@
           "aborted": "Aborted",
           "inconclusive": "Inconclusive",
           "not_started": "Nie uruchomiono"
+        },
+        "state_attributes": {
+          "error_code": {
+            "state": {
+              "unsafe_archive_path": "Kopia zawiera niebezpieczną ścieżkę pliku.",
+              "runner_unsafe_archive_path": "Kopia zawiera niebezpieczną ścieżkę pliku.",
+              "archive_member_limit": "Kopia zawiera więcej wpisów, niż akceptuje runner.",
+              "runner_archive_member_limit": "Kopia zawiera więcej wpisów, niż akceptuje runner.",
+              "archive_member_duplicate": "Kopia zawiera ten sam wpis więcej niż raz.",
+              "runner_archive_member_duplicate": "Kopia zawiera ten sam wpis więcej niż raz.",
+              "expanded_size_limit": "Rozpakowana kopia przekracza skonfigurowany limit rozmiaru runnera.",
+              "runner_expanded_size_limit": "Rozpakowana kopia przekracza skonfigurowany limit rozmiaru runnera.",
+              "homeassistant_archive_missing": "Kopia nie zawiera archiwum Home Assistant.",
+              "runner_homeassistant_archive_missing": "Kopia nie zawiera archiwum Home Assistant.",
+              "homeassistant_archive_unreadable": "Nie udało się odczytać archiwum Home Assistant w kopii.",
+              "runner_homeassistant_archive_unreadable": "Nie udało się odczytać archiwum Home Assistant w kopii.",
+              "homeassistant_config_missing": "Kopia nie zawiera folderu konfiguracji Home Assistant.",
+              "runner_homeassistant_config_missing": "Kopia nie zawiera folderu konfiguracji Home Assistant.",
+              "archive_member_unreadable": "Nie udało się odczytać pliku z kopii.",
+              "runner_archive_member_unreadable": "Nie udało się odczytać pliku z kopii.",
+              "backup_metadata_invalid": "Metadane kopii są nieprawidłowe.",
+              "runner_backup_metadata_invalid": "Metadane kopii są nieprawidłowe.",
+              "backup_metadata_too_large": "Metadane kopii są zbyt duże.",
+              "runner_backup_metadata_too_large": "Metadane kopii są zbyt duże.",
+              "backup_metadata_missing": "Brakuje metadanych kopii.",
+              "runner_backup_metadata_missing": "Brakuje metadanych kopii.",
+              "backup_metadata_unreadable": "Nie udało się odczytać metadanych kopii.",
+              "runner_backup_metadata_unreadable": "Nie udało się odczytać metadanych kopii.",
+              "password_required": "Kopia jest zaszyfrowana, ale hasło nie jest dostępne.",
+              "runner_password_required": "Kopia jest zaszyfrowana, ale hasło nie jest dostępne.",
+              "unsupported_archive_member": "Kopia zawiera dowiązania; zaktualizuj Runtime Runner do wersji 4.",
+              "runner_unsupported_archive_member": "Kopia zawiera dowiązania; zaktualizuj Runtime Runner do wersji 4."
+            }
+          }
         }
       },
       "last_restore_test": {
@@ -806,7 +848,7 @@
     },
     "runner_update_recommended": {
       "title": "Zalecana aktualizacja Runtime Runner",
-      "description": "Połączony Runtime Runner zgłasza wersję {version}. Wersja {recommended} dodaje postęp kroków na żywo i rozszerzone informacje o stanie. Test uruchomieniowy działa także bez aktualizacji, ale pokazuje tylko ogólne fazy."
+      "description": "Połączony Runtime Runner zgłasza wersję {version}. Zalecana jest wersja {recommended}: runner 3 dodaje postęp kroków na żywo i rozszerzone szczegóły stanu, a runner 4 potrafi także testować kopie z dowiązaniami symbolicznymi lub twardymi. Test uruchomieniowy działa także bez aktualizacji, ale z tymi ograniczeniami."
     },
     "runner_not_discovered": {
       "title": "Runtime Runner nie jest już ogłaszany",

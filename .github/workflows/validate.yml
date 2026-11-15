@@ -11,6 +11,61 @@ permissions:
   contents: read
 
 jobs:
+  static-validation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - name: Install validation tools
+        run: python -m pip install ruff
+      - name: Static Python and complexity checks
+        run: ruff check custom_components runtime_runner
+      - name: Python syntax
+        run: python -m compileall -q custom_components runtime_runner
+      - name: JavaScript syntax
+        run: node --check custom_components/backup_checkup/frontend/backup-checkup-panel.js
+      - name: Version consistency
+        run: python .github/scripts/check_frontend_component.py
+      - name: Frontend runtime render
+        run: node .github/scripts/check_frontend_runtime.mjs
+      - name: Internal import resolution
+        run: python .github/scripts/check_internal_imports.py
+      - name: Duplicate keyword arguments
+        run: python .github/scripts/check_keyword_conflicts.py
+      - name: Progress weight consistency
+        run: python .github/scripts/check_progress_weights.py
+      - name: Progress model behavior
+        run: python .github/scripts/check_progress_model.py
+      - name: Restore simulation view
+        run: python .github/scripts/check_simulation_view.py
+      - name: Runner cleanup behavior
+        run: python .github/scripts/check_runner_cleanup.py
+      - name: Runner progress model
+        run: python .github/scripts/check_runner_progress.py
+      - name: Isolated boot events
+        run: python .github/scripts/check_isolated_boot_events.py
+      - name: Verification staging location
+        run: python .github/scripts/check_staging_location.py
+      - name: Backup manager busy states
+        run: python .github/scripts/check_backup_manager_state.py
+      - name: Async callback thread safety
+        run: python .github/scripts/check_async_callbacks.py
+      - name: Recorder attribute limits
+        run: python .github/scripts/check_recorder_attributes.py
+      - name: Notification confirmation policy
+        run: python .github/scripts/check_notification_policy.py
+      - name: Archive member policy
+        run: python .github/scripts/check_link_policy.py
+      - name: Runner failure codes
+        run: python .github/scripts/check_runner_error_codes.py
+      - name: Release ZIP asset
+        run: python .github/scripts/build_release_zip.py --check
+
   validate-hacs:
     runs-on: ubuntu-latest
     steps:

@@ -1,5 +1,48 @@
 # Changelog
 
+## 3.2.3
+
+### Fixed
+
+- Backups that contain symbolic or hard links inside `homeassistant.tar`
+  (for example a `custom_components` folder linked to a development
+  checkout) no longer fail the runtime test with
+  `unsupported_archive_member`. The structural verification and the
+  Runtime Runner now apply the same member policy: safe relative links are
+  accepted, unsafe links and special files are skipped and reported as a
+  warning instead of being ignored or aborting the run. Requires Runtime
+  Runner 4 for the runtime test; the structural verification fix works
+  without a runner update.
+- A successful runtime test no longer shows "Reason: The operation could
+  not be completed." in the live log. The journal entry carried a
+  placeholder error code that the panel rendered as an error.
+- Runner-side failure codes (archive limits, missing or unreadable
+  Home Assistant archive, metadata errors, password required) are now
+  translated in the panel and the sensor attributes. Unknown codes are
+  shown as readable text instead of a generic error message.
+
+### Added
+
+- Integrity warnings `archive_links_unsafe` and `archive_members_skipped`.
+  A backup with such entries is reported as "valid with warnings".
+
+### Changed
+
+- BackupCheckup is now published as a ZIP release. The Marketplace (HACS)
+  installs the release asset `backup_checkup.zip` instead of the repository
+  source; installing and updating work as before.
+- The documentation names the Marketplace (HACS): since Home Assistant 2026.11
+  HACS is built into Home Assistant as the Marketplace under **Settings →
+  Marketplace**. On Home Assistant 2026.10 and older it remains HACS.
+
+### Compatibility
+
+- Minimum compatible Runtime Runner: **2**. Runtime Runner **4** is
+  recommended; Runner 3 still works but cannot test backups that contain
+  link entries.
+- Configuration entry schema stays at version 17; no migration. Entity IDs
+  and unique IDs are unchanged.
+
 ## 3.2.2
 
 ### Fixed
