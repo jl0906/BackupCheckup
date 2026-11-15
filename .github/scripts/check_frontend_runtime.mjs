@@ -415,7 +415,7 @@ assertClean(notStartedHtml, "not started");
 const narrow = mount(IDLE_VERIFICATION, NOT_STARTED_RUNTIME, { narrow: true });
 assert(narrow.hasAttribute("narrow"), "The narrow attribute is not reflected");
 const menu = narrow.shadowRoot.header.children.find((child) =>
-  child.hasAttribute("data-menu"),
+  child.dataset.menu !== undefined,
 );
 assert(Boolean(menu), "Narrow layouts must render a menu button");
 assert(
@@ -553,7 +553,7 @@ for (const language of ["en", "de", "sv"]) {
       && warnings.includes("Checksum changed"),
     `The ${language} integrity warnings are not named: ${warnings}`,
   );
-  assert(journal._warningSummary([], text) === 0, "No warnings must render as 0");
+  assert(journal._warningSummary([], text) === "0", "No warnings must render as 0");
 }
 const englishText = mount(IDLE_VERIFICATION, NOT_STARTED_RUNTIME)._text();
 assert(

@@ -226,6 +226,97 @@ async def _async_cleanup_orphaned_stores(hass: HomeAssistant) -> None:
         )
 
 
+async def _async_test_notification(call: ServiceCall) -> None:
+    coordinator = _loaded_coordinator(call.hass)
+    _record_activity(
+        coordinator, "service_test_notification", ACTIVITY_OUTCOME_STARTED
+    )
+    if (
+        not coordinator.notifications_enabled
+        or not coordinator.notification_targets
+    ):
+        _record_activity(
+            coordinator,
+            "service_test_notification",
+            ACTIVITY_OUTCOME_FAILED,
+            level=logging.WARNING,
+            details={"reason": "not_configured"},
+        )
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="notification_not_configured",
+        )
+    if not await coordinator.notification_manager.async_send_test(
+        coordinator.notification_targets
+    ):
+        _record_activity(
+            coordinator,
+            "service_test_notification",
+            ACTIVITY_OUTCOME_FAILED,
+            level=logging.WARNING,
+        )
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="notification_failed",
+        )
+    _record_activity(
+        coordinator, "service_test_notification", ACTIVITY_OUTCOME_COMPLETED
+    )
+
+
+async def _async_set_recovery_preparedness(call: ServiceCall) -> None:
+    coordinator = _loaded_coordinator(call.hass)
+    section = call.data[ATTR_PREPAREDNESS_SECTION]
+    item = call.data[ATTR_PREPAREDNESS_ITEM]
+    status = call.data[ATTR_PREPAREDNESS_STATUS]
+    valid_items = (
+        CHECKLIST_KEYS if section == SECTION_CHECKLIST else DEPENDENCY_KEYS
+    )
+    valid_statuses = (
+        CHECK_STATUS_OPTIONS
+        if section == SECTION_CHECKLIST
+        else DEPENDENCY_STATUS_OPTIONS
+    )
+    if item not in valid_items or status not in valid_statuses:
+        raise HomeAssistantError(
+            translation_domain=DOMAIN,
+            translation_key="invalid_recovery_preparedness",
+        )
+    await coordinator.recovery_preparedness.async_set_item(section, item, status)
+    _record_activity(
+        coordinator,
+        "recovery_preparedness_update",
+        ACTIVITY_OUTCOME_COMPLETED,
+        details={"section": section, "status": status},
+    )
+    call.hass.async_create_task(
+        coordinator.async_request_refresh(),
+        name=f"{DOMAIN}_restore_test_refresh",
+    )
+
+
+async def _async_check_runner(call: ServiceCall) -> None:
+    coordinator = _loaded_coordinator(call.hass)
+    health = await coordinator.async_check_runner(
+        source=RUNNER_CHECK_SOURCE_MANUAL
+    )
+    _record_activity(
+        coordinator,
+        "runner_health_check",
+        (
+            ACTIVITY_OUTCOME_COMPLETED
+            if health.usable
+            else ACTIVITY_OUTCOME_FAILED
+        ),
+        level=logging.INFO if health.usable else logging.WARNING,
+        details={
+            "status": "online" if health.usable else "offline",
+            "version": health.runner_version or "unknown",
+            **({"error_code": health.error_code} if health.error_code else {}),
+        },
+    )
+
+
 async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
     """Register actions and remove stores left by deleted config entries."""
     await async_register_frontend(hass)
@@ -252,73 +343,6 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
         _record_activity(coordinator, "service_refresh", ACTIVITY_OUTCOME_STARTED)
         await coordinator.async_request_refresh()
         _record_activity(coordinator, "service_refresh", ACTIVITY_OUTCOME_COMPLETED)
-
-    async def _async_test_notification(_call: ServiceCall) -> None:
-        coordinator = _loaded_coordinator(hass)
-        _record_activity(
-            coordinator, "service_test_notification", ACTIVITY_OUTCOME_STARTED
-        )
-        if (
-            not coordinator.notifications_enabled
-            or not coordinator.notification_targets
-        ):
-            _record_activity(
-                coordinator,
-                "service_test_notification",
-                ACTIVITY_OUTCOME_FAILED,
-                level=logging.WARNING,
-                details={"reason": "not_configured"},
-            )
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="notification_not_configured",
-            )
-        if not await coordinator.notification_manager.async_send_test(
-            coordinator.notification_targets
-        ):
-            _record_activity(
-                coordinator,
-                "service_test_notification",
-                ACTIVITY_OUTCOME_FAILED,
-                level=logging.WARNING,
-            )
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="notification_failed",
-            )
-        _record_activity(
-            coordinator, "service_test_notification", ACTIVITY_OUTCOME_COMPLETED
-        )
-
-    async def _async_set_recovery_preparedness(call: ServiceCall) -> None:
-        coordinator = _loaded_coordinator(hass)
-        section = call.data[ATTR_PREPAREDNESS_SECTION]
-        item = call.data[ATTR_PREPAREDNESS_ITEM]
-        status = call.data[ATTR_PREPAREDNESS_STATUS]
-        valid_items = (
-            CHECKLIST_KEYS if section == SECTION_CHECKLIST else DEPENDENCY_KEYS
-        )
-        valid_statuses = (
-            CHECK_STATUS_OPTIONS
-            if section == SECTION_CHECKLIST
-            else DEPENDENCY_STATUS_OPTIONS
-        )
-        if item not in valid_items or status not in valid_statuses:
-            raise HomeAssistantError(
-                translation_domain=DOMAIN,
-                translation_key="invalid_recovery_preparedness",
-            )
-        await coordinator.recovery_preparedness.async_set_item(section, item, status)
-        _record_activity(
-            coordinator,
-            "recovery_preparedness_update",
-            ACTIVITY_OUTCOME_COMPLETED,
-            details={"section": section, "status": status},
-        )
-        hass.async_create_task(
-            coordinator.async_request_refresh(),
-            name=f"{DOMAIN}_restore_test_refresh",
-        )
 
     async def _async_record_restore_test(call: ServiceCall) -> None:
         coordinator = _loaded_coordinator(hass)
@@ -348,27 +372,6 @@ async def async_setup(hass: HomeAssistant, _config: ConfigType) -> bool:
     async def _async_clear_activity_log(_call: ServiceCall) -> None:
         coordinator = _loaded_coordinator(hass)
         await coordinator.activity.async_clear()
-
-    async def _async_check_runner(_call: ServiceCall) -> None:
-        coordinator = _loaded_coordinator(hass)
-        health = await coordinator.async_check_runner(
-            source=RUNNER_CHECK_SOURCE_MANUAL
-        )
-        _record_activity(
-            coordinator,
-            "runner_health_check",
-            (
-                ACTIVITY_OUTCOME_COMPLETED
-                if health.usable
-                else ACTIVITY_OUTCOME_FAILED
-            ),
-            level=logging.INFO if health.usable else logging.WARNING,
-            details={
-                "status": "online" if health.usable else "offline",
-                "version": health.runner_version or "unknown",
-                **({"error_code": health.error_code} if health.error_code else {}),
-            },
-        )
 
     for service, handler in (
         (SERVICE_VERIFY_LATEST_BACKUP, _async_verify_latest_backup),

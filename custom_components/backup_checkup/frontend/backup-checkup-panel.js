@@ -1,4 +1,4 @@
-const PANEL_ELEMENT_NAME = "backup-checkup-panel-v3-2-3-r1";
+const PANEL_ELEMENT_NAME = "backup-checkup-panel-v3-2-4-r1";
 
 const TRANSLATION_SEPARATOR = "\u001f";
 const PACKED_TRANSLATION_KEYS = Object.freeze({"scalar":"dashboard\u001fsubtitle\u001fhealthy\u001fattention\u001funavailable\u001fhealthScore\u001fstatus\u001frecommendation\u001flatestBackup\u001fbackupSize\u001fstoredBackups\u001fintegrity\u001fproblems\u001fnoProblems\u001fstorage\u001fnoStorage\u001fbackups\u001flastBackup\u001frefresh\u001fverify\u001fsettings\u001fupdated\u001factionFailed\u001funknownError\u001funknownRecommendation\u001fhealthDetails\u001fnoDeductions\u001fpointsDeducted\u001fintegrityDetails\u001fcheckedAt\u001fduration\u001fverifiedSize\u001ffilesChecked\u001fwarnings\u001fnextStep\u001fstatusLabel\u001fnewEntries\u001fclearLog\u001fexportLog\u001fclearConfirm\u001fpersistentLog\u001fruntimeLog\u001ffilterLabel\u001foverviewTab\u001flogTab\u001flogTitle\u001fsearchLogs\u001fnoLogs\u001floggingDisabled\u001flive","levelLabels":"all\u001finfo\u001fwarning\u001ferror","typeLabels":"all\u001fcheck\u001fbackup\u001fnotification\u001fsystem","storageStates":"online\u001fstale\u001foffline","detailLabels":"error_code\u001ferror_type\u001freason\u001fsource\u001fstatus\u001fversion\u001ftarget_count\u001fnotification_type\u001fretry_attempts\u001fremaining\u001ffailures\u001fenabled\u001fplatform_count\u001fmanager_state","detailValues":"manual\u001fautomatic\u001fcooldown\u001fnot_configured\u001ftrue\u001ffalse\u001ftest","errorMessages":"timeout\u001fconnection_error\u001fnot_configured\u001fcooldown\u001fpassword_required\u001funavailable","errorRecommendations":"timeout\u001fconnection_error\u001fnot_configured\u001fcooldown\u001fpassword_required\u001funavailable","healthComponents":"availability\u001ffreshness\u001fbackup_quality\u001fintegrity\u001fstorage\u001fautomation","activityActions":"verification_prepare\u001fstorage_copy_prepare\u001fbackup_download\u001fbackup_extract\u001fencrypted_backup_extract\u001fdatabase_read\u001ftemporary_data_cleanup\u001finventory_refresh\u001fbackup_manager_read\u001fintegrity_check\u001fintegrity_check_request\u001fintegrity_result_persist\u001fhealth_state\u001fnotification_send\u001fnotification_processing\u001fconfig_entry_setup\u001fentity_platform_setup\u001frepair_issue_sync\u001ffirst_refresh\u001fcoordinator_shutdown\u001fintegrity_state_load\u001fintegrity_check_schedule\u001fintegrity_background_task\u001fpost_verification_refresh\u001fservice_refresh\u001fservice_verify_latest_backup\u001fservice_test_notification\u001fpanel_setup\u001fconfig_entry_unload\u001fconfig_entry_remove","activityOutcomes":"started\u001fcompleted\u001fchanged\u001fskipped\u001ffailed\u001fcancelled"});
@@ -133,7 +133,7 @@ Object.entries(PROGRESS_TEXT).forEach(([language, extra]) => {
   const target = RECOVERY_TEXT[language] || RECOVERY_TEXT.en;
   Object.entries(extra).forEach(([key, value]) => {
     if (value && typeof value === "object") {
-      target[key] = { ...(target[key] || {}), ...value };
+      target[key] = { ...target[key], ...value };
     } else {
       target[key] = value;
     }
@@ -158,7 +158,7 @@ const RUNNER_FAILURE_TEXT = Object.freeze({
 Object.entries(RUNNER_FAILURE_TEXT).forEach(([language, extra]) => {
   const target = RECOVERY_TEXT[language] || RECOVERY_TEXT.en;
   Object.entries(extra).forEach(([key, value]) => {
-    target[key] = { ...(target[key] || {}), ...value };
+    target[key] = { ...target[key], ...value };
   });
 });
 
@@ -226,8 +226,8 @@ class BackupCheckupPanel extends HTMLElement {
     const first = this._hass === undefined;
     this._hass = value;
     if (first) {
-      this._subscribeProgress();
-      this._refreshRunner(false);
+      this._background(this._subscribeProgress());
+      this._background(this._refreshRunner(false));
     }
     if (shouldRender) this._scheduleRender();
   }
@@ -268,9 +268,17 @@ class BackupCheckupPanel extends HTMLElement {
 
   connectedCallback() {
     this._disconnected = false;
-    this._subscribeProgress();
-    this._refreshRunner(true);
+    this._background(this._subscribeProgress());
+    this._background(this._refreshRunner(true));
     this._scheduleRender();
+  }
+
+  _background(task) {
+    // Background work reports its own failures in the panel. A rejection that
+    // still escapes must not surface as an unhandled promise.
+    Promise.resolve(task).catch((error) => {
+      console.debug("BackupCheckup background task failed", error);
+    });
   }
 
   disconnectedCallback() {
@@ -303,7 +311,7 @@ class BackupCheckupPanel extends HTMLElement {
       );
       // The element can be removed while the handshake is still running.
       if (this._disconnected) this._releaseProgress();
-    } catch (_error) {
+    } catch {
       // Live progress is an enhancement; entity states remain the fallback.
       this._progressUnsubscribe = null;
     } finally {
@@ -363,7 +371,7 @@ class BackupCheckupPanel extends HTMLElement {
 
   _jobProgress(job, model) {
     const live = this._progress[job];
-    if (live && live.status && live.status !== "idle") return live;
+    if (live?.status && live.status !== "idle") return live;
     if (job === "runtime_test") return model?.runtimeTest || null;
     return model?.restoreSimulation || null;
   }
@@ -509,7 +517,8 @@ class BackupCheckupPanel extends HTMLElement {
       ? `<p class="progress-hint">${this._escape(text.progressIndeterminate)}</p>`
       : "";
     const tone = this._heartbeatTone(progress);
-    return `<div class="progress-block${tone ? ` ${tone}` : ""}" data-progress="${this._escape(job)}">
+    const toneClass = tone ? ` ${tone}` : "";
+    return `<div class="progress-block${toneClass}" data-progress="${this._escape(job)}">
       <div class="progress-bar${indeterminate ? " indeterminate" : ""}" data-progress-bar
         role="progressbar" aria-valuemin="0" aria-valuemax="100"
         aria-valuenow="${percent}" aria-busy="${indeterminate ? "true" : "false"}">
@@ -1064,7 +1073,7 @@ class BackupCheckupPanel extends HTMLElement {
 
   _warningSummary(warnings, text) {
     const list = Array.isArray(warnings) ? warnings : [];
-    if (!list.length) return 0;
+    if (!list.length) return "0";
     const labels = text.recovery?.integrityWarningLabels || {};
     const names = list.map((warning) => labels[warning] || this._humanize(warning));
     return `${list.length} · ${names.join(", ")}`;
@@ -1427,8 +1436,10 @@ class BackupCheckupPanel extends HTMLElement {
       };
     }
     const configured = runtime.runner_configured;
+    let state = configured === false ? "not_configured" : "offline";
+    if (runtime.runner_reachable) state = "online";
     return {
-      state: runtime.runner_reachable ? "online" : (configured === false ? "not_configured" : "offline"),
+      state,
       version: runtime.runner_version || null,
       updateRecommended: Boolean(runtime.runner_update_recommended),
       checkedAt: runtime.runner_checked_at || null,
@@ -1446,13 +1457,14 @@ class BackupCheckupPanel extends HTMLElement {
       return runner;
     }
     const reachable = Boolean(runtime.runner_reachable);
+    const reachableState = reachable ? "online" : "offline";
     // A structural state such as "incompatible" or "not set up" is not
     // resolved by reachability alone, so it survives the merge.
     const structural = ["not_configured", "incompatible"].includes(runner.state);
     return {
       ...runner,
       reachable,
-      state: structural ? runner.state : (reachable ? "online" : "offline"),
+      state: structural ? runner.state : reachableState,
       checked_at: runtime.runner_checked_at,
       update_recommended: Boolean(runtime.runner_update_recommended),
       version: runtime.runner_version || runner.version,
@@ -1481,6 +1493,13 @@ class BackupCheckupPanel extends HTMLElement {
       : "";
     const errorCode = runner.errorCode || (!running && progress?.error_code);
     const advice = errorCode ? this._errorAdvice(errorCode, text) : "";
+    const result = running
+      ? ""
+      : `${this._recoveryDetailRow(recovery.runtimeTestTitle, statusLabel)}
+      <div class="runner-line evidence-line">
+        <span>${this._escape(recovery.evidenceTitle)}</span>
+        <span class="chip evidence ${this._escape(model.evidenceTone)}">${this._escape(model.evidenceLabel)}</span>
+      </div>`;
     const rows = `<div class="runner-line">
         <span class="dot ${tone}"></span>
         <strong>${this._escape(stateLabel)}</strong>
@@ -1489,11 +1508,7 @@ class BackupCheckupPanel extends HTMLElement {
         <button class="action secondary tiny" data-runner-check><ha-icon icon="mdi:refresh"></ha-icon>${this._escape(recovery.runnerCheckNow)}</button>
       </div>
       <div class="runner-meta">${checked}</div>
-      ${running ? "" : `${this._recoveryDetailRow(recovery.runtimeTestTitle, statusLabel)}
-      <div class="runner-line evidence-line">
-        <span>${this._escape(recovery.evidenceTitle)}</span>
-        <span class="chip evidence ${this._escape(model.evidenceTone)}">${this._escape(model.evidenceLabel)}</span>
-      </div>`}`;
+      ${result}`;
     const live = running ? this._progressBlock("runtime_test", progress, recovery) : "";
     return this._statusCard(
       "runner",
@@ -1572,18 +1587,18 @@ class BackupCheckupPanel extends HTMLElement {
   }
 
   _activityDetails(record, text) {
-    const errorKeys = ["error_code", "reason", "error_type"];
+    const errorKeys = new Set(["error_code", "reason", "error_type"]);
     // A completed entry never gets an error text, only its raw readable value.
     const completed = record.outcome === "completed";
     const details = Object.entries(record.details || {})
       .filter(([key]) => key !== "progress_percent")
       .filter(([key]) => key !== "error_type" || !record.details?.error_code)
-      .filter(([key, value]) => !errorKeys.includes(key)
+      .filter(([key, value]) => !errorKeys.has(key)
         || !(value == null || value === "" || value === "none"))
       .map(([key, value]) => {
         const label = text.detailLabels?.[key] || this._humanize(key);
         let translatedValue = text.detailValues?.[String(value)] || value;
-        if (errorKeys.includes(key)) {
+        if (errorKeys.has(key)) {
           translatedValue = completed
             ? this._humanize(value)
             : this._friendlyError(value, text);
@@ -1820,7 +1835,7 @@ class BackupCheckupPanel extends HTMLElement {
     let value;
     if (element.type === "checkbox") value = element.checked;
     else if (element.multiple) value = [...element.selectedOptions].map((option) => option.value);
-    else if (element.type === "number" || element.hasAttribute("data-config-number")) {
+    else if (element.type === "number" || element.dataset.configNumber !== undefined) {
       value = Number(element.value);
     }
     else value = element.value;
@@ -1892,7 +1907,7 @@ class BackupCheckupPanel extends HTMLElement {
 
   _bindNavigationEvents(model, root) {
     root.querySelector("[data-runner-check]")?.addEventListener("click", () => {
-      this._refreshRunner(true);
+      this._background(this._refreshRunner(true));
     });
     root.querySelector("[data-goto-overview]")?.addEventListener("click", () => {
       this._selectTab("overview");
@@ -1912,7 +1927,7 @@ class BackupCheckupPanel extends HTMLElement {
       button.addEventListener("click", () => {
         const action = button.dataset.action;
         if (action === "clear_activity_log" && !window.confirm(model.text.clearConfirm)) return;
-        this._runAction(action);
+        this._background(this._runAction(action));
       });
     });
   }
@@ -1920,17 +1935,17 @@ class BackupCheckupPanel extends HTMLElement {
   _bindRecoveryEvents(model, root) {
     root.querySelectorAll("[data-preparedness-section]").forEach((select) => {
       select.addEventListener("change", () => {
-        this._setRecoveryPreparedness(
+        this._background(this._setRecoveryPreparedness(
           select.dataset.preparednessSection,
           select.dataset.preparednessItem,
           select.value
-        );
+        ));
       });
     });
     root.querySelector("[data-record-restore]")?.addEventListener("click", () => {
       const result = this.shadowRoot.querySelector("[data-restore-result]")?.value;
       const scope = this.shadowRoot.querySelector("[data-restore-scope]")?.value;
-      this._recordRestoreTest(result, scope);
+      this._background(this._recordRestoreTest(result, scope));
     });
     root.querySelectorAll("[data-export-plan]").forEach((button) => {
       button.addEventListener("click", () => this._exportRecoveryPlan(model, button.dataset.exportPlan));
@@ -2124,7 +2139,8 @@ class BackupCheckupPanel extends HTMLElement {
       : "";
     const verification = this._jobProgress("verification", model);
     const runtime = this._jobProgress("runtime_test", model);
-    const runningJob = this._isRunning(verification) ? verification : (this._isRunning(runtime) ? runtime : null);
+    let runningJob = this._isRunning(runtime) ? runtime : null;
+    if (this._isRunning(verification)) runningJob = verification;
     const liveLink = runningJob
       ? `<button class="new-entries" data-goto-overview><ha-icon icon="mdi:progress-clock"></ha-icon>${this._escape(text.recovery.liveRunning)} – ${Number(runningJob.overall_percent) || 0}%</button>`
       : "";
@@ -2201,7 +2217,7 @@ class BackupCheckupPanel extends HTMLElement {
         );
       });
     }
-    button.setAttribute("data-menu", "");
+    button.dataset.menu = "";
     header.insertBefore(button, header.firstChild);
   }
 
@@ -2233,8 +2249,8 @@ class BackupCheckupPanel extends HTMLElement {
       this._scrollLogToBottom = true;
       this._pendingLogEntries = 0;
     }
-    if (tab === "settings") this._loadConfiguration();
-    if (["overview", "recovery"].includes(tab)) this._refreshRunner(true);
+    if (tab === "settings") this._background(this._loadConfiguration());
+    if (["overview", "recovery"].includes(tab)) this._background(this._refreshRunner(true));
     this._relevantStateChanged(this._hass);
     this._scheduleRender();
   }
@@ -2401,7 +2417,7 @@ class BackupCheckupPanel extends HTMLElement {
     if (!this._hass?.user?.is_admin) return;
     this._activeTab = "settings";
     this._relevantStateChanged(this._hass);
-    this._loadConfiguration();
+    this._background(this._loadConfiguration());
     this._scheduleRender();
   }
 

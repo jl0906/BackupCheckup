@@ -129,6 +129,7 @@ WS_TYPE_RUNNER_STATUS = f"{DOMAIN}/runner/status"
 
 #: A panel that switches tabs quickly must not trigger a health request storm.
 _RUNNER_REFRESH_DEBOUNCE_SECONDS = 5.0
+_ENTRY_NOT_FOUND = "Config entry not found"
 
 _INTEGER_LIMITS: dict[str, tuple[int, int]] = {
     CONF_UPDATE_INTERVAL_MINUTES: (
@@ -591,7 +592,7 @@ async def websocket_config_get(
     """Return the current BackupCheckup configuration to an administrator."""
     entry = _entry_for_message(hass, msg["entry_id"])
     if entry is None:
-        connection.send_error(msg["id"], "entry_not_found", "Config entry not found")
+        connection.send_error(msg["id"], "entry_not_found", _ENTRY_NOT_FOUND)
         return
     connection.send_result(msg["id"], frontend_configuration_payload(hass, entry))
 
@@ -613,7 +614,7 @@ async def websocket_config_update(
     """Validate, persist, acknowledge, and reload panel configuration."""
     entry = _entry_for_message(hass, msg["entry_id"])
     if entry is None:
-        connection.send_error(msg["id"], "entry_not_found", "Config entry not found")
+        connection.send_error(msg["id"], "entry_not_found", _ENTRY_NOT_FOUND)
         return
 
     current = normalize_configuration(entry.data, entry.options)
@@ -689,7 +690,7 @@ async def websocket_progress_subscribe(
     entry_id = msg["entry_id"]
     coordinator = _coordinator_for_entry(_entry_for_message(hass, entry_id))
     if coordinator is None:
-        connection.send_error(msg["id"], "entry_not_found", "Config entry not found")
+        connection.send_error(msg["id"], "entry_not_found", _ENTRY_NOT_FOUND)
         return
 
     @callback
@@ -735,7 +736,7 @@ async def websocket_runner_status(
     entry = _entry_for_message(hass, msg["entry_id"])
     coordinator = _coordinator_for_entry(entry)
     if entry is None or coordinator is None:
-        connection.send_error(msg["id"], "entry_not_found", "Config entry not found")
+        connection.send_error(msg["id"], "entry_not_found", _ENTRY_NOT_FOUND)
         return
     if msg["refresh"]:
         await coordinator.async_check_runner(

@@ -357,6 +357,25 @@ def _measured_pipeline(
     return progress
 
 
+def _measured_view(
+    measured: Mapping[str, Any],
+    fallback_stages: dict[str, Any],
+    fallback_error_code: str | None,
+) -> tuple[dict[str, Any], list[Any], int, str, str | None]:
+    """Return stages, steps, percent, stage and error of one measured run."""
+    stages = dict(measured.get("stages") or fallback_stages)
+    measured_steps = measured.get("steps")
+    steps = (
+        list(measured_steps)
+        if isinstance(measured_steps, list)
+        else _steps_from_stages(stages)
+    )
+    percent = max(0, min(int(measured.get("overall_percent") or 0), 100))
+    stage = str(measured.get("stage") or STAGE_CLEANUP)
+    error_code = measured.get("error_code") or fallback_error_code
+    return stages, steps, percent, stage, error_code
+
+
 def simulate_restore(
     latest: BackupRecord | None,
     integrity: BackupIntegrityResult,
@@ -407,16 +426,9 @@ def simulate_restore(
     # result is reconstructed from the stored integrity outcome.
     measured = _measured_pipeline(progress, latest.backup_reference)
     if measured is not None and has_run:
-        stages = dict(measured.get("stages") or stages)
-        measured_steps = measured.get("steps")
-        steps = (
-            list(measured_steps)
-            if isinstance(measured_steps, list)
-            else _steps_from_stages(stages)
+        stages, steps, percent, stage, error_code = _measured_view(
+            measured, stages, integrity.error_code
         )
-        percent = max(0, min(int(measured.get("overall_percent") or 0), 100))
-        stage = str(measured.get("stage") or STAGE_CLEANUP)
-        error_code = measured.get("error_code") or integrity.error_code
     else:
         steps = _steps_from_stages(stages)
         percent = _stage_percent(stages) if has_run else 0

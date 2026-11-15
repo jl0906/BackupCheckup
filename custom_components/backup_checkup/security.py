@@ -354,6 +354,16 @@ def _is_within(path: Path, parent: Path) -> bool:
         return False
 
 
+def _is_reserved_staging_location(resolved: Path, config_root: Path) -> bool:
+    """Return whether a directory must never hold verification copies."""
+    if resolved == config_root or resolved.parent == resolved:
+        return True
+    return any(
+        _is_within(resolved, config_root.joinpath(*relative_parts))
+        for relative_parts in STAGING_DIRECTORY_RESERVED_RELATIVE_PARTS
+    )
+
+
 def validate_staging_directory(candidate: str, *, config_dir: str | Path) -> str | None:
     """Validate a user-supplied staging directory and return an error code.
 
@@ -386,11 +396,8 @@ def validate_staging_directory(candidate: str, *, config_dir: str | Path) -> str
     if resolved == default_staging_root(config_root).resolve():
         # The automatic location is always acceptable; BackupCheckup owns it.
         return None
-    if resolved == config_root or resolved.parent == resolved:
+    if _is_reserved_staging_location(resolved, config_root):
         return "staging_directory_reserved"
-    for relative_parts in STAGING_DIRECTORY_RESERVED_RELATIVE_PARTS:
-        if _is_within(resolved, config_root.joinpath(*relative_parts)):
-            return "staging_directory_reserved"
 
     if not os.access(path, os.W_OK | os.X_OK):
         return "staging_directory_not_writable"

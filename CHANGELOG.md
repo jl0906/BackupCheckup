@@ -1,5 +1,29 @@
 # Changelog
 
+## 3.2.4
+
+### Fixed
+
+- Background requests of the panel (runner check, live progress
+  subscription, loading the settings, and the action buttons) are now
+  always followed up. A failed request can no longer end as an unhandled
+  promise rejection in the browser console.
+
+### Changed
+
+- Code-quality cleanup after static analysis in the panel and the
+  integration: simpler conditions, a few extracted helper functions, and
+  consistent return types. Behavior is unchanged.
+- The validation scripts under `.github/scripts` are declared as test code
+  for the static analysis.
+
+### Compatibility
+
+- Minimum compatible Runtime Runner: **2**. Runtime Runner **4** is
+  recommended. No runner update is required for 3.2.4; Runner 4 is unchanged.
+- Configuration entry schema stays at version 17; no migration. Entity IDs
+  and unique IDs are unchanged.
+
 ## 3.2.3
 
 ### Fixed

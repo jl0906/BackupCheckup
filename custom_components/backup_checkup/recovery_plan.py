@@ -149,20 +149,20 @@ def _render_markdown(data: dict[str, Any], text: dict[str, str]) -> str:
         "",
         _markdown_escape(data["summary"]),
         "",
+        (
+            f"**{_markdown_escape(text['label_installation'])}:** "
+            f"{_markdown_escape(data['installation_type'])}"
+        ),
+        (
+            f"**{_markdown_escape(text['label_backup_reference'])}:** "
+            f"{_markdown_escape(data['backup_reference'] or '—')}"
+        ),
+        (
+            f"**{_markdown_escape(text['label_backup_date'])}:** "
+            f"{_markdown_escape(data['backup_date'] or '—')}"
+        ),
+        "",
     ]
-    lines.append(
-        f"**{_markdown_escape(text['label_installation'])}:** "
-        f"{_markdown_escape(data['installation_type'])}"
-    )
-    lines.append(
-        f"**{_markdown_escape(text['label_backup_reference'])}:** "
-        f"{_markdown_escape(data['backup_reference'] or '—')}"
-    )
-    lines.append(
-        f"**{_markdown_escape(text['label_backup_date'])}:** "
-        f"{_markdown_escape(data['backup_date'] or '—')}"
-    )
-    lines.append("")
     for key, data_key in _PLAN_SECTIONS:
         values = data[data_key]
         lines.append(f"## {text[key]}")
