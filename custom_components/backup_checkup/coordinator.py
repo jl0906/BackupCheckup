@@ -7,7 +7,7 @@ import hashlib
 import logging
 import time
 from collections import defaultdict
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Coroutine, Mapping
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -285,6 +285,26 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
     """Fetch and evaluate the actual Home Assistant backup inventory."""
 
     config_entry: ConfigEntry
+    # Class-level default so the flag is readable on partially built instances.
+    _shutdown_started: bool = False
+
+    @property
+    def shutdown_started(self) -> bool:
+        """Return whether the coordinator is shutting down or already stopped."""
+        return self._shutdown_started
+
+    def _async_create_entry_task(
+        self, target: Coroutine[Any, Any, None], name: str
+    ) -> asyncio.Task[None]:
+        """Start a coordinator-owned task that never blocks Home Assistant.
+
+        Background tasks of the config entry are not awaited by
+        ``async_block_till_done`` and are cancelled by Home Assistant on
+        unload and on stop, in addition to the explicit shutdown below.
+        """
+        return self.config_entry.async_create_background_task(
+            self.hass, target, name=name
+        )
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize the coordinator from one canonical settings object."""
@@ -591,8 +611,10 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
         ):
             self._adaptive_refresh_pending = True
             return
-        self._adaptive_refresh_task = self.hass.async_create_task(
-            self._async_adaptive_refresh(), name=f"{DOMAIN}_adaptive_refresh"
+        if self._shutdown_started:
+            return
+        self._adaptive_refresh_task = self._async_create_entry_task(
+            self._async_adaptive_refresh(), f"{DOMAIN}_adaptive_refresh"
         )
 
     async def _async_adaptive_refresh(self) -> None:
@@ -628,6 +650,7 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
 
     async def async_shutdown(self) -> None:
         """Cancel a running integrity check and shut down the coordinator."""
+        self._shutdown_started = True
         self._record_activity("coordinator_shutdown", ACTIVITY_OUTCOME_STARTED)
         if self._integrity_task is not None and not self._integrity_task.done():
             self._integrity_task.cancel()
@@ -1722,9 +1745,9 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             details={"source": "automatic"},
         )
         self._set_integrity_task(
-            self.hass.async_create_task(
+            self._async_create_entry_task(
                 self._async_run_integrity_check(latest, source="automatic"),
-                name=f"{DOMAIN}_automatic_integrity_check",
+                f"{DOMAIN}_automatic_integrity_check",
             )
         )
 
@@ -1836,9 +1859,9 @@ class BackupCheckupCoordinator(DataUpdateCoordinator[BackupCheckupData]):
             details={"source": source},
         )
         self._set_integrity_task(
-            self.hass.async_create_task(
+            self._async_create_entry_task(
                 self._async_run_integrity_check(latest, source=source),
-                name=f"{DOMAIN}_{source}_integrity_check",
+                f"{DOMAIN}_{source}_integrity_check",
             )
         )
         return True

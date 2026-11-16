@@ -52,6 +52,7 @@ from .const import (
     RUNTIME_PROFILE_LEGACY,
     SIZE_CHECK_FIXED,
 )
+from .entry_reload import RELOAD_AFTER_RUNNER_DISCOVERY, async_reload_entry_logged
 from .flow_schemas import (
     confirmation_schema,
     monitoring_custom_schema,
@@ -279,7 +280,9 @@ class BackupCheckupConfigFlow(
             data = {**dict(entry.data), CONF_RUNTIME_RUNNER: connection.as_dict()}
             self.hass.config_entries.async_update_entry(entry, data=data)
             self.hass.async_create_task(
-                self.hass.config_entries.async_reload(entry.entry_id),
+                async_reload_entry_logged(
+                    self.hass, entry.entry_id, RELOAD_AFTER_RUNNER_DISCOVERY
+                ),
                 name=f"{DOMAIN}-runtime-runner-discovery",
             )
             return self.async_abort(reason="runtime_runner_connected")

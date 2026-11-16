@@ -55,6 +55,8 @@ jobs:
         run: python .github/scripts/check_backup_manager_state.py
       - name: Async callback thread safety
         run: python .github/scripts/check_async_callbacks.py
+      - name: Unload callback return values
+        run: python .github/scripts/check_unload_callbacks.py
       - name: Recorder attribute limits
         run: python .github/scripts/check_recorder_attributes.py
       - name: Notification confirmation policy

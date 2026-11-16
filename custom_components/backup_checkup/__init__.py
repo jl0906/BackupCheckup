@@ -573,14 +573,20 @@ async def _async_monitor_runner_discovery(
     """
     retry_delay = _DISCOVERY_RETRY_START_SECONDS
     missing_cycles = 0
-    while True:
+    # Home Assistant cancels this task only after the unload callbacks ran, so
+    # the loop also ends on its own once the coordinator started to shut down.
+    while not coordinator.shutdown_started:
         await asyncio.sleep(retry_delay)
+        if coordinator.shutdown_started:
+            return
         if coordinator.runner_health.usable:
             retry_delay = _DISCOVERY_RETRY_MAX_SECONDS
             missing_cycles = 0
             async_set_runner_discovery_issue(hass, active=False)
             continue
         connection = await async_discover_supervisor_runner(hass)
+        if coordinator.shutdown_started:
+            return
         if connection is None:
             retry_delay = min(_DISCOVERY_RETRY_MAX_SECONDS, retry_delay * 2)
             missing_cycles += 1
@@ -655,11 +661,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator.async_start_adaptive_polling()
     await coordinator.async_check_runner(source=RUNNER_CHECK_SOURCE_STARTUP)
     coordinator.async_start_runner_health_monitor()
-    runner_monitor = hass.async_create_task(
+    # A background task of the entry: Home Assistant cancels and awaits it on
+    # unload. Never register ``Task.cancel`` through ``async_on_unload``; its
+    # ``True`` result is treated as a coroutine and aborts the unload.
+    entry.async_create_background_task(
+        hass,
         _async_monitor_runner_discovery(hass, entry, coordinator),
         name=f"{DOMAIN}_runtime_runner_discovery",
     )
-    entry.async_on_unload(runner_monitor.cancel)
 
     def _sync_repair_issues() -> None:
         # Health issues of the start phase describe storage agents that are

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections import deque
 from collections.abc import Callable, Mapping
@@ -184,9 +185,15 @@ class BackupCheckupActivityLog:
         await self._store.async_remove()
 
     async def async_shutdown(self) -> None:
-        """Flush the latest persistent journal before shutdown."""
+        """Flush the latest persistent journal exactly once before shutdown."""
         if not self._persistent:
             return
+        # A coalesced save may still be queued or writing. Withdraw its pending
+        # work and wait for it, so it cannot write again after the final flush.
+        self._save_pending = False
+        save_task = self._save_task
+        if save_task is not None:
+            await asyncio.gather(save_task, return_exceptions=True)
         await self._store.async_save(self._storage_payload())
 
     @callback

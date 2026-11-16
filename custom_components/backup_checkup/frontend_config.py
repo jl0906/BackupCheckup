@@ -113,6 +113,7 @@ from .const import (
     progress_signal,
 )
 from .coordinator import BackupCheckupCoordinator
+from .entry_reload import RELOAD_AFTER_PANEL_SAVE, async_reload_entry_logged
 from .notification_selection import (
     mobile_notification_options,
     normalize_notification_targets,
@@ -669,7 +670,7 @@ async def websocket_config_update(
         },
     )
     hass.async_create_task(
-        hass.config_entries.async_reload(entry.entry_id),
+        async_reload_entry_logged(hass, entry.entry_id, RELOAD_AFTER_PANEL_SAVE),
         name=f"{DOMAIN}-frontend-config-reload",
     )
 

@@ -1,5 +1,46 @@
 # Changelog
 
+## 3.2.5
+
+### Fixed
+
+- Unloading the integration no longer fails with
+  `TypeError: a coroutine was expected, got True` (#6). The error occurred
+  on every unload, most visibly when settings were saved in the panel and
+  the integration reloaded itself. The runner discovery loop is now a
+  background task of the config entry and is cancelled by Home Assistant
+  on unload.
+- Because the unload now completes, the coordinator is shut down properly
+  again: the runner health monitor and adaptive polling of the previous
+  instance stop, and the activity log is flushed before a reload.
+- The runner discovery loop stops on its own as soon as the coordinator
+  begins to shut down. It can no longer update the config entry or attach
+  a runner connection to an instance that is being unloaded.
+- The activity log is written exactly once on shutdown. A save that was
+  still queued could write the journal a second time after the final flush.
+- A reload that fails or is refused after saving settings in the panel or
+  after a newly discovered Runtime Runner was connected is now logged with
+  a clear message that a restart is needed. Before, the failure was only
+  visible as a generic task error.
+- Home Assistant no longer waits for BackupCheckup while it wraps up its
+  start. The runner discovery loop was counted as pending start-up work
+  and never finishes, so the start was only reported as complete after
+  Home Assistant's own wait time had expired.
+
+### Changed
+
+- Backup verification runs and the adaptive refresh are background tasks
+  of the config entry. They no longer delay Home Assistant while it waits
+  for pending work, and Home Assistant cancels them on unload and on stop
+  in addition to the coordinator's own shutdown.
+
+### Compatibility
+
+- Minimum compatible Runtime Runner: **2**. Runtime Runner **4** is
+  recommended. No runner update is required for 3.2.5; Runner 4 is unchanged.
+- Configuration entry schema stays at version 17; no migration. Entity IDs
+  and unique IDs are unchanged.
+
 ## 3.2.4
 
 ### Fixed
