@@ -555,6 +555,58 @@ for (const language of ["en", "de", "sv"]) {
   );
   assert(journal._warningSummary([], text) === "0", "No warnings must render as 0");
 }
+// A rejected backup copy carries the status code and the internal rule code.
+// Both lines need their own label, and the two documented rule codes are
+// translated while every other code stays readable text.
+const rejectedCopy = (reason) => ({
+  action: "backup_extract",
+  outcome: "failed",
+  level: "warning",
+  details: { error_code: "archive_invalid", reason },
+});
+for (const [language, folders, missing] of [
+  [
+    "en",
+    "The backup metadata lists a folder name that is not supported.",
+    "The backup contains no metadata file; it is incomplete or was interrupted.",
+  ],
+  [
+    "de",
+    "Die Backup-Metadaten enthalten einen nicht unterstützten Ordnernamen.",
+    "Das Backup enthält keine Metadaten-Datei; es ist unvollständig oder wurde abgebrochen.",
+  ],
+]) {
+  const journal = mount(IDLE_VERIFICATION, NOT_STARTED_RUNTIME, { language });
+  const text = journal._text();
+  assert(
+    text.detailLabels.error_code !== text.detailLabels.reason,
+    `The ${language} live log labels error_code and reason identically`,
+  );
+  const foldersLine = journal._activityDetails(
+    rejectedCopy("backup_metadata_folders_invalid"), text,
+  );
+  assert(
+    foldersLine
+      === `${text.detailLabels.error_code}: Archive invalid · ${text.detailLabels.reason}: ${folders}`,
+    `The ${language} rejected copy is not explained: ${foldersLine}`,
+  );
+  assert(
+    journal._activityDetails(rejectedCopy("backup_metadata_missing"), text).endsWith(missing),
+    `The ${language} missing metadata reason is not translated`,
+  );
+  assert(
+    journal._activityDetails(rejectedCopy("database_path_invalid"), text)
+      .endsWith(`${text.detailLabels.reason}: Database path invalid`),
+    `An untranslated ${language} rule code must stay readable text`,
+  );
+}
+for (const language of ["da", "es", "fr", "it", "nl", "pl", "sv"]) {
+  const labels = mount(IDLE_VERIFICATION, NOT_STARTED_RUNTIME, { language })._text().detailLabels;
+  assert(
+    labels.error_code !== labels.reason,
+    `The ${language} live log labels error_code and reason identically`,
+  );
+}
 const englishText = mount(IDLE_VERIFICATION, NOT_STARTED_RUNTIME)._text();
 assert(
   englishText.recovery.runnerErrors.runner_unsupported_archive_member

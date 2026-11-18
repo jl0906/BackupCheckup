@@ -1,5 +1,30 @@
 # Changelog
 
+## 3.2.6
+
+### Fixed
+
+- Backups that include the "Local apps/add-ons" folder are no longer
+  reported as corrupt. Home Assistant stores this folder as `addons/local`
+  in the backup metadata, and the structural verification rejected every
+  folder name that contains a slash. The backup itself was intact; the
+  check stopped a few seconds after the download with "Archive invalid".
+  Folder names are now validated per path segment and mapped to the
+  archive name the Supervisor uses (`addons_local`).
+
+### Changed
+
+- When a backup copy is rejected as invalid, the log and the live log now
+  name the internal reason code (for example `backup_metadata_missing`)
+  in addition to the error type. The code never contains paths or names.
+
+### Compatibility
+
+- Minimum compatible Runtime Runner: **2**. Runtime Runner **4** is
+  recommended. No runner update is required for 3.2.6; Runner 4 is unchanged.
+- Configuration entry schema stays at version 17; no migration. Entity IDs
+  and unique IDs are unchanged.
+
 ## 3.2.5
 
 ### Fixed

@@ -63,6 +63,8 @@ jobs:
         run: python .github/scripts/check_notification_policy.py
       - name: Archive member policy
         run: python .github/scripts/check_link_policy.py
+      - name: Backup folder identifiers
+        run: python .github/scripts/check_backup_folders.py
       - name: Runner failure codes
         run: python .github/scripts/check_runner_error_codes.py
       - name: Release ZIP asset

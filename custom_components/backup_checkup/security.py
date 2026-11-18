@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import shutil
 import stat
 import tempfile
@@ -34,6 +35,7 @@ _GB = 1_000_000_000
 _MAX_LOG_VALUE_LENGTH = 160
 _MAX_ERROR_TYPE_LENGTH = 80
 _MAX_DISPLAY_NAME_LENGTH = 128
+_REASON_CODE = re.compile(r"[a-z0-9_]{1,64}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -271,6 +273,20 @@ def safe_log_value(value: object, *, max_length: int = _MAX_LOG_VALUE_LENGTH) ->
 def safe_error_type(error: BaseException) -> str:
     """Return a bounded log-safe exception class name."""
     return safe_log_value(type(error).__name__, max_length=_MAX_ERROR_TYPE_LENGTH)
+
+
+def safe_reason_code(error: BaseException) -> str | None:
+    """Return the fixed internal rule code of an exception, if it carries one.
+
+    BackupCheckup raises its own archive rules as ``KeyError("some_code")``.
+    Exceptions from ``tarfile`` or ``securetar`` carry free text that may
+    contain file names, so anything that is not a plain lower-case code is
+    dropped and never reaches a log line.
+    """
+    code = error.args[0] if error.args else None
+    if isinstance(code, str) and _REASON_CODE.fullmatch(code):
+        return code
+    return None
 
 
 def safe_display_name(value: object, *, fallback: str) -> str:

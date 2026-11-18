@@ -66,6 +66,7 @@ from .security import (
     create_private_temp_directory,
     open_private_binary_writer,
     safe_error_type,
+    safe_reason_code,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -1288,20 +1289,32 @@ class BackupIntegrityVerifier:
             if downloaded.prepared.protected
             else "backup_extract"
         )
+        # Only a fixed internal rule code is reported, never an exception text.
+        reason = safe_reason_code(error)
+        details = {"error_code": error_code}
+        if reason is not None:
+            details["reason"] = reason
         self._record_archive_end(
             extract_action,
             ACTIVITY_OUTCOME_FAILED,
             database_check=database_check,
             level=logging.ERROR if unexpected else logging.WARNING,
-            details={"error_code": error_code},
+            details=details,
         )
         logger = _LOGGER.error if unexpected else _LOGGER.warning
-        logger(
-            "%s: agent=%s error_type=%s",
-            message,
-            anonymous_agent_reference(self._entry_id, downloaded.prepared.agent_id),
-            safe_error_type(error),
-        )
+        agent = anonymous_agent_reference(self._entry_id, downloaded.prepared.agent_id)
+        if reason is None:
+            logger(
+                "%s: agent=%s error_type=%s", message, agent, safe_error_type(error)
+            )
+        else:
+            logger(
+                "%s: agent=%s error_type=%s reason=%s",
+                message,
+                agent,
+                safe_error_type(error),
+                reason,
+            )
         return _CandidateOutcome(
             self._downloaded_result(
                 status, record, started, downloaded, error_code=error_code
@@ -1954,11 +1967,11 @@ class BackupIntegrityVerifier:
 
     @classmethod
     def _validated_folders(cls, metadata: dict[str, Any]) -> list[str]:
-        """Return unique, valid folder archive identifiers."""
+        """Return unique, valid folder identifiers as written by Home Assistant."""
         folders = metadata.get("folders", [])
         if not isinstance(folders, list) or len(folders) > 10_000:
             raise KeyError("backup_metadata_folders_invalid")
-        if any(not cls._valid_archive_identifier(item) for item in folders):
+        if any(not cls._valid_folder_identifier(item) for item in folders):
             raise KeyError("backup_metadata_folders_invalid")
         if len(folders) != len(set(folders)):
             raise KeyError("backup_metadata_folders_duplicate")
@@ -1973,8 +1986,12 @@ class BackupIntegrityVerifier:
         homeassistant_present = cls._validated_homeassistant_metadata(metadata)
         addon_slugs = cls._validated_addon_slugs(metadata)
         folders = cls._validated_folders(metadata)
+        # Compare archive names, not raw folder values: the add-on slug
+        # ``addons_local`` and the folder ``addons/local`` share one archive.
         logical_names = addon_slugs + [
-            folder for folder in folders if folder != "homeassistant"
+            cls._folder_archive_name(folder)
+            for folder in folders
+            if folder != "homeassistant"
         ]
         if homeassistant_present:
             logical_names.append("homeassistant")
@@ -1997,6 +2014,29 @@ class BackupIntegrityVerifier:
             )
             and not value.endswith(_INNER_SUFFIXES)
         )
+
+    @classmethod
+    def _valid_folder_identifier(cls, value: Any) -> bool:
+        """Return whether metadata contains one safe folder identifier.
+
+        Home Assistant stores the "Local add-ons" folder as ``addons/local``,
+        so a folder may consist of several segments. Every segment has to be
+        a safe archive identifier on its own, which keeps empty segments,
+        leading or trailing slashes, ``.`` and ``..``, backslashes, control
+        characters and archive suffixes rejected.
+        """
+        return bool(
+            isinstance(value, str)
+            and 0 < len(value) <= 256
+            and all(
+                cls._valid_archive_identifier(segment) for segment in value.split("/")
+            )
+        )
+
+    @staticmethod
+    def _folder_archive_name(folder: str) -> str:
+        """Return the inner archive name the Supervisor uses for one folder."""
+        return folder.replace("/", "_")
 
     @classmethod
     def _read_inner_archive(
@@ -2144,7 +2184,9 @@ class BackupIntegrityVerifier:
         folders = metadata.get("folders", [])
         if isinstance(folders, list):
             expected.update(
-                str(folder) for folder in folders if folder != "homeassistant"
+                cls._folder_archive_name(str(folder))
+                for folder in folders
+                if folder != "homeassistant"
             )
         return expected
 
