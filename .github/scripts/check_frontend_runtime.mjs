@@ -199,6 +199,9 @@ function steps(keys, running, overrides = {}) {
 }
 
 const NOW = Date.now();
+// Pin the panel's clock to the fixture time. The rendered durations are
+// rounded, so a slow machine would otherwise show 1:43 instead of 1:42.
+vm.runInContext(`Date.now = () => ${NOW};`, context);
 const ago = (seconds) => new Date(NOW - seconds * 1000).toISOString();
 
 function job(name, status, running, overall, stepList, extra = {}) {
